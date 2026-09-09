@@ -1,0 +1,1376 @@
+[
+  {
+    "id": "M0-P01",
+    "milestone": "M0",
+    "title": "冻结个人 PDF 范围与阅读参考",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [],
+    "requirements": [
+      "M0-R01",
+      "M0-R02",
+      "M0-R11"
+    ],
+    "engineering_days": [
+      1,
+      2
+    ],
+    "outputs": [
+      "docs/decision-records.md",
+      "reference/reader-v1.css",
+      "tests/contracts/test_scope.py"
+    ],
+    "steps": [
+      "以用户最新五条要求覆盖旧版；列明PDF-only/no identity/Compose-only/no proxy负约束。",
+      "验证两个旧页与reader-v1样式hash，保留旧译读说明。",
+      "冻结PDF样本、语义IR和验收证据格式；此时先写退出测试。"
+    ],
+    "done": "规格、负约束和参考hash可机读检查，旧要求有迁移记录。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P02",
+    "milestone": "M0",
+    "title": "仓库与 Compose-only 运行框架",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P01"
+    ],
+    "requirements": [
+      "M0-R18"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "apps/web/",
+      "apps/api/",
+      "workers/",
+      "compose.yaml",
+      "images/",
+      "tests/compose/"
+    ],
+    "steps": [
+      "建立React/TypeScript前端和Python模块化后端；前端build结果在app镜像。",
+      "app/worker/parser/db/migrate Compose服务，只有app发布一个HTTP端口，绝不加入反代或登录服务。",
+      "提供健康检查/命令/自动初始化空卷与依赖锁定；宿主不运行pip/npm。"
+    ],
+    "done": "干净Docker宿主可启动M0骨架，失败健康检查可见；交付镜像digest清单。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P03",
+    "milestone": "M0",
+    "title": "Schema与语义不变量",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P01"
+    ],
+    "requirements": [
+      "M0-R04",
+      "M0-R05",
+      "M0-R06",
+      "M0-R17"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/contracts/",
+      "packages/ir/validator.py",
+      "tests/unit/test_ir_semantics.py"
+    ],
+    "steps": [
+      "实施v3 Schema和受限inline；原PDF/normalized映射、title、容器归属和哈希规范。",
+      "构造重复文本不同ID、跨页provenance、table子块等正负fixture。",
+      "旧版数据只能受控迁移；普通客户端不能导入v1/v2/原型JSON；新来源唯一入口为PDF。"
+    ],
+    "done": "Schema和语义校验分层，错误路径可定位，修改不会改变历史hash。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P04",
+    "milestone": "M0",
+    "title": "单库数据、存储与直接文件服务",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P02",
+      "M0-P03"
+    ],
+    "requirements": [
+      "M0-R12",
+      "M0-R13",
+      "M0-R17"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "migrations/001_core.sql",
+      "packages/storage/",
+      "apps/api/documents/",
+      "apps/api/files/"
+    ],
+    "steps": [
+      "建Document/SourceAsset/Draft/Artifact等表，无users/workspaces/ACL/FK。",
+      "持久卷使用生成的安全存储键；app通过manifest解析文件，不暴露任意目录。",
+      "服务UI/API/reader直接HTTP，设置Host/Origin请求保护和loopback默认；不读反代身份头。"
+    ],
+    "done": "无登录首启、库重启不丢、路径穿越负例、删除资源读取拒绝。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P05",
+    "milestone": "M0",
+    "title": "静态Renderer与结构支持",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P03"
+    ],
+    "requirements": [
+      "M0-R02",
+      "M0-R06",
+      "M0-R07",
+      "M0-R08",
+      "M0-R10",
+      "M0-R16"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "packages/reader/renderer.py",
+      "packages/reader/reader.js",
+      "tests/unit/test_render_all_kinds.py"
+    ],
+    "steps": [
+      "复用冻结CSS，全部启用block类型明确渲染，不复用旧文本子集当全功能。",
+      "实现table/caption 容器归属、脚注回链、title只一次、保护原子和公式原式/原图。",
+      "把时间元数据排除正文，关闭网络并测试重建字节稳定和内容转义。"
+    ],
+    "done": "正负结构fixture通过；禁用JS全内容可读；非法URL/资产/HTML被阻断。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P06",
+    "milestone": "M0",
+    "title": "最小耐久任务与Publisher",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P04",
+      "M0-P05"
+    ],
+    "requirements": [
+      "M0-R14",
+      "M0-R15",
+      "M0-R17"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/jobs/",
+      "packages/publisher/",
+      "migrations/002_jobs.sql",
+      "tests/faults/test_publish_crash.py"
+    ],
+    "steps": [
+      "实现短事务claim、lease、heartbeat、fencing与持久render/export任务。",
+      "冻结输入→临时构建→manifest验证→不可变asset→CAS发布。",
+      "注入文件写半截、写完未切指针、CAS冲突、旧worker迟到和GC竞态。"
+    ],
+    "done": "任何注入点当前页面始终完整，旧worker不能写当前结果。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P07",
+    "milestone": "M0",
+    "title": "PDF保存与个人文档库 UI",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P04",
+      "M0-P06"
+    ],
+    "requirements": [
+      "M0-R03",
+      "M0-R12",
+      "M0-R15"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "apps/web/features/upload-pdf/",
+      "apps/api/uploads/",
+      "packages/ingestion/pdf_intake.py",
+      "workers/parser/inspect.py"
+    ],
+    "steps": [
+      "仅PDF拖拽/选择，流式上传、真实字节上限/hash/finalize。",
+      "隔离inspector检查有效性、加密、页数，建source_only条目；疑似扫描可保存但不假装可译。",
+      "标题/标签/收藏/归档/原件预览及查重，M0机器翻译入口显示阶段不可用。"
+    ],
+    "done": "PDF持久入库与重传幂等；非PDF/伪装/加密负例；不引入双语文本或IR导入。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P08",
+    "milestone": "M0",
+    "title": "受控内置旧页与示例迁移",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P04",
+      "M0-P06"
+    ],
+    "requirements": [
+      "M0-R11"
+    ],
+    "engineering_days": [
+      1,
+      2
+    ],
+    "outputs": [
+      "packages/seed/legacy.py",
+      "reference/legacy-manifest.json",
+      "tests/integration/test_legacy_seed.py"
+    ],
+    "steps": [
+      "只迁移随release提供的两份旧页和PDF，验证允许的文件hash。",
+      "通过Compose CLI显式seed，重跑幂等；普通API不支持HTML输入。",
+      "原文整理说明和未知来源状态保留；导航变更限定在清单中。"
+    ],
+    "done": "原文/CSS不改写、原PDF可打开、同一示例不重复入库。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P09",
+    "milestone": "M0",
+    "title": "离线导出与直接静态读取",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P05",
+      "M0-P06"
+    ],
+    "requirements": [
+      "M0-R09",
+      "M0-R13",
+      "M0-R16"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "packages/exporter/",
+      "apps/api/artifacts/",
+      "tests/browser/offline-reader.spec.ts"
+    ],
+    "steps": [
+      "目录包本地相对资源；单文件HTML嵌入资源；按选项包含/不含原PDF。",
+      "正文预写完整，无API/模型/外部CDN运行时依赖，核心无JS可读。",
+      "下载与预览检查manifest及删除状态，不做用户鉴权/签名分享。"
+    ],
+    "done": "无网络/无JS有完整正文；导出不留必坏PDF按钮或秘密。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P10",
+    "milestone": "M0",
+    "title": "UI和视觉回归",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P07",
+      "M0-P08",
+      "M0-P09"
+    ],
+    "requirements": [
+      "M0-R02",
+      "M0-R10",
+      "M0-R12"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "tests/browser/reader.spec.ts",
+      "tests/visual/baselines/",
+      "reports/m0-ui.md"
+    ],
+    "steps": [
+      "固定OS/浏览器/DPR与字体环境，对照参考页抽样首中末。",
+      "测试320/390/1440px、放大字体、键盘焦点、长表和文章目录。",
+      "新产生差异必须解释或修复，不自动更新approved截图。"
+    ],
+    "done": "无裁切与丢内容，阅读器变动仅在记录的允许区域。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P11",
+    "milestone": "M0",
+    "title": "文件安全、 Compose依赖与恢复演练",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P08",
+      "M0-P09"
+    ],
+    "requirements": [
+      "M0-R13",
+      "M0-R14",
+      "M0-R16",
+      "M0-R18"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "ops/restore.md",
+      "ops/dependencies.md",
+      "tests/security/",
+      "tests/compose/test_clean_host.py"
+    ],
+    "steps": [
+      "校验PDF动作不执行、资产路径/HTML转义、坏文件资源限额。",
+      "同一Compose运维服务执行备份/恢复；测试DB与文件卷一致性、磁盘满/容器重启。",
+      "证明宿主仅Docker+Compose且启动无依赖安装；核对镜像SBOM和licenses，禁打包容器字体文件到交接ZIP。"
+    ],
+    "done": "读取、导出、原件hash和pointer恢复正确，无外部服务栈先决条件。",
+    "status": "not_started"
+  },
+  {
+    "id": "M0-P12",
+    "milestone": "M0",
+    "title": "M0退出评审与交接",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P10",
+      "M0-P11"
+    ],
+    "requirements": [
+      "M0-R01",
+      "M0-R02",
+      "M0-R03",
+      "M0-R04",
+      "M0-R05",
+      "M0-R06",
+      "M0-R07",
+      "M0-R08",
+      "M0-R09",
+      "M0-R10",
+      "M0-R11",
+      "M0-R12",
+      "M0-R13",
+      "M0-R14",
+      "M0-R15",
+      "M0-R16",
+      "M0-R17",
+      "M0-R18"
+    ],
+    "engineering_days": [
+      1,
+      2
+    ],
+    "outputs": [
+      "reports/M0-exit.md",
+      "reports/M0-evidence.json",
+      "docs/M1-handoff.md"
+    ],
+    "steps": [
+      "复跑所有M0 AT、无身份/仅PDF/API负例和Compose干净宿主测试。",
+      "逐项登记退出证据；未执行标blocked，不用原型结果代替产品。",
+      "生成M0发布镜像锁、SBOM、恢复说明和M1数据fixture。"
+    ],
+    "done": "所有M0-G gate有证据与批准；任何blocked均不能写完成。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P01",
+    "milestone": "M1",
+    "title": "M0继承和接口能力基线",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M0-P12"
+    ],
+    "requirements": [
+      "M1-R02",
+      "M1-R07",
+      "M1-R08",
+      "M1-R26"
+    ],
+    "engineering_days": [
+      1,
+      2
+    ],
+    "outputs": [
+      "docs/M1-capabilities.md",
+      "packages/providers/protocol.py",
+      "tests/contracts/"
+    ],
+    "steps": [
+      "复核M0退出和仅PDF接口；固定M1文件/语言矩阵与限制。",
+      "确定实际OpenAI model_id和价格快照的部署填充方式；不写入默认密钥。",
+      "提前冻结真实语料与模型预算授权，安排人工核对人员。"
+    ],
+    "done": "外部配置待填不阻止mock工程，但阻止M1真实验收。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P02",
+    "milestone": "M1",
+    "title": "升级 PDF 接收与批量入库",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P01"
+    ],
+    "requirements": [
+      "M1-R01",
+      "M1-R02",
+      "M1-R21",
+      "M1-R24"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "apps/api/uploads/",
+      "packages/ingestion/",
+      "tests/security/test_uploads.py"
+    ],
+    "steps": [
+      "复用M0上传、PDF检查和hash，不另造多格式管道。",
+      "10份PDF独立import/job；服务端检验不可被浏览器accept绕过。",
+      "按全库SHA提示复用或新文档；同名不同字节不覆盖。"
+    ],
+    "done": "重传/超限/伪装PDF/多文档独立失败测试通过。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P03",
+    "milestone": "M1",
+    "title": "离线Parser sandbox与制品",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P01"
+    ],
+    "requirements": [
+      "M1-R03",
+      "M1-R25"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "workers/parser/",
+      "images/parser.Dockerfile",
+      "ops/egress-policy.md",
+      "tests/security/test_parser_isolation.py"
+    ],
+    "steps": [
+      "锁定Docling依赖和本地权重hash，构建时获取、运行时断网。",
+      "非特权进程、只读root、tmp/CPU/memory/timeout和文件descriptor限额。",
+      "Provider worker网络允许列表与parser零网络分离，禁止继承秘密。"
+    ],
+    "done": "网络探针、OOM/超时仅影响本任务，容器未挂Docker socket。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P04",
+    "milestone": "M1",
+    "title": "PDF适配器和覆盖预检",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P02",
+      "M1-P03"
+    ],
+    "requirements": [
+      "M1-R04",
+      "M1-R06"
+    ],
+    "engineering_days": [
+      4,
+      6
+    ],
+    "outputs": [
+      "packages/parsers/pdf_docling.py",
+      "packages/ir/coverage.py",
+      "tests/corpus/pdf/"
+    ],
+    "steps": [
+      "将读取顺序、页码、box、图表、公式保留表示映射v3。",
+      "保存parser原输出及区域覆盖账本，区分页眉排除与未解正文。",
+      "双栏/跨页/缺页/扫描页全部测试，检测到OCR需求明确停下。"
+    ],
+    "done": "冻结语料完整性达标；不以人工旧译文作为解析gold。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P05",
+    "milestone": "M1",
+    "title": "PDF图表、公式与失败页",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P02",
+      "M1-P03"
+    ],
+    "requirements": [
+      "M1-R02",
+      "M1-R05"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/parsers/pdf_assets.py",
+      "packages/ir/pdf_coverage.py",
+      "tests/corpus/pdf_assets/"
+    ],
+    "steps": [
+      "资源只来自PDF本地内容，记录页码bbox/哈希/裁剪变换。",
+      "表格结构不可靠时保留原图并警告；正文页失败和扫描页仍硬阻断。",
+      "禁止PDF动作/嵌入文件/外部资源加载；无HTML/文本/附件适配器。"
+    ],
+    "done": "图题/脚注/跨页资源可核验，外部探针零请求，失败正文不可原图绕过。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P06",
+    "milestone": "M1",
+    "title": "预检UI与授权快照",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P04",
+      "M1-P05"
+    ],
+    "requirements": [
+      "M1-R06",
+      "M1-R07",
+      "M1-R19",
+      "M1-R21",
+      "M1-R24"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "apps/web/features/preflight/",
+      "apps/api/imports/confirm.py",
+      "tests/browser/preflight.spec.ts"
+    ],
+    "steps": [
+      "展示真实页数/块数/问题/费用估算/来源预览。",
+      "绑定source/范围/profile/privacy revision和用户确认；拒绝过期预检。",
+      "实现最小页图定位与受限译文修正入口，适配后端草稿。"
+    ],
+    "done": "未解正文/未同意外部发送无法开始，批量失败不影响其他文档。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P07",
+    "milestone": "M1",
+    "title": "翻译单元规划与精确缓存",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P01",
+      "M1-P04"
+    ],
+    "requirements": [
+      "M1-R09",
+      "M1-R10",
+      "M1-R11"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "packages/translation/planner.py",
+      "packages/translation/cache.py",
+      "tests/unit/test_alignment.py"
+    ],
+    "steps": [
+      "基于AST拆分长块、批次token/输出上限、记录单元归属和重组规则。",
+      "上下文和保护原子映射进入hash；按ID校验，输出顺序无关。",
+      "精确缓存按全库上下文及版本敏感；跨文档ID重绑定复核，不复用近似译文。"
+    ],
+    "done": "极长段/保护原子/重排响应/重复ID/语境变化回归全过。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P08",
+    "milestone": "M1",
+    "title": "真实Provider与模拟故障服务",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P01",
+      "M1-P07"
+    ],
+    "requirements": [
+      "M1-R08",
+      "M1-R10",
+      "M1-R13",
+      "M1-R14",
+      "M1-R22"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/providers/openai_responses.py",
+      "tests/fakes/provider_server.py",
+      "tests/contracts/test_provider.py"
+    ],
+    "steps": [
+      "实现request/response边界、结构化schema编译和finish/refusal处理。",
+      "禁用SDK隐式重试/工具/store，记录可用requestID和计量信息。",
+      "FakeProvider提供429/401/断流/迟到/已计费超时/截断/错ID脚本。"
+    ],
+    "done": "此工作包只做Fake/契约验证；真实付费验收延至M1-P15并经过预算/授权/恢复就绪门。Fake和真实输出走同一验证器。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P09",
+    "milestone": "M1",
+    "title": "预算账本与派发许可",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P07",
+      "M1-P08"
+    ],
+    "requirements": [
+      "M1-R14",
+      "M1-R15",
+      "M1-R16"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "packages/billing/",
+      "migrations/003_usage.sql",
+      "tests/concurrency/test_budget.py"
+    ],
+    "steps": [
+      "实现price/profile不可变快照和整数金额，输入/输出/推理计费上界。",
+      "原子job/instance额度检查与reservation，成功/失败/unknown结算幂等。",
+      "控制epoch+dispatch permit，取消后无新授权；已授权请求按在途记账。"
+    ],
+    "done": "并发额度、未知成本、重复用量、取消竞态不会超授权逻辑上界或负余额。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P10",
+    "milestone": "M1",
+    "title": "可恢复翻译工作流",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P06",
+      "M1-P08",
+      "M1-P09"
+    ],
+    "requirements": [
+      "M1-R12",
+      "M1-R13",
+      "M1-R14",
+      "M1-R16",
+      "M1-R17"
+    ],
+    "engineering_days": [
+      4,
+      6
+    ],
+    "outputs": [
+      "workers/translation/",
+      "packages/jobs/orchestrator.py",
+      "tests/faults/test_translation_recovery.py"
+    ],
+    "steps": [
+      "扩展耐久任务为parse/translate/check/render/publish阶段，成功单元检查点。",
+      "网络请求期间不持锁；租约过期已派发转unknown而非立即重发。",
+      "实现有界重试、暂停恢复/取消、快照轮询和SSE。"
+    ],
+    "done": "在所有提交窗口杀进程后内容不丢、成功单元不重复发布/翻译。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P11",
+    "milestone": "M1",
+    "title": "质量门禁与基本校对",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P07",
+      "M1-P08",
+      "M1-P10"
+    ],
+    "requirements": [
+      "M1-R18",
+      "M1-R19",
+      "M1-R20"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "packages/quality/",
+      "apps/web/features/review-basic/",
+      "tests/corpus/translation/"
+    ],
+    "steps": [
+      "覆盖/原子/数字单位/资产/xref检查及高风险提示，明确语义局限。",
+      "修正目标草稿后指纹变化使QA过期，不能修源绕过。",
+      "实现manual/auto publication policy，始终复用M0 immutable publisher。"
+    ],
+    "done": "缺块/错数字/缺图不可发布；源定位修正后能完成真实闭环。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P12",
+    "milestone": "M1",
+    "title": "任务中心与库的生产交互",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P06",
+      "M1-P10",
+      "M1-P11"
+    ],
+    "requirements": [
+      "M1-R17",
+      "M1-R20",
+      "M1-R21",
+      "M1-R24"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "apps/web/features/tasks/",
+      "apps/web/features/library/",
+      "tests/browser/workflow.spec.ts"
+    ],
+    "steps": [
+      "真实进度、当前发表版+新任务分离、费用/未知请求提示。",
+      "用户重连快照一致、参数变更重新授权、多文件独立管理。",
+      "删除演示推进按钮和固定三段样本产物的生产引用。"
+    ],
+    "done": "关闭浏览器后任务继续，UI不能显示伪百分比与假完成。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P13",
+    "milestone": "M1",
+    "title": "删除与隐私审计",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P10",
+      "M1-P11"
+    ],
+    "requirements": [
+      "M1-R22",
+      "M1-R23"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "packages/privacy/",
+      "ops/retention.md",
+      "tests/security/test_delete_races.py"
+    ],
+    "steps": [
+      "实现archive/unpublish/delete三种语义及tombstone阻止复活。",
+      "清理各内容缓存/制品/临时导出并检查引用；备份保留通知明确。",
+      "统一日志脱敏/原始响应默认不存/诊断TTL；测试所有文件类型的路径与删除状态。"
+    ],
+    "done": "删除后迟到结果和索引不能复活文档，日志及导出不含密钥。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P14",
+    "milestone": "M1",
+    "title": "部署与故障演练",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P12",
+      "M1-P13"
+    ],
+    "requirements": [
+      "M1-R03",
+      "M1-R12",
+      "M1-R14",
+      "M1-R15",
+      "M1-R23",
+      "M1-R25"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "ops/deploy.md",
+      "ops/restore.md",
+      "tests/faults/",
+      "reports/M1-recovery.md"
+    ],
+    "steps": [
+      "Compose生产配置、health/readiness和持久卷备份。",
+      "演练Provider outage、DB断联、parser OOM、磁盘满、worker kill与恢复。",
+      "恢复先禁止外部派发，unknown需要人工/供应商核对。"
+    ],
+    "done": "恢复后的发布指针、用量账本、任务状态一致。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P15",
+    "milestone": "M1",
+    "title": "真实语料/模型与性能验收",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P11",
+      "M1-P12",
+      "M1-P14"
+    ],
+    "requirements": [
+      "M1-R04",
+      "M1-R05",
+      "M1-R07",
+      "M1-R08",
+      "M1-R18",
+      "M1-R26"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "reports/M1-corpus.md",
+      "reports/M1-live-provider.md",
+      "reports/M1-performance.md"
+    ],
+    "steps": [
+      "跑固定语料并核对页/块覆盖、图表和高风险语义。",
+      "执行授权真实模型的en↔zh-Hans样本，保存用量和人工判定。",
+      "性能分阶段测量，不把供应商时间纳入内部API SLO。"
+    ],
+    "done": "真实与模拟证据分离；未执行项标blocked，不填通过。",
+    "status": "not_started"
+  },
+  {
+    "id": "M1-P16",
+    "milestone": "M1",
+    "title": "M1退出评审与M2交接",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P15"
+    ],
+    "requirements": [
+      "M1-R01",
+      "M1-R02",
+      "M1-R03",
+      "M1-R04",
+      "M1-R05",
+      "M1-R06",
+      "M1-R07",
+      "M1-R08",
+      "M1-R09",
+      "M1-R10",
+      "M1-R11",
+      "M1-R12",
+      "M1-R13",
+      "M1-R14",
+      "M1-R15",
+      "M1-R16",
+      "M1-R17",
+      "M1-R18",
+      "M1-R19",
+      "M1-R20",
+      "M1-R21",
+      "M1-R22",
+      "M1-R23",
+      "M1-R24",
+      "M1-R25",
+      "M1-R26"
+    ],
+    "engineering_days": [
+      1,
+      2
+    ],
+    "outputs": [
+      "reports/M1-exit.md",
+      "reports/M1-evidence.json",
+      "docs/M2-handoff.md"
+    ],
+    "steps": [
+      "复跑M0与M1全部AT、Compose clean-host、预算/unknown/取消/PDF安全硬门。",
+      "审查生产是否仍依赖mock，确认能力/格式/语言限制对用户可见。",
+      "导出迁移测试数据库与冻结契约供M2使用。"
+    ],
+    "done": "M1-G全部通过且批准后进入M2。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P01",
+    "milestone": "M2",
+    "title": "迁移设计与M1数据基线",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M1-P16"
+    ],
+    "requirements": [
+      "M2-R02",
+      "M2-R09",
+      "M2-R20"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "migrations/004_editorial.sql",
+      "docs/M2-migration.md",
+      "tests/fixtures/m1_snapshot/"
+    ],
+    "steps": [
+      "清点M1 source/draft/artifact/usage与未完成作业。",
+      "为segment history、candidate、glossary、TM、index设计增量表，复用既有版本键。",
+      "先扩展后切换，定义回滚与读取旧artifact不变。"
+    ],
+    "done": "M1快照可升级/恢复，未执行Provider任务不会自动重发。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P02",
+    "milestone": "M2",
+    "title": "PDF来源对照与来源修订",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P01"
+    ],
+    "requirements": [
+      "M2-R01",
+      "M2-R11",
+      "M2-R12"
+    ],
+    "engineering_days": [
+      4,
+      6
+    ],
+    "outputs": [
+      "apps/web/features/source-review/",
+      "packages/source_revisions/",
+      "tests/browser/pdf-locator.spec.ts"
+    ],
+    "steps": [
+      "实现本地PDF页图、高亮、旋转cropbox和跨页locator。",
+      "有原件证据的拆并/顺序/机械提取修正生成新来源修订。",
+      "explicit映射exact/moved/changed/split/merged与上下文失效，不支持DOM/TXT locator。"
+    ],
+    "done": "来源坐标真实、旧快照不变，无虚构证据。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P03",
+    "milestone": "M2",
+    "title": "审校草稿与冲突控制",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P01"
+    ],
+    "requirements": [
+      "M2-R02",
+      "M2-R06",
+      "M2-R13",
+      "M2-R14"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "apps/web/features/editor/",
+      "packages/editorial/drafts.py",
+      "tests/concurrency/test_edit_conflicts.py"
+    ],
+    "steps": [
+      "逐段版本、If-Match、撤销为新版本，明确保存与人工确认不同。",
+      "审校记录绑定source/target版本，任何修改使对应确认失效。",
+      "版本diff区分源与译变化，冲突保留两方供手工处理。"
+    ],
+    "done": "多标签页/迟到自动结果不能覆盖手工编辑。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P04",
+    "milestone": "M2",
+    "title": "术语表与影响分析",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P01"
+    ],
+    "requirements": [
+      "M2-R03",
+      "M2-R04"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/glossaries/",
+      "apps/web/features/glossary/",
+      "tests/unit/test_term_matching.py"
+    ],
+    "steps": [
+      "固定源/目标语言、词项变体、must/preferred/forbidden语义与优先级。",
+      "产生不可变glossary revision，匹配规则包含英文边界和CJK子串。",
+      "影响预览只挑选相关块，人工锁定块仅提示。"
+    ],
+    "done": "冲突可定位；术语更新不静默重写旧版本。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P05",
+    "milestone": "M2",
+    "title": "局部重译候选与接受",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P02",
+      "M2-P03",
+      "M2-P04"
+    ],
+    "requirements": [
+      "M2-R05",
+      "M2-R06",
+      "M2-R12",
+      "M2-R14"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "packages/editorial/candidates.py",
+      "apps/web/features/retranslation/",
+      "tests/concurrency/test_candidate_merge.py"
+    ],
+    "steps": [
+      "选择块/章节生成候选，不直接更改草稿，复用M1预算/Provider/任务。",
+      "接受检查base target/source/context/glossary版本，保持reviewed块锁。",
+      "源变化重用必须有映射证据，changed需重译。"
+    ],
+    "done": "100段重译2段时其余98段字节和审校状态不动。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P06",
+    "milestone": "M2",
+    "title": "质量中心与辅助评审",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P03",
+      "M2-P04"
+    ],
+    "requirements": [
+      "M2-R07",
+      "M2-R08"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "packages/quality/issues.py",
+      "packages/review_provider/",
+      "apps/web/features/quality/"
+    ],
+    "steps": [
+      "issues绑定QA指纹和证据，硬阻断无ignore，warnings有理由接受。",
+      "可选独立语义评审采用同一外发确认和预算管线，不直接写译文。",
+      "评审失败/未跑明确显示，检验否定/限定词/比较关系fixture。"
+    ],
+    "done": "改变草稿后QA必过期；模型评分不会变人工通过。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P07",
+    "milestone": "M2",
+    "title": "多语言edition与能力验收",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P01",
+      "M2-P04",
+      "M2-P05"
+    ],
+    "requirements": [
+      "M2-R09",
+      "M2-R10"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "apps/web/features/editions/",
+      "packages/locales/",
+      "reports/M2-language-matrix.md"
+    ],
+    "steps": [
+      "规范化locale保留脚本差异，新增版复用source。",
+      "按locale绑定current artifact和任务，所有语言组合均可直接选择，名称使用各自语言。",
+      "对ja/de/zh-Hant准备人工审校样本，未知质量不保证。"
+    ],
+    "done": "新增日文版不重新解析或覆盖中文；任意语言不受能力矩阵限制，仍执行普通外发确认与质量检查。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P08",
+    "milestone": "M2",
+    "title": "发布历史与回滚",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P03",
+      "M2-P06",
+      "M2-P07"
+    ],
+    "requirements": [
+      "M2-R13",
+      "M2-R15"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "packages/publisher/history.py",
+      "apps/web/features/history/",
+      "tests/concurrency/test_publish_rollback.py"
+    ],
+    "steps": [
+      "封存特定draft/QA/template并使用单调generation CAS。",
+      "实现版本对比、同locale完整artifact回滚和事件历史。",
+      "增加ABA/回滚与删除并发/QA过期/跨语言负测试。"
+    ],
+    "done": "A→B→A回滚不复用旧generation，不修改A/B任何字节。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P09",
+    "milestone": "M2",
+    "title": "模板注册与批量零模型重建",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P08"
+    ],
+    "requirements": [
+      "M2-R16"
+    ],
+    "engineering_days": [
+      2,
+      3
+    ],
+    "outputs": [
+      "packages/templates/registry.py",
+      "packages/publisher/rebuild.py",
+      "tests/integration/test_zero_model_rebuild.py"
+    ],
+    "steps": [
+      "模板安全审查与内容能力声明，CSS hash版本化。",
+      "预览单篇再队列批量；每篇独立CAS/错误，不隐式切换全部。",
+      "加Provider调用计数拦截和旧制品hash断言。"
+    ],
+    "done": "仅改模板20篇重建的模型调用严格为零。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P10",
+    "milestone": "M2",
+    "title": "个人翻译记忆与删除语义",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P03",
+      "M2-P04",
+      "M2-P05"
+    ],
+    "requirements": [
+      "M2-R17"
+    ],
+    "engineering_days": [
+      2,
+      4
+    ],
+    "outputs": [
+      "packages/translation_memory/",
+      "apps/web/features/memory/",
+      "tests/integration/test_memory_lifecycle.py"
+    ],
+    "steps": [
+      "人工核对结果显式另存，记录来源/语境/审校证据；无用户字段。",
+      "近似推荐显示差异而非自动发布；机器精确缓存独立。",
+      "默认随来源删除，明确选择独立保留的个人条目例外并可再次删除。"
+    ],
+    "done": "语境变化不误复用，删除及旧候选不能复活内容。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P11",
+    "milestone": "M2",
+    "title": "全文检索和阅读定位",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P08"
+    ],
+    "requirements": [
+      "M2-R18"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/search/",
+      "apps/web/features/search/",
+      "tests/security/test_search_generations.py"
+    ],
+    "steps": [
+      "索引仅当前已发布源/译块，按字面子串语义实现CJK与英文。",
+      "发布outbox驱动generation索引，返回前核对当前指针/删除状态；无ACL或用户条件。",
+      "命中锚定artifact+block，阅读进度按版本存储和可解释迁移。"
+    ],
+    "done": "没有过期/删除内容泄露，读者不会被带到另一个语义段落。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P12",
+    "milestone": "M2",
+    "title": "版本导出与全生命周期",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P09",
+      "M2-P10",
+      "M2-P11"
+    ],
+    "requirements": [
+      "M2-R19",
+      "M2-R20"
+    ],
+    "engineering_days": [
+      3,
+      4
+    ],
+    "outputs": [
+      "packages/exporter/project_backup.py",
+      "ops/M2-retention.md",
+      "tests/integration/test_m2_restore.py"
+    ],
+    "steps": [
+      "精确artifact导出与Compose实例备份分开，验证manifest；无Web ZIP/JSON恢复入口。",
+      "扩展tombstone/GC到candidate/glossary引用/TM/index/export。",
+      "升级/恢复与删除竞态再演练，处理未知账单。"
+    ],
+    "done": "旧版可离线读；被删文档在线所有派生资源不可访问。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P13",
+    "milestone": "M2",
+    "title": "端到端/性能/安全评审",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P02",
+      "M2-P05",
+      "M2-P06",
+      "M2-P07",
+      "M2-P12"
+    ],
+    "requirements": [
+      "M2-R01",
+      "M2-R05",
+      "M2-R07",
+      "M2-R08",
+      "M2-R09",
+      "M2-R14",
+      "M2-R15",
+      "M2-R16",
+      "M2-R18",
+      "M2-R20",
+      "M2-R21"
+    ],
+    "engineering_days": [
+      3,
+      5
+    ],
+    "outputs": [
+      "reports/M2-editorial-e2e.md",
+      "reports/M2-security.md",
+      "reports/M2-performance.md"
+    ],
+    "steps": [
+      "执行真实源修正→局部重译→人工确认→多语言→模板重建→回滚→导出。",
+      "故障注入及跨文档引用、过期索引、删除、多标签页冲突回归；无跨账户测试。",
+      "独立核查质量评分和状态没有伪通过，补充桌面/手机视觉证据。"
+    ],
+    "done": "全部M0/M1/M2回归都有证据，不以演示替代真实流水。",
+    "status": "not_started"
+  },
+  {
+    "id": "M2-P14",
+    "milestone": "M2",
+    "title": "M2退出门与交付",
+    "owner": "开发与验证（可由同一维护者或编码 Agent 承担）",
+    "depends_on": [
+      "M2-P13"
+    ],
+    "requirements": [
+      "M2-R01",
+      "M2-R02",
+      "M2-R03",
+      "M2-R04",
+      "M2-R05",
+      "M2-R06",
+      "M2-R07",
+      "M2-R08",
+      "M2-R09",
+      "M2-R10",
+      "M2-R11",
+      "M2-R12",
+      "M2-R13",
+      "M2-R14",
+      "M2-R15",
+      "M2-R16",
+      "M2-R17",
+      "M2-R18",
+      "M2-R19",
+      "M2-R20",
+      "M2-R21"
+    ],
+    "engineering_days": [
+      1,
+      2
+    ],
+    "outputs": [
+      "reports/M2-exit.md",
+      "reports/M2-evidence.json",
+      "ops/release.md"
+    ],
+    "steps": [
+      "对照每条需求、AT、任务和gate检查无遗漏。",
+      "确认OCR/其他格式/登录/团队/反代部署没有重新进入范围。",
+      "冻结release manifest和恢复手册，说明限制与后续独立决策。"
+    ],
+    "done": "所有硬门通过且review sign-off可追溯，未执行一律不冒充完成。",
+    "status": "not_started"
+  }
+]

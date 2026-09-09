@@ -1,0 +1,1 @@
+{"statements":["ALTER TABLE exports ALTER COLUMN artifact_id DROP NOT NULL","ALTER TABLE exports ADD COLUMN IF NOT EXISTS draft_snapshot_key text","ALTER TABLE exports ADD COLUMN IF NOT EXISTS draft_snapshot_hash varchar(64)"],"version":8}

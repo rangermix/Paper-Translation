@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="高效扩展 Transformer 推理：英中逐段对照翻译">
+<title>高效扩展 Transformer 推理｜英中双语</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f5f2ec;
+  --paper: #fffdf9;
+  --ink: #1d252c;
+  --muted: #65717b;
+  --line: #d9d5cc;
+  --en: #315c8a;
+  --zh: #9a4d32;
+  --accent: #2e6f68;
+  --shadow: 0 12px 36px rgba(27, 37, 44, 0.08);
+  --font-size: 18px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #11171b;
+  --paper: #182126;
+  --ink: #edf1f2;
+  --muted: #a8b4bb;
+  --line: #344149;
+  --en: #8eb9e6;
+  --zh: #e4a68e;
+  --accent: #80c8bd;
+  --shadow: 0 14px 42px rgba(0, 0, 0, 0.35);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: var(--font-size);
+  line-height: 1.72;
+}
+a { color: var(--accent); }
+.progress {
+  position: fixed; z-index: 100; top: 0; left: 0; height: 3px; width: 0;
+  background: var(--accent);
+}
+.toolbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; gap: .55rem; align-items: center; justify-content: center; flex-wrap: wrap;
+  padding: .65rem 1rem;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+}
+.toolbar button, .toolbar a {
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  border-radius: 999px; padding: .38rem .78rem; font: inherit; font-size: .82rem;
+  cursor: pointer; text-decoration: none;
+}
+.toolbar button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.hero {
+  max-width: 1040px; margin: 2.2rem auto 1rem; padding: 2.2rem 2.4rem;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow);
+}
+.kicker { color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; }
+.hero h1 { line-height: 1.16; margin: .55rem 0 .4rem; font-family: ui-serif, Georgia, "Noto Serif CJK SC", serif; font-size: clamp(2rem, 5vw, 3.55rem); }
+.hero .original-title { color: var(--muted); font-family: ui-serif, Georgia, serif; font-size: 1.1rem; margin: 0 0 1rem; }
+.meta { color: var(--muted); font-size: .93rem; }
+.note { margin-top: 1.2rem; padding: 1rem 1.1rem; border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); border-radius: 0 12px 12px 0; font-size: .92rem; }
+.layout { max-width: 1280px; margin: 0 auto 4rem; display: grid; grid-template-columns: 260px minmax(0, 920px); gap: 1.4rem; padding: 0 1rem; align-items: start; }
+.toc { position: sticky; top: 4.5rem; max-height: calc(100vh - 5.5rem); overflow: auto; padding: 1rem; background: var(--paper); border: 1px solid var(--line); border-radius: 18px; font-size: .8rem; }
+.toc h2 { margin: 0 0 .6rem; font-size: .9rem; }
+.toc a { display: block; padding: .25rem .15rem; color: var(--muted); text-decoration: none; line-height: 1.35; }
+.toc a:hover { color: var(--accent); }
+article { min-width: 0; }
+.section-heading { margin: 2.8rem 0 1rem; scroll-margin-top: 5rem; }
+.section-heading h2, .section-heading h3, .section-heading h4 { margin: 0; line-height: 1.3; font-family: ui-serif, Georgia, "Noto Serif CJK SC", serif; }
+.section-heading .en-title { display: block; color: var(--en); font-size: .92em; }
+.section-heading .zh-title { display: block; margin-top: .2rem; }
+.pair {
+  margin: 0 0 1.05rem; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 3px 14px rgba(20,30,35,.025);
+  scroll-margin-top: 5rem;
+}
+.para { padding: 1.02rem 1.22rem; }
+.para.en { color: var(--en); font-family: ui-serif, Georgia, "Times New Roman", serif; border-left: 4px solid color-mix(in srgb, var(--en) 70%, transparent); }
+.para.zh { border-top: 1px dashed var(--line); border-left: 4px solid color-mix(in srgb, var(--zh) 70%, transparent); font-family: ui-serif, "Noto Serif CJK SC", "Songti SC", STSong, serif; }
+.para .label { display: inline-block; margin-right: .55rem; color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .68rem; font-weight: 800; letter-spacing: .08em; vertical-align: .12em; }
+.figure-card, .table-card, .equation-card {
+  margin: 1.35rem 0; padding: 1rem; background: var(--paper); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+}
+.figure-card img { display: block; width: 100%; height: auto; border-radius: 10px; background: white; }
+figcaption { margin-top: .75rem; font-size: .86rem; }
+figcaption .en { color: var(--en); }
+figcaption .zh { margin-top: .35rem; }
+.equation { overflow-x: auto; text-align: center; padding: 1rem; font-family: "Cambria Math", "Times New Roman", serif; font-size: 1.08rem; white-space: pre-wrap; }
+.eq-note { color: var(--muted); font-size: .84rem; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+th, td { border: 1px solid var(--line); padding: .5rem .6rem; text-align: left; vertical-align: top; }
+th { background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
+.table-caption { margin: .75rem 0 0; font-size: .84rem; }
+.table-caption.en { color: var(--en); }
+.bilingual-list { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: 1rem 0; }
+.bilingual-list > div { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: .75rem 1rem; }
+.bilingual-list .en-list { color: var(--en); font-family: ui-serif, Georgia, serif; }
+.references { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .76rem; line-height: 1.5; color: var(--muted); }
+.references details { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 1rem; }
+.references summary { cursor: pointer; color: var(--ink); font-weight: 700; }
+.footer { max-width: 920px; margin: 2rem auto 4rem; padding: 0 1rem; color: var(--muted); font-size: .82rem; text-align: center; }
+body[data-language="en"] .para.zh, body[data-language="en"] figcaption .zh, body[data-language="en"] .zh-title, body[data-language="en"] .zh-list, body[data-language="en"] .table-caption.zh { display: none; }
+body[data-language="zh"] .para.en, body[data-language="zh"] figcaption .en, body[data-language="zh"] .en-title, body[data-language="zh"] .en-list, body[data-language="zh"] .table-caption.en { display: none; }
+body[data-language="en"] .para.en, body[data-language="zh"] .para.zh { border-top: none; }
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; }
+  .toc { position: relative; top: auto; max-height: none; }
+}
+@media (max-width: 640px) {
+  body { font-size: calc(var(--font-size) - 1px); }
+  .hero { margin: 1rem .7rem; padding: 1.35rem 1.1rem; border-radius: 18px; }
+  .layout { padding: 0 .7rem; }
+  .para { padding: .9rem .9rem; }
+  .bilingual-list { grid-template-columns: 1fr; }
+  .toolbar { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
+}
+@media print {
+  .toolbar, .progress, .toc { display: none !important; }
+  body { background: white; font-size: 11pt; }
+  .layout { display: block; max-width: 100%; }
+  .hero, .pair, .figure-card, .table-card, .equation-card { box-shadow: none; break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body data-language="both">
+<div class="progress" aria-hidden="true"></div>
+<nav class="toolbar" aria-label="阅读设置">
+  <a href="../index.html">论文目录</a>
+  <button type="button" data-language-mode="both" aria-pressed="true">英中对照</button>
+  <button type="button" data-language-mode="zh" aria-pressed="false">仅中文</button>
+  <button type="button" data-language-mode="en" aria-pressed="false">English only</button>
+  <button type="button" data-action="font-down" aria-label="减小字号">A−</button>
+  <button type="button" data-action="font-up" aria-label="增大字号">A+</button>
+  <button type="button" data-action="theme" aria-label="切换明暗主题">明 / 暗</button>
+  <a href="source/Efficiently-Scaling-Transformer-Inference.pdf" target="_blank" rel="noopener">原始 PDF</a>
+</nav>
+<header class="hero">
+  <div class="kicker">Bilingual paper · 英中逐段对照</div>
+  <h1>高效扩展 Transformer 推理</h1>
+  <p class="original-title" lang="en">Efficiently Scaling Transformer Inference</p>
+  <p class="meta">Reiner Pope, Sholto Douglas, Aakanksha Chowdhery, Jacob Devlin, James Bradbury, Anselm Levskaya, Jonathan Heek, Kefan Xiao, Shivani Agrawal, Jeff Dean<br>arXiv:2211.05102 (2022)</p>
+  <div class="note"><strong>译读说明：</strong>本页为非官方双语译读版。英文内容以 PDF 原文为基础，清理断词、连字及分页痕迹，并按网页阅读需要重整段落；个别句段在不改变技术含义的前提下作了合并或轻度改写，因此本页不是逐字校勘版。每个英文内容块后紧接对应中文译文。公式、变量、模型名称、数值、论文引用、图表编号与专有缩写尽量保留；参考文献书目信息按原文列出，不逐条翻译。</div>
+</header>
+<div class="layout">
+  <aside class="toc"><h2>目录 / Contents</h2><a href="#abstract">摘要</a>
+<a href="#introduction">1 引言</a>
+<a href="#inference-cost-tradeoffs">2 推理成本的权衡</a>
+<a href="#expected-tradeoffs">2.1 预期的权衡与挑战</a>
+<a href="#inference-setup">2.2 推理设置</a>
+<a href="#partitioning">3 面向推理效率的模型划分</a>
+<a href="#partitioning-notation">3.1 划分记号与集合通信</a>
+<a href="#partitioning-ffn">3.2 前馈层划分</a>
+<a href="#partitioning-attention">3.3 注意力层划分</a>
+<a href="#parallel-attention-ffn">3.4 并行注意力／前馈层</a>
+<a href="#low-level-optimizations">3.5 底层优化</a>
+<a href="#quantization">3.6 量化</a>
+<a href="#palm-case-study">4 PaLM 模型案例研究</a>
+<a href="#palm-ffn">4.1 前馈层划分</a>
+<a href="#palm-attention">4.2 注意力层划分</a>
+<a href="#palm-parallel-layers">4.3 并行注意力／前馈层</a>
+<a href="#palm-end-to-end">4.4 PaLM 端到端结果</a>
+<a href="#fastertransformer">5 FasterTransformer 基准比较</a>
+<a href="#related-work">6 相关工作</a>
+<a href="#conclusions">7 结论</a>
+<a href="#acknowledgments">8 致谢</a>
+<a href="#appendix-a">附录 A——划分策略：通信成本推导</a>
+<a href="#appendix-a1">A.1 all-gather／reduce-scatter 的成本</a>
+<a href="#appendix-a2">A.2 通信时间计算细节</a>
+<a href="#appendix-b">附录 B——最低预填充延迟</a>
+<a href="#appendix-c">附录 C——MFU 与延迟的权衡</a>
+<a href="#appendix-d">附录 D——与 FasterTransformer 的完整比较</a></aside>
+  <article><section class="section-heading" id="abstract"><h2><span class="en-title" lang="en">Abstract</span><span class="zh-title" lang="zh-CN">摘要</span></h2></section>
+<div class="pair" id="p-1"><div class="para en" lang="en"><span class="label">EN</span>We study the problem of efficient generative inference for Transformer models, in one of its most challenging settings: large deep models, with tight latency targets and long sequence lengths. Better understanding of the engineering tradeoffs for inference for large Transformer-based models is important as use cases of these models are growing rapidly throughout application areas. We develop a simple analytical model for inference efficiency to select the best multi-dimensional partitioning techniques optimized for TPU v4 slices based on the application requirements. We combine these with a suite of low-level optimizations to achieve a new Pareto frontier on the latency and model FLOPS utilization (MFU) tradeoffs on 500B+ parameter models that outperforms the FasterTransformer suite of benchmarks. We further show that with appropriate partitioning, the lower memory requirements of multiquery attention (i.e. multiple query heads share single key/value head) enables scaling up to 32× larger context lengths. Finally, we achieve a low-batch-size latency of 29 ms per token during generation (using int8 weight quantization) and a 76% MFU during large-batch-size processing of input tokens, while supporting a long 2048-token context length on the PaLM 540B parameter model.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本文研究 Transformer 模型的高效生成式推理问题，并聚焦于其中最具挑战性的场景之一：规模庞大且层数很深的模型、严格的延迟目标，以及很长的序列长度。随着大型 Transformer 模型在各类应用中的使用迅速增长，更深入地理解其推理过程中的工程权衡十分重要。我们建立了一个简洁的推理效率分析模型，以便根据应用需求，为 TPU v4 切片选择经过优化的最佳多维划分方案。我们把这些方案与一组底层优化结合起来，在 5000 亿参数以上的模型上获得了新的延迟—模型 FLOPS 利用率（model FLOPS utilization，MFU）帕累托前沿，并优于 FasterTransformer 基准套件。我们进一步表明，只要采用恰当的划分方式，多查询注意力较低的内存需求——即多个查询头共享一个键/值头——便可支持最长扩大 32 倍的上下文。最后，在 PaLM 540B 参数模型上，我们在支持 2048 token 长上下文的同时，实现了生成阶段小批量下每 token 29 ms 的延迟（使用 int8 权重量化），以及大批量输入 token 处理时 76% 的 MFU。</div></div>
+<section class="section-heading" id="introduction"><h2><span class="en-title" lang="en">1 Introduction</span><span class="zh-title" lang="zh-CN">1 引言</span></h2></section>
+<div class="pair" id="p-2"><div class="para en" lang="en"><span class="label">EN</span>Scaling Transformer-based models to 100B+ (Brown et al., 2020; Kaplan et al., 2020; Rae et al., 2021; Hoffmann et al., 2022) and later 500B+ parameters (Chowdhery et al., 2022; Smith et al., 2022) has led to state-of-the-art results on natural language processing benchmarks. The practical utility of these large language models (LLMs) in a variety of applications makes them compelling for widespread use. While the sequence parallelism of the Transformer architecture enables highly parallel training, efficient deployment of these models is challenging in practice because generative inference proceeds one token at a time and the computation for each token sequentially depends on the previously generated tokens. Thus, models that support efficient training at scales of thousands of chips require careful attention to parallel layout and memory optimizations to unlock the scalability needed for efficient, low-latency inference. This paper focuses on a simple set of engineering principles that enable serving large-scale Transformer-based models efficiently in a variety of challenging production settings.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>将基于 Transformer 的模型扩展到 1000 亿参数以上（Brown et al., 2020；Kaplan et al., 2020；Rae et al., 2021；Hoffmann et al., 2022），随后再扩展到 5000 亿参数以上（Chowdhery et al., 2022；Smith et al., 2022），已经在自然语言处理基准上带来了最先进的结果。这些大型语言模型（large language models，LLMs）在多种应用中具有实际价值，因此很适合被广泛采用。Transformer 架构的序列并行性使训练能够高度并行，但高效部署这些模型在实践中仍然困难：生成式推理一次只产生一个 token，而每个 token 的计算都按顺序依赖先前已生成的 token。因此，即使某个模型能在数千芯片规模上高效训练，要获得高效、低延迟推理所需的可扩展性，仍必须仔细设计并行布局和内存优化。本文聚焦于一组简明的工程原则，它们可以在多种具有挑战性的生产环境中高效服务大规模 Transformer 模型。</div></div>
+<div class="pair" id="p-3"><div class="para en" lang="en"><span class="label">EN</span>We consider the requirements of downstream applications for LLMs. Some applications, including interactive workloads like chatbots, involve tight latency constraints (Thoppilan et al., 2022). Others, including offline inference for scoring or distillation, emphasize high throughput and low cost per token at any latency.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们首先考虑 LLM 下游应用的需求。某些应用——例如聊天机器人等交互式工作负载——具有严格的延迟约束（Thoppilan et al., 2022）。另一些应用——例如用于打分或蒸馏的离线推理——则更强调高吞吐量和较低的每 token 成本，而不严格限制延迟。</div></div>
+<div class="pair" id="p-4"><div class="para en" lang="en"><span class="label">EN</span>We discuss briefly what makes generative inference of LLMs challenging. First, large models have a large memory footprint both due to the trained model parameters as well as the transient state needed during decoding. The model parameters generally do not fit in the memory of a single accelerator chip. The attention key and value tensors of each layer, which we refer to as the KV cache, must also be stored in memory for the duration of decoding. Second, tight latency targets become especially challenging for generative inference given the much lower parallelizability of Transformer generation relative to training. The large memory footprint gives rise to a large amount of memory traffic to load the parameters and KV cache from high-bandwidth memory (HBM) into the compute cores for each step, and hence a large total memory bandwidth required to meet a given latency target. Finally, inference cost from the attention mechanism scales quadratically with input sequence length (Sukhbaatar et al., 2019; Choromanski et al., 2020; Dao et al., 2022).</div><div class="para zh" lang="zh-CN"><span class="label">中</span>下面简要说明 LLM 的生成式推理为何困难。第一，大模型的内存占用很高，这既来自训练得到的模型参数，也来自解码期间所需的临时状态。模型参数通常无法装入单个加速器芯片的内存。每一层注意力的键和值张量——本文称为 KV 缓存——也必须在整个解码期间保留在内存中。第二，与训练相比，Transformer 生成的可并行程度低得多，因此严格的延迟目标对生成式推理尤其具有挑战性。庞大的内存占用会产生大量内存流量：每一步都要把参数和 KV 缓存从高带宽内存（HBM）加载到计算核心，因此若要达到给定延迟目标，就需要很高的总内存带宽。最后，注意力机制的推理成本会随输入序列长度呈二次增长（Sukhbaatar et al., 2019；Choromanski et al., 2020；Dao et al., 2022）。</div></div>
+<div class="pair" id="p-5"><div class="para en" lang="en"><span class="label">EN</span>We found two keys to optimize LLMs for inference efficiency. First, we found it useful to build a powerful and abstract partitioning framework to enable reaching the limits of model parallel scaling given the limited parallelizability of Transformer inference. Within this framework, we analytically solve for the best partitioning strategy for a given model size with specific application requirements. This enables the user to intuitively understand the tradeoffs and select the best multi-axis tensor partitioning strategy, batch size and chip configuration for their application, in contrast to a black-box exhaustive search over partitioning strategies (Zheng et al., 2022; Xu et al., 2021). To fully realize the performance in practice, we use additional fine-grained control over cross-chip collective operations and low-level scheduling optimizations. Second, we apply memory optimizations and take full advantage of PaLM&#x27;s multiquery attention to reduce unnecessary tensor overheads and maximize the batch size that fits on a given number of chips, enabling higher throughput.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们发现，优化 LLM 推理效率有两个关键。第一，考虑到 Transformer 推理的并行能力有限，需要建立一个能力强且抽象的划分框架，才能逼近模型并行扩展的极限。在该框架中，我们针对给定模型规模和具体应用需求，通过分析求解最佳划分策略。与把所有划分策略作为黑箱进行穷举搜索（Zheng et al., 2022；Xu et al., 2021）相比，这使用户能够直观理解各种权衡，并为自己的应用选择最佳多轴张量划分策略、批量大小和芯片配置。为了在实践中真正达到分析所预期的性能，我们还对跨芯片集合通信进行更细粒度的控制，并采用底层调度优化。第二，我们应用内存优化，充分利用 PaLM 的多查询注意力，以减少不必要的张量开销，并最大化给定芯片数量可容纳的批量大小，从而提升吞吐量。</div></div>
+<div class="pair" id="p-6"><div class="para en" lang="en"><span class="label">EN</span>The primary goal of this paper is to provide a set of engineering principles for how best to partition a model in order to scale Transformer inference. In other words, how is the performance of different partitioning strategies affected by changes in model size, sequence length, and number of hardware chips? How does the optimal partitioning strategy change when trading off between latency and throughput? What is the intuitive and mathematical reasoning behind these effects? As we show in later sections, the right tradeoffs and strategies change as model size, sequence length, and application requirements for latency and throughput targets change, so having a framework that enables easy expression of different strategies and choices is important.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本文的主要目标，是给出一组工程原则，说明为了扩展 Transformer 推理，应当如何对模型进行最佳划分。换言之：模型规模、序列长度和硬件芯片数量的变化，会如何影响不同划分策略的性能？在延迟与吞吐量之间进行权衡时，最优划分策略会怎样变化？这些现象背后的直觉和数学原因是什么？后文会表明，随着模型规模、序列长度，以及应用对延迟和吞吐量目标的要求发生变化，正确的权衡和策略也会改变。因此，拥有一个能方便表达不同策略与选择的框架非常重要。</div></div>
+<div class="pair" id="p-7"><div class="para en" lang="en"><span class="label">EN</span>In Section 2, we describe the specific metrics and tradeoffs we use to compare different partitioning strategies. In Section 3.1, we provide an overview of partitioning principles for large language models. In the remainder of Section 3, we describe a number of specific partitioning strategies, with an empirical validation on the PaLM family of large language models in Section 4.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>第 2 节介绍用于比较不同划分策略的具体指标和权衡；第 3.1 节概述大型语言模型的划分原则；第 3 节其余部分给出若干具体划分策略；第 4 节则在 PaLM 大型语言模型家族上进行实证验证。</div></div>
+<div class="pair" id="p-8"><div class="para en" lang="en"><span class="label">EN</span>For a state-of-the-art 540B parameter dense model running on 64 TPU v4 chips, we achieve a low-batch-size latency of 29 ms per token during generation (with int8 weight quantization) and a 76% MFU during large-batch-size processing of input tokens while supporting a large context length of 2048 tokens. Figure 1 (left) shows our performance for generating text using the PaLM models. For an interactive application such as a chatbot running on PaLM 540B with int8 weights, our implementation on 64 TPU v4 chips can process 64 tokens of text from a user, consult a cached conversation history of 1920 tokens, and generate a 64-token response in a total of 1.9 seconds. For an offline throughput-oriented application, our implementation can process 1984 tokens of input and generate 64 tokens of output, for huge numbers of examples, with an overall FLOPS efficiency of 73%. Table 2 shows more details on a few specific scenarios.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>对于在 64 个 TPU v4 芯片上运行的先进 5400 亿参数稠密模型，在支持 2048 token 长上下文的同时，我们实现了生成阶段小批量下每 token 29 ms 的延迟（采用 int8 权重量化），以及大批量输入 token 处理时 76% 的 MFU。图 1 左侧展示了 PaLM 模型的文本生成性能。对于在 int8 权重 PaLM 540B 上运行的聊天机器人等交互式应用，我们在 64 个 TPU v4 芯片上的实现，可以处理用户输入的 64 个 token、查阅缓存中的 1920-token 对话历史，并生成 64-token 回复，整个过程共需 1.9 秒。对于偏重吞吐量的离线应用，我们的实现可以针对海量样本处理 1984 个输入 token 并生成 64 个输出 token，整体 FLOPS 效率达到 73%。表 2 给出了若干具体场景的更多细节。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig1.png" alt="图 1：上下文长度为 2048 时，PaLM 模型的成本与延迟关系。每条曲线表示效率—延迟的帕累托前沿；C 为芯片数，B 为批量大小。左图：上下文已处理后生成 64 个 token 时的每 token 延迟。右图：处理 2048 个输入 token 的时间，不包括输出生成。" loading="lazy"><figcaption><div class="en" lang="en">Figure 1: Cost versus latency for PaLM models at context length 2048. Each line shows an efficiency–latency Pareto frontier. C is chip count and B is batch size. Left: per-token latency while generating 64 tokens after the context has been processed. Right: time to process 2048 input tokens, excluding output generation.</div><div class="zh" lang="zh-CN">图 1：上下文长度为 2048 时，PaLM 模型的成本与延迟关系。每条曲线表示效率—延迟的帕累托前沿；C 为芯片数，B 为批量大小。左图：上下文已处理后生成 64 个 token 时的每 token 延迟。右图：处理 2048 个输入 token 的时间，不包括输出生成。</div></figcaption></figure>
+<section class="section-heading" id="inference-cost-tradeoffs"><h2><span class="en-title" lang="en">2 Inference Cost Tradeoffs</span><span class="zh-title" lang="zh-CN">2 推理成本的权衡</span></h2></section>
+<div class="pair" id="p-9"><div class="para en" lang="en"><span class="label">EN</span>Scaling up model sizes can unlock new capabilities and applications but has fundamental tradeoffs in terms of inference cost. We measure the inference cost in terms of the following metrics: latency, throughput, and model FLOPS utilization. The latency is the total time for an inference and can be broken down into the time to process the input tokens present at the start of the inference (which we call “prefill”) and the time to autoregressively generate output tokens (which we term “decode”). The decode latency can also be measured “per step”, i.e. divided by the number of tokens in each sequence. The throughput of prefill or decode is the number of tokens processed or generated per second. The model FLOPS utilization (MFU) is the ratio of the observed throughput to the theoretical maximum throughput if the benchmarked hardware setup were operating at peak FLOPS with no memory or communication overhead.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>扩大模型规模能够解锁新的能力和应用，但会在推理成本上带来根本性的权衡。本文用三个指标衡量推理成本：延迟、吞吐量和模型 FLOPS 利用率。延迟是一次推理的总耗时，可分为两部分：处理推理开始时已有输入 token 的时间，我们称之为“预填充”（prefill）；以及自回归生成输出 token 的时间，我们称之为“解码”（decode）。解码延迟也可以按“每一步”衡量，即总解码时间除以每个序列中的 token 数。预填充或解码吞吐量，是每秒处理或生成的 token 数。模型 FLOPS 利用率（MFU）则是观测吞吐量与理论最大吞吐量之比；后者假设被测硬件以峰值 FLOPS 运行，且不存在任何内存或通信开销。</div></div>
+<div class="pair" id="p-10"><div class="para en" lang="en"><span class="label">EN</span>Larger models do not fit on a single accelerator chip and need to be partitioned across many accelerator chips to fit in memory. This also enables us to divide the memory and compute costs described below over all the chips, but comes at the cost of introducing chip-to-chip communication.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>更大的模型无法装入单个加速器芯片，必须跨多个芯片划分才能满足内存容量要求。这样也能把下文所述的内存和计算成本分摊到所有芯片上，但代价是引入芯片间通信。</div></div>
+<div class="pair" id="p-11"><div class="para en" lang="en"><span class="label">EN</span>Memory costs. We store tensors such as weights and the KV cache in on-device high-bandwidth memory (HBM). While there are other tensors that pass through the HBM, their memory footprint is much smaller, so we focus on just these two largest groups of tensors. These tensors need to be transferred from HBM to the compute cores of the chip once per forward pass (prefill or decode step) of the model. This takes a certain amount of time, which we call the “memory time.” At small batch sizes and sequence lengths, the time to load weights dominates. At larger batch sizes and sequence lengths (e.g. 2048+ tokens with batch size 512+), the time to load the KV cache dominates.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>内存成本。权重、KV 缓存等张量存放在设备上的高带宽内存（HBM）中。虽然还有其他张量会经过 HBM，但它们的内存占用小得多，因此本文只关注最大的两类张量。模型每执行一次前向传播——无论是预填充还是一个解码步骤——都需要把这些张量从 HBM 传到芯片的计算核心。这个过程耗费的时间称为“内存时间”。当批量和序列较小时，加载权重的时间占主导；当批量和序列较大时（例如序列长度不小于 2048、批量不小于 512），加载 KV 缓存的时间占主导。</div></div>
+<div class="pair" id="p-12"><div class="para en" lang="en"><span class="label">EN</span>Compute costs. An N-parameter decoder-only model requires 2N matmul FLOPs in the forward pass per token seen because each matmul performs one multiplication and one addition per pair of input token and parameter values in the forward pass (Kaplan et al., 2020). If all chips were running at peak FLOPS, these matmuls would take a certain amount of time, which we call the “compute time.” The matmuls in the attention mechanism typically add a much smaller number of FLOPs per token for large models and can often be excluded. Even though the computational cost of attention is relatively small, it can still account for a significant fraction of memory capacity and bandwidth costs, since (unlike the weights) the KV cache is unique for each sequence in the batch.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>计算成本。对于一个包含 N 个参数的仅解码器模型，每处理一个 token，其前向传播需要约 2N 次矩阵乘 FLOP，因为对于输入 token 值与参数值的每一对组合，矩阵乘都会执行一次乘法和一次加法（Kaplan et al., 2020）。如果所有芯片都以峰值 FLOPS 运行，这些矩阵乘需要一定时间，本文称之为“计算时间”。对于大模型，注意力机制中的矩阵乘通常每 token 只增加少得多的 FLOP，因此往往可以忽略。然而，注意力的计算成本虽相对较小，仍可能占据相当大的内存容量和带宽成本，因为与权重不同，批量中的每个序列都有自己独有的 KV 缓存。</div></div>
+<section class="section-heading" id="expected-tradeoffs"><h3><span class="en-title" lang="en">2.1 Expected tradeoffs and challenges</span><span class="zh-title" lang="zh-CN">2.1 预期的权衡与挑战</span></h3></section>
+<div class="pair" id="p-13"><div class="para en" lang="en"><span class="label">EN</span>Both the weight-loading part of the memory time and the non-attention compute time are proportional to the model size and inversely proportional to the number of chips. However, for a given partitioning layout, the time needed for chip-to-chip communication decreases less quickly (or not at all) with the number of chips used, so it becomes an increasingly important bottleneck as the chip count grows. We consider some scenarios where these tradeoffs become especially challenging.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>内存时间中的权重加载部分，以及非注意力计算时间，都与模型规模成正比、与芯片数量成反比。然而，对于给定划分布局，芯片间通信时间随芯片数量增加而下降得更慢，甚至完全不下降，因此随着芯片数增长，它会成为越来越重要的瓶颈。下面讨论几类使这些权衡尤其棘手的场景。</div></div>
+<div class="pair" id="p-14"><div class="para en" lang="en"><span class="label">EN</span>If an application requires the lowest possible latency, we need to apply more chips and partition the model in as many ways as we profitably can. Lower latency can often be achieved with smaller batch sizes, but smaller batch sizes also result in worse MFU, resulting in a higher total cost (in terms of chip-seconds or dollars) per token.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>如果应用要求尽可能低的延迟，就需要使用更多芯片，并在有收益的范围内尽可能多地划分模型。减小批量通常能够降低延迟，但较小批量也会导致更差的 MFU，从而提高每个 token 的总成本——无论以芯片秒还是以货币计。</div></div>
+<div class="pair" id="p-15"><div class="para en" lang="en"><span class="label">EN</span>If an application requires generating text with long attention contexts, it substantially increases the inference time. For a 500B+ model with multihead attention, the attention KV cache grows large: for batch size 512 and context length 2048, the KV cache totals 3 TB, which is 3 times the size of the model&#x27;s parameters. The on-chip memory needs to load this KV cache from off-chip memory once for every token generated, during which the computational core of the chip is essentially idle.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>如果应用需要在很长的注意力上下文中生成文本，推理时间会显著增加。对于采用多头注意力、参数超过 5000 亿的模型，注意力 KV 缓存会变得极其庞大：当批量为 512、上下文长度为 2048 时，KV 缓存总计达到 3 TB，是模型参数大小的 3 倍。每生成一个 token，芯片都必须把这份 KV 缓存从片外内存加载到片上内存；在此期间，芯片的计算核心基本处于空闲状态。</div></div>
+<div class="pair" id="p-16"><div class="para en" lang="en"><span class="label">EN</span>If an application requires offline inference and latency is not a concern, the primary goal is to maximize per-chip throughput (i.e., minimize total cost per token). It is most efficient to increase the batch size because larger batches typically result in better MFU, but certain partitioning strategies that are not efficient for small batch sizes become efficient as the batch size grows larger.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>如果应用进行离线推理且不关心延迟，首要目标就是最大化每芯片吞吐量，也就是最小化每 token 总成本。增大批量通常最有效，因为大批量往往带来更高的 MFU；而且某些在小批量下效率不高的划分策略，会随着批量增大而变得高效。</div></div>
+<section class="section-heading" id="inference-setup"><h3><span class="en-title" lang="en">2.2 Inference Setup</span><span class="zh-title" lang="zh-CN">2.2 推理设置</span></h3></section>
+<div class="pair" id="p-17"><div class="para en" lang="en"><span class="label">EN</span>We briefly introduce the inference setup and notation. We consider a Transformer model with n_params parameters laid out for inference on n_chips chips. The model has model (or embedding) dimension d_model (or E), feedforward intermediate dimension d_ff (or F), and n_heads (or H) heads.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>下面简要介绍推理设置和记号。设一个 Transformer 模型包含 n_params 个参数，并部署到 n_chips 个芯片上进行推理。模型的模型维度（或嵌入维度）为 d_model（记作 E），前馈网络中间维度为 d_ff（记作 F），注意力头数为 n_heads（记作 H）。</div></div>
+<div class="pair" id="p-18"><div class="para en" lang="en"><span class="label">EN</span>Each example in a batch of B sequences has L_input tokens of input text, and generates L_gen tokens of output text. Since the input tokens are all present at the start of the inference, we can run the model over all B × L_input tokens in parallel, in a single forward pass over all the tokens. We call this step prefill. The output tokens are generated autoregressively, with a sequential loop of L_gen steps. Each step consists of a single forward pass through the model, after which we sample one new token for each of the B examples in the batch. This loop is known as generation or decode. Since prefill can run in parallel over L_input, but decode must run sequentially over L_gen, the two phases have different performance characteristics and we analyze them separately.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>一个批量包含 B 个序列；每个样本有 L_input 个输入文本 token，并生成 L_gen 个输出 token。由于全部输入 token 在推理开始时就已存在，我们可以在一次前向传播中并行处理所有 B × L_input 个 token，这一步称为预填充。输出 token 则通过包含 L_gen 个步骤的顺序循环自回归生成。每一步都对模型执行一次前向传播，随后为批量中的每个样本采样一个新 token。这个循环称为生成或解码。预填充能够沿 L_input 并行，而解码必须沿 L_gen 顺序执行，因此两个阶段具有不同的性能特征，本文将分别分析。</div></div>
+<section class="section-heading" id="partitioning"><h2><span class="en-title" lang="en">3 Partitioning for Inference Efficiency</span><span class="zh-title" lang="zh-CN">3 面向推理效率的模型划分</span></h2></section>
+<div class="pair" id="p-19"><div class="para en" lang="en"><span class="label">EN</span>We must partition large models over many chips in order to fit weight and activation tensors in memory and fit compute and memory time within latency requirements. Model partitioning introduces communication between chips, and different partitioning strategies for a given model involve different patterns and amounts of communication. In this section, we detail several high-level strategies for partitioning a large Transformer language model for cost-effective and latency-effective inference.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>为了让权重和激活张量装入内存，并使计算时间与内存时间满足延迟要求，我们必须把大模型划分到许多芯片上。模型划分会引入芯片间通信，而同一模型的不同划分策略具有不同的通信模式和通信量。本节将详细介绍几种用于划分大型 Transformer 语言模型的高层策略，以实现成本和延迟均较优的推理。</div></div>
+<section class="section-heading" id="partitioning-notation"><h3><span class="en-title" lang="en">3.1 Partitioning notation and communication collectives</span><span class="zh-title" lang="zh-CN">3.1 划分记号与集合通信</span></h3></section>
+<div class="pair" id="p-20"><div class="para en" lang="en"><span class="label">EN</span>We describe the partitioning layouts in this section based on a TPU v4 system with 3D torus topology X × Y × Z. Following Xu et al. (2021), we use subscripts to specify the tensor dimension that is partitioned. For example, notation BLE_xyz means that the last dimension E of a tensor of logical shape BLE is split into X × Y × Z partitions, where x, y and z refer to the physical TPU v4 axes, and the per-chip tensor is of shape [B, L, E/(X × Y × Z)]. Here B, E and F refer to batch, model embedding and MLP feedforward dimension. We use L to refer to the sequence length and explicitly specify the prefill or generation phase.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本节以具有 X × Y × Z 三维环面拓扑的 TPU v4 系统为基础描述划分布局。沿用 Xu et al.（2021）的记法，我们用下标指出被划分的张量维度。例如，BLE_xyz 表示一个逻辑形状为 BLE 的张量，其最后一维 E 被拆成 X × Y × Z 份，其中 x、y、z 对应 TPU v4 的物理轴；每个芯片上的张量形状为 [B, L, E/(X × Y × Z)]。这里 B、E、F 分别表示批量维度、模型嵌入维度和 MLP 前馈维度。L 表示序列长度，并会明确指出是在预填充还是生成阶段。</div></div>
+<div class="pair" id="p-21"><div class="para en" lang="en"><span class="label">EN</span>If a tensor is replicated over an axis x, that axis is omitted from the notation. We also use a suffix “partialsum-x” to indicate that a given tensor has been contracted (summed) locally on each chip over some axis not represented in the shape, but still needs to be summed across the chips in the TPU x axis—creating a tensor replicated over x—before the result is meaningful.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>如果一个张量在某条轴 x 上被复制，记号中就省略该轴。我们还使用后缀“partialsum-x”，表示给定张量已经在每个芯片本地沿某个未体现在形状中的轴完成收缩（求和），但结果仍需跨 TPU 的 x 轴芯片继续求和——并由此得到一个在 x 轴上复制的张量——之后才具有完整意义。</div></div>
+<div class="pair" id="p-22"><div class="para en" lang="en"><span class="label">EN</span>We use several communication collectives originating from MPI (Clarke et al., 1994). The all-reduce(x) primitive sums a partial-sum tensor such as BLE_yz(partialsum-x) across sets of chips in the x axis of the torus and broadcasts the sum back to all the involved chips, returning output of shape BLE_yz. For the reasons outlined in Rajbhandari et al. (2020), we typically split all-reduce into two phases: a reduction phase and a broadcast phase. The reduction phase is called reduce-scatter(x), and it sums BLE_yz(partialsum-x) tensors across sets of chips in the x axis but produces an output that is sharded rather than replicated over the chips in that axis, in a layout such as B_xLE_yz or BLE_xyz. The broadcast phase is called all-gather(x), and it broadcasts and concatenates the tensor BLE_xyz to all chips in the x axis, producing an output X times larger than its input and replicated over the x axis. The all-to-all collective shifts sharding from one tensor dimension to another, for example BLH_xQ → B_xLHQ, using direct communication between every source–destination pair. Figure A.1 illustrates these primitives.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本文使用若干源自 MPI（Clarke et al., 1994）的集合通信操作。all-reduce(x) 会在环面 x 轴的一组芯片间，对 BLE_yz(partialsum-x) 之类的部分和张量求和，并把总和广播回所有参与芯片，得到形状为 BLE_yz 的输出。基于 Rajbhandari et al.（2020）所述原因，我们通常把 all-reduce 拆成两个阶段：归约阶段和广播阶段。归约阶段称为 reduce-scatter(x)（归约-散射）：它在 x 轴芯片组上对 BLE_yz(partialsum-x) 求和，但输出不会在该轴上复制，而是以 B_xLE_yz 或 BLE_xyz 等布局分片。广播阶段称为 all-gather(x)（全收集）：它把 BLE_xyz 广播并拼接到 x 轴上的所有芯片，使输出大小变为输入的 X 倍，并在 x 轴上复制。all-to-all（全互换）则把分片从一个张量维度转移到另一个维度，例如 BLH_xQ → B_xLHQ；它在每一对源和目标之间进行直接通信。图 A.1 展示了这些原语。</div></div>
+<section class="section-heading" id="partitioning-ffn"><h3><span class="en-title" lang="en">3.2 Partitioning the feedforward layer</span><span class="zh-title" lang="zh-CN">3.2 前馈层划分</span></h3></section>
+<section class="section-heading" id="ffn-1d-ws"><h4><span class="en-title" lang="en">3.2.1 Feedforward layer, 1D weight-stationary layout</span><span class="zh-title" lang="zh-CN">3.2.1 前馈层：一维权重驻留布局</span></h4></section>
+<div class="pair" id="p-23"><div class="para en" lang="en"><span class="label">EN</span>Overview. When a model does not fit on a single chip, the simplest partitioning strategy is 1D weight-stationary, where each E × F weight matrix is partitioned (or sharded) among n_chips along the E or F axis. Each weight shard is multiplied by the appropriate activation shard on each chip, and the results are aggregated between the chips with an all-gather and/or reduce-scatter. Additionally, when computing two consecutive matrix multiplications—as in a Transformer MLP block—there is a “trick” (Shoeybi et al., 2019) to avoid any cross-chip communication between the matmuls: if the first matmul is partitioned by the output axis, the resulting activation shard on each chip will be exactly the one needed to compute the second matmul partitioned by the input axis.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>概述。当模型无法装入单个芯片时，最简单的划分策略是一维权重驻留（1D weight-stationary）：每个 E × F 权重矩阵沿 E 轴或 F 轴被划分（分片）到 n_chips 个芯片上。每个芯片将自己的权重分片与相应的激活分片相乘，再通过 all-gather 和/或 reduce-scatter 在芯片之间聚合结果。此外，在连续计算两个矩阵乘时——例如 Transformer 的 MLP 模块——可以使用一个“技巧”（Shoeybi et al., 2019）来避免两个矩阵乘之间的任何跨芯片通信：若第一个矩阵乘按输出轴划分，那么每个芯片得到的激活分片，正好就是按输入轴划分的第二个矩阵乘所需的分片。</div></div>
+<div class="pair" id="p-24"><div class="para en" lang="en"><span class="label">EN</span>As we parallelize the computation across more chips, the memory latency and compute latency decrease, often nearly linearly. However, the communication latency remains roughly constant independent of the number of chips used, since the entire activation matrix is aggregated across chips for every pair of matrix multiplications. As the number of chips grows larger, communication becomes a bottleneck.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>随着计算并行到更多芯片上，内存延迟和计算延迟都会下降，通常接近线性下降。但通信延迟大致保持不变，与芯片数量无关，因为每一对矩阵乘都需要在芯片间聚合完整的激活矩阵。因此，芯片数量越多，通信越容易成为瓶颈。</div></div>
+<div class="pair" id="p-25"><div class="para en" lang="en"><span class="label">EN</span>Details. We consider as a baseline the layout where the weights and activations of the feedforward layer are partitioned over n_chips along the d_ff dimension, as in Megatron (Shoeybi et al., 2019). Figure 2(a) shows the partitioning layout for this case. On the TPU v4&#x27;s 3D torus topology the partition layout for weights is EF_xyz and F_xyzE: they are split into X × Y × Z = n_chips partitions across the physical TPU axes. The weights are kept stationary in each chip, and the activations are transferred between chips to match the weight layout, requiring one all-gather and one reduce-scatter.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>细节。我们以 Megatron（Shoeybi et al., 2019）采用的布局为基线：前馈层的权重和激活沿 d_ff 维度划分到 n_chips 个芯片上。图 2(a) 展示了该布局。在 TPU v4 的三维环面拓扑上，权重布局为 EF_xyz 和 F_xyzE，也就是沿物理 TPU 轴拆成 X × Y × Z = n_chips 份。权重固定驻留在各自芯片上，激活则在芯片之间传输以匹配权重布局，因此需要一次 all-gather 和一次 reduce-scatter。</div></div>
+<div class="pair" id="p-26"><div class="para en" lang="en"><span class="label">EN</span>In this 1D weight-stationary strategy, each chip gets inputs and outputs of shape BLE in the reduce-scatter and all-gather respectively. The communication cost is derived in Appendix A.1. The resulting communication time is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>在这种一维权重驻留策略中，每个芯片在 reduce-scatter 和 all-gather 中分别接收形状为 BLE 的输入与输出。附录 A.1 推导了这些操作的通信成本，最终通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm = 2 B L E / network bandwidth</div><div class="eq-note en" lang="en">Communication time for the 1D weight-stationary feedforward layout.</div><div class="eq-note zh" lang="zh-CN">一维权重驻留前馈布局的通信时间。</div></div>
+<section class="section-heading" id="ffn-2d-ws"><h4><span class="en-title" lang="en">3.2.2 Feedforward layer, 2D weight-stationary layout</span><span class="zh-title" lang="zh-CN">3.2.2 前馈层：二维权重驻留布局</span></h4></section>
+<div class="pair" id="p-27"><div class="para en" lang="en"><span class="label">EN</span>Overview. For a larger number of chips, a more economical strategy partitions each E × F weight matrix along both the E and F axes so that each shard is roughly square. For example, if E = 1024, F = 4096 and n_chips = 64, we shard four ways along E and sixteen ways along F, so each chip stores a 256-by-256 chunk of the weight matrix and activations are transferred between chips. This is called 2D weight-stationary.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>概述。当芯片数量较多时，更经济的策略是同时沿 E 和 F 两个轴划分每个 E × F 权重矩阵，使每个分片大致为正方形。例如，当 E = 1024、F = 4096、n_chips = 64 时，可以沿 E 拆成 4 份、沿 F 拆成 16 份，使每个芯片存储一个 256 × 256 的权重块，而激活在芯片间传输。这称为二维权重驻留（2D weight-stationary）。</div></div>
+<div class="pair" id="p-28"><div class="para en" lang="en"><span class="label">EN</span>The total compute cost is the same as for 1D weight-stationary, but communication is much more efficient: when multiplying an activation matrix through a set of consecutive weight matrices, we can alternate which of the two axes performs activation aggregation between each multiplication. With the correct partitioning, each chip always has the activation shard necessary to multiply with its weight shard, without ever holding a fully replicated copy of the activation tensor. Since each axis is partitioned on O(√n_chips), communication time scales as O(1/√n_chips) rather than remaining constant. Thus, even if the 2D layout becomes communication-limited at a certain chip count and batch size, adding more chips can continue to reduce latency because communication time keeps falling.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>其总计算成本与一维权重驻留相同，但通信效率高得多：当一个激活矩阵依次通过一组连续的权重矩阵时，可以在相邻矩阵乘之间交替选择两个轴中的一个来聚合激活。只要划分正确，每个芯片始终拥有与其权重分片相乘所需的激活分片，而且从不需要保存激活张量的完整复制。由于每个轴大约按 O(√n_chips) 规模划分，通信时间按 O(1/√n_chips) 缩放，而不是保持常数。因此，即使二维布局在某一芯片数和批量下受到通信限制，继续增加芯片仍可降低延迟，因为通信时间还会继续下降。</div></div>
+<div class="pair" id="p-29"><div class="para en" lang="en"><span class="label">EN</span>However, while the 1D weight-stationary “trick” requires aggregation only over the d_model dimension, 2D weight-stationary requires alternating aggregation over the d_model and d_ff dimensions. Therefore, 2D weight-stationary becomes more communication-efficient when √n_chips &gt; d_ff/d_model. Since typically d_ff = 4 d_model, this occurs when n_chips &gt; 16.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>不过，一维权重驻留的“技巧”只需沿 d_model 维度聚合，而二维权重驻留必须在 d_model 与 d_ff 两个维度之间交替聚合。因此，当 √n_chips &gt; d_ff/d_model 时，二维权重驻留的通信效率才更高。通常 d_ff = 4d_model，所以这一条件在 n_chips &gt; 16 时成立。</div></div>
+<div class="pair" id="p-30"><div class="para en" lang="en"><span class="label">EN</span>Details. Figure 2(b) shows the partitioning layout. Whereas the 1D weight-stationary layout runs its all-gather and reduce-scatter with unsharded shape BLE per chip, this 2D layout partitions d_model so that communication volume for d_ff partitioning is reduced from BLE to BLE/X. This comes at the cost of introducing a second pair of reduce-scatter and all-gather operations, whose cost must be balanced against the existing communication.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>细节。图 2(b) 展示了该划分布局。一维权重驻留在每个芯片上以未分片的 BLE 形状执行 all-gather 和 reduce-scatter；二维布局则进一步划分 d_model，使 d_ff 划分对应的通信量从 BLE 降为 BLE/X。其代价是引入第二组 reduce-scatter/all-gather 操作，因此必须在新增通信和原有通信之间取得平衡。</div></div>
+<div class="pair" id="p-31"><div class="para en" lang="en"><span class="label">EN</span>The weight layout is E_xF_yz: d_model is split into X partitions and d_ff into Y × Z partitions, where X × Y × Z = n_chips. The input activation layout is the same as in the previous section. The partitioned weights again remain stationary on their chips, but because of the 2D layout, activation communication includes two all-gathers and two reduce-scatters.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>权重布局为 E_xF_yz：d_model 被拆成 X 份，d_ff 被拆成 Y × Z 份，且 X × Y × Z = n_chips。输入激活的布局与上一节相同。分片权重仍固定驻留在各自芯片上，但由于采用二维布局，激活通信包含两次 all-gather 和两次 reduce-scatter。</div></div>
+<div class="pair" id="p-32"><div class="para en" lang="en"><span class="label">EN</span>Appendix A.2.1 derives the optimal values of X, Y and Z that minimize total communication time. Assuming d_ff = 4 × d_model, the minimum is achieved with X = 0.5 × √n_chips and YZ = 2 × √n_chips. The resulting total communication time is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>附录 A.2.1 推导了使总通信时间最小的 X、Y、Z 最优取值。在假设 d_ff = 4 × d_model 时，最小值由 X = 0.5 × √n_chips、YZ = 2 × √n_chips 取得。最终总通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm = 8 B L E / (√n_chips × network bandwidth)</div><div class="eq-note en" lang="en">Communication time for the optimized 2D weight-stationary layout.</div><div class="eq-note zh" lang="zh-CN">优化后的二维权重驻留布局通信时间。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig2.png" alt="图 2：前馈层的划分布局：(a) 一维权重驻留，(b) 二维权重驻留，(c) 权重聚合。" loading="lazy"><figcaption><div class="en" lang="en">Figure 2: Partitioning layouts for the feedforward layer: (a) 1D weight-stationary, (b) 2D weight-stationary, and (c) weight-gathered.</div><div class="zh" lang="zh-CN">图 2：前馈层的划分布局：(a) 一维权重驻留，(b) 二维权重驻留，(c) 权重聚合。</div></figcaption></figure>
+<section class="section-heading" id="ffn-weight-gathered"><h4><span class="en-title" lang="en">3.2.3 Feedforward layer, weight-gathered layout</span><span class="zh-title" lang="zh-CN">3.2.3 前馈层：权重聚合布局</span></h4></section>
+<div class="pair" id="p-33"><div class="para en" lang="en"><span class="label">EN</span>Overview. In the weight-stationary strategies above, each chip stores one shard of every weight matrix and is responsible for multiplying its “stationary” weight shard by each corresponding activation shard. The output of every per-chip matrix multiplication must then be aggregated between chips before it can be used by subsequent operations.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>概述。在上述权重驻留策略中，每个芯片保存每个权重矩阵的一个分片，并负责将其“驻留”的权重分片与对应激活分片相乘。每个芯片上的矩阵乘输出必须在芯片之间聚合，才能供后续操作使用。</div></div>
+<div class="pair" id="p-34"><div class="para en" lang="en"><span class="label">EN</span>As batch size and sequence length grow, however, the output activations may become much larger than the weights. When that happens, it can be more economical to keep activations stationary on each chip and transfer weights instead. For very large batches, the best choice is to keep activations fully stationary between sequential matrix multiplications, which requires fully transferring weights between all chips. We call this XYZ-weight-gathered. For moderate batch sizes, a hybrid approach in which both weights and activations are partially transferred along different axes is beneficial; we call these X-weight-gathered and XY-weight-gathered.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>不过，随着批量和序列长度增长，输出激活可能远大于权重。此时，让激活驻留在各芯片上而改为传输权重，可能更经济。对于非常大的批量，最佳方案是在连续矩阵乘之间让激活完全驻留不动，这要求在所有芯片之间完整传输权重；我们称之为 XYZ 权重聚合（XYZ-weight-gathered）。对于中等批量，更有利的是混合方案：权重和激活分别沿不同轴进行部分传输；本文称为 X 权重聚合和 XY 权重聚合。</div></div>
+<div class="pair" id="p-35"><div class="para en" lang="en"><span class="label">EN</span>Details. Figure 2(c) shows the XY-weight-gathered layout. A key aspect of the chosen layout is that weights start in the same E_xF_yz layout as in 2D weight-stationary, so the same weight layout can be used for weight-gathered during prefill and weight-stationary during decoding. Just before the einsums, the weight tensors are all-gathered over the X and Y axes, with communication volume EF/Z. This adds communication relative to the weight-stationary layout, but reduces activation communication: one reduce-scatter/all-gather pair is skipped, and the volume on the other pair drops from BLE/X to BLE/(XY).</div><div class="para zh" lang="zh-CN"><span class="label">中</span>细节。图 2(c) 展示了 XY 权重聚合布局。所选布局的关键点在于，权重一开始采用与二维权重驻留相同的 E_xF_yz 布局，因此预填充阶段可使用权重聚合，而解码阶段可使用权重驻留，却仍共享同一权重布局。在 einsum 之前，权重张量会沿 X、Y 两轴执行 all-gather，通信量为 EF/Z。与权重驻留相比，这增加了权重通信，但降低了激活通信：一组 reduce-scatter/all-gather 被省略，另一组的通信量则从 BLE/X 降到 BLE/(XY)。</div></div>
+<div class="pair" id="p-36"><div class="para en" lang="en"><span class="label">EN</span>Changing the relative sizes of X, Y and Z trades off weight communication against activation communication and can minimize total communication volume. Because the weights are shared between the weight-stationary and weight-gathered layouts, however, we must match the X, Y and Z choices made for weight-stationary. Instead, we select among several variants of the weight-gathered layout. Figure 2(c) uses all-gather(xy) for weights and B_xyLE_z batch partitioning for activations. Other variants use all-gather(x) or all-gather(xyz), with B_xLE_yz or B_xyzLE activation layouts respectively. Figure A.2 shows all three.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>改变 X、Y、Z 的相对大小，可以在权重通信与激活通信之间权衡，并最小化总通信量。但由于权重驻留和权重聚合布局共享权重布局，我们必须沿用为权重驻留选择的 X、Y、Z。因此，我们改为在若干权重聚合变体之间选择。图 2(c) 对权重使用 all-gather(xy)，对激活使用沿批量划分的 B_xyLE_z 布局。其他变体分别对权重使用 all-gather(x) 或 all-gather(xyz)，并对应使用 B_xLE_yz 或 B_xyzLE 激活布局。图 A.2 展示了三种变体。</div></div>
+<div class="pair" id="p-37"><div class="para en" lang="en"><span class="label">EN</span>Figure 3 shows how the communication-optimal configuration switches between these layouts as batch size grows. While 2D weight-stationary minimizes communication at low tokens per batch, different weight-gathered layouts become optimal at larger token counts. This highlights the importance of selecting different inference configurations for different application goals.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 3 展示了随着批量增大，通信最优配置如何在这些布局之间切换。每批 token 数较少时，二维权重驻留的通信量最小；当 token 数增大时，不同的权重聚合布局依次成为最优。这说明必须根据不同应用目标选择不同推理配置。</div></div>
+<div class="pair" id="p-38"><div class="para en" lang="en"><span class="label">EN</span>The asymptotic scaling is as follows. Let N be the number of chips across which weights are all-gathered: N = X for X-weight-gathered, N = XY for XY-weight-gathered, and N = XYZ for XYZ-weight-gathered. Total communication is minimized by N = √(BL n_chips/F), as derived in Appendix A.2.2. The total communication time is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>其渐近缩放关系如下。令 N 表示执行权重 all-gather 的芯片数量：对于 X 权重聚合，N = X；对于 XY 权重聚合，N = XY；对于 XYZ 权重聚合，N = XYZ。附录 A.2.2 推导出，当 N = √(BL n_chips/F) 时总通信量最小。总通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm = 4 E √(B L F) / (√n_chips × network bandwidth)</div><div class="eq-note en" lang="en">Here BL is the total number of tokens in the batch.</div><div class="eq-note zh" lang="zh-CN">其中 BL 是批量中的 token 总数。</div></div>
+<div class="pair" id="p-39"><div class="para en" lang="en"><span class="label">EN</span>Communication time for the weight-stationary layout is linear in BL, whereas communication time for the weight-gathered layout is linear in √BL. Therefore, weight-gathered becomes cheaper when batch size and prefill sequence length are sufficiently large.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>权重驻留布局的通信时间与 BL 呈线性关系，而权重聚合布局的通信时间与 √BL 呈线性关系。因此，当批量和预填充序列长度足够大时，权重聚合布局的成本更低。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig3.png" alt="图 3：前馈层的通信量随每批 token 数变化。随着批量增大，在越来越多芯片上聚合权重能够最小化通信量。" loading="lazy"><figcaption><div class="en" lang="en">Figure 3: Communication volume versus tokens per batch for the feedforward layer. As batch size grows, all-gathering weights over progressively more chips minimizes communication.</div><div class="zh" lang="zh-CN">图 3：前馈层的通信量随每批 token 数变化。随着批量增大，在越来越多芯片上聚合权重能够最小化通信量。</div></figcaption></figure>
+<section class="section-heading" id="partitioning-attention"><h3><span class="en-title" lang="en">3.3 Partitioning the attention layer</span><span class="zh-title" lang="zh-CN">3.3 注意力层划分</span></h3></section>
+<div class="pair" id="p-40"><div class="para en" lang="en"><span class="label">EN</span>Multihead attention can be parallelized in essentially the same ways as a feedforward layer, with n_heads replacing d_ff. But inference with multihead attention incurs significant memory-capacity and bandwidth costs to store and load the KV cache, and these costs can dominate the rest of inference at large batches or long context lengths.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>多头注意力的并行方式基本与前馈层相同，只需用 n_heads 替代 d_ff。然而，多头注意力推理需要存储和加载 KV 缓存，会产生显著的内存容量与带宽成本；当批量很大或上下文很长时，这些成本可能主导整个推理过程。</div></div>
+<div class="pair" id="p-41"><div class="para en" lang="en"><span class="label">EN</span>An alternative called multiquery attention (Shazeer, 2019; Chowdhery et al., 2022) still emits n_heads heads for the query tensor, but only a single head for the key and value tensors. This key/value head is shared across all n_heads query heads. It reduces KV-cache tensor size, and therefore memory time spent loading the cache, by a factor of n_heads. But it also removes an axis otherwise available for parallelism, so the KV cache and related computations must be partitioned differently.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>另一种方法称为多查询注意力（multiquery attention；Shazeer, 2019；Chowdhery et al., 2022）。查询张量仍然产生 n_heads 个头，但键和值张量各只有一个头，并由所有 n_heads 个查询头共享。这样可把 KV 缓存张量缩小 n_heads 倍，加载缓存所需的内存时间也相应减少。但它同时移除了原本可用于并行的一条轴，因此 KV 缓存及相关计算必须采用不同的划分方式。</div></div>
+<div class="pair" id="p-42"><div class="para en" lang="en"><span class="label">EN</span>Partitioning strategy. The key design consideration is to minimize the memory time spent repeatedly loading the KV cache, which can dominate inference cost. Projection matrices with an n_heads dimension—W_Q and W_O in multiquery attention, plus W_K and W_V in multihead attention—should use the same layout as the feedforward layer.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>划分策略。关键设计目标，是最小化反复加载 KV 缓存的内存时间，因为它可能成为推理成本的主要部分。含有 n_heads 维度的投影矩阵——多查询注意力中的 W_Q、W_O，以及多头注意力中额外的 W_K、W_V——应当采用与前馈层相匹配的布局。</div></div>
+<div class="pair" id="p-43"><div class="para en" lang="en"><span class="label">EN</span>Figure 4(a) shows a typical layout for multihead attention matching the 2D weight-stationary feedforward layout. Q, K and V activations are partitioned over n_heads into n_chips partitions when n_heads is a multiple of n_chips. When n_chips exceeds n_heads, attention heads are partially replicated. The most similar layout for multiquery attention, shown in Figure 4(b), treats its KV cache like the multihead case. Even though the key and value tensors are shared across heads, they must be replicated on every chip, so the memory savings of multiquery attention are lost.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 4(a) 展示了一种典型的多头注意力布局，它与二维权重驻留前馈布局相匹配。当 n_heads 是 n_chips 的倍数时，Q、K、V 激活沿 n_heads 维被拆成 n_chips 份；当 n_chips 大于 n_heads 时，注意力头会被部分复制。图 4(b) 给出了与之最相似的多查询注意力布局，它按照多头注意力的方式处理 KV 缓存。尽管键和值张量由所有头共享，但仍必须在每个芯片上复制，因而多查询注意力的内存节省完全丧失。</div></div>
+<div class="pair" id="p-44"><div class="para en" lang="en"><span class="label">EN</span>We instead propose partitioning the Q, K and V matrices of multiquery attention over the batch B dimension into n_chips partitions. Figure 4(c) shows that this reduces the per-chip memory cost of loading the KV cache by a factor of n_chips, and therefore reduces memory time by the same factor. Compared with head-sharding, the proposed strategy adds communication to reshard the input activation tensors using an all-to-all collective, as shown in Figure 5(b).</div><div class="para zh" lang="zh-CN"><span class="label">中</span>因此，我们提出把多查询注意力的 Q、K、V 矩阵沿批量维度 B 划分为 n_chips 份。图 4(c) 表明，这会把每个芯片加载 KV 缓存的内存成本降低 n_chips 倍，内存时间也降低同样倍数。与沿注意力头分片相比，该策略需要额外使用一次 all-to-all 集合通信来重新分片输入激活，如图 5(b) 所示。</div></div>
+<div class="pair" id="p-45"><div class="para en" lang="en"><span class="label">EN</span>During autoregressive generation there is only one token per example in the Q, K and V tensors, whereas the KV cache contains many tokens—perhaps 2048. Since the cache is orders of magnitude larger than the Q, K and V tensors, it is highly profitable to spend all-to-all communication time on the small tensors in order to save memory time on the large cache.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>在自回归生成期间，每个样本的 Q、K、V 张量中只有一个 token，而 KV 缓存中可能已有很多 token，例如 2048 个。由于缓存比 Q、K、V 张量大几个数量级，在这些小张量上付出 all-to-all 通信时间，以换取大缓存的内存时间节省，是非常划算的。</div></div>
+<div class="pair" id="p-46"><div class="para en" lang="en"><span class="label">EN</span>During prefill it is usually not profitable to shard attention over batch. The Q tensor contains many tokens—perhaps 2048—all querying the same K and V tensors. The cost of loading K and V is amortized across all tokens in Q and is therefore usually not a bottleneck. For prefill we consequently use the sharded-over-heads layout.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>在预填充阶段，沿批量维度划分注意力通常并不划算。Q 张量包含许多 token——可能是 2048 个——它们都查询同一组 K、V 张量。加载 K、V 的成本会摊薄到 Q 的所有 token 上，因此通常不是瓶颈。所以，预填充阶段仍采用沿注意力头分片的布局。</div></div>
+<div class="pair" id="p-47"><div class="para en" lang="en"><span class="label">EN</span>With the proposed partitioning layout, multiquery attention supports larger batch sizes and sequence lengths, increasing throughput in addition to reducing latency through lower memory time. As Section 4.2 shows, the savings are an order of magnitude compared with multihead attention.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>采用所提布局后，多查询注意力可以支持更大的批量和更长的序列；除了通过减少内存时间降低延迟之外，还能提高吞吐量。第 4.2 节将表明，相比多头注意力，其节省幅度达到一个数量级。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig4.png" alt="图 4：当沿批量维度分片时，多查询注意力加载 KV 缓存的成本更低。该图比较了多头注意力的按头分片、低效的多查询按头分片，以及多查询按批量分片。" loading="lazy"><figcaption><div class="en" lang="en">Figure 4: Multiquery attention has lower KV-cache loading cost when sharded over the batch dimension. The diagram contrasts multihead head-sharding, inefficient multiquery head-sharding, and multiquery batch-sharding.</div><div class="zh" lang="zh-CN">图 4：当沿批量维度分片时，多查询注意力加载 KV 缓存的成本更低。该图比较了多头注意力的按头分片、低效的多查询按头分片，以及多查询按批量分片。</div></figcaption></figure>
+<figure class="figure-card"><img src="assets/efficient-fig5.png" alt="图 5：注意力层划分布局：沿注意力头分片的多头注意力，与沿批量分片的多查询注意力。" loading="lazy"><figcaption><div class="en" lang="en">Figure 5: Attention-layer layouts: multihead attention sharded over heads versus multiquery attention sharded over batch.</div><div class="zh" lang="zh-CN">图 5：注意力层划分布局：沿注意力头分片的多头注意力，与沿批量分片的多查询注意力。</div></figcaption></figure>
+<section class="section-heading" id="parallel-attention-ffn"><h3><span class="en-title" lang="en">3.4 Parallel attention/feedforward layers</span><span class="zh-title" lang="zh-CN">3.4 并行注意力／前馈层</span></h3></section>
+<div class="pair" id="p-48"><div class="para en" lang="en"><span class="label">EN</span>We discuss inference-latency gains from the “parallel” formulation of each Transformer block (Wang and Komatsuzaki, 2021), as used in PaLM (Chowdhery et al., 2022), instead of the standard “serialized” formulation. In the parallel form, the feedforward and attention layers are computed in parallel from the layer-normalized input and then summed to obtain the output.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本节讨论每个 Transformer 模块采用“并行”形式（Wang and Komatsuzaki, 2021）而非标准“串行”形式时获得的推理延迟收益；PaLM（Chowdhery et al., 2022）即采用这种并行结构。在并行形式中，前馈层和注意力层都从经过层归一化的输入出发并行计算，随后将两者相加得到输出。</div></div>
+<div class="pair" id="p-49"><div class="para en" lang="en"><span class="label">EN</span>The parallel formulation has several benefits. First, each layer has only one layer normalization instead of two, reducing latency at small batch sizes. Second, the input matrices of the feedforward layer can be fused with the attention query projection W_Q; the key/value projection matrices W_K and W_V can be fused with each other; and the feedforward output matrix can be fused with the attention output projection W_O. These fusions improve FLOPS utilization because larger matrix multiplications execute more efficiently on accelerators. More importantly, they eliminate one of the two all-reduce operations per Transformer layer required for d_ff/n_heads parallelism, cutting communication time over that axis in half.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>并行形式有多项优势。第一，每层只需一次层归一化而非两次，因此可降低小批量下的延迟。第二，前馈层的输入矩阵可与注意力查询投影 W_Q 融合；键/值投影矩阵 W_K、W_V 可彼此融合；前馈层输出矩阵也可与注意力输出投影 W_O 融合。由于更大的矩阵乘在加速器上执行得更高效，这些融合会提高 FLOPS 利用率。更重要的是，它们消除了每个 Transformer 层为 d_ff/n_heads 并行所需的两次 all-reduce 中的一次，把该轴上的通信时间减半。</div></div>
+<section class="section-heading" id="low-level-optimizations"><h3><span class="en-title" lang="en">3.5 Low-level optimizations</span><span class="zh-title" lang="zh-CN">3.5 底层优化</span></h3></section>
+<div class="pair" id="p-50"><div class="para en" lang="en"><span class="label">EN</span>We use the Looped CollectiveEinsum technique from Wang et al. (2023) to run communication concurrently with computation. This partially or fully hides the communication time of most reduce-scatter and all-gather operations in Figures 2 and 5. For every reduce-scatter in those figures, we could reduce-scatter into a batch or sequence dimension (B or L), or into the hidden dimension (E or F). We chose the latter because it exposes more effective opportunities for Looped CollectiveEinsum, whereas Korthikanti et al. (2022) chose the former to avoid communication in layer normalization.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们采用 Wang et al.（2023）的 Looped CollectiveEinsum 技术，让通信与计算并行执行，从而部分或完全隐藏图 2 和图 5 中大多数 reduce-scatter 与 all-gather 的通信时间。对于这些图中的每个 reduce-scatter，可以把结果分片到批量或序列维度（B 或 L），也可以分片到隐藏维度（E 或 F）。我们选择后者，因为它能为 Looped CollectiveEinsum 暴露更多有效的重叠机会；Korthikanti et al.（2022）则选择前者，以避免层归一化中的通信。</div></div>
+<div class="pair" id="p-51"><div class="para en" lang="en"><span class="label">EN</span>CollectiveEinsum loops account for the overwhelming majority of inference latency, so we invested considerable effort in maximizing their performance. First, using the underlying asynchronous CollectivePermute APIs of Wang et al. (2023), we developed several CollectiveEinsum variants optimized for different scenarios: latency versus throughput, different numbers of torus axes, and fusion with different input/output collectives. Second, we explicitly match communication collectives with the matrix multiplications with which they should be fused, maximizing potential overlap. These optimizations delivered about 1.4× better performance than the simpler compiler-partitioned-and-scheduled implementation with which we began. Some weight-gathered layouts would run out of memory without them.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>CollectiveEinsum 循环占据了推理延迟的绝大部分，因此我们投入了大量工作优化其性能。第一，基于 Wang et al.（2023）底层的异步 CollectivePermute API，我们开发了多种 CollectiveEinsum 变体，分别针对延迟或吞吐量、不同数量的环面轴，以及与不同输入/输出集合通信的融合进行优化。第二，我们显式匹配集合通信与应当和它融合的矩阵乘，以最大化通信—计算重叠。相较于最初使用的、由编译器简单划分和调度的实现，这些优化带来了约 1.4 倍性能提升。没有这些优化，某些权重聚合布局甚至会耗尽内存。</div></div>
+<div class="pair" id="p-52"><div class="para en" lang="en"><span class="label">EN</span>We also use better in-memory tensor layouts to minimize padding and copying during matrix multiplication; faster top-k/top-p implementations for decode sampling; faster base-2 implementations of Softmax and Swish; and support for incremental processing of sequences during prefill, as in FasterTransformer.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们还采用了以下底层优化：改善张量的内存布局，以减少矩阵乘期间的填充和复制；为解码采样实现更快的 top-k/top-p；为 Softmax 和 Swish 实现更快的以 2 为底版本；以及像 FasterTransformer 一样支持预填充期间对序列进行增量处理。</div></div>
+<section class="section-heading" id="quantization"><h3><span class="en-title" lang="en">3.6 Quantization</span><span class="zh-title" lang="zh-CN">3.6 量化</span></h3></section>
+<div class="pair" id="p-53"><div class="para en" lang="en"><span class="label">EN</span>We use the AQT library (Lew et al., 2022) to convert 16-bit weights to int8 without noticeable quality loss, reducing their memory cost. This saves weight-loading time, which is especially useful at small batch sizes, and reduces communication volume in weight-gathered layouts. We have not implemented activation quantization (Abdolrashidi et al., 2021), but expect it could reduce compute time in large-batch configurations and reduce activation communication volume in weight-stationary layouts.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们使用 AQT 库（Lew et al., 2022）把 16 位权重转换为 int8，在没有可察觉质量损失的情况下降低其内存成本。这会节省权重加载时间，对小批量尤其有益，并能减少权重聚合布局中的通信量。我们尚未实现激活量化（Abdolrashidi et al., 2021），但预计它可以减少大批量配置下的计算时间，并降低权重驻留布局中的激活通信量。</div></div>
+<section class="section-heading" id="palm-case-study"><h2><span class="en-title" lang="en">4 Case Study for PaLM Models</span><span class="zh-title" lang="zh-CN">4 PaLM 模型案例研究</span></h2></section>
+<div class="pair" id="p-54"><div class="para en" lang="en"><span class="label">EN</span>Methodology. We conduct an empirical study of our techniques on the PaLM family of models (Chowdhery et al., 2022), selected because its architecture includes multiquery attention and parallel attention/feedforward layers.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>方法。我们在 PaLM 模型家族（Chowdhery et al., 2022）上对上述技术开展实证研究。选择 PaLM 的原因，是其模型架构包含多查询注意力以及并行注意力／前馈层。</div></div>
+<div class="pair" id="p-55"><div class="para en" lang="en"><span class="label">EN</span>Our inference framework is based on JAX (Bradbury et al., 2018) and XLA (XLA, 2019), and the original high-level implementation was based on T5X (t5x, 2021). Benchmarks use up to 256 TPU v4 chips (Google, 2022). Each TPU v4 chip provides 275 TFLOPS for bfloat16 matrix arithmetic, 32 GiB of HBM at 1200 GB/s, and 270 GB/s of interconnect bandwidth in a 3D torus topology.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们的推理框架基于 JAX（Bradbury et al., 2018）和 XLA（XLA, 2019），最初的高层实现则基于 T5X（t5x, 2021）。基准测试最多使用 256 个 TPU v4 芯片（Google, 2022）。每个 TPU v4 芯片可提供 275 TFLOPS 的 bfloat16 矩阵运算能力、带宽为 1200 GB/s 的 32 GiB HBM，以及三维环面拓扑中 270 GB/s 的互连带宽。</div></div>
+<div class="pair" id="p-56"><div class="para en" lang="en"><span class="label">EN</span>For PaLM 540B, we padded the number of attention heads from 48 to 64 to partition more effectively on 64 or more chips. This adds 18B parameters to the model and costs 3% MFU, more than recovered by the improved partitioning.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>对于 PaLM 540B，为了在不少于 64 个芯片上更有效地划分，我们把注意力头数从 48 填充到 64。这会给模型增加 180 亿个参数，并带来 3% 的 MFU 损失，但更高效的划分所获得的收益超过了这一代价。</div></div>
+<section class="section-heading" id="palm-ffn"><h3><span class="en-title" lang="en">4.1 Partitioning the feedforward layer</span><span class="zh-title" lang="zh-CN">4.1 前馈层划分</span></h3></section>
+<div class="pair" id="p-57"><div class="para en" lang="en"><span class="label">EN</span>We first evaluate decoding performance of the feedforward partitioning strategies, using batch size 512 to balance latency and MFU. Figure 6 compares 1D and 2D weight-stationary layouts as chip count increases. Both begin to become communication-limited, but the 2D layout performs better because it scales asymptotically better with chip count.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们首先评估前馈层划分策略的解码性能，并使用批量 512 在延迟和 MFU 之间取得平衡。图 6 比较了随着芯片数增加，一维与二维权重驻留布局的表现。两者都会逐渐受通信限制，但二维布局随芯片数增长具有更好的渐近缩放，因此性能更优。</div></div>
+<div class="pair" id="p-58"><div class="para en" lang="en"><span class="label">EN</span>Next we consider prefill, with batch sizes from 2048 tokens (one example of 2048 tokens) to one million tokens (512 examples, each 2048 tokens). Figure 7 shows that the optimal layout switches from 2D weight-stationary to weight-gathered as batch size grows. Weight-gathered is inefficient for small batches but eventually becomes most efficient at large batches, reaching 76% MFU when communication overhead is almost negligible. Such batches would exhaust memory without multiquery attention, as Section 4.2 shows. The result demonstrates why an inference system must flexibly select configurations according to application setting and goals.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>接着考虑预填充阶段，批量规模从 2048 个 token（1 个长度为 2048 的样本）一直到 100 万个 token（512 个样本，每个长度为 2048）。图 7 表明，随着批量增大，最优布局会从二维权重驻留切换到权重聚合。权重聚合在小批量下效率较低，但在大批量下最终成为最高效的布局；当通信开销几乎可忽略时，MFU 达到 76%。如第 4.2 节所示，如果没有多查询注意力，如此大的批量会因内存耗尽而失败。这一结果说明，推理系统必须根据应用环境和目标灵活选择配置。</div></div>
+<div class="pair" id="p-59"><div class="para en" lang="en"><span class="label">EN</span>These results define our basic selection strategy. During prefill, choose between weight-stationary and weight-gathered according to the current number of tokens in the batch. During generation, use 2D weight-stationary because batch size measured in tokens is always small.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>由此得到基本的布局选择策略：预填充阶段根据当前批量中的 token 数，在权重驻留和权重聚合之间选择；生成阶段则使用二维权重驻留，因为以 token 数计的批量始终较小。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig6.png" alt="图 6：随着芯片数增加，PaLM 540B 在二维与一维权重驻留布局下的每 token 生成延迟。" loading="lazy"><figcaption><div class="en" lang="en">Figure 6: Per-token generation latency for PaLM 540B under 2D and 1D weight-stationary layouts as chip count increases.</div><div class="zh" lang="zh-CN">图 6：随着芯片数增加，PaLM 540B 在二维与一维权重驻留布局下的每 token 生成延迟。</div></figcaption></figure>
+<figure class="figure-card"><img src="assets/efficient-fig7.png" alt="图 7：PaLM 540B 在 64 个芯片上的预填充 MFU。随着每批 token 数增加，权重聚合最终超过二维权重驻留。" loading="lazy"><figcaption><div class="en" lang="en">Figure 7: PaLM 540B prefill MFU on 64 chips. As tokens per batch increase, weight-gathered overtakes 2D weight-stationary.</div><div class="zh" lang="zh-CN">图 7：PaLM 540B 在 64 个芯片上的预填充 MFU。随着每批 token 数增加，权重聚合最终超过二维权重驻留。</div></figcaption></figure>
+<section class="section-heading" id="palm-attention"><h3><span class="en-title" lang="en">4.2 Partitioning the attention layer</span><span class="zh-title" lang="zh-CN">4.2 注意力层划分</span></h3></section>
+<div class="pair" id="p-60"><div class="para en" lang="en"><span class="label">EN</span>We evaluate the multiquery-attention layout proposed in Section 3.3. We compare PaLM with multiquery attention using either the baseline head-partitioned layout or the optimized batch-partitioned layout, and create a modified PaLM 540B variant that uses multihead attention. To keep parameter count in the attention layer constant, d_head is reduced from 256 in the multiquery variant to 128 in the multihead variant.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们评估第 3.3 节提出的多查询注意力布局。比较对象包括：采用基线按头划分布局的多查询 PaLM、采用优化后按批量划分布局的多查询 PaLM，以及一个改用多头注意力的 PaLM 540B 变体。为了保持注意力层参数量不变，多查询版本的 d_head 为 256，而多头版本将其缩小为 128。</div></div>
+<div class="pair" id="p-61"><div class="para en" lang="en"><span class="label">EN</span>At large batch sizes and context lengths, the KV cache can become large enough to exhaust memory. Table 1 shows that the optimized multiquery layout supports context lengths 32–64 times longer than the multihead and baseline multiquery variants.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>当批量和上下文长度较大时，KV 缓存可能大到耗尽内存。表 1 表明，优化后的多查询布局可支持比多头注意力和基线多查询布局长 32—64 倍的上下文。</div></div>
+<div class="table-card"><div class="table-wrap"><table><thead><tr><th>Model variant / 模型变体</th><th>d_head</th><th>Max context, batch=128 / 最大上下文</th><th>Max context, batch=512 / 最大上下文</th></tr></thead><tbody><tr><td>Multihead / 多头</td><td>128</td><td>1,320</td><td>330</td></tr><tr><td>Baseline multiquery / 基线多查询</td><td>256</td><td>660</td><td>165</td></tr><tr><td>Optimized multiquery / 优化多查询</td><td>256</td><td>43,000</td><td>10,700</td></tr></tbody></table></div><p class="table-caption en" lang="en">Table 1: Maximum context length for PaLM 540B attention variants on 64 chips, reserving 30% of total memory for the KV cache. Optimized multiquery attention enables up to 32× longer contexts.</p><p class="table-caption zh" lang="zh-CN">表 1：PaLM 540B 不同注意力变体在 64 个芯片上的最大上下文长度，假定总内存的 30% 用于 KV 缓存。优化后的多查询注意力可支持最长约 32 倍的上下文。</p></div>
+<div class="pair" id="p-62"><div class="para en" lang="en"><span class="label">EN</span>During prefill, multiquery and multihead attention have similar latency because many attention queries execute in parallel and attention becomes compute-limited by its matrix multiplications. During generation, Figure 8 shows that the optimized multiquery layout is faster. The gain is small for short contexts because almost all time is spent in the feedforward layer; as context grows, loading the KV cache becomes a much larger fraction of total inference time.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>预填充期间，多查询和多头注意力的延迟相近，因为许多注意力查询可以并行计算，注意力会受矩阵乘计算能力限制。生成期间，图 8 表明优化后的多查询布局速度更快。当上下文较短时，提升很小，因为绝大部分时间都花在前馈层；随着上下文变长，加载 KV 缓存会占据越来越大的总推理时间比例。</div></div>
+<div class="pair" id="p-63"><div class="para en" lang="en"><span class="label">EN</span>Multiquery attention scales to sequence lengths of 8192–32,768 tokens—at batch sizes 512 and 128 respectively—while attention consumes only 8–31% of total runtime.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>多查询注意力可扩展到 8192—32768 token 的序列长度——分别对应批量 512 和 128——且注意力只占总运行时间的 8%—31%。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig8.png" alt="图 8：8 层 PaLM 540B 变体在 64 个芯片、批量 256 下，每个生成 token 的延迟随上下文长度变化。完整模型采用多头或基线多查询划分时，长上下文 KV 缓存无法装入内存。" loading="lazy"><figcaption><div class="en" lang="en">Figure 8: Per-generated-token latency versus context length for an eight-layer PaLM 540B variant on 64 chips at batch 256. The full model cannot fit long-context KV caches under multihead or baseline multiquery partitioning.</div><div class="zh" lang="zh-CN">图 8：8 层 PaLM 540B 变体在 64 个芯片、批量 256 下，每个生成 token 的延迟随上下文长度变化。完整模型采用多头或基线多查询划分时，长上下文 KV 缓存无法装入内存。</div></figcaption></figure>
+<section class="section-heading" id="palm-parallel-layers"><h3><span class="en-title" lang="en">4.3 Parallel attention/feedforward layers</span><span class="zh-title" lang="zh-CN">4.3 并行注意力／前馈层</span></h3></section>
+<div class="pair" id="p-64"><div class="para en" lang="en"><span class="label">EN</span>We replace PaLM 540B&#x27;s parallel Transformer block with serial attention/feedforward layers. During generation, using a 2D weight-stationary layout, 64 chips and batch size 512, the serial formulation has 14% higher per-step inference latency than the parallel version because it communicates more activations. During prefill the difference shrinks, since weight-gathered layouts communicate fewer activations.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们把 PaLM 540B 的并行 Transformer 模块替换为串行注意力／前馈层。生成阶段采用二维权重驻留布局、64 个芯片和批量 512 时，串行形式的每步推理延迟比并行版本高 14%，原因是激活通信更多。预填充阶段差距缩小，因为权重聚合布局的激活通信较少。</div></div>
+<section class="section-heading" id="palm-end-to-end"><h3><span class="en-title" lang="en">4.4 End-to-end results on PaLM</span><span class="zh-title" lang="zh-CN">4.4 PaLM 端到端结果</span></h3></section>
+<div class="pair" id="p-65"><div class="para en" lang="en"><span class="label">EN</span>We find the Pareto frontier between efficiency and latency while scaling across PaLM 8B, 62B and 540B, using either bfloat16 or int8 weights. Context length is 2048, and we sweep batch size and chip count.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们在 PaLM 8B、62B 和 540B 三种模型规模上寻找效率与延迟之间的帕累托前沿，权重格式采用 bfloat16 或 int8。上下文长度固定为 2048，并扫描不同的批量大小和芯片数量。</div></div>
+<div class="pair" id="p-66"><div class="para en" lang="en"><span class="label">EN</span>To compare throughput meaningfully across model sizes, chip counts and batch sizes, we report inference cost in chip-seconds per token:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>为了在不同模型规模、芯片数和批量之间有意义地比较吞吐量，本文用每 token 的芯片秒表示推理成本：</div></div>
+<div class="equation-card"><div class="equation">cost (chip-seconds per token) = n_chips × time / (B L)</div><div class="eq-note en" lang="en">This is directly proportional to operational cost and inversely proportional to MFU.</div><div class="eq-note zh" lang="zh-CN">该值与运营成本成正比，与 MFU 成反比。</div></div>
+<div class="pair" id="p-67"><div class="para en" lang="en"><span class="label">EN</span>Figure 1 (left) shows the relation between model size, latency and cost in generation at the Pareto frontier of batch size, chip count and partitioning strategy. The lowest cost occurs at batch sizes above roughly 512, where cost is proportional to parameter count. Decreasing batch size improves latency but increases cost per token. The minimum generation latency is three times lower than batch-512 latency.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 1 左侧展示了生成阶段在批量、芯片数和划分策略的最优帕累托前沿上，模型规模、延迟和成本之间的关系。最低成本大约出现在批量大于 512 时，此时成本与参数量成正比。减小批量能够改善延迟，却会提高每 token 成本。最低生成延迟约为批量 512 时延迟的三分之一。</div></div>
+<div class="pair" id="p-68"><div class="para en" lang="en"><span class="label">EN</span>Int8 weight quantization gives the minimum latency in Figure 1 (left): PaLM 540B reaches 28.5 ms/token with int8 weights at batch 64, versus 36.9 ms/token with bfloat16. At low-latency targets, cost improves by slightly more than 2× because small-batch cost is dominated by weight loading. At large batches, cost is similar between int8 and bfloat16 because compute dominates and matrix multiplications still use bfloat16 arithmetic. Quantizing activations to int8 may enable a further reduction.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 1 左侧中，int8 权重量化获得了最低延迟：PaLM 540B 在批量 64、int8 权重下达到 28.5 ms/token，而 bfloat16 权重为 36.9 ms/token。在低延迟目标下，成本改善略多于 2 倍，因为小批量成本主要由权重加载决定。在大批量下，int8 与 bfloat16 的成本较为接近，因为此时计算占主导，而矩阵乘仍使用 bfloat16 算术。若把激活也量化到 int8，可能进一步降低成本。</div></div>
+<div class="pair" id="p-69"><div class="para en" lang="en"><span class="label">EN</span>Figure 1 (right) shows the corresponding relation for prefill. The batch-size versus latency tradeoff is less severe than in generation, and even batch size 1 has fairly low cost. Batch-512 prefill costs half as much as batch-512 generation because weight-gathered layouts raise MFU during prefill. Figure C.1 and Appendix C give more detail on model size and MFU.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 1 右侧给出了预填充阶段的对应关系。与生成相比，批量与延迟之间的权衡没有那么尖锐，即使批量为 1，成本也相当低。批量 512 的预填充成本只有批量 512 生成成本的一半，因为预填充采用的权重聚合布局提高了 MFU。图 C.1 和附录 C 进一步讨论模型规模与 MFU 的关系。</div></div>
+<div class="table-card"><div class="table-wrap"><table><thead><tr><th>Scenario / 场景</th><th>Phase / 阶段</th><th>Chips / 芯片</th><th>Batch / 批量</th><th>FFN layout / 前馈布局</th><th>Attention sharding / 注意力分片</th><th>Weights / 权重</th><th>MFU</th><th>Latency / 延迟</th></tr></thead><tbody><tr><td>Low latency / 低延迟</td><td>Prefill / 预填充</td><td>64</td><td>1</td><td>2D WS</td><td>Head / 按头</td><td>int8</td><td>43%</td><td>0.29 s</td></tr><tr><td>Low latency / 低延迟</td><td>Decode / 解码（64 tokens）</td><td>64</td><td>64</td><td>2D WS</td><td>Batch / 按批量</td><td>int8</td><td>14%</td><td>1.82 s</td></tr><tr><td>High throughput / 高吞吐</td><td>Prefill / 预填充</td><td>64</td><td>512</td><td>XYZ WG</td><td>Batch / 按批量</td><td>bfloat16</td><td>76%</td><td>85.2 s</td></tr><tr><td>High throughput / 高吞吐</td><td>Decode / 解码（64 tokens）</td><td>64</td><td>512</td><td>2D WS</td><td>Batch / 按批量</td><td>bfloat16</td><td>33%</td><td>6.0 s</td></tr></tbody></table></div><p class="table-caption en" lang="en">Table 2: Representative PaLM 540B configurations. Prefill latency covers 2048 input tokens; decode latency covers generation of 64 tokens. WS means weight-stationary and WG means weight-gathered.</p><p class="table-caption zh" lang="zh-CN">表 2：PaLM 540B 的代表性配置。预填充延迟对应处理 2048 个输入 token；解码延迟对应生成 64 个 token。WS 表示权重驻留，WG 表示权重聚合。</p></div>
+<div class="table-card"><div class="table-wrap"><table><thead><tr><th>Scenario / 场景</th><th>Phase / 阶段</th><th>Chips / 芯片</th><th>Batch / 批量</th><th>FFN layout / 前馈布局</th><th>Attention sharding / 注意力分片</th><th>Weights / 权重</th><th>MFU</th><th>Latency / 延迟</th></tr></thead><tbody><tr><td>Low latency / 低延迟</td><td>Prefill / 预填充</td><td>16</td><td>1</td><td>2D WS</td><td>Head / 按头</td><td>int8</td><td>36%</td><td>0.16 s</td></tr><tr><td>Low latency / 低延迟</td><td>Decode / 解码（64 tokens）</td><td>16</td><td>32</td><td>2D WS</td><td>Batch / 按批量</td><td>int8</td><td>8%</td><td>0.73 s</td></tr><tr><td>High throughput / 高吞吐</td><td>Prefill / 预填充</td><td>32</td><td>512</td><td>XYZ WG</td><td>Batch / 按批量</td><td>bfloat16</td><td>73%</td><td>20.2 s</td></tr><tr><td>High throughput / 高吞吐</td><td>Decode / 解码（64 tokens）</td><td>8</td><td>512</td><td>2D WS</td><td>Batch / 按批量</td><td>bfloat16</td><td>37%</td><td>5.1 s</td></tr></tbody></table></div><p class="table-caption en" lang="en">Table 3: Representative PaLM 62B configurations under the same setup as Figure 1.</p><p class="table-caption zh" lang="zh-CN">表 3：与图 1 相同设置下，PaLM 62B 的代表性配置。</p></div>
+<div class="pair" id="p-70"><div class="para en" lang="en"><span class="label">EN</span>Tables 2 and 3 select key points from the PaLM 540B and 62B Pareto frontiers. Low-latency service combines batch-1 prefill with batch-32-to-64 decode. Batch 1 gives the best prefill latency, but decode batch can rise to 64 with negligible latency impact and dramatically better generation MFU. In practice, this can be achieved by generating multiple samples from one input or by pipelining a batch-1 prefill server into a batch-64 decode server.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>表 2 和表 3 选取了 PaLM 540B 与 62B 帕累托前沿上的关键点。低延迟服务把批量 1 的预填充与批量 32—64 的解码结合起来。批量 1 能获得最佳预填充延迟；而解码批量可提高到 64，几乎不影响延迟，却能显著改善生成阶段的 MFU。实践中，可以对同一输入生成多个样本，也可以把批量 1 的预填充服务器流水连接到批量 64 的解码服务器。</div></div>
+<div class="pair" id="p-71"><div class="para en" lang="en"><span class="label">EN</span>High-throughput configurations use larger batches and switch layouts between prefill and decode. They use bfloat16 weights because weight-loading time is unimportant at large batch sizes and the software lacks some large-batch int8 optimizations.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>高吞吐配置使用更大的批量，并在预填充和解码之间切换划分布局。这里采用 bfloat16 权重，因为大批量下权重加载时间并不重要，而且软件尚缺少部分面向大批量 int8 模式的优化。</div></div>
+<div class="pair" id="p-72"><div class="para en" lang="en"><span class="label">EN</span>Comparing PaLM 62B with 540B, the larger model uses more chips but similar batch sizes and the same layouts. High-throughput MFU is similar across model sizes. At the Pareto frontier, small-batch latency grows sublinearly with model size: although larger models load proportionally more weights, they can be partitioned over more chips before communication becomes limiting. Figure 1 suggests an approximately square-root relation between model size and latency.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>比较 PaLM 62B 与 540B 可以看到，大模型使用更多芯片，但批量规模相近，划分布局也相同。不同模型规模的高吞吐 MFU 近似。在帕累托前沿上，小批量延迟随模型规模呈次线性增长：虽然大模型需要按比例加载更多权重，但在通信成为瓶颈之前，也能够划分到更多芯片上。根据图 1，模型规模与延迟大致呈平方根关系。</div></div>
+<section class="section-heading" id="fastertransformer"><h2><span class="en-title" lang="en">5 FasterTransformer Benchmarks</span><span class="zh-title" lang="zh-CN">5 FasterTransformer 基准比较</span></h2></section>
+<div class="pair" id="p-73"><div class="para en" lang="en"><span class="label">EN</span>We compare against FasterTransformer benchmarks across a wide range of batch sizes and prefill/generation configurations. The benchmark setups differ in hardware and chip count: FasterTransformer uses 16–32 NVIDIA A100 GPUs with 80 GiB HBM, whereas we use 64 Google TPU v4 chips with 32 GiB HBM. We therefore report throughput as MFU, which normalizes both chip count and chip FLOPS.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>我们在广泛的批量大小以及预填充／生成配置上，与 FasterTransformer 基准进行比较。两者的硬件和芯片数量不同：FasterTransformer 使用 16—32 个配备 80 GiB HBM 的 NVIDIA A100 GPU；我们使用 64 个配备 32 GiB HBM 的 Google TPU v4 芯片。因此，本文使用 MFU 报告吞吐量，以同时对芯片数量和每芯片 FLOPS 做归一化。</div></div>
+<div class="pair" id="p-74"><div class="para en" lang="en"><span class="label">EN</span>Figure 9 compares our implementation with three FasterTransformer configurations. We benchmark the Megatron 530B model (Smith et al., 2022) and the similarly sized PaLM 540B, whose architecture includes multiquery attention and parallel attention/feedforward layers. Our PaLM 540B implementation has the best absolute latency. For the Megatron model, our implementation also has the best MFU at all but one latency target. PaLM exceeds our Megatron implementation by up to 10 percentage points of MFU, primarily because of parallel attention/feedforward layers. The advantage is partly offset by Megatron&#x27;s larger d_model and d_ff. Multiquery attention provides no visible advantage in this benchmark because its attention context is too short.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 9 将我们的实现与三种 FasterTransformer 配置进行比较。测试模型包括 Megatron 530B（Smith et al., 2022）和规模相近的 PaLM 540B；后者在架构上包含多查询注意力和并行注意力／前馈层。我们的 PaLM 540B 实现获得了最低的绝对延迟。对于 Megatron 模型，除一个延迟目标外，我们的实现也都取得了最高 MFU。PaLM 实现比我们的 Megatron 实现最多高约 10 个百分点 MFU，主要原因是并行注意力／前馈层；这一优势部分被 Megatron 更大的 d_model 和 d_ff 抵消。由于该基准中的注意力上下文太短，多查询注意力的优势并不明显。</div></div>
+<div class="pair" id="p-75"><div class="para en" lang="en"><span class="label">EN</span>FasterTransformer reports 8-, 16- and 32-way tensor parallelism. Its 32-way configuration reaches at most 33% MFU, versus 46% for 16-way tensor parallelism, likely indicating a communication bottleneck beyond that point. Our implementation scales to 64-way tensor parallelism while retaining 44% MFU, suggesting better scalability from 2D weight-stationary partitioning over TPU v4&#x27;s larger high-speed interconnect domains.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>FasterTransformer 报告了 8 路、16 路和 32 路张量并行结果。其 32 路配置在所有报告的基准中最多达到 33% MFU，而 16 路配置达到 46%，这很可能意味着继续扩大张量并行后出现了通信瓶颈。我们的实现可扩展到 64 路张量并行，同时仍保持 44% MFU，说明二维权重驻留划分在 TPU v4 更大的高速互连域上具有更好的可扩展性。</div></div>
+<div class="pair" id="p-76"><div class="para en" lang="en"><span class="label">EN</span>Appendix D reports every FasterTransformer baseline configuration. The benchmarks throughout this paper also include more demanding settings, such as context lengths of 1024–4096, and report prefill and generation latency separately because the two phases have different characteristics.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>附录 D 报告了 FasterTransformer 基线使用的全部配置。本文其他基准还覆盖了更具挑战性的场景，例如 1024—4096 的上下文长度；同时分别报告预填充和生成延迟，因为两个阶段的性能特征不同。</div></div>
+<figure class="figure-card"><img src="assets/efficient-fig9.png" alt="图 9：在 60 个输入 token、20 个输出 token 的推理任务上，比较不同批量下的 MFU 与总延迟；曲线包括我们的 PaLM、Megatron 实现和 FasterTransformer。" loading="lazy"><figcaption><div class="en" lang="en">Figure 9: MFU versus total latency for a 60-input-token, 20-output-token inference across batch sizes, comparing our PaLM and Megatron implementations with FasterTransformer.</div><div class="zh" lang="zh-CN">图 9：在 60 个输入 token、20 个输出 token 的推理任务上，比较不同批量下的 MFU 与总延迟；曲线包括我们的 PaLM、Megatron 实现和 FasterTransformer。</div></figcaption></figure>
+<section class="section-heading" id="related-work"><h2><span class="en-title" lang="en">6 Related Work</span><span class="zh-title" lang="zh-CN">6 相关工作</span></h2></section>
+<div class="pair" id="p-77"><div class="para en" lang="en"><span class="label">EN</span>Parallelism approaches. Prior work proposes several ways to partition large models efficiently for training, including NeMo Megatron (Korthikanti et al., 2022), GSPMD (Xu et al., 2021), and Alpa (Zheng et al., 2022). FasterTransformer provides a multi-GPU, multi-node inference benchmark suite spanning model sizes up to Megatron–Turing NLG 530B; its main speedups combine tensor and pipeline parallelism with memory optimizations. DeepSpeed Inference (Aminabadi et al., 2022) additionally uses ZeRO offload to exploit CPU and NVMe memory. For large batches, EffectiveTransformer packs consecutive sequences to minimize padding. Zheng et al. (2022) generalizes search over parallelism strategies using integer-linear programming. In contrast, this paper derives strategies from intuitive, empirically grounded analytical tradeoffs that scale with model size, context length and chip count, while meeting application requirements.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>并行方法。已有工作提出了多种高效划分大模型进行训练的方法，包括 NeMo Megatron（Korthikanti et al., 2022）、GSPMD（Xu et al., 2021）和 Alpa（Zheng et al., 2022）。FasterTransformer 提供了一个多 GPU、多节点推理基准套件，覆盖到 Megatron–Turing NLG 530B 规模；其主要加速来自张量并行、流水并行和内存优化的结合。DeepSpeed Inference（Aminabadi et al., 2022）进一步通过 ZeRO offload 使用 CPU 与 NVMe 内存。对于大批量，EffectiveTransformer 把连续序列打包以减少填充。Zheng et al.（2022）用整数线性规划推广了并行策略搜索。与之不同，本文依据直观、由实证支持的分析权衡推导划分策略，使其能够随模型规模、上下文长度和芯片数扩展，同时满足应用需求。</div></div>
+<div class="pair" id="p-78"><div class="para en" lang="en"><span class="label">EN</span>ML inference efficiency. Many methods improve Transformer inference through model-architecture changes, including efficient attention (Roy et al., 2020; Choromanski et al., 2020; Kitaev et al., 2020; Sukhbaatar et al., 2019; Child et al., 2019), distillation (Sanh et al., 2019; Sun et al., 2020), pruning (Li et al., 2020b; Brix et al., 2020; Zhou et al., 2021; Li et al., 2020a; Wang et al., 2020), and quantization (Dettmers et al., 2022; Abdolrashidi et al., 2021; Zafrir et al., 2019; Zhang et al., 2018). This paper reuses prior quantization work to add inference speedups, and its partitioning techniques can also be combined with other compression methods.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>机器学习推理效率。许多方法通过改变模型架构来提升 Transformer 推理效率，包括高效注意力（Roy et al., 2020；Choromanski et al., 2020；Kitaev et al., 2020；Sukhbaatar et al., 2019；Child et al., 2019）、蒸馏（Sanh et al., 2019；Sun et al., 2020）、剪枝（Li et al., 2020b；Brix et al., 2020；Zhou et al., 2021；Li et al., 2020a；Wang et al., 2020）和量化（Dettmers et al., 2022；Abdolrashidi et al., 2021；Zafrir et al., 2019；Zhang et al., 2018）。本文复用了已有量化工作以进一步加速推理，所述划分技术也可与其他模型压缩方法结合。</div></div>
+<section class="section-heading" id="conclusions"><h2><span class="en-title" lang="en">7 Conclusions</span><span class="zh-title" lang="zh-CN">7 结论</span></h2></section>
+<div class="pair" id="p-79"><div class="para en" lang="en"><span class="label">EN</span>Large Transformer models unlock new capabilities and applications, but significant advances are needed to democratize access as model size grows. This paper studies the scaling properties of Transformer inference and proposes practical partitioning approaches for demanding requirements such as second-scale latency for 500B+ parameter models. The best latency goes far beyond the traditional single-server inference paradigm, scaling inference to 64 or more chips. Longer contexts increase memory cost, but multiquery attention with appropriate partitioning reduces that cost and makes long-context inference practical. The proposed strategies generalize to many topologies, including single- and multi-node NVLink networks in GPU systems.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>大型 Transformer 模型正在解锁新的能力和应用，但随着模型规模增长，若要让更多人能够使用它们，仍需在系统效率上取得重大进展。本文研究 Transformer 推理工作负载的缩放性质，并提出实用的划分方法，以满足诸如 5000 亿参数以上模型在秒级完成推理等严苛要求。最佳延迟需要远超传统单服务器推理范式，把推理扩展到 64 个甚至更多芯片。更长上下文会增加内存成本，但采用恰当划分的多查询注意力可降低这一成本，使长上下文推理变得可行。所提策略还能推广到多种拓扑，包括 GPU 系统中的单节点和多节点 NVLink 网络。</div></div>
+<div class="pair" id="p-80"><div class="para en" lang="en"><span class="label">EN</span>Although we push the scale of inference workloads, FLOP count and communication volume fundamentally limit dense Transformer performance. Sparsity methods such as task-based mixture-of-experts architectures (Fedus et al., 2022; Kudugunta et al., 2021; Lepikhin et al., 2020; Shazeer et al., 2017), and adaptive-computation methods that allocate different amounts of compute per input or generation step (Jaszczur et al., 2021; Schuster et al., 2022), promise to reduce FLOPs per token. Techniques that lower FLOPs per token or compress chip-to-chip communication may yield further gains in both cost and latency.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>尽管本文把推理工作负载推向了更大规模，FLOP 数量和通信量仍从根本上限制稠密 Transformer 的性能。稀疏技术——例如基于任务的混合专家架构（Fedus et al., 2022；Kudugunta et al., 2021；Lepikhin et al., 2020；Shazeer et al., 2017）——以及针对不同输入或生成时间步分配不同计算量的自适应计算技术（Jaszczur et al., 2021；Schuster et al., 2022），有望降低每 token FLOP。能够减少每 token FLOP 或压缩芯片间通信的技术，可能进一步同时改善成本和延迟。</div></div>
+<section class="section-heading" id="acknowledgments"><h2><span class="en-title" lang="en">8 Acknowledgments</span><span class="zh-title" lang="zh-CN">8 致谢</span></h2></section>
+<div class="pair" id="p-81"><div class="para en" lang="en"><span class="label">EN</span>Our work builds on the efforts of many teams at Google, especially the PaLM, T5X, Pathways infrastructure, JAX, Flaxformer, XLA and AQT teams. We thank Blake Hechtman, Marcello Maggioni, Zongwei Zhou and Shibo Wang for XLA support and performance optimizations; Jacob Austin, Yuanzhong Xu, Lukasz Lew, Sharan Narang, Adam Roberts, Noah Fiedel and Mike Gunter for valuable input and discussion; Hyeontaek Lim, James Laudon, George Necula, Martin Abadi and Chandu Thekkath for review and feedback; and Erica Moreira for compute-resource support.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本工作建立在 Google 许多团队的成果之上，尤其包括 PaLM、T5X、Pathways 基础设施、JAX、Flaxformer、XLA 和 AQT 团队。作者感谢 Blake Hechtman、Marcello Maggioni、Zongwei Zhou 和 Shibo Wang 提供 XLA 支持与性能优化；感谢 Jacob Austin、Yuanzhong Xu、Lukasz Lew、Sharan Narang、Adam Roberts、Noah Fiedel 和 Mike Gunter 提供宝贵意见与讨论；感谢 Hyeontaek Lim、James Laudon、George Necula、Martin Abadi 和 Chandu Thekkath 的审阅与反馈；也感谢 Erica Moreira 对计算资源的支持。</div></div>
+<section class="section-heading" id="appendix-a"><h2><span class="en-title" lang="en">Appendix A — Partitioning Strategies: Deriving Communication Costs</span><span class="zh-title" lang="zh-CN">附录 A——划分策略：通信成本推导</span></h2></section>
+<section class="section-heading" id="appendix-a1"><h3><span class="en-title" lang="en">A.1 Cost of all-gather/reduce-scatter</span><span class="zh-title" lang="zh-CN">A.1 all-gather／reduce-scatter 的成本</span></h3></section>
+<div class="pair" id="p-82"><div class="para en" lang="en"><span class="label">EN</span>Figure A.1 shows typical collective operations and their communication patterns across three devices. For an all-gather over K partitions, where each chip produces an output of size D, chunks of size D/K must cross K−1 interconnect links while being copied to K−1 chips. The resulting all-gather communication time is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 A.1 展示了三台设备上的典型集合通信及其通信模式。对于跨 K 个分区的 all-gather，若每个芯片最终产生大小为 D 的输出，则大小为 D/K 的数据块在被复制到其余 K−1 个芯片时，需要经过 K−1 条互连链路。因此 all-gather 的通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm(all-gather) = [D / network bandwidth] × [(K − 1) / K]</div></div>
+<div class="pair" id="p-83"><div class="para en" lang="en"><span class="label">EN</span>This general cost model holds for most real-world network topologies (Chan et al., 2007), not only TPU torus networks.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>这一通用成本模型适用于大多数现实网络拓扑（Chan et al., 2007），而不仅限于 TPU 的环面拓扑。</div></div>
+<div class="pair" id="p-84"><div class="para en" lang="en"><span class="label">EN</span>Reduce-scatter has the same communication time, except that D denotes the larger input buffer rather than the smaller output buffer. Therefore an all-reduce has T_comm(all-reduce) = 2 × T_comm(all-gather).</div><div class="para zh" lang="zh-CN"><span class="label">中</span>reduce-scatter 的通信时间相同，只是其中 D 表示较大的输入缓冲区，而非较小的输出缓冲区。因此，all-reduce 的通信时间为 T_comm(all-reduce) = 2 × T_comm(all-gather)。</div></div>
+<div class="pair" id="p-85"><div class="para en" lang="en"><span class="label">EN</span>In most formulas we ignore the (K−1)/K term and approximate it as 1 under K ≫ 1. This yields a simple approximation: reduce-scatter time is proportional to the per-chip input size, and all-gather time is proportional to the per-chip output size.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>在多数公式中，为简化代数，我们在 K ≫ 1 的假设下忽略 (K−1)/K，并将其近似为 1。由此得到一个简单近似：reduce-scatter 时间与每芯片输入大小成正比，而 all-gather 时间与每芯片输出大小成正比。</div></div>
+<figure class="figure-card"><img src="assets/efficient-figA1.png" alt="图 A.1：三台设备之间 all-gather、reduce-scatter 与 all-to-all 的通信模式。" loading="lazy"><figcaption><div class="en" lang="en">Figure A.1: Communication patterns of all-gather, reduce-scatter and all-to-all across three devices.</div><div class="zh" lang="zh-CN">图 A.1：三台设备之间 all-gather、reduce-scatter 与 all-to-all 的通信模式。</div></figcaption></figure>
+<section class="section-heading" id="appendix-a2"><h3><span class="en-title" lang="en">A.2 Details for communication-time calculations</span><span class="zh-title" lang="zh-CN">A.2 通信时间计算细节</span></h3></section>
+<section class="section-heading" id="appendix-a21"><h4><span class="en-title" lang="en">A.2.1 Feedforward layer, 2D weight-stationary layout</span><span class="zh-title" lang="zh-CN">A.2.1 前馈层：二维权重驻留布局</span></h4></section>
+<div class="pair" id="p-86"><div class="para en" lang="en"><span class="label">EN</span>Figure 2(b) uses weight layout E_xF_yz: d_model is partitioned X ways and d_ff is partitioned Y × Z ways, with X × Y × Z = n_chips. The torus-axis sizes can be chosen to minimize total communication. Communication time is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 2(b) 采用权重布局 E_xF_yz：d_model 被划分为 X 份，d_ff 被划分为 Y × Z 份，且 X × Y × Z = n_chips。可以选择环面各轴的大小，使总通信时间最小。其通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm = [2 B L / network bandwidth] × [E/X + F/(Y Z)]</div></div>
+<div class="pair" id="p-87"><div class="para en" lang="en"><span class="label">EN</span>Subject to available TPU v4 slice shapes and X × Y × Z = n_chips, and assuming d_ff = 4 d_model, communication is minimized at X = 0.5√n_chips and YZ = 2√n_chips. Hence:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>在可用 TPU v4 切片形状以及 X × Y × Z = n_chips 的约束下，若假设 d_ff = 4d_model，则 X = 0.5√n_chips、YZ = 2√n_chips 时通信最小。因此：</div></div>
+<div class="equation-card"><div class="equation">T_comm = 8 B L E / (√n_chips × network bandwidth)</div></div>
+<section class="section-heading" id="appendix-a22"><h4><span class="en-title" lang="en">A.2.2 Feedforward layer, weight-gathered layout</span><span class="zh-title" lang="zh-CN">A.2.2 前馈层：权重聚合布局</span></h4></section>
+<div class="pair" id="p-88"><div class="para en" lang="en"><span class="label">EN</span>Figure A.2 shows the weight-gathered variants; Figure 2(c) is one XY-weight-gathered instance. Weights start in the same E_xF_yz layout as 2D weight-stationary so the runtime can switch immediately between the two. Just before the einsums, weights are all-gathered over X and Y with communication volume EF/Z.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 A.2 展示了多种权重聚合布局，图 2(c) 是其中一种 XY 权重聚合实例。权重从与二维权重驻留相同的 E_xF_yz 布局开始，因此运行时能够在两种布局之间立即切换。在 einsum 之前，权重沿 X、Y 两轴执行 all-gather，通信量为 EF/Z。</div></div>
+<div class="pair" id="p-89"><div class="para en" lang="en"><span class="label">EN</span>Varying X, Y and Z trades weight communication against activation communication. Let N be the number of chips over which weights are all-gathered: N = X, XY, or XYZ for the three layouts. Weight communication is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>改变 X、Y、Z 可以在权重通信与激活通信之间权衡。令 N 为执行权重 all-gather 的芯片数量；三种布局分别有 N = X、XY 或 XYZ。权重通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm(weights) = 2 E F N / (n_chips × network bandwidth)</div></div>
+<div class="pair" id="p-90"><div class="para en" lang="en"><span class="label">EN</span>Activation communication is:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>激活通信时间为：</div></div>
+<div class="equation-card"><div class="equation">T_comm(activations) = 2 B L E / (N × network bandwidth)</div></div>
+<div class="pair" id="p-91"><div class="para en" lang="en"><span class="label">EN</span>Total communication is minimized at N = √(BL n_chips/F), yielding:</div><div class="para zh" lang="zh-CN"><span class="label">中</span>当 N = √(BL n_chips/F) 时，总通信量最小，得到：</div></div>
+<div class="equation-card"><div class="equation">T_comm = 4 E √(B L F) / (√n_chips × network bandwidth)</div></div>
+<div class="pair" id="p-92"><div class="para en" lang="en"><span class="label">EN</span>Figure 3 shows the transition between optimal layouts as batch size grows: 2D weight-stationary is best at low tokens per batch, while progressively more aggressive weight-gathered layouts become best at larger batches.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 3 展示了随着批量增大，最优布局如何切换：每批 token 较少时，二维权重驻留最佳；批量越大，跨越更多芯片的权重聚合布局会依次成为最优。</div></div>
+<section class="section-heading" id="appendix-b"><h2><span class="en-title" lang="en">Appendix B — Minimum Prefill Latency</span><span class="zh-title" lang="zh-CN">附录 B——最低预填充延迟</span></h2></section>
+<div class="pair" id="p-93"><div class="para en" lang="en"><span class="label">EN</span>We report the minimum latency required for prefill. Figure B.1 shows the cost–latency Pareto frontier as sequence length varies from 32 to 1024 at batch size 1.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本附录报告预填充所需的最低延迟。图 B.1 展示了批量为 1、序列长度从 32 变化到 1024 时的成本—延迟帕累托前沿。</div></div>
+<figure class="figure-card"><img src="assets/efficient-figB1.png" alt="图 B.1：批量为 1 时，PaLM 模型在不同序列长度 S 下的预填充成本与延迟；C 表示芯片数。" loading="lazy"><figcaption><div class="en" lang="en">Figure B.1: Prefill cost versus latency for PaLM models over sequence lengths S at batch size 1. C denotes chip count.</div><div class="zh" lang="zh-CN">图 B.1：批量为 1 时，PaLM 模型在不同序列长度 S 下的预填充成本与延迟；C 表示芯片数。</div></figcaption></figure>
+<section class="section-heading" id="appendix-c"><h2><span class="en-title" lang="en">Appendix C — MFU versus Latency Tradeoff</span><span class="zh-title" lang="zh-CN">附录 C——MFU 与延迟的权衡</span></h2></section>
+<div class="pair" id="p-94"><div class="para en" lang="en"><span class="label">EN</span>Figure C.1 reports the Pareto frontier of MFU versus latency while sweeping batch size and chip count as in Figure 1. Decode MFU is usually much lower than prefill MFU. During prefill, the jumps in MFU mark the transition from the 2D weight-stationary layout to the XYZ weight-gathered layout.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>图 C.1 与图 1 相同，扫描批量和芯片数，并报告 MFU—延迟的帕累托前沿。解码阶段的 MFU 通常远低于预填充阶段。预填充曲线中 MFU 的“跳跃”，对应从二维权重驻留布局切换到 XYZ 权重聚合布局的转折点。</div></div>
+<div class="pair" id="p-95"><div class="para en" lang="en"><span class="label">EN</span>Larger models usually reach higher MFU because larger matrix multiplications are more efficient. At long-latency decode, however, PaLM 62B exceeds PaLM 540B because the former uses 8-way model parallelism while the latter uses 64-way model parallelism. PaLM 540B might be improved in the high-throughput, latency-tolerant regime by reducing model parallelism.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>较大的模型通常能达到更高 MFU，因为更大的矩阵乘效率更高。不过，在允许较长延迟的解码中，PaLM 62B 的 MFU 高于 PaLM 540B：前者采用 8 路模型并行，后者采用 64 路模型并行。在高吞吐、可容忍延迟的场景中，减少模型并行度可能进一步改善 PaLM 540B。</div></div>
+<figure class="figure-card"><img src="assets/efficient-figC1.png" alt="图 C.1：上下文长度为 2048 时，PaLM 模型在解码和预填充阶段各自的 MFU—延迟帕累托前沿。" loading="lazy"><figcaption><div class="en" lang="en">Figure C.1: MFU versus latency Pareto frontiers for PaLM models at context length 2048, shown separately for decode and prefill.</div><div class="zh" lang="zh-CN">图 C.1：上下文长度为 2048 时，PaLM 模型在解码和预填充阶段各自的 MFU—延迟帕累托前沿。</div></figcaption></figure>
+<section class="section-heading" id="appendix-d"><h2><span class="en-title" lang="en">Appendix D — Full Comparison to FasterTransformer</span><span class="zh-title" lang="zh-CN">附录 D——与 FasterTransformer 的完整比较</span></h2></section>
+<div class="pair" id="p-96"><div class="para en" lang="en"><span class="label">EN</span>This appendix compares latency and MFU for our PaLM 540B and Megatron–Turing NLG 530B implementations on 64 TPU v4 chips with FasterTransformer baselines. Table D.1 first lists architectural differences.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>本附录将我们在 64 个 TPU v4 芯片上实现的 PaLM 540B 和 Megatron–Turing NLG 530B，与 FasterTransformer 基线在延迟和 MFU 上进行比较。表 D.1 首先列出模型架构差异。</div></div>
+<div class="table-card"><div class="table-wrap"><table><thead><tr><th>Hyperparameter / 超参数</th><th>PaLM 540B</th><th>Megatron 530B</th></tr></thead><tbody><tr><td>n_params</td><td>540B</td><td>530B</td></tr><tr><td>n_layers</td><td>118</td><td>105</td></tr><tr><td>d_model</td><td>18,432</td><td>20,480</td></tr><tr><td>d_ff</td><td>73,728</td><td>81,920</td></tr><tr><td>n_heads</td><td>48</td><td>128</td></tr><tr><td>d_head</td><td>256</td><td>160</td></tr><tr><td>Attention / 注意力</td><td>Multiquery / 多查询</td><td>Multihead / 多头</td></tr><tr><td>Parallel FFN/attention / 并行前馈与注意力</td><td>Yes / 是</td><td>No / 否</td></tr></tbody></table></div><p class="table-caption en" lang="en">Table D.1: Hyperparameters for PaLM and Megatron–Turing NLG inference.</p><p class="table-caption zh" lang="zh-CN">表 D.1：PaLM 与 Megatron–Turing NLG 推理的超参数。</p></div>
+<div class="pair" id="p-97"><div class="para en" lang="en"><span class="label">EN</span>The full comparisons cover three FasterTransformer workloads: 20 input and 8 output tokens (Table D.2), 60 input and 20 output tokens (Table D.3), and 128 input and 8 output tokens (Table D.4).</div><div class="para zh" lang="zh-CN"><span class="label">中</span>完整比较覆盖 FasterTransformer 的三组工作负载：20 个输入 token、8 个输出 token（表 D.2）；60 个输入 token、20 个输出 token（表 D.3）；以及 128 个输入 token、8 个输出 token（表 D.4）。</div></div>
+<div class="pair" id="p-98"><div class="para en" lang="en"><span class="label">EN</span>Each table marks the global latency–MFU Pareto frontier in bold for all 500B-class results and underlines the MT-NLG-specific frontier. A result (latency, MFU) lies on the frontier if for every other result (latency₂, MFU₂), either latency ≤ latency₂ or MFU ≥ MFU₂ (or both). Visually, frontier points lie “up and to the left” in Figure 9.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>每张表都用粗体标出所有 5000 亿参数级结果的全局延迟—MFU 帕累托前沿，并用下划线标出 MT-NLG 自身的前沿。若对于任意其他结果 (latency₂, MFU₂)，某个结果 (latency, MFU) 都满足 latency ≤ latency₂ 或 MFU ≥ MFU₂（或两者均满足），则它位于前沿上。直观地说，这些点位于图 9 的“左上方”。</div></div>
+<div class="pair" id="p-99"><div class="para en" lang="en"><span class="label">EN</span>Batch sizes below 4 are omitted because batch-sharded multiquery attention has no speedup below 4, the minimum dimension of a TPU v4 torus axis. The original PDF retains the complete numerical Tables D.2–D.4.</div><div class="para zh" lang="zh-CN"><span class="label">中</span>批量小于 4 的结果被省略，因为沿批量划分的多查询注意力在批量小于 4 时无法获得加速，而 4 是 TPU v4 环面轴的最小尺寸。完整数值表 D.2—D.4 保留在原始 PDF 中。</div></div>
+<div class="references"><details><summary>References / 参考文献（书目信息按原文保留）</summary><pre>T5x, 2021. URL https://github.com/googleresearch/t5x.
+AmirAli Abdolrashidi, Lisa Wang, Shivani Agrawal,
+Jonathan Malmaud, Oleg Rybakov, Chas Leichner, and
+Lukasz Lew. Pareto-optimal quantized resnet is mostly
+4-bit. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, pages 3091–
+3099, 2021.
+Reza Yazdani Aminabadi, Samyam Rajbhandari, Minjia
+Zhang, Ammar Ahmad Awan, Cheng Li, Du Li, Elton
+Zheng, Jeff Rasley, Shaden Smith, Olatunji Ruwase, and
+Yuxiong He. Deepspeed inference: Enabling efficient
+inference of transformer models at unprecedented scale.
+arXiv preprint arXiv:2207.00032, 2022.
+James Bradbury, Roy Frostig, Peter Hawkins,
+Matthew James Johnson, Chris Leary, Dougal Maclaurin,
+George Necula, Adam Paszke, Jake VanderPlas, Skye
+Wanderman-Milne, and Qiao Zhang. JAX: Composable
+transformations of Python+NumPy programs, 2018.
+URL http://github.com/google/jax.
+Christopher Brix, Parnia Bahar, and Hermann Ney. Successfully applying the stabilized lottery ticket hypothesis to the transformer architecture. arXiv preprint
+arXiv:2005.03454, 2020.
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah,
+Jared D. Kaplan, Prafulla Dhariwal, Arvind Neelakantan,
+Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini
+Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom
+Henighan, Rewon Child, Aditya Ramesh, Daniel Ziegler,
+Jeffrey Wu, Clemens Winter, Chris Hesse, Mark Chen,
+Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess,
+Jack Clark, Christopher Berner, Sam McCandlish, Alec
+Radford, Ilya Sutskever, and Dario Amodei. Language
+models are few-shot learners. In Advances in Neural
+Information Processing Systems, volume 33, pages 1877–
+1901, 2020. URL https://proceedings.neur
+ips.cc/paper/2020/file/1457c0d6bfcb4
+967418bfb8ac142f64a-Paper.pdf.
+Ernie Chan, Marcel Heimlich, Avi Purkayastha, and Robert
+Van De Geijn. Collective communication: theory, practice, and experience. Concurrency and Computation:
+Practice and Experience, 19(13):1749–1783, 2007.
+Rewon Child, Scott Gray, Alec Radford, and Ilya Sutskever.
+Generating long sequences with sparse transformers.
+arXiv preprint arXiv:1904.10509, 2019.
+Krzysztof Choromanski, Valerii Likhosherstov, David Dohan, Xingyou Song, Andreea Gane, Tamas Sarlos, Peter Hawkins, Jared Davis, Afroz Mohiuddin, Lukasz
+Kaiser, et al. Rethinking attention with performers. arXiv
+preprint arXiv:2009.14794, 2020.
+Aakanksha Chowdhery, Sharan Narang, Jacob Devlin,
+Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul
+Barham, Charles Sutton Hyung Won Chung, Sebastian Gehrmann, Parker Schuh, Kensen Shi, Sasha
+Tsvyashchenko, Joshua Maynez, Abhishek Rao, Parker
+Barnes, Yi Tay, Noam Shazeer, Vinodkumar Prabhakaran,
+Emily Reif, Nan Du, Ben Hutchinson, Reiner Pope,
+James Bradbury, Jacob Austin, Michael Isard, Guy GurAri, Pengcheng Yin, Toju Duke, Anselm Levskaya, Sanjay Ghemawat, Sunipa Dev, Henryk Michalewski, Xavier
+Garcia, Vedant Misra, Kevin Robinson, Liam Fedus,
+Denny Zhou, Daphne Ippolito, David Luan, Hyeontaek
+Lim, Barret Zoph, Alexander Spiridonov, Ryan Sepassi, David Dohan, Shivani Agrawal, Mark Omernick,
+Andrew M. Dai, Thanumalayan Sankaranarayana Pillai, Marie Pellat, Aitor Lewkowycz, Erica Moreira, Rewon Child, Oleksandr Polozov, Katherine Lee, Zongwei Zhou, Xuezhi Wang, Brennan Saeta, Mark Diaz,
+Orhan Firat, Michele Catasta, Jason Wei, Kathy MeierHellstern, Douglas Eck, Jeff Dean, Slav Petrov, and Noah
+Fiedel. PaLM: Scaling language modeling with Pathways. arXiv preprint arXiv:2204.02311, 2022. URL
+https://arxiv.org/abs/2204.02311.
+Lyndon Clarke, Ian Glendinning, and Rolf Hempel. The
+mpi message passing interface standard. In Programming
+environments for massively parallel distributed systems,
+pages 213–218. Springer, 1994.
+Tri Dao, Daniel Y Fu, Stefano Ermon, Atri Rudra, and
+Christopher Ré. Flashattention: Fast and memoryefficient exact attention with io-awareness. arXiv preprint
+arXiv:2205.14135, 2022.
+Tim Dettmers, Mike Lewis, Younes Belkada, and Luke
+Zettlemoyer. Llm. int8 (): 8-bit matrix multiplication for
+transformers at scale. arXiv preprint arXiv:2208.07339,
+2022.
+EffectiveTransformer. Effective transformer. https://
+github.com/bytedance/effective trans
+former). [Online; accessed October-2022].
+FasterTransformer. Fastertransformer: Gpt guide. https:
+//github.com/NVIDIA/FasterTransforme
+r/blob/main/docs/gpt guide.md). [Online;
+accessed October-2022].
+William Fedus, Jeff Dean, and Barret Zoph. A review of
+sparse expert models in deep learning. arXiv preprint
+arXiv:2209.01667, 2022.
+Google. Cloud TPU. https://cloud.google.com
+/tpu, 2022. [Online; accessed October-2022].
+
+Manish Gupta and Puneet Agrawal. Compression of deep
+learning models for text: A survey. arXiv preprint
+arXiv:2008.05221, 2020.
+Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch,
+Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego
+de Las Casas, Lisa Anne Hendricks, Johannes Welbl,
+Aidan Clark, Tom Hennigan, Eric Noland, Katie Millican, George van den Driessche, Bogdan Damoc, Aurelia
+Guy, Simon Osindero, Karen Simonyan, Erich Elsen,
+Jack W. Rae, Oriol Vinyals, and Laurent Sifre. Training
+compute-optimal large language models. arXiv preprint
+arXiv:2203.15556, 2022.
+Sebastian Jaszczur, Aakanksha Chowdhery, Afroz Mohiuddin, Lukasz Kaiser, Wojciech Gajewski, Henryk
+Michalewski, and Jonni Kanerva. Sparse is enough in
+scaling transformers. Advances in Neural Information
+Processing Systems, 34:9895–9907, 2021.
+Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B
+Brown, Benjamin Chess, Rewon Child, Scott Gray,
+Alec Radford, Jeffrey Wu, and Dario Amodei. Scaling laws for neural language models. arXiv preprint
+arXiv:2001.08361, 2020.
+Nikita Kitaev, Łukasz Kaiser, and Anselm Levskaya. Reformer: The efficient transformer. arXiv preprint
+arXiv:2001.04451, 2020.
+Vijay Korthikanti, Jared Casper, Sangkug Lym, Lawrence
+McAfee, Michael Andersch, Mohammad Shoeybi, and
+Bryan Catanzaro. Reducing activation recomputation in large transformer models. arXiv preprint
+arXiv:2205.05198, 2022.
+Sneha Kudugunta, Yanping Huang, Ankur Bapna, Maxim
+Krikun, Dmitry Lepikhin, Minh-Thang Luong, and Orhan
+Firat. Beyond distillation: Task-level mixture-of-experts
+for efficient inference. arXiv preprint arXiv:2110.03742,
+2021.
+Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Chen, Orhan Firat, Yanping Huang, Maxim Krikun,
+Noam Shazeer, and Zhifeng Chen. GShard: Scaling giant models with conditional computation and automatic
+sharding. In International Conference on Learning Representations, 2020. URL https://openreview.n
+et/forum?id=qrwe7XHTmYb.
+Lukasz Lew, Vlad Feinberg, Shivani Agrawal, Jihwan Lee,
+Jonathan Malmaud, Lisa Wang, Pouya Dormiani, and
+Reiner Pope. Aqt: Accurate quantized training), 2022.
+URL http://github.com/google/aqt.
+Bingbing Li, Zhenglun Kong, Tianyun Zhang, Ji Li,
+Zhengang Li, Hang Liu, and Caiwen Ding. Efficient
+transformer-based large scale language representations
+using hardware-friendly block structured pruning. arXiv
+preprint arXiv:2009.08065, 2020a.
+Zhuohan Li, Eric Wallace, Sheng Shen, Kevin Lin, Kurt
+Keutzer, Dan Klein, and Joey Gonzalez. Train big, then
+compress: Rethinking model size for efficient training
+and inference of transformers. In International Conference on Machine Learning, pages 5958–5968. PMLR,
+2020b.
+Jack W. Rae, Sebastian Borgeaud, Trevor Cai, Katie Millican, Jordan Hoffmann, H. Francis Song, John Aslanides,
+Sarah Henderson, Roman Ring, Susannah Young, Eliza
+Rutherford, Tom Hennigan, Jacob Menick, Albin Cassirer, Richard Powell, George van den Driessche,
+Lisa Anne Hendricks, Maribeth Rauh, Po-Sen Huang,
+Amelia Glaese, Johannes Welbl, Sumanth Dathathri, Saffron Huang, Jonathan Uesato, John Mellor, Irina Higgins,
+Antonia Creswell, Nat McAleese, Amy Wu, Erich Elsen,
+Siddhant M. Jayakumar, Elena Buchatskaya, David Budden, Esme Sutherland, Karen Simonyan, Michela Paganini, Laurent Sifre, Lena Martens, Xiang Lorraine
+Li, Adhiguna Kuncoro, Aida Nematzadeh, Elena Gribovskaya, Domenic Donato, Angeliki Lazaridou, Arthur
+Mensch, Jean-Baptiste Lespiau, Maria Tsimpoukelli,
+Nikolai Grigorev, Doug Fritz, Thibault Sottiaux, Mantas
+Pajarskas, Toby Pohlen, Zhitao Gong, Daniel Toyama,
+Cyprien de Masson d’Autume, Yujia Li, Tayfun Terzi,
+Vladimir Mikulik, Igor Babuschkin, Aidan Clark, Diego
+de Las Casas, Aurelia Guy, Chris Jones, James Bradbury,
+Matthew Johnson, Blake A. Hechtman, Laura Weidinger,
+Iason Gabriel, William S. Isaac, Edward Lockhart, Simon Osindero, Laura Rimell, Chris Dyer, Oriol Vinyals,
+Kareem Ayoub, Jeff Stanway, Lorrayne Bennett, Demis
+Hassabis, Koray Kavukcuoglu, and Geoffrey Irving. Scaling language models: Methods, analysis &amp; insights from
+training Gopher. CoRR, abs/2112.11446, 2021.
+Samyam Rajbhandari, Jeff Rasley, Olatunji Ruwase, and
+Yuxiong He. Zero: Memory optimizations toward training trillion parameter models. In SC20: International
+Conference for High Performance Computing, Networking, Storage and Analysis, pages 1–16. IEEE, 2020.
+Aurko Roy, Mohammad Saffar, Ashish Vaswani, and David
+Grangier. Efficient content-based sparse attention with
+routing transformers. arXiv preprint arXiv:2003.05997,
+2020.
+Victor Sanh, Lysandre Debut, Julien Chaumond, and
+Thomas Wolf. Distilbert, a distilled version of bert:
+smaller, faster, cheaper and lighter. arXiv preprint
+arXiv:1910.01108, 2019.
+Tal Schuster, Adam Fisch, Jai Gupta, Mostafa Dehghani,
+Dara Bahri, Vinh Q Tran, Yi Tay, and Donald Metzler.
+
+Confident adaptive language modeling. arXiv preprint
+arXiv:2207.07061, 2022.
+Noam Shazeer. Fast transformer decoding: One write-head
+is all you need. arXiv preprint arXiv:1911.02150, 2019.
+Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy
+Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. Outrageously large neural networks: The sparsely-gated
+mixture-of-experts layer. In ICLR (Poster). OpenReview.net, 2017. URL http://dblp.uni-trier
+.de/db/conf/iclr/iclr2017.html#Shaze
+erMMDLHD17.
+Mohammad Shoeybi, Mostofa Patwary, Raul Puri, Patrick
+LeGresley, Jared Casper, and Bryan Catanzaro. MegatronLM: Training multi-billion parameter language models
+using model parallelism. CoRR, abs/1909.08053, 2019.
+URL http://arxiv.org/abs/1909.08053.
+Shaden Smith, Mostofa Patwary, Brandon Norick, Patrick
+LeGresley, Samyam Rajbhandari, Jared Casper, Zhun Liu,
+Shrimai Prabhumoye, George Zerveas, Vijay Korthikanti,
+et al. Using deepspeed and megatron to train megatronturing nlg 530b, a large-scale generative language model.
+arXiv preprint arXiv:2201.11990, 2022.
+Sainbayar Sukhbaatar, Edouard Grave, Piotr Bojanowski,
+and Armand Joulin. Adaptive attention span in transformers. arXiv preprint arXiv:1905.07799, 2019.
+Zhiqing Sun, Hongkun Yu, Xiaodan Song, Renjie Liu, Yiming Yang, and Denny Zhou. Mobilebert: a compact taskagnostic bert for resource-limited devices. In Proceedings
+of the 58th Annual Meeting of the Association for Computational Linguistics, pages 2158–2170, 2020.
+Romal Thoppilan, Daniel De Freitas, Jamie Hall, Noam
+Shazeer, Apoorv Kulshreshtha, Heng-Tze Cheng, Alicia
+Jin, Taylor Bos, Leslie Baker, Yu Du, et al. Lamda:
+Language models for dialog applications. arXiv preprint
+arXiv:2201.08239, 2022. URL https://arxiv.or
+g/pdf/2201.08239.
+TPUv4. Google Cloud unveils world’s largest publicly
+available ML hub with Cloud TPU v4, 90% carbon-free
+energy. https://cloud.google.com/blog/pr
+oducts/compute/google-unveils-worlds
+-largest-publicly-available-ml-clust
+er.
+Ben Wang and Aran Komatsuzaki. GPT-J-6B: A 6 Billion
+Parameter Autoregressive Language Model. https:
+//github.com/kingoflolz/mesh-transfo
+rmer-jax, May 2021.
+Hanrui Wang, Zhanghao Wu, Zhijian Liu, Han Cai, Ligeng
+Zhu, Chuang Gan, and Song Han. Hat: Hardware-aware
+transformers for efficient natural language processing.
+arXiv preprint arXiv:2005.14187, 2020.
+Shibo Wang, Jinliang Wei, Amit Sabne, Andy Davis, Berkin
+Ilbeyi, Blake Hechtman, Dehao Chen, Karthik Srinivasa
+Murthy, Marcello Maggioni, Qiao Zhang, Sameer Kumar,
+Tongfei Guo, Yuanzhong Xu, and Zongwei Zhou. Overlap communication with dependent computation via decomposition in large deep learning models. In To appear
+in the Proceedings of the 28th International Conference
+on Architectural Support for Programming Languages
+and Operating Systems (ASPLOS), 2023.
+XLA. XLA: Optimizing compiler for TensorFlow. https:
+//www.tensorflow.org/xla, 2019. [Online;
+accessed September-2019].
+Yuanzhong Xu, HyoukJoong Lee, Dehao Chen, Blake
+Hechtman, Yanping Huang, Rahul Joshi, Maxim Krikun,
+Dmitry Lepikhin, Andy Ly, Marcello Maggioni, Ruoming
+Pang, Noam Shazeer, Shibo Wang, Tao Wang, Yonghui
+Wu, and Zhifeng Chen. GSPMD: general and scalable
+parallelization for ml computation graphs. arXiv preprint
+arXiv:2105.04663, 2021.
+Ofir Zafrir, Guy Boudoukh, Peter Izsak, and Moshe
+Wasserblat. Q8bert: Quantized 8bit bert. In 2019 Fifth
+Workshop on Energy Efficient Machine Learning and Cognitive Computing-NeurIPS Edition (EMC2-NIPS), pages
+36–39. IEEE, 2019.
+Dongqing Zhang, Jiaolong Yang, Dongqiangzi Ye, and
+Gang Hua. Lq-nets: Learned quantization for highly accurate and compact deep neural networks. In Proceedings
+of the European conference on computer vision (ECCV),
+pages 365–382, 2018.
+Lianmin Zheng, Zhuohan Li, Hao Zhang, Yonghao Zhuang,
+Zhifeng Chen, Yanping Huang, Yida Wang, Yuanzhong
+Xu, Danyang Zhuo, Joseph E Gonzalez, et al. Alpa:
+Automating inter-and intra-operator parallelism for distributed deep learning. arXiv preprint arXiv:2201.12023,
+2022.
+Aojun Zhou, Yukun Ma, Junnan Zhu, Jianbo Liu, Zhijie Zhang, Kun Yuan, Wenxiu Sun, and Hongsheng
+Li. Learning n:m fine-grained structured sparse neural networks from scratch. In International Conference on Learning Representations, 2021. URL https:
+//openreview.net/forum?id=K9bw7vqp s.</pre></details></div></article>
+</div>
+<footer class="footer">非官方双语译读版。英文内容经过 PDF 提取、清理与网页化重整；译文可能存在术语取舍差异，引用或复现论文结论时请以随附的原始 PDF 为准。</footer>
+<script>
+(() => {
+  const body = document.body;
+  const root = document.documentElement;
+  const progress = document.querySelector('.progress');
+  const languageButtons = document.querySelectorAll('[data-language-mode]');
+  const savedLanguage = localStorage.getItem('bilingual-language') || 'both';
+  body.dataset.language = savedLanguage;
+  languageButtons.forEach(btn => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.languageMode === savedLanguage));
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.languageMode;
+      body.dataset.language = mode;
+      localStorage.setItem('bilingual-language', mode);
+      languageButtons.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    });
+  });
+
+  const savedTheme = localStorage.getItem('bilingual-theme');
+  if (savedTheme) root.dataset.theme = savedTheme;
+  document.querySelector('[data-action="theme"]').addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    localStorage.setItem('bilingual-theme', next);
+  });
+
+  let size = Number(localStorage.getItem('bilingual-font-size') || 18);
+  const applySize = () => root.style.setProperty('--font-size', `${size}px`);
+  applySize();
+  document.querySelector('[data-action="font-down"]').addEventListener('click', () => { size = Math.max(14, size - 1); applySize(); localStorage.setItem('bilingual-font-size', size); });
+  document.querySelector('[data-action="font-up"]').addEventListener('click', () => { size = Math.min(25, size + 1); applySize(); localStorage.setItem('bilingual-font-size', size); });
+
+  const updateProgress = () => {
+    const total = document.documentElement.scrollHeight - innerHeight;
+    const pct = total <= 0 ? 0 : (scrollY / total) * 100;
+    if (progress) progress.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  };
+  addEventListener('scroll', updateProgress, { passive: true });
+  updateProgress();
+})();
+</script>
+</body>
+</html>

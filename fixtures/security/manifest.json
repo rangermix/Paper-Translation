@@ -1,0 +1,53 @@
+{
+  "kind": "authored_security_fixtures_not_source_gold",
+  "files": [
+    {
+      "path": "encrypted.pdf",
+      "sha256": "fabf1afa72dba8cd9efa38b65ebdaad341f826bc518f6144c57a83fd36848729",
+      "byte_size": 3804,
+      "expected": "PDF_ENCRYPTED"
+    },
+    {
+      "path": "201-pages.pdf",
+      "sha256": "9573c75f87a7bb5ac6f4f99991e74dbc5ae2e44e944f004185f63dab27837fe3",
+      "byte_size": 25039,
+      "expected": "PDF_PAGE_LIMIT"
+    },
+    {
+      "path": "oversized-page.pdf",
+      "sha256": "260b6cf53619085a73a4044a38780987bf72d0d95211c5af4133f087ad76cab8",
+      "byte_size": 433,
+      "expected": "PDF_RESOURCE_LIMIT"
+    },
+    {
+      "path": "oversized-image.pdf",
+      "sha256": "12d2c56319df7474d34e8533815e5e58c346f4e589fbee8bfa06401a961967ce",
+      "byte_size": 745,
+      "expected": "PDF_RESOURCE_LIMIT"
+    },
+    {
+      "path": "malformed.pdf",
+      "sha256": "f760d4c413825ab642b58cf593ac5e9b35a0dd73902323b80105166c4b732c72",
+      "byte_size": 47,
+      "expected": "PDF_INVALID"
+    },
+    {
+      "path": "scan-only.pdf",
+      "sha256": "47265735058d3652d3e560e3804ad995d335c6d646cb5249bda72b03633daf64",
+      "byte_size": 18313,
+      "expected": "retained_original_then_OCR_REQUIRED"
+    },
+    {
+      "path": "mixed-scan.pdf",
+      "sha256": "10b43db5be1b35a946432030fb63b2eb3c334dd8dfabf02e0ec206c71630fc87",
+      "byte_size": 18832,
+      "expected": "retained_original_then_OCR_REQUIRED"
+    },
+    {
+      "path": "inert-actions-attachment.pdf",
+      "sha256": "6b1f864bd284c2b0235acc5b74e02f89db4175441e6f4220a02a9a4b9116453b",
+      "byte_size": 4302,
+      "expected": "retained_original_without_execution_or_attachment_import"
+    }
+  ]
+}

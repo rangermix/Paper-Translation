@@ -1,0 +1,1 @@
+{"statements":["ALTER TABLE editions ADD COLUMN experimental boolean NOT NULL DEFAULT false","ALTER TABLE translation_revisions ADD COLUMN language_authorization jsonb NOT NULL DEFAULT '{}'::jsonb"],"version":10}

@@ -1,0 +1,57 @@
+# Agent-generated runs, local credentials, VM disks and private runtime state.
+# .agent/harness, .agent/memory and .agent/notes are repository-owned sources.
+/.agent/tmp/
+/.agent/local-data/
+.local-data/
+
+# Python dependencies and generated caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+
+# Frontend dependencies, build output and test caches.
+node_modules/
+/apps/web/dist/
+*.tsbuildinfo
+.vite/
+.npm/
+.pnpm-store/
+.playwright/
+test-results/
+playwright-report/
+coverage/
+
+# Credentials and local deployment overrides; keep safe examples.
+.env
+.env.*
+!.env.example
+/secrets/
+/provider_config/
+/deployment/provider_key.*
+!/deployment/provider_key.empty
+
+# Generated logs and editor/OS noise.
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

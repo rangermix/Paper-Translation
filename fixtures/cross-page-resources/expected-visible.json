@@ -1,0 +1,100 @@
+{
+  "kind": "authored PDF, never authored IR",
+  "pages": 2,
+  "table_rows": [
+    {
+      "page": 1,
+      "values": [
+        "A",
+        "64",
+        "1.25",
+        "complete"
+      ]
+    },
+    {
+      "page": 1,
+      "values": [
+        "B",
+        "128",
+        "2.50",
+        "complete"
+      ]
+    },
+    {
+      "page": 1,
+      "values": [
+        "C",
+        "192",
+        "3.75",
+        "complete"
+      ]
+    },
+    {
+      "page": 1,
+      "values": [
+        "D",
+        "256",
+        "5.00",
+        "complete"
+      ]
+    },
+    {
+      "page": 1,
+      "values": [
+        "E",
+        "320",
+        "6.25",
+        "complete"
+      ]
+    },
+    {
+      "page": 2,
+      "values": [
+        "F",
+        "384",
+        "7.50",
+        "complete"
+      ]
+    },
+    {
+      "page": 2,
+      "values": [
+        "G",
+        "448",
+        "8.75",
+        "complete"
+      ]
+    },
+    {
+      "page": 2,
+      "values": [
+        "H",
+        "512",
+        "10.00",
+        "complete"
+      ]
+    },
+    {
+      "page": 2,
+      "values": [
+        "I",
+        "576",
+        "11.25",
+        "complete"
+      ]
+    },
+    {
+      "page": 2,
+      "values": [
+        "J",
+        "640",
+        "12.50",
+        "complete"
+      ]
+    }
+  ],
+  "figure_page": 1,
+  "footnote_page": 1,
+  "pdf_sha256": "66157a79cb5265eb16945a442c338e1418d91e1221a4ca6a99c6a2f255f9af57",
+  "original_figure_sha256": "da3e49fa2cb89351541ea45df5bef5012c72e817ca8befccf4987e5e79e16a15"
+}

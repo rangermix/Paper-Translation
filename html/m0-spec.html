@@ -1,0 +1,217 @@
+<!doctype html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>M0 产品 Spec · PDF 原件库与静态出版底座 · 对照文库</title><style>
+:root{color-scheme:light;--bg:#f5f2ec;--paper:#fffdf9;--ink:#1d252c;--muted:#63716e;--line:#d9d5cc;--accent:#2e6f68;--blue:#315c8a;--code:#efede7;--font:17px}
+:root[data-theme=dark]{color-scheme:dark;--bg:#11171b;--paper:#182126;--ink:#edf1f2;--muted:#a8b4bb;--line:#344149;--accent:#80c8bd;--blue:#8eb9e6;--code:#222c32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:var(--font)/1.85 system-ui,-apple-system,"Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button,.button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:.45rem .8rem;font-size:14px;text-decoration:none;cursor:pointer}button:hover,.button:hover{border-color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px max(20px,calc((100vw - 1480px)/2));border-bottom:1px solid var(--line);background:var(--paper)}.brand{color:var(--ink);font-size:16px;font-weight:750;text-decoration:none}.version{font-size:13px;color:var(--muted);margin-left:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:34px;padding:32px 24px 70px}.sidebar{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}.docmenu summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:700}.sidebar nav{padding:8px 0 20px;border-bottom:1px solid var(--line)}.sidebar nav a{display:block;font-size:14px;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:7px}.sidebar nav a.active{background:var(--paper);color:var(--accent);font-weight:750;border-left:3px solid var(--accent)}.sidebar .toc{padding:18px 0;font-size:13px}.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}.toc a{display:block;padding:4px 4px;color:var(--muted);text-decoration:none;line-height:1.5}.toc a.sub{padding-left:15px}.content{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:36px 44px}.content h1{font:700 clamp(29px,3vw,40px)/1.32 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 20px;overflow-wrap:anywhere}.content h2{font-size:25px;line-height:1.45;margin:2.4rem 0 1rem;padding-top:8px;border-top:1px solid var(--line);scroll-margin-top:20px}.content h3{font-size:20px;line-height:1.6;margin:2rem 0 .6rem;color:var(--accent);scroll-margin-top:20px}.content p{margin:.8em 0}.content strong{font-weight:750}.content li{margin:.5em 0}.content ul,.content ol{padding-left:1.5em}.content blockquote{border-left:4px solid var(--accent);margin:1em 0;padding:.2em 1em;color:var(--muted);background:var(--bg)}.tablewrap{overflow-x:auto;width:100%;margin:20px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.7}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--bg);font-weight:750;white-space:nowrap}tr:last-child td{border-bottom:0}td{overflow-wrap:anywhere}pre{background:var(--code);padding:19px;border-radius:9px;overflow:auto;font:14px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;overflow-wrap:anywhere}p code,li code,td code{background:var(--code);padding:2px 5px;border-radius:4px}.foot{font-size:13px;color:var(--muted);margin-top:36px;border-top:1px solid var(--line);padding-top:16px}.portal{max-width:1160px;margin:auto;padding:52px 24px 70px}.portal h1{font:700 clamp(34px,5vw,55px)/1.25 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 16px}.intro{max-width:850px;color:var(--muted);font-size:18px}.notice{border-left:4px solid var(--accent);background:var(--paper);padding:17px 22px;margin:28px 0;border-radius:0 9px 9px 0}.stage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}.stage{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:24px}.stage h2{font-size:27px;margin:0 0 8px}.stage h3{font-size:18px;margin:0 0 12px}.stage p{font-size:15px;color:var(--muted);margin:0 0 14px}.stage .actions{margin-top:auto}.stage .count{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.resource-list{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.resource-list a{padding:14px 2px;border-bottom:1px solid var(--line);text-decoration:none}.section-title{font-size:24px;margin:34px 0 14px}.statline{font-size:14px;color:var(--muted);margin:12px 0}.wide-button{display:inline-block;background:var(--accent);color:var(--paper);padding:10px 16px;border-radius:9px;text-decoration:none;font-size:15px;margin:8px 8px 0 0}
+@media(max-width:1000px){.layout{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:24px 16px}.content{padding:28px}.stage-grid{gap:12px}.stage{padding:18px}.version{display:none}}
+@media(max-width:780px){.layout{display:block;padding:14px 12px 40px}.sidebar{position:relative;top:auto;max-height:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.sidebar nav{columns:2;column-gap:16px}.sidebar nav a{break-inside:avoid;padding:5px;font-size:13px}.sidebar .toc{padding:12px 0 0}.content{padding:24px 19px}.content h1{font-size:28px}.content h2{font-size:22px}.content h3{font-size:18px}.topbar{padding:12px 16px;align-items:flex-start}.topbar button,.topbar .button{padding:5px 8px;font-size:12px}.portal{padding:30px 18px 50px}.portal h1{font-size:34px}.intro{font-size:16px}.stage-grid{grid-template-columns:1fr;margin:22px 0}.resource-list{grid-template-columns:1fr}table{min-width:640px}body{--font:16px}}
+@media print{.topbar,.sidebar,.actions{display:none!important}body{background:white;color:black;font-size:11pt}.layout,.portal{display:block;padding:0;max-width:none}.content{padding:0;border:0;background:white}.content h2,.content h3{break-after:avoid}.tablewrap{overflow:visible;border:0}table{min-width:0;font-size:9pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:black}.stage-grid{display:block}.stage{break-inside:avoid;margin-bottom:12px}}
+</style></head><body><header class="topbar"><a class="brand" href="../index.html">对照文库 · 规格与实施<span class="version">v3.0 · 个人PDF版</span></a><div class="actions"><a class="button" href="../milestones/M0-spec.md" download>Markdown</a><button data-theme>明暗</button><button data-print>打印</button></div></header><div class="layout"><aside class="sidebar"><details class="docmenu" open><summary>文档导航</summary><nav><a class="" href="baseline.html">产品基线与范围</a><a class="active" href="m0-spec.html">M0 · 产品 Spec</a><a class="" href="m0-plan.html">M0 · 实施 Plan</a><a class="" href="m1-spec.html">M1 · 产品 Spec</a><a class="" href="m1-plan.html">M1 · 实施 Plan</a><a class="" href="m2-spec.html">M2 · 产品 Spec</a><a class="" href="m2-plan.html">M2 · 实施 Plan</a><a class="" href="architecture-data.html">共享架构与数据</a><a class="" href="workflow-quality-security.html">工作流、质量与安全</a><a class="" href="api-contract.html">HTTP / Worker 契约</a><a class="" href="verification-strategy.html">测试与发布策略</a><a class="" href="traceability.html">四向追踪矩阵</a><a class="" href="compose-contract.html">Docker Compose 交付契约</a><a class="" href="changelog.html">范围变更与迁移</a><a class="" href="agents.html">编码 Agent 交接</a><a class="" href="sources.html">依据与决策来源</a><a class="" href="readme.html">使用与交接说明</a></nav></details><details class="toc" open><summary>本页目录</summary><a class="" href="#h2">1. 产品目标与前提</a><a class="" href="#h3">2. 核心流程与明确排除</a><a class="" href="#h4">3. 页面及状态规格</a><a class="" href="#h5">4. 编号需求与验收场景</a><a class="sub" href="#m0-r01">M0-R01 · 仅 PDF 的产品入口</a><a class="sub" href="#m0-r02">M0-R02 · 冻结现有阅读样式</a><a class="sub" href="#m0-r03">M0-R03 · PDF 原件入库与阶段边界</a><a class="sub" href="#m0-r04">M0-R04 · 自有 RenderInput v3 与内部契约</a><a class="sub" href="#m0-r05">M0-R05 · 原件与机械清理可追溯</a><a class="sub" href="#m0-r06">M0-R06 · 一对一阅读与保留策略</a><a class="sub" href="#m0-r07">M0-R07 · 结构渲染完整而不猜测</a><a class="sub" href="#m0-r08">M0-R08 · 确定性静态渲染</a><a class="sub" href="#m0-r09">M0-R09 · 三种独立消费方式</a><a class="sub" href="#m0-r10">M0-R10 · 无脚本可读与可访问控件</a><a class="sub" href="#m0-r11">M0-R11 · 两篇旧阅读页的受控保留</a><a class="sub" href="#m0-r12">M0-R12 · 单实例持久文档库</a><a class="sub" href="#m0-r13">M0-R13 · 无身份系统与直接访问边界</a><a class="sub" href="#m0-r14">M0-R14 · 幂等构建与原子发布底座</a><a class="sub" href="#m0-r15">M0-R15 · 未完成不伪装完成</a><a class="sub" href="#m0-r16">M0-R16 · 安全内容和本地资产</a><a class="sub" href="#m0-r17">M0-R17 · 版本边界与不可变快照</a><a class="sub" href="#m0-r18">M0-R18 · 仅 Compose、完整运行依赖与恢复</a><a class="" href="#h24">5. 非功能、边界与失败要求</a><a class="" href="#h25">6. 退出门与可演示交付</a></details></aside><main class="content"><h1 id="h1">M0 产品 Spec · PDF 原件库与静态出版底座</h1>
+<p><strong>版本3.0 · 个人PDF版 · 待实现</strong></p>
+<h2 id="h2">1. 产品目标与前提</h2>
+<p>把PDF安全保存到单实例个人库，提供原件阅读与管理，并固定后续所有译文的静态出版契约。M0不调用翻译模型；出版能力用内部IR夹具和已知旧版种子证明。</p>
+<p><strong>进入条件：</strong> 本v3约束和参考样式已经确认；能够在Docker+Compose干净环境运行测试；不得从旧原型的配对文本入口开始实现。</p>
+<p>本阶段只有一个使用者，不引入用户实体。规格依赖<a href="baseline.html">产品基线</a>、<a href="architecture-data.html">共享数据契约</a>、<a href="workflow-quality-security.html">工作流和质量</a>、<a href="api-contract.html">API</a>、<a href="compose-contract.html">Compose契约</a>。</p>
+<h2 id="h3">2. 核心流程与明确排除</h2>
+<p>上传PDF → 隔离有效性检查 → source_only原件条目 → 标签/收藏/预览；另外由受控内置种子/内部fixture → 校验 → 渲染 → 静态发布 → 导出。</p>
+<p><strong>排除范围：</strong> 没有自动翻译、完整PDF语义解析、双语/JSON/HTML输入、账户/权限或反代。M0的新PDF不能被伪造译文标记为published。</p>
+<h2 id="h4">3. 页面及状态规格</h2>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>页面</th>
+<th>必需信息与操作</th>
+<th>边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文档库</td>
+<td>题名、原PDF、source_only/既有发布版、标签和收藏</td>
+<td>不展示所有者、团队、访问权限</td>
+</tr>
+<tr>
+<td>PDF上传</td>
+<td>最多10个文件、大小、接收状态和明确错误</td>
+<td>仅PDF；机器翻译尚未实现时必须可见</td>
+</tr>
+<tr>
+<td>原件详情</td>
+<td>真实页数、SHA、原文件、查重候选</td>
+<td>浏览器刷新不丢服务端数据</td>
+</tr>
+<tr>
+<td>静态阅读</td>
+<td>原文后接译文、目录、字号、主题、PDF入口</td>
+<td>内容在HTML中，无JS也可读</td>
+</tr>
+<tr>
+<td>设置/运维</td>
+<td>个人偏好、系统就绪、Compose说明</td>
+<td>无登录设置、认证选项或反代配置</td>
+</tr>
+</tbody>
+</table></div>
+<p>输入错误留在当前页并保留有效选择；耗时操作返回job而不是锁住界面。操作完成显示真实已完成范围，失败给对应资源/错误码；不以人工按“继续演示”的结果作为正式成功。</p>
+<h2 id="h5">4. 编号需求与验收场景</h2>
+<p>以下每个MUST是退出门的一部分；AT均为待执行产品测试，不是本包自检结果。</p>
+<h3 id="m0-r01">M0-R01 · 仅 PDF 的产品入口</h3>
+<p><strong>MUST：</strong> 用户创建来源只能上传 application/pdf 字节，服务器签名和受限 PDF 解码共同验证；不提供 URL、HTML、TXT、Markdown、DOCX、EPUB、ZIP、双语粘贴或 IR 导入 API/UI。原文中的普通引用超链接可保留但不自动获取。IR 样例和既有阅读页只作受控内置资料。</p>
+<p><strong>M0-AT01A</strong> （自动化，planned）</p>
+<p>Given 首次打开界面，When 检查上传页和创建来源接口，Then 仅一个 PDF 入口，只有 PDF 文件能进入接收/验证流程。</p>
+<p><strong>M0-AT01B</strong> （自动化，planned）</p>
+<p>Given URL 字段、bilingual/text 来源、附件数组、HTML/DOCX/JSON 或伪装 PDF，When 直接请求导入，Then 415/422；不存在隐藏兼容路由。</p>
+<h3 id="m0-r02">M0-R02 · 冻结现有阅读样式</h3>
+<p><strong>MUST：</strong> reader-v1.css 字节和 SHA-256 必须等于参考清单；阅读正文沿用原纸色、英蓝／译棕侧线、衬线、目录和工具条。为多语言使用原文／译文标签，保留现有 CSS 类兼容。管理 UI 可以迭代但不能改变既有制品。</p>
+<p><strong>M0-AT02A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 两篇 legacy 基准和固定浏览器环境，When 打开桌面／手机截图，Then CSS 哈希相等、正文配对顺序相等，视觉差异在明确的导航允许区之外须审核。</p>
+<p><strong>M0-AT02B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 开发者悄悄修改 reader-v1.css 一个颜色值，When 跑模板验证，Then 失败；不允许自动接受新快照。</p>
+<h3 id="m0-r03">M0-R03 · PDF 原件入库与阶段边界</h3>
+<p><strong>MUST：</strong> M0 接收并流式保存 PDF，经隔离 inspector 进行有效性/加密/页数检查、SHA-256 查重后建立 source asset 与文档；能预览/下载原件、编辑题名/标签、收藏/归档。M0 不执行机器翻译和语义版面解析，新上传文件显示“原件已保存，翻译在 M1 启用”，不生成伪译文。内部 fixture 验证静态出版。</p>
+<p><strong>M0-AT03A</strong> （自动化，planned）</p>
+<p>Given 有效未加密 PDF，When 上传完成，Then 原始字节hash不变、真实页数可见，刷新/服务重启后文档仍存在且状态为source_only。</p>
+<p><strong>M0-AT03B</strong> （自动化，planned）</p>
+<p>Given M0新上传PDF点击翻译，Then 功能尚未实现时明确不可用；不得把内置示例文本挂在该文件名下冒充译文。</p>
+<h3 id="m0-r04">M0-R04 · 自有 RenderInput v3 与内部契约</h3>
+<p><strong>MUST：</strong> IR v3 仅 PDF 来源，无实例/用户/角色字段。source_revision.kind 固定 pdf_upload；每个源码 locator 都是 PDF 页码及 top-left-points bbox。保留全部块类型与不可变源/译快照。JSON Schema 是语法层，语义校验独立实现；IR 仅内部处理/备份格式，不作为新增文档入口。</p>
+<p><strong>M0-AT04A</strong> （自动化，planned）</p>
+<p>Given 内部全结构PDF来源fixture，When Schema和语义校验，Then 通过并能渲染；普通客户端只能上传PDF，不能POST该IR建文档。</p>
+<p><strong>M0-AT04B</strong> （自动化，planned）</p>
+<p>Given unknown field、非PDF来源locator、重复block、环引用或workspace_id，Then 严格拒绝，不自动忽略兼容。</p>
+<h3 id="m0-r05">M0-R05 · 原件与机械清理可追溯</h3>
+<p><strong>MUST：</strong> 原 PDF 字节与哈希永久绑定来源资产；原解析输出、raw_text、normalized_text与编辑映射分开保存。只允许有证据的连字/断行等机械恢复；M0样例由人工核实，M1由解析器产生。源文修正产生新 SourceRevision，不通过译文编辑改原文。</p>
+<p><strong>M0-AT05A</strong> （自动化，planned）</p>
+<p>Given 原PDF中跨行单词和连字，When 记录机械清理，Then 可回到真实页图与raw区间，原资产hash始终不变。</p>
+<p><strong>M0-AT05B</strong> （自动化，planned）</p>
+<p>Given 模型尝试重写英文或将source字段放入翻译响应，Then 响应被拒，原件及来源快照未修改。</p>
+<h3 id="m0-r06">M0-R06 · 一对一阅读与保留策略</h3>
+<p><strong>MUST：</strong> 每个必译内容块有且仅有一个可用结果；标题在 hero 中只出现一次；图／表内部子块由 owner_id 管理，不再出现在根阅读流中。代码、公式、参考文献和原图可按明确策略 retained，不可把缺译正文标成保留。</p>
+<p><strong>M0-AT06A</strong> （自动化，planned）</p>
+<p>Given 1 个标题、2 段、1 张 2×2 表、1 个图题和1段参考文献，When 渲染，Then 每个语义对象只渲染一次，所有必译文本紧邻译文。</p>
+<p><strong>M0-AT06B</strong> （自动化，planned）</p>
+<p>Given 正文缺失结果、结果引用未知块或将正文伪标 retained，When 校验，Then 阻断发布。</p>
+<h3 id="m0-r07">M0-R07 · 结构渲染完整而不猜测</h3>
+<p><strong>MUST：</strong> M0 renderer 必须支持 Schema 中全部已启用种类：标题、段落、列表、代码、数学、图片、图题、表格、表格单元、脚注、参考文献。长表横向滚动；不可靠公式只能显示已提供的原图／原式并声明。解析支持不等于渲染支持。</p>
+<p><strong>M0-AT07A</strong> （自动化，planned）</p>
+<p>Given 包含合并单元格、脚注回链、原图和数学表示的人工 IR，When 生成，Then 所有资源及锚点有效、单元格覆盖不重叠。</p>
+<p><strong>M0-AT07B</strong> （自动化，planned）</p>
+<p>Given 未实现 block kind 或无可靠公式表示，When 构建，Then 明确失败／待处理，不静默跳过、不编造 LaTeX。</p>
+<h3 id="m0-r08">M0-R08 · 确定性静态渲染</h3>
+<p><strong>MUST：</strong> 渲染仅接受冻结 SourceRevision、TranslationRevision、模板与构建配置，绝不调用 LLM。固定输入和构建环境产生相同正文及资源字节；构建时间放 manifest、不进入正文。ZIP 文件时间和排序规范化，确定性比较排除审计时间。</p>
+<p><strong>M0-AT08A</strong> （自动化，planned）</p>
+<p>Given 同一冻结输入，在干净环境连续构建两次，Then index.html、CSS、JS、资产及 content_digest 相同。</p>
+<p><strong>M0-AT08B</strong> （自动化，planned）</p>
+<p>Given 断开全部网络并关闭模型配置，When 构建已有双语，Then 仍成功；任何网络依赖测试判失败。</p>
+<h3 id="m0-r09">M0-R09 · 三种独立消费方式</h3>
+<p><strong>MUST：</strong> 在线静态页面（由app做请求与路径安全检查）、离线目录 ZIP、单文件 HTML 均包含完整正文。单文件内嵌 CSS/JS/图片；PDF 默认不嵌入，没有附带 PDF 时不显示必坏按钮。离线导出不包含凭据、私有管理 URL 或正文 fetch。</p>
+<p><strong>M0-AT09A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 已发布 fixture，When 导出 ZIP 和单 HTML 后在断网 file:// 下打开，Then 正文、图表、样式均可读且没有自动外网请求。</p>
+<p><strong>M0-AT09B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given include_source=false 或来源原件不可提供，When 导出，Then 原始 PDF 控件隐藏／说明另附，不出现 404 链接。</p>
+<h3 id="m0-r10">M0-R10 · 无脚本可读与可访问控件</h3>
+<p><strong>MUST：</strong> 禁用 JavaScript 默认显示全部双语内容；设置脚本只切换显示、字号、主题、阅读位置。键盘可访问目录与控件；320px 视口除表格／代码内部外不横向溢出；存储不可用时降级提示但正文仍可读。</p>
+<p><strong>M0-AT10A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given JS 被禁用或 localStorage 抛错，When 阅读文章，Then 原文、译文、图表和链接仍存在，不能被默认 CSS 隐藏。</p>
+<p><strong>M0-AT10B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 长标题、代码与移动视口，When tab 导航和放大字号，Then 无被遮挡主操作，焦点可见，正文不被裁切。</p>
+<h3 id="m0-r11">M0-R11 · 两篇旧阅读页的受控保留</h3>
+<p><strong>MUST：</strong> 已提供两篇论文作为可选内置示例包；迁移只接受release清单已知hash，通过compose内CLI执行，不提供任意HTML上传。保留原阅读样式、原文曾整理的legacy说明及PDF入口，不伪造逐块来源、精确译文或人工审校状态。</p>
+<p><strong>M0-AT11A</strong> （自动化，planned）</p>
+<p>Given 内置示例包与匹配manifest，When 运行seed-legacy两次，Then 每篇只建立一次旧版记录，正文/CSS与参考一致。</p>
+<p><strong>M0-AT11B</strong> （自动化，planned）</p>
+<p>Given 未知HTML/hash变更或请求通过普通API上传旧网页，Then 拒绝；无精确bbox只显示原PDF入口。</p>
+<h3 id="m0-r12">M0-R12 · 单实例持久文档库</h3>
+<p><strong>MUST：</strong> PostgreSQL保存单份个人文档库及目录状态；文件卷保存原件和不可变产物。文档不关联 User、Workspace、Tenant、Owner 或 ACL；收藏/偏好为全实例数据。浏览器缓存不能成为服务端事实源。</p>
+<p><strong>M0-AT12A</strong> （自动化，planned）</p>
+<p>Given 上传PDF并收藏/标记标签，When 换浏览器访问同实例或重建app容器，Then 读取相同库状态，无需登录。</p>
+<p><strong>M0-AT12B</strong> （自动化，planned）</p>
+<p>Given 清空浏览器storage，Then 文档未丢失；数据库迁移与API不得要求虚拟用户/默认workspace。</p>
+<h3 id="m0-r13">M0-R13 · 无身份系统与直接访问边界</h3>
+<p><strong>MUST：</strong> 没有登录/注册/用户/组织/角色/会话/分享权限/鉴权网关。任何可访问实例端口的客户端具有同等完整能力。默认只绑定127.0.0.1:8080，应用直接服务UI/API/已发布静态文件；生产保留Host/Origin与不跨域请求保护、内容转义和安全路径检查，这些不是登录。反代、TLS、远程接入由用户自行处理，不交付配置。</p>
+<p><strong>M0-AT13A</strong> （自动化，planned）</p>
+<p>Given 空数据库Compose首次启动，When 打开应用及静态阅读页，Then 直接可用，没有owner创建、账号cookie、auth header或重定向登录。</p>
+<p><strong>M0-AT13B</strong> （自动化，planned）</p>
+<p>Given 未允许Host/跨站写请求或路径穿越，Then 请求安全策略拒绝；不存在login/workspace/role路由，db端口不对主机发布。</p>
+<h3 id="m0-r14">M0-R14 · 幂等构建与原子发布底座</h3>
+<p><strong>MUST：</strong> 渲染／导出作为持久任务运行；短事务领取租约与 fencing token，提交检查 token。先生成完整不可变 artifact，再用 edition generation CAS 更新当前指针。进程崩溃最多留下未引用文件。</p>
+<p><strong>M0-AT14A</strong> （自动化，planned）</p>
+<p>Given 构建后写指针前杀死 worker，When 恢复并重试，Then 旧指针有效且至多一个新当前制品；不出现半页。</p>
+<p><strong>M0-AT14B</strong> （自动化，planned）</p>
+<p>Given 过期 worker 和新 worker 同时提交，Then 过期写被拒；两个相同期望 generation 的发布仅一个成功。</p>
+<h3 id="m0-r15">M0-R15 · 未完成不伪装完成</h3>
+<p><strong>MUST：</strong> 草稿可保存和显式导出，但须醒目标识 DRAFT／缺失块数；缺块、未知引用、资产缺失和哈希异常不可被人工“忽略”后正常发布。当前发布指针只引用 verified artifact。</p>
+<p><strong>M0-AT15A</strong> （自动化，planned）</p>
+<p>Given 缺译草稿，When 用户选择“导出未完成草稿”并确认，Then 输出含具体缺失标记且不进入已发布列表。</p>
+<p><strong>M0-AT15B</strong> （自动化，planned）</p>
+<p>Given 绕过前端直接请求 publish，When 有硬性问题，Then 409 QUALITY_BLOCKED，零 publication event。</p>
+<h3 id="m0-r16">M0-R16 · 安全内容和本地资产</h3>
+<p><strong>MUST：</strong> 只从受限 IR 生成 DOM；文本转义，不接受模型／导入者 raw HTML、JS、任意存储路径。图片按允许类型解码复核；CSP 限制脚本和网络；所有资产绑定本实例；已知样式模板允许列表。</p>
+<p><strong>M0-AT16A</strong> （自动化，planned）</p>
+<p>Given 文本含 &lt;script&gt; 和事件属性字样，When 在阅读器显示，Then 只显示文字；合法 PNG 本地显示。</p>
+<p><strong>M0-AT16B</strong> （自动化，planned）</p>
+<p>Given javascript: 链接、带外链 SVG、CSS @import、指向其他 instance 的资产，Then 导入／构建拒绝或按明确规则移除，并无出站请求。</p>
+<h3 id="m0-r17">M0-R17 · 版本边界与不可变快照</h3>
+<p><strong>MUST：</strong> SourceRevision 和已封存 TranslationRevision 不可变；编辑发生于 TranslationDraft，保存段落版本并使用 If-Match。ArtifactVersion 固定绑定三轴。M0 可限定每个 document 一个当前目标语言，但数据库必须容纳多语言 edition。</p>
+<p><strong>M0-AT17A</strong> （自动化，planned）</p>
+<p>Given 草稿封存后修改译文，When 保存，Then 产生新草稿／段落版本，原 sealed snapshot 和旧 HTML 哈希不变。</p>
+<p><strong>M0-AT17B</strong> （自动化，planned）</p>
+<p>Given 同一草稿两个旧 ETag 保存，Then 首次成功、第二次 412；不能 last-write-wins。</p>
+<h3 id="m0-r18">M0-R18 · 仅 Compose、完整运行依赖与恢复</h3>
+<p><strong>MUST：</strong> 正式运行只支持Docker Compose：app直接提供HTTP、worker执行耐久任务、隔离parser检查PDF、PostgreSQL和migrate均容器化。所有运行时、原生PDF库、构建输出、模板、所需模型资产在镜像/随release卷中；启动不执行pip/npm/模型下载。宿主只需Docker+Compose；密钥和外部翻译服务不是可打包库。M0具备版本清单与一致备份恢复。</p>
+<p><strong>M0-AT18A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 仅安装Docker+Compose且无Python/Node/qpdf/PostgreSQL的干净宿主，When 使用已构建release启动并断开下载源，Then 能入库、内置样例阅读/导出，健康检查正确，卷重建后可恢复。</p>
+<p><strong>M0-AT18B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 数据卷损坏、必需运行依赖或镜像模型资产缺失，Then readiness明确失败，不运行时自动安装；不能将原型容器启动算正式M0验收。</p>
+<h2 id="h24">5. 非功能、边界与失败要求</h2>
+<p>真实用户路径与内部fixture严格隔离。静态正文和资源字节确定，app容器重启不丢目录；失败的PDF检查不会建立成功source。</p>
+<p>没有登录不代表可以执行上传内容；PDF解析无网络/秘密且资源受限。仅支持Compose，不安排替代部署。阅读静态化不取消资源存在性和删除状态检查。配置、容量、完整性与无JS阅读要求继承产品基线。</p>
+<h2 id="h25">6. 退出门与可演示交付</h2>
+<p>从空卷Compose启动，不创建账户；上传一份受控PDF并收藏，重建app后仍存在；原PDF字节不变。选择内置旧资料，离线导出且断网/禁JS可读。故障注入半写产物，当前版本不变；检测非PDF及文件路径攻击。</p>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>名称</th>
+<th>必需证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0-G01</td>
+<td>范围与无身份契约</td>
+<td>PDF唯一入口；无用户/角色/会话/工作区表或接口；无反代服务；CSS/hash符合参考。</td>
+</tr>
+<tr>
+<td>M0-G02</td>
+<td>PDF库与IR基础</td>
+<td>真实PDF存储/检查/原件预览及内部全结构IR语义测试；没有双语粘贴或IR导入入口。</td>
+</tr>
+<tr>
+<td>M0-G03</td>
+<td>完整静态出版</td>
+<td>各结构渲染、断网file://、无JS、无存储、确定性hash。</td>
+</tr>
+<tr>
+<td>M0-G04</td>
+<td>真实产品闭环</td>
+<td>上传PDF→验证→持久原件条目→收藏/归档→重开浏览器读取；内部fixture出版及静态导出独立验证，无公开IR入口。</td>
+</tr>
+<tr>
+<td>M0-G05</td>
+<td>无身份边界及PDF内容安全</td>
+<td>无账号/会话/ACL对象；同实例不同浏览器直接访问；XSS、路径穿越、PDF动作及Host/Origin负例。</td>
+</tr>
+<tr>
+<td>M0-G06</td>
+<td>Compose依赖与恢复</td>
+<td>Docker-only干净宿主、离线运行依赖、内置样例静态导出、DB与卷备份恢复、坏PDF隔离。</td>
+</tr>
+<tr>
+<td>M0-G07</td>
+<td>部署和恢复</td>
+<td>全新安装与恢复演练，源件/模板/当前artifact hash一致。</td>
+</tr>
+</tbody>
+</table></div>
+<p>全部gate初始状态not_evaluated。详见<a href="m0-plan.html">M0 Plan</a>；没有已执行证据不得标completed。</p>
+<footer class="foot">规格包 v3.0 · 2026-09-06 · 产品与计划尚待实施。所有内容已写入本地HTML，无需联网阅读。</footer></main></div><script>(()=>{const r=document.documentElement;try{r.dataset.theme=localStorage.getItem('spec-theme')||'light'}catch{}document.querySelectorAll('button[data-theme]').forEach(b=>b.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('spec-theme',r.dataset.theme)}catch{}}));document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>print()));if(innerWidth<780){const m=document.querySelector('.docmenu');if(m)m.removeAttribute('open');const t=document.querySelector('.toc');if(t)t.removeAttribute('open')}})();</script></body></html>

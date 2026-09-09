@@ -1,0 +1,363 @@
+{
+  "format": "controlled-live-provider-fixtures-v1",
+  "purpose": "Reviewable minimal EN-to-ZH and ZH-to-EN tests, only after explicit operator authorization.",
+  "not_a_substitute_for": [
+    "Efficiently Scaling Transformer Inference source gold",
+    "Pathways source gold"
+  ],
+  "contains_private_content": false,
+  "documents": [
+    {
+      "id": "controlled-en",
+      "source_language": "en",
+      "target_language": "zh-Hans",
+      "font": "Helvetica",
+      "source_text": [
+        "Controlled translation check",
+        "The batch contains 64 tokens.",
+        "Do not send a second request if the first result is unknown.",
+        "This small test does not establish safety for every document."
+      ],
+      "path": "fixtures/live-provider/controlled-en.pdf",
+      "sha256": "16601b66faeaea415f9052d1bb8a5af4bf684144586ad067fcf5de664abc685d",
+      "byte_size": 1560,
+      "page_count": 1,
+      "checks": [
+        "preserve number 64",
+        "preserve negative instruction",
+        "preserve conditional unknown outcome",
+        "preserve limitation on general safety"
+      ],
+      "external_dispatch_authorized": false,
+      "parse_evidence": {
+        "execution": {
+          "execution": "real_docling_layout_and_table_model_inference",
+          "seconds": 9.069,
+          "pages": 1,
+          "blocks": 4,
+          "can_translate": true,
+          "issues": 0,
+          "issue_reasons": {}
+        },
+        "result_path": "evidence/live-provider-final-en/result.json",
+        "result_sha256": "d977c1fc9587388c669791e1bcaee87e458df4828303a8f9832b2108ec40653c",
+        "page_image": "evidence/live-provider-final-en/pages/page-0001.png",
+        "source_revision_id": "src-16601b66faeaea415f90-44136fa3",
+        "model_calls": "local offline Docling only; zero external Provider calls",
+        "source_text_exact_match": true
+      },
+      "blocks_to_send": [
+        {
+          "id": "b0",
+          "kind": "heading",
+          "raw_text": "Controlled translation check",
+          "normalized_text": "Controlled translation check",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "Controlled translation check"
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                49.07600000000002,
+                276.084,
+                65.726
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "raw_text": "The batch contains 64 tokens.",
+          "normalized_text": "The batch contains 64 tokens.",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "The batch contains "
+            },
+            {
+              "type": "protected_ref",
+              "ref": "b1-n0"
+            },
+            {
+              "type": "text",
+              "text": " tokens."
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                108.38400000000001,
+                214.092,
+                119.48400000000004
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "raw_text": "Do not send a second request if the first result is unknown.",
+          "normalized_text": "Do not send a second request if the first result is unknown.",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "Do not send a second request if the first result is unknown."
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                163.38400000000001,
+                365.48400000000026,
+                174.48400000000004
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "raw_text": "This small test does not establish safety for every document.",
+          "normalized_text": "This small test does not establish safety for every document.",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "This small test does not establish safety for every document."
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                218.38400000000001,
+                375.4680000000003,
+                229.48400000000004
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        }
+      ],
+      "protected_atoms": {
+        "b1-n0": {
+          "kind": "number",
+          "value": "64"
+        }
+      }
+    },
+    {
+      "id": "controlled-zh",
+      "source_language": "zh-Hans",
+      "target_language": "en",
+      "font": "NotoSansSC",
+      "source_text": [
+        "受控翻译检查",
+        "该批次包含64个 token。",
+        "如果第一次结果未知，不要发送第二次请求。",
+        "这项小测试不能证明所有文档都安全。"
+      ],
+      "path": "fixtures/live-provider/controlled-zh.pdf",
+      "sha256": "aa63e91a7a03dd8dc9f03973b6882219025518565222b79a8621f395e7556c12",
+      "byte_size": 19063,
+      "page_count": 1,
+      "checks": [
+        "preserve number 64",
+        "preserve negative instruction",
+        "preserve conditional unknown outcome",
+        "preserve limitation on general safety"
+      ],
+      "external_dispatch_authorized": false,
+      "parse_evidence": {
+        "execution": {
+          "execution": "real_docling_layout_and_table_model_inference",
+          "seconds": 8.807,
+          "pages": 1,
+          "blocks": 4,
+          "can_translate": true,
+          "issues": 0,
+          "issue_reasons": {}
+        },
+        "result_path": "evidence/live-provider-final-zh/result.json",
+        "result_sha256": "7679dc8fb150b7937a2ca159363a34c5c4e719f90c6276b40b52522a0323f1af",
+        "page_image": "evidence/live-provider-final-zh/pages/page-0001.png",
+        "source_revision_id": "src-aa63e91a7a03dd8dc9f0-44136fa3",
+        "model_calls": "local offline Docling only; zero external Provider calls",
+        "source_text_exact_match": true
+      },
+      "blocks_to_send": [
+        {
+          "id": "b0",
+          "kind": "heading",
+          "raw_text": "受控翻译检查",
+          "normalized_text": "受控翻译检查",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "受控翻译检查"
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                48.80600000000004,
+                162.0,
+                63.799181818181864
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "raw_text": "该批次包含64个 token。",
+          "normalized_text": "该批次包含64个 token。",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "该批次包含"
+            },
+            {
+              "type": "protected_ref",
+              "ref": "b1-n0"
+            },
+            {
+              "type": "text",
+              "text": "个 token。"
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                108.20399999999995,
+                183.45600000000002,
+                118.1994545454545
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "raw_text": "如果第一次结果未知，不要发送第二次请求。",
+          "normalized_text": "如果第一次结果未知，不要发送第二次请求。",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "如果第一次结果未知，不要发送第二次请求。"
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                163.20399999999995,
+                294.0,
+                173.1994545454545
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "raw_text": "这项小测试不能证明所有文档都安全。",
+          "normalized_text": "这项小测试不能证明所有文档都安全。",
+          "source_inline": [
+            {
+              "type": "text",
+              "text": "这项小测试不能证明所有文档都安全。"
+            }
+          ],
+          "provenance": [
+            {
+              "type": "pdf",
+              "asset_id": "original-pdf",
+              "page": 1,
+              "bbox": [
+                54.0,
+                218.20399999999995,
+                258.0,
+                228.1994545454545
+              ],
+              "coordinate_system": "top-left-points",
+              "page_size": [
+                612.0,
+                792.0
+              ]
+            }
+          ]
+        }
+      ],
+      "protected_atoms": {
+        "b1-n0": {
+          "kind": "number",
+          "value": "64"
+        }
+      }
+    }
+  ]
+}

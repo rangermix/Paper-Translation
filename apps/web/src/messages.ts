@@ -1,0 +1,32 @@
+const errors: Record<string, string> = {
+  PROVIDER_CONFIG: 'AI 服务配置尚未完成，已有内容仍可查看。请在设置中完成配置。',
+  EXTERNAL_PROCESSING_UNCONFIRMED: '尚未授权向 AI 服务发送内容，请在开始翻译时确认外发范围。',
+  DISPATCH_DISABLED: '外部 API 请求已暂停。已有内容仍可阅读，可在设置中恢复派发。',
+  BUDGET_REQUIRED: '此任务已启用费用控制，请填写本次预算。',
+  BUDGET_PAUSED: '任务已达到预算限制，后续请求正在等待。',
+  OUTCOME_UNKNOWN: '请求结果未知，可能已经计费。请先查看任务中的未知请求记录。',
+  REQUEST_IN_FLIGHT: '仍有请求在途，请等待返回结果。',
+  JOB_ACTIVE: '已有任务正在执行或暂停，请先等待完成或取消。',
+  JOB_TERMINAL: '此任务已结束，可查看结果或从已有内容创建新任务。',
+  SOURCE_STALE: '文档来源已更新，请打开当前文档后继续。',
+  SOURCE_BASE_STALE: '来源已有更新，此解析结果未覆盖当前版本。',
+  SOURCE_REQUIRED: '尚无可用的解析内容，请先解析 PDF。',
+  DRAFT_ALREADY_EXISTS: '已有可编辑内容，请打开后继续翻译或编辑。',
+  DRAFT_STALE: '已有更新的内容版本，请读取最新版本。',
+  PROFILE_STALE: 'AI 服务配置已变化，请读取最新配置并重新确认外发。',
+  PREFLIGHT_STALE: '解析结果已更新，请读取最新结果。',
+  PRECONDITION_FAILED: '服务端版本已变化。当前输入仍保留，请读取最新版本后重试。',
+  SEGMENT_CONFLICT: '此段已有新修改。当前输入仍保留，请比较最新内容后再保存。',
+  PARSER_TIMEOUT: '解析超过本次时限，原 PDF 仍保留。可调整时限或解析方案后新建任务。',
+  PAGE_PARSE_FAILED: '此页识别未完成，已保留原页供阅读。',
+  CHECK_FAILED: '内容检查未完成，已有内容仍可阅读、发布和导出。',
+  PROVIDER_REFUSAL: 'AI 服务未提供此部分译文，已保留原文并继续处理其他内容。',
+  PDF_INVALID: '无法读取此 PDF，请检查原文件后重新上传。',
+  PDF_ENCRYPTED: '此 PDF 已加密，请使用可直接读取的 PDF。',
+  PUBLICATION_INPUT_INVALID: '部分数据无法安全生成阅读版，请查看技术详情并重新生成。',
+  MAINTENANCE: '实例正在维护，请稍后重试。',
+  CLEANUP_FAILED: '文件清理未完成，在线内容仍不可访问。请查看任务记录。',
+};
+export function errorMessage(code: string, message?: string) {
+  return errors[code] ?? (message && /[\u3400-\u9fff]/.test(message) ? message : '本次操作未完成，请查看技术详情或稍后重试。');
+}

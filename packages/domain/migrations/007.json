@@ -1,0 +1,1 @@
+{"statements":["ALTER TABLE idempotency_records ADD COLUMN IF NOT EXISTS document_ids jsonb NOT NULL DEFAULT '[]'::jsonb","DELETE FROM idempotency_records"],"version":7}

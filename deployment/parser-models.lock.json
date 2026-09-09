@@ -1,0 +1,363 @@
+{
+  "schema_version": "1.0",
+  "docling_version": "2.94.0",
+  "repositories": [
+    {
+      "repo_id": "docling-project/docling-layout-old",
+      "revision": "b5b4bd59ad2b69aab715e9b1f1dfd74394c45fd4",
+      "license": "cdla-permissive-2.0",
+      "local_directory": "docling-project--docling-layout-old",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "e624098eab4cac67c39cdbb5aa83dbad6a660f5b8526cee1e13510363e86d136",
+          "byte_size": 350
+        },
+        {
+          "path": "config.json",
+          "sha256": "68b24d60b326aaf7daf7a3d87ab9bdc6db0fa5cdeab6e5c04279d81b4374f656",
+          "byte_size": 2864
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "31e60b4709571b613bc8736a9c982fb550d8d7a1809160a68a8282af60c8910b",
+          "byte_size": 171666216
+        },
+        {
+          "path": "preprocessor_config.json",
+          "sha256": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+          "byte_size": 444
+        }
+      ]
+    },
+    {
+      "repo_id": "docling-project/docling-models",
+      "revision": "fc0f2d45e2218ea24bce5045f58a389aed16dc23",
+      "license": "cdla-permissive-2.0",
+      "local_directory": "docling-project--docling-models",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "d17f233378eff1240b623b36da76ee8b40afcca05d505949713bf03f7e00822a",
+          "byte_size": 3413
+        },
+        {
+          "path": "model_artifacts/tableformer/accurate/tableformer_accurate.safetensors",
+          "sha256": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+          "byte_size": 212758388
+        },
+        {
+          "path": "model_artifacts/tableformer/accurate/tm_config.json",
+          "sha256": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+          "byte_size": 7060
+        }
+      ]
+    },
+    {
+      "repo_id": "docling-project/CodeFormulaV2",
+      "revision": "ecedbe111d15c2dc60bfd4a823cbe80127b58af4",
+      "license": "cdla-permissive-2.0",
+      "local_directory": "docling-project--CodeFormulaV2",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "684604c08aa8cc32b3d65049bc9794b57f3fc510953148ad3ba61d35f60bef9a",
+          "byte_size": 1511
+        },
+        {
+          "path": "added_tokens.json",
+          "sha256": "002686b2efb9535c359458cd1121de8e1b58e67426a46e2bd4425843766a3a5e",
+          "byte_size": 975
+        },
+        {
+          "path": "chat_template.json",
+          "sha256": "c9d21553af689882ac89ad8e8412164662d1605f6595119664e85626df7be421",
+          "byte_size": 422
+        },
+        {
+          "path": "config.json",
+          "sha256": "98f55cfe07dd168f9fab1f1eec35f754b23631ea1a9a7c9759b1b7cb41ab76b1",
+          "byte_size": 2638
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "b17f1890b2b2baf172761c9c4d6eb956482ffa05964f357e67544ec998c9851f",
+          "byte_size": 169
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2",
+          "byte_size": 630993616
+        },
+        {
+          "path": "preprocessor_config.json",
+          "sha256": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+          "byte_size": 486
+        },
+        {
+          "path": "processor_config.json",
+          "sha256": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+          "byte_size": 68
+        },
+        {
+          "path": "special_tokens_map.json",
+          "sha256": "1b17e900a73384d256db6f1a7591fd0d95c09e6aede680022b047386b97afcba",
+          "byte_size": 1071
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "5ec5d3780a2e01b140cf34f023eb600263855a99aacdc3eb0f2600d7b1b4ac96",
+          "byte_size": 7160031
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "37a0e94be9c9ab5197b2188e61cf764bbc015f45261013881fe37bd2fe8599e6",
+          "byte_size": 24952
+        },
+        {
+          "path": "vocab.json",
+          "sha256": "8922f7e91084b9862d270c16ce1027071214aa252a1567a4b410f952101005fc",
+          "byte_size": 1612747
+        }
+      ]
+    },
+    {
+      "repo_id": "RapidAI/RapidOCR",
+      "revision": "v3.8.0",
+      "download_base": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.8.0/",
+      "license": "apache-2.0",
+      "local_directory": "RapidOcr",
+      "files": [
+        {
+          "path": "onnx/PP-OCRv4/det/ch_PP-OCRv4_det_mobile.onnx",
+          "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+          "byte_size": 4745517
+        },
+        {
+          "path": "onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx",
+          "sha256": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+          "byte_size": 585532
+        },
+        {
+          "path": "onnx/PP-OCRv4/rec/ch_PP-OCRv4_rec_mobile.onnx",
+          "sha256": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+          "byte_size": 10857958
+        },
+        {
+          "path": "paddle/PP-OCRv4/rec/ch_PP-OCRv4_rec_mobile/ppocr_keys_v1.txt",
+          "sha256": "28b2362ad4ab2dc38769aa72feb535e3a9ddb3fd2a7585a05920e6393b1dc7f7",
+          "byte_size": 26249
+        },
+        {
+          "path": "resources/fonts/FZYTK.TTF",
+          "sha256": "4065a23df6823c8e2b69a0e76d02f02a6470b8774a5e91086609701ad95cc33f",
+          "byte_size": 3241748
+        }
+      ],
+      "license_source": "https://www.modelscope.cn/api/v1/models/RapidAI/RapidOCR"
+    },
+    {
+      "repo_id": "ibm-granite/granite-docling-258M",
+      "revision": "982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe",
+      "license": "apache-2.0",
+      "local_directory": "ibm-granite--granite-docling-258M",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "b43727febeba2c6ce20b8746322e7687ca667d81a12d0364f346148f30622d84",
+          "byte_size": 21039
+        },
+        {
+          "path": "added_tokens.json",
+          "sha256": "882e49757a3bea90e00df1d2dc8c18b2b526ff77380db20439feeb1f053a63cd",
+          "byte_size": 35
+        },
+        {
+          "path": "chat_template.jinja",
+          "sha256": "a4b0bf4348b014acca131da664d05b61e39d5dc8af980f1913846a57ccc6d289",
+          "byte_size": 588
+        },
+        {
+          "path": "config.json",
+          "sha256": "4fbb5d2ad9549663e5740b36a5f45cb3d861d20d2e1c158af8569765f9864f30",
+          "byte_size": 1641
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "369256b622c73d709b248da31ba4332ef19c01dec6e311d8e4b671bc1321bc06",
+          "byte_size": 169
+        },
+        {
+          "path": "merges.txt",
+          "sha256": "b6fe424e334903f7fb84d3a106d9730455f4744b9fe3c21ee136d97a00e72502",
+          "byte_size": 916646
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "1cdad234deb1cde18ee6a586f849057f19851daf1fedce2e40aff791dbe46f61",
+          "byte_size": 515093104
+        },
+        {
+          "path": "preprocessor_config.json",
+          "sha256": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7",
+          "byte_size": 486
+        },
+        {
+          "path": "processor_config.json",
+          "sha256": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46",
+          "byte_size": 68
+        },
+        {
+          "path": "special_tokens_map.json",
+          "sha256": "45c073d82ba37a1fc69c8d6a772d17a8e4f78b64b63c0fce2c77d18a3259d18e",
+          "byte_size": 812
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "673ef3c60759806916ebf37c5d9b79f7ffd53a1419f1ebd75bfec8f177c2b1b3",
+          "byte_size": 7153134
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "261f9491897226589c131a4ac5993c495eec2104dace144f69c397682865a3a0",
+          "byte_size": 17774
+        },
+        {
+          "path": "vocab.json",
+          "sha256": "e2bad0ce74e6ddfece426ef99e18067f4a6c3d4e65bb6dd9cfd638450cca0142",
+          "byte_size": 1612698
+        }
+      ]
+    },
+    {
+      "repo_id": "PaddlePaddle/PaddleOCR-VL-1.6",
+      "revision": "c5630abae1d940eafe0697512a0325494b02ab42",
+      "license": "apache-2.0",
+      "local_directory": "PaddlePaddle--PaddleOCR-VL-1.6",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "b8c4d7deccd236af023af1c88c4d4e8f0fc2f41914e0fb23a3ec9678fb5a8456",
+          "byte_size": 11376
+        },
+        {
+          "path": "README.md",
+          "sha256": "d6c5b77a660577f6e18021defccd835bdc93a8c6538f5a479d597f3e94288abf",
+          "byte_size": 21424
+        },
+        {
+          "path": "added_tokens.json",
+          "sha256": "f59f889088e0fe21c523e7cf121bb6dca3b0bb148cb7159fbb4572c74dfc5644",
+          "byte_size": 25381
+        },
+        {
+          "path": "chat_template.jinja",
+          "sha256": "2f27812dab7f333e471884e0c803d807f11953d5453140dfb1aaba234f872bc8",
+          "byte_size": 1474
+        },
+        {
+          "path": "config.json",
+          "sha256": "ce7f4565f8b1db78532ad5d1b9ebe55c2139d49bd4cb04778b580a08a598f171",
+          "byte_size": 2059
+        },
+        {
+          "path": "configuration_paddleocr_vl.py",
+          "sha256": "753dd93654c3a9c8c85a3eaee1e3092dd12591b0f2dce0305e1abfb7a41ff160",
+          "byte_size": 8104
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "a6701d78ab3b4d972307cdec3b69d4c13f46e0d5140514f50ab7d84259324b94",
+          "byte_size": 133
+        },
+        {
+          "path": "image_processing_paddleocr_vl.py",
+          "sha256": "a4fa521b9cb16e207f94b7f2d16427771776dfc634420d319fc4916ee58049ec",
+          "byte_size": 25032
+        },
+        {
+          "path": "inference.yml",
+          "sha256": "1587aece2d6442366efce34161d5f7d5f67f09ebfbf043168e5fade892c2780e",
+          "byte_size": 43
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db",
+          "byte_size": 1917255968
+        },
+        {
+          "path": "modeling_paddleocr_vl.py",
+          "sha256": "c5013dff57ca8b87dc1de64d0fd839a44313de09d230a4fb2d08289d2cad5111",
+          "byte_size": 103889
+        },
+        {
+          "path": "preprocessor_config.json",
+          "sha256": "111872ab1e8bb7fd040ac5087bfced7ab8f011f02139b088cba294964c3b1d0e",
+          "byte_size": 641
+        },
+        {
+          "path": "processing_paddleocr_vl.py",
+          "sha256": "e29cb1e5f275f2bd3ce051bd5c9983a33894e693b2823a0e13d4c07c8c4f9e13",
+          "byte_size": 12253
+        },
+        {
+          "path": "processor_config.json",
+          "sha256": "1568858960a9760c54431dae693a6152e601ff55cdf6d2eab97a4a99958faea0",
+          "byte_size": 137
+        },
+        {
+          "path": "special_tokens_map.json",
+          "sha256": "d3a125c03103deb2acaf7730791bdbbf196f620e5a2213b664511ff9b4b25bab",
+          "byte_size": 1151
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "c8a215a59183d0d0781adc33bacd3ce6162716f7fd568fb30234a74d69803a7d",
+          "byte_size": 11189060
+        },
+        {
+          "path": "tokenizer.model",
+          "sha256": "34ef7db83df785924fb83d7b887b6e822a031c56e15cff40aaf9b982988180df",
+          "byte_size": 1614363
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "1f979337347cc0cb72a6282d8a23ed183539aa81a87a906f022aee2bab83c7c5",
+          "byte_size": 186947
+        }
+      ]
+    },
+    {
+      "repo_id": "PaddlePaddle/PP-DocLayoutV3",
+      "revision": "7b48a7566925fa464281f930c58eee04fe2c862a",
+      "license": "apache-2.0",
+      "local_directory": "PaddlePaddle--PP-DocLayoutV3",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "8483bc2af32658aae3d38ddec2b7186f94f925481b70ae9e9034daaf80e6b9e1",
+          "byte_size": 12077
+        },
+        {
+          "path": "inference.json",
+          "sha256": "2b68367c5b312a03de5a6e1642c597c8f95165a7e40cd59c6700cf4a5042f4fd",
+          "byte_size": 1196890
+        },
+        {
+          "path": "inference.pdiparams",
+          "sha256": "70bd316b0582769ec968829fd1feb1a6a58b7c941b938327e551b6b12b45c137",
+          "byte_size": 130806572
+        },
+        {
+          "path": "inference.yml",
+          "sha256": "506fcfac13b3b546ae40d7886b44126420f392adb694e3f8bb6a6286a1f90fdc",
+          "byte_size": 1482
+        }
+      ]
+    }
+  ],
+  "pipeline_revision": "local-cpu-parser-profiles-v2",
+  "paddleocr_version": "3.7.0",
+  "paddlex_version": "3.7.2",
+  "paddlepaddle_version": "3.3.1"
+}

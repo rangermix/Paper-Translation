@@ -1,0 +1,478 @@
+<!doctype html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>需求追踪矩阵 · v3 · 对照文库</title><style>
+:root{color-scheme:light;--bg:#f5f2ec;--paper:#fffdf9;--ink:#1d252c;--muted:#63716e;--line:#d9d5cc;--accent:#2e6f68;--blue:#315c8a;--code:#efede7;--font:17px}
+:root[data-theme=dark]{color-scheme:dark;--bg:#11171b;--paper:#182126;--ink:#edf1f2;--muted:#a8b4bb;--line:#344149;--accent:#80c8bd;--blue:#8eb9e6;--code:#222c32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:var(--font)/1.85 system-ui,-apple-system,"Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button,.button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:.45rem .8rem;font-size:14px;text-decoration:none;cursor:pointer}button:hover,.button:hover{border-color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px max(20px,calc((100vw - 1480px)/2));border-bottom:1px solid var(--line);background:var(--paper)}.brand{color:var(--ink);font-size:16px;font-weight:750;text-decoration:none}.version{font-size:13px;color:var(--muted);margin-left:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:34px;padding:32px 24px 70px}.sidebar{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}.docmenu summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:700}.sidebar nav{padding:8px 0 20px;border-bottom:1px solid var(--line)}.sidebar nav a{display:block;font-size:14px;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:7px}.sidebar nav a.active{background:var(--paper);color:var(--accent);font-weight:750;border-left:3px solid var(--accent)}.sidebar .toc{padding:18px 0;font-size:13px}.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}.toc a{display:block;padding:4px 4px;color:var(--muted);text-decoration:none;line-height:1.5}.toc a.sub{padding-left:15px}.content{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:36px 44px}.content h1{font:700 clamp(29px,3vw,40px)/1.32 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 20px;overflow-wrap:anywhere}.content h2{font-size:25px;line-height:1.45;margin:2.4rem 0 1rem;padding-top:8px;border-top:1px solid var(--line);scroll-margin-top:20px}.content h3{font-size:20px;line-height:1.6;margin:2rem 0 .6rem;color:var(--accent);scroll-margin-top:20px}.content p{margin:.8em 0}.content strong{font-weight:750}.content li{margin:.5em 0}.content ul,.content ol{padding-left:1.5em}.content blockquote{border-left:4px solid var(--accent);margin:1em 0;padding:.2em 1em;color:var(--muted);background:var(--bg)}.tablewrap{overflow-x:auto;width:100%;margin:20px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.7}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--bg);font-weight:750;white-space:nowrap}tr:last-child td{border-bottom:0}td{overflow-wrap:anywhere}pre{background:var(--code);padding:19px;border-radius:9px;overflow:auto;font:14px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;overflow-wrap:anywhere}p code,li code,td code{background:var(--code);padding:2px 5px;border-radius:4px}.foot{font-size:13px;color:var(--muted);margin-top:36px;border-top:1px solid var(--line);padding-top:16px}.portal{max-width:1160px;margin:auto;padding:52px 24px 70px}.portal h1{font:700 clamp(34px,5vw,55px)/1.25 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 16px}.intro{max-width:850px;color:var(--muted);font-size:18px}.notice{border-left:4px solid var(--accent);background:var(--paper);padding:17px 22px;margin:28px 0;border-radius:0 9px 9px 0}.stage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}.stage{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:24px}.stage h2{font-size:27px;margin:0 0 8px}.stage h3{font-size:18px;margin:0 0 12px}.stage p{font-size:15px;color:var(--muted);margin:0 0 14px}.stage .actions{margin-top:auto}.stage .count{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.resource-list{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.resource-list a{padding:14px 2px;border-bottom:1px solid var(--line);text-decoration:none}.section-title{font-size:24px;margin:34px 0 14px}.statline{font-size:14px;color:var(--muted);margin:12px 0}.wide-button{display:inline-block;background:var(--accent);color:var(--paper);padding:10px 16px;border-radius:9px;text-decoration:none;font-size:15px;margin:8px 8px 0 0}
+@media(max-width:1000px){.layout{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:24px 16px}.content{padding:28px}.stage-grid{gap:12px}.stage{padding:18px}.version{display:none}}
+@media(max-width:780px){.layout{display:block;padding:14px 12px 40px}.sidebar{position:relative;top:auto;max-height:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.sidebar nav{columns:2;column-gap:16px}.sidebar nav a{break-inside:avoid;padding:5px;font-size:13px}.sidebar .toc{padding:12px 0 0}.content{padding:24px 19px}.content h1{font-size:28px}.content h2{font-size:22px}.content h3{font-size:18px}.topbar{padding:12px 16px;align-items:flex-start}.topbar button,.topbar .button{padding:5px 8px;font-size:12px}.portal{padding:30px 18px 50px}.portal h1{font-size:34px}.intro{font-size:16px}.stage-grid{grid-template-columns:1fr;margin:22px 0}.resource-list{grid-template-columns:1fr}table{min-width:640px}body{--font:16px}}
+@media print{.topbar,.sidebar,.actions{display:none!important}body{background:white;color:black;font-size:11pt}.layout,.portal{display:block;padding:0;max-width:none}.content{padding:0;border:0;background:white}.content h2,.content h3{break-after:avoid}.tablewrap{overflow:visible;border:0}table{min-width:0;font-size:9pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:black}.stage-grid{display:block}.stage{break-inside:avoid;margin-bottom:12px}}
+</style></head><body><header class="topbar"><a class="brand" href="../index.html">对照文库 · 规格与实施<span class="version">v3.0 · 个人PDF版</span></a><div class="actions"><a class="button" href="../shared/traceability.md" download>Markdown</a><button data-theme>明暗</button><button data-print>打印</button></div></header><div class="layout"><aside class="sidebar"><details class="docmenu" open><summary>文档导航</summary><nav><a class="" href="baseline.html">产品基线与范围</a><a class="" href="m0-spec.html">M0 · 产品 Spec</a><a class="" href="m0-plan.html">M0 · 实施 Plan</a><a class="" href="m1-spec.html">M1 · 产品 Spec</a><a class="" href="m1-plan.html">M1 · 实施 Plan</a><a class="" href="m2-spec.html">M2 · 产品 Spec</a><a class="" href="m2-plan.html">M2 · 实施 Plan</a><a class="" href="architecture-data.html">共享架构与数据</a><a class="" href="workflow-quality-security.html">工作流、质量与安全</a><a class="" href="api-contract.html">HTTP / Worker 契约</a><a class="" href="verification-strategy.html">测试与发布策略</a><a class="active" href="traceability.html">四向追踪矩阵</a><a class="" href="compose-contract.html">Docker Compose 交付契约</a><a class="" href="changelog.html">范围变更与迁移</a><a class="" href="agents.html">编码 Agent 交接</a><a class="" href="sources.html">依据与决策来源</a><a class="" href="readme.html">使用与交接说明</a></nav></details><details class="toc" open><summary>本页目录</summary></details></aside><main class="content"><h1 id="h1">需求追踪矩阵 · v3</h1>
+<p>65条需求、42个工作包、130个AT、24个退出门沿用编号但重新审阅。这里只表示覆盖映射，不表示测试已通过。</p>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>需求</th>
+<th>标题</th>
+<th>实施工作包</th>
+<th>验收场景</th>
+<th>退出门</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0-R01</td>
+<td>仅 PDF 的产品入口</td>
+<td>M0-P01, M0-P12</td>
+<td>M0-AT01A, M0-AT01B</td>
+<td>M0-G01</td>
+</tr>
+<tr>
+<td>M0-R02</td>
+<td>冻结现有阅读样式</td>
+<td>M0-P01, M0-P05, M0-P10, M0-P12</td>
+<td>M0-AT02A, M0-AT02B</td>
+<td>M0-G01</td>
+</tr>
+<tr>
+<td>M0-R03</td>
+<td>PDF 原件入库与阶段边界</td>
+<td>M0-P07, M0-P12</td>
+<td>M0-AT03A, M0-AT03B</td>
+<td>M0-G04</td>
+</tr>
+<tr>
+<td>M0-R04</td>
+<td>自有 RenderInput v3 与内部契约</td>
+<td>M0-P03, M0-P12</td>
+<td>M0-AT04A, M0-AT04B</td>
+<td>M0-G02</td>
+</tr>
+<tr>
+<td>M0-R05</td>
+<td>原件与机械清理可追溯</td>
+<td>M0-P03, M0-P12</td>
+<td>M0-AT05A, M0-AT05B</td>
+<td>M0-G02</td>
+</tr>
+<tr>
+<td>M0-R06</td>
+<td>一对一阅读与保留策略</td>
+<td>M0-P03, M0-P05, M0-P12</td>
+<td>M0-AT06A, M0-AT06B</td>
+<td>M0-G02</td>
+</tr>
+<tr>
+<td>M0-R07</td>
+<td>结构渲染完整而不猜测</td>
+<td>M0-P05, M0-P12</td>
+<td>M0-AT07A, M0-AT07B</td>
+<td>M0-G03</td>
+</tr>
+<tr>
+<td>M0-R08</td>
+<td>确定性静态渲染</td>
+<td>M0-P05, M0-P12</td>
+<td>M0-AT08A, M0-AT08B</td>
+<td>M0-G03</td>
+</tr>
+<tr>
+<td>M0-R09</td>
+<td>三种独立消费方式</td>
+<td>M0-P09, M0-P12</td>
+<td>M0-AT09A, M0-AT09B</td>
+<td>M0-G03</td>
+</tr>
+<tr>
+<td>M0-R10</td>
+<td>无脚本可读与可访问控件</td>
+<td>M0-P05, M0-P10, M0-P12</td>
+<td>M0-AT10A, M0-AT10B</td>
+<td>M0-G03</td>
+</tr>
+<tr>
+<td>M0-R11</td>
+<td>两篇旧阅读页的受控保留</td>
+<td>M0-P01, M0-P08, M0-P12</td>
+<td>M0-AT11A, M0-AT11B</td>
+<td>M0-G01</td>
+</tr>
+<tr>
+<td>M0-R12</td>
+<td>单实例持久文档库</td>
+<td>M0-P04, M0-P07, M0-P10, M0-P12</td>
+<td>M0-AT12A, M0-AT12B</td>
+<td>M0-G04</td>
+</tr>
+<tr>
+<td>M0-R13</td>
+<td>无身份系统与直接访问边界</td>
+<td>M0-P04, M0-P09, M0-P11, M0-P12</td>
+<td>M0-AT13A, M0-AT13B</td>
+<td>M0-G05</td>
+</tr>
+<tr>
+<td>M0-R14</td>
+<td>幂等构建与原子发布底座</td>
+<td>M0-P06, M0-P11, M0-P12</td>
+<td>M0-AT14A, M0-AT14B</td>
+<td>M0-G06</td>
+</tr>
+<tr>
+<td>M0-R15</td>
+<td>未完成不伪装完成</td>
+<td>M0-P06, M0-P07, M0-P12</td>
+<td>M0-AT15A, M0-AT15B</td>
+<td>M0-G04</td>
+</tr>
+<tr>
+<td>M0-R16</td>
+<td>安全内容和本地资产</td>
+<td>M0-P05, M0-P09, M0-P11, M0-P12</td>
+<td>M0-AT16A, M0-AT16B</td>
+<td>M0-G05</td>
+</tr>
+<tr>
+<td>M0-R17</td>
+<td>版本边界与不可变快照</td>
+<td>M0-P03, M0-P04, M0-P06, M0-P12</td>
+<td>M0-AT17A, M0-AT17B</td>
+<td>M0-G02</td>
+</tr>
+<tr>
+<td>M0-R18</td>
+<td>仅 Compose、完整运行依赖与恢复</td>
+<td>M0-P02, M0-P11, M0-P12</td>
+<td>M0-AT18A, M0-AT18B</td>
+<td>M0-G07</td>
+</tr>
+<tr>
+<td>M1-R01</td>
+<td>PDF流式上传会话</td>
+<td>M1-P02, M1-P16</td>
+<td>M1-AT01A, M1-AT01B</td>
+<td>M1-G01</td>
+</tr>
+<tr>
+<td>M1-R02</td>
+<td>PDF支持边界与可见失败</td>
+<td>M1-P01, M1-P02, M1-P05, M1-P16</td>
+<td>M1-AT02A, M1-AT02B</td>
+<td>M1-G01</td>
+</tr>
+<tr>
+<td>M1-R03</td>
+<td>完全离线的 PDF 解析容器</td>
+<td>M1-P03, M1-P14, M1-P16</td>
+<td>M1-AT03A, M1-AT03B</td>
+<td>M1-G01</td>
+</tr>
+<tr>
+<td>M1-R04</td>
+<td>文本 PDF 的阅读顺序与覆盖账本</td>
+<td>M1-P04, M1-P15, M1-P16</td>
+<td>M1-AT04A, M1-AT04B</td>
+<td>M1-G02</td>
+</tr>
+<tr>
+<td>M1-R05</td>
+<td>PDF内部资源与失败页处理</td>
+<td>M1-P05, M1-P15, M1-P16</td>
+<td>M1-AT05A, M1-AT05B</td>
+<td>M1-G01</td>
+</tr>
+<tr>
+<td>M1-R06</td>
+<td>翻译前结构预检</td>
+<td>M1-P04, M1-P06, M1-P16</td>
+<td>M1-AT06A, M1-AT06B</td>
+<td>M1-G02</td>
+</tr>
+<tr>
+<td>M1-R07</td>
+<td>目标语言与外部处理授权</td>
+<td>M1-P01, M1-P06, M1-P15, M1-P16</td>
+<td>M1-AT07A, M1-AT07B</td>
+<td>M1-G03</td>
+</tr>
+<tr>
+<td>M1-R08</td>
+<td>首个真实 Provider 与可替代适配器</td>
+<td>M1-P01, M1-P08, M1-P15, M1-P16</td>
+<td>M1-AT08A, M1-AT08B</td>
+<td>M1-G03</td>
+</tr>
+<tr>
+<td>M1-R09</td>
+<td>基于单元的分块与上下文</td>
+<td>M1-P07, M1-P16</td>
+<td>M1-AT09A, M1-AT09B</td>
+<td>M1-G04</td>
+</tr>
+<tr>
+<td>M1-R10</td>
+<td>按 ID 严格校验模型响应</td>
+<td>M1-P07, M1-P08, M1-P16</td>
+<td>M1-AT10A, M1-AT10B</td>
+<td>M1-G04</td>
+</tr>
+<tr>
+<td>M1-R11</td>
+<td>个人库内精确翻译缓存</td>
+<td>M1-P07, M1-P16</td>
+<td>M1-AT11A, M1-AT11B</td>
+<td>M1-G04</td>
+</tr>
+<tr>
+<td>M1-R12</td>
+<td>持久任务与真正恢复</td>
+<td>M1-P10, M1-P14, M1-P16</td>
+<td>M1-AT12A, M1-AT12B</td>
+<td>M1-G05</td>
+</tr>
+<tr>
+<td>M1-R13</td>
+<td>有界错误恢复</td>
+<td>M1-P08, M1-P10, M1-P16</td>
+<td>M1-AT13A, M1-AT13B</td>
+<td>M1-G05</td>
+</tr>
+<tr>
+<td>M1-R14</td>
+<td>未知结果与计费不确定性</td>
+<td>M1-P08, M1-P09, M1-P10, M1-P14, M1-P16</td>
+<td>M1-AT14A, M1-AT14B</td>
+<td>M1-G05</td>
+</tr>
+<tr>
+<td>M1-R15</td>
+<td>预算预留与用量账本</td>
+<td>M1-P09, M1-P14, M1-P16</td>
+<td>M1-AT15A, M1-AT15B</td>
+<td>M1-G06</td>
+</tr>
+<tr>
+<td>M1-R16</td>
+<td>暂停、取消和恢复的竞态语义</td>
+<td>M1-P09, M1-P10, M1-P16</td>
+<td>M1-AT16A, M1-AT16B</td>
+<td>M1-G06</td>
+</tr>
+<tr>
+<td>M1-R17</td>
+<td>真实任务进度与事件</td>
+<td>M1-P10, M1-P12, M1-P16</td>
+<td>M1-AT17A, M1-AT17B</td>
+<td>M1-G08</td>
+</tr>
+<tr>
+<td>M1-R18</td>
+<td>基本质量门禁</td>
+<td>M1-P11, M1-P15, M1-P16</td>
+<td>M1-AT18A, M1-AT18B</td>
+<td>M1-G07</td>
+</tr>
+<tr>
+<td>M1-R19</td>
+<td>基本校对可完成真实闭环</td>
+<td>M1-P06, M1-P11, M1-P16</td>
+<td>M1-AT19A, M1-AT19B</td>
+<td>M1-G07</td>
+</tr>
+<tr>
+<td>M1-R20</td>
+<td>自动发布有明确条件</td>
+<td>M1-P11, M1-P12, M1-P16</td>
+<td>M1-AT20A, M1-AT20B</td>
+<td>M1-G07</td>
+</tr>
+<tr>
+<td>M1-R21</td>
+<td>真实文档库、查重与资源链</td>
+<td>M1-P02, M1-P06, M1-P12, M1-P16</td>
+<td>M1-AT21A, M1-AT21B</td>
+<td>M1-G08</td>
+</tr>
+<tr>
+<td>M1-R22</td>
+<td>内容安全与供应商设置</td>
+<td>M1-P08, M1-P13, M1-P16</td>
+<td>M1-AT22A, M1-AT22B</td>
+<td>M1-G09</td>
+</tr>
+<tr>
+<td>M1-R23</td>
+<td>删除、撤销发布与回收</td>
+<td>M1-P13, M1-P14, M1-P16</td>
+<td>M1-AT23A, M1-AT23B</td>
+<td>M1-G09</td>
+</tr>
+<tr>
+<td>M1-R24</td>
+<td>批量导入的独立性与资源公平</td>
+<td>M1-P02, M1-P06, M1-P12, M1-P16</td>
+<td>M1-AT24A, M1-AT24B</td>
+<td>M1-G08</td>
+</tr>
+<tr>
+<td>M1-R25</td>
+<td>Compose生产交付与故障恢复</td>
+<td>M1-P03, M1-P14, M1-P16</td>
+<td>M1-AT25A, M1-AT25B</td>
+<td>M1-G09</td>
+</tr>
+<tr>
+<td>M1-R26</td>
+<td>真实端到端验收而非演示</td>
+<td>M1-P01, M1-P15, M1-P16</td>
+<td>M1-AT26A, M1-AT26B</td>
+<td>M1-G03</td>
+</tr>
+<tr>
+<td>M2-R01</td>
+<td>PDF来源对照工作台</td>
+<td>M2-P02, M2-P13, M2-P14</td>
+<td>M2-AT01A, M2-AT01B</td>
+<td>M2-G01</td>
+</tr>
+<tr>
+<td>M2-R02</td>
+<td>可编辑草稿与不可变修订</td>
+<td>M2-P01, M2-P03, M2-P14</td>
+<td>M2-AT02A, M2-AT02B</td>
+<td>M2-G01</td>
+</tr>
+<tr>
+<td>M2-R03</td>
+<td>个人术语表修订</td>
+<td>M2-P04, M2-P14</td>
+<td>M2-AT03A, M2-AT03B</td>
+<td>M2-G02</td>
+</tr>
+<tr>
+<td>M2-R04</td>
+<td>术语作用范围与影响预览</td>
+<td>M2-P04, M2-P14</td>
+<td>M2-AT04A, M2-AT04B</td>
+<td>M2-G02</td>
+</tr>
+<tr>
+<td>M2-R05</td>
+<td>局部重译不伤及已审校内容</td>
+<td>M2-P05, M2-P13, M2-P14</td>
+<td>M2-AT05A, M2-AT05B</td>
+<td>M2-G02</td>
+</tr>
+<tr>
+<td>M2-R06</td>
+<td>审校状态可信</td>
+<td>M2-P03, M2-P05, M2-P14</td>
+<td>M2-AT06A, M2-AT06B</td>
+<td>M2-G01</td>
+</tr>
+<tr>
+<td>M2-R07</td>
+<td>质量报告和问题处置闭环</td>
+<td>M2-P06, M2-P13, M2-P14</td>
+<td>M2-AT07A, M2-AT07B</td>
+<td>M2-G03</td>
+</tr>
+<tr>
+<td>M2-R08</td>
+<td>辅助语义评审有边界</td>
+<td>M2-P06, M2-P13, M2-P14</td>
+<td>M2-AT08A, M2-AT08B</td>
+<td>M2-G03</td>
+</tr>
+<tr>
+<td>M2-R09</td>
+<td>多目标语言 edition</td>
+<td>M2-P01, M2-P07, M2-P13, M2-P14</td>
+<td>M2-AT09A, M2-AT09B</td>
+<td>M2-G04</td>
+</tr>
+<tr>
+<td>M2-R10</td>
+<td>语言能力与混合文本声明</td>
+<td>M2-P07, M2-P14</td>
+<td>M2-AT10A, M2-AT10B</td>
+<td>M2-G04</td>
+</tr>
+<tr>
+<td>M2-R11</td>
+<td>来源修正与新来源版本</td>
+<td>M2-P02, M2-P14</td>
+<td>M2-AT11A, M2-AT11B</td>
+<td>M2-G01</td>
+</tr>
+<tr>
+<td>M2-R12</td>
+<td>跨来源修订映射与失效</td>
+<td>M2-P02, M2-P05, M2-P14</td>
+<td>M2-AT12A, M2-AT12B</td>
+<td>M2-G01</td>
+</tr>
+<tr>
+<td>M2-R13</td>
+<td>修订差异与审计</td>
+<td>M2-P03, M2-P08, M2-P14</td>
+<td>M2-AT13A, M2-AT13B</td>
+<td>M2-G05</td>
+</tr>
+<tr>
+<td>M2-R14</td>
+<td>并发校对与候选安全合并</td>
+<td>M2-P03, M2-P05, M2-P13, M2-P14</td>
+<td>M2-AT14A, M2-AT14B</td>
+<td>M2-G05</td>
+</tr>
+<tr>
+<td>M2-R15</td>
+<td>发布审批、历史与回滚</td>
+<td>M2-P08, M2-P13, M2-P14</td>
+<td>M2-AT15A, M2-AT15B</td>
+<td>M2-G05</td>
+</tr>
+<tr>
+<td>M2-R16</td>
+<td>仅换模板的零模型重建</td>
+<td>M2-P09, M2-P13, M2-P14</td>
+<td>M2-AT16A, M2-AT16B</td>
+<td>M2-G06</td>
+</tr>
+<tr>
+<td>M2-R17</td>
+<td>个人翻译记忆候选</td>
+<td>M2-P10, M2-P14</td>
+<td>M2-AT17A, M2-AT17B</td>
+<td>M2-G02</td>
+</tr>
+<tr>
+<td>M2-R18</td>
+<td>个人正文检索与阅读位置</td>
+<td>M2-P11, M2-P13, M2-P14</td>
+<td>M2-AT18A, M2-AT18B</td>
+<td>M2-G07</td>
+</tr>
+<tr>
+<td>M2-R19</td>
+<td>精确导出与 Compose 备份</td>
+<td>M2-P12, M2-P14</td>
+<td>M2-AT19A, M2-AT19B</td>
+<td>M2-G06</td>
+</tr>
+<tr>
+<td>M2-R20</td>
+<td>可靠性、删除和迁移回归</td>
+<td>M2-P01, M2-P12, M2-P13, M2-P14</td>
+<td>M2-AT20A, M2-AT20B</td>
+<td>M2-G07</td>
+</tr>
+<tr>
+<td>M2-R21</td>
+<td>完整编辑出版验收</td>
+<td>M2-P13, M2-P14</td>
+<td>M2-AT21A, M2-AT21B</td>
+<td>M2-G08</td>
+</tr>
+</tbody>
+</table></div>
+<footer class="foot">规格包 v3.0 · 2026-09-06 · 产品与计划尚待实施。所有内容已写入本地HTML，无需联网阅读。</footer></main></div><script>(()=>{const r=document.documentElement;try{r.dataset.theme=localStorage.getItem('spec-theme')||'light'}catch{}document.querySelectorAll('button[data-theme]').forEach(b=>b.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('spec-theme',r.dataset.theme)}catch{}}));document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>print()));if(innerWidth<780){const m=document.querySelector('.docmenu');if(m)m.removeAttribute('open');const t=document.querySelector('.toc');if(t)t.removeAttribute('open')}})();</script></body></html>

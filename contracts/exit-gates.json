@@ -1,0 +1,283 @@
+[
+  {
+    "id": "M0-G01",
+    "milestone": "M0",
+    "title": "范围与无身份契约",
+    "requirements": [
+      "M0-R01",
+      "M0-R02",
+      "M0-R11"
+    ],
+    "evidence": "PDF唯一入口；无用户/角色/会话/工作区表或接口；无反代服务；CSS/hash符合参考。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M0-G02",
+    "milestone": "M0",
+    "title": "PDF库与IR基础",
+    "requirements": [
+      "M0-R04",
+      "M0-R05",
+      "M0-R06",
+      "M0-R17"
+    ],
+    "evidence": "真实PDF存储/检查/原件预览及内部全结构IR语义测试；没有双语粘贴或IR导入入口。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M0-G03",
+    "milestone": "M0",
+    "title": "完整静态出版",
+    "requirements": [
+      "M0-R07",
+      "M0-R08",
+      "M0-R09",
+      "M0-R10"
+    ],
+    "evidence": "各结构渲染、断网file://、无JS、无存储、确定性hash。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M0-G04",
+    "milestone": "M0",
+    "title": "真实产品闭环",
+    "requirements": [
+      "M0-R03",
+      "M0-R12",
+      "M0-R15"
+    ],
+    "evidence": "上传PDF→验证→持久原件条目→收藏/归档→重开浏览器读取；内部fixture出版及静态导出独立验证，无公开IR入口。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M0-G05",
+    "milestone": "M0",
+    "title": "无身份边界及PDF内容安全",
+    "requirements": [
+      "M0-R13",
+      "M0-R16"
+    ],
+    "evidence": "无账号/会话/ACL对象；同实例不同浏览器直接访问；XSS、路径穿越、PDF动作及Host/Origin负例。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M0-G06",
+    "milestone": "M0",
+    "title": "Compose依赖与恢复",
+    "requirements": [
+      "M0-R14"
+    ],
+    "evidence": "Docker-only干净宿主、离线运行依赖、内置样例静态导出、DB与卷备份恢复、坏PDF隔离。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M0-G07",
+    "milestone": "M0",
+    "title": "部署和恢复",
+    "requirements": [
+      "M0-R18"
+    ],
+    "evidence": "全新安装与恢复演练，源件/模板/当前artifact hash一致。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G01",
+    "milestone": "M1",
+    "title": "安全本地输入",
+    "requirements": [
+      "M1-R01",
+      "M1-R02",
+      "M1-R03",
+      "M1-R05"
+    ],
+    "evidence": "仅PDF矩阵/超限/伪装文件/PDF动作/零远程资源抓取/解析隔离检查。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G02",
+    "milestone": "M1",
+    "title": "真实源结构完整",
+    "requirements": [
+      "M1-R04",
+      "M1-R06"
+    ],
+    "evidence": "标注PDF语料、页面覆盖账本、缺页/OCR阻断、过期预检确认负测。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G03",
+    "milestone": "M1",
+    "title": "真实Provider与授权",
+    "requirements": [
+      "M1-R07",
+      "M1-R08",
+      "M1-R26"
+    ],
+    "evidence": "已授权真实请求证据（敏感部分脱敏）、语言matrix、成本、配置失败测试。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G04",
+    "milestone": "M1",
+    "title": "对齐和缓存",
+    "requirements": [
+      "M1-R09",
+      "M1-R10",
+      "M1-R11"
+    ],
+    "evidence": "长段分片重组、响应错误集合、跨文档/上下文缓存隔离。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G05",
+    "milestone": "M1",
+    "title": "任务恢复与未知状态",
+    "requirements": [
+      "M1-R12",
+      "M1-R13",
+      "M1-R14"
+    ],
+    "evidence": "逐个崩溃窗口、限定重试、超时不重复收费派发的状态证据。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G06",
+    "milestone": "M1",
+    "title": "预算和操作竞态",
+    "requirements": [
+      "M1-R15",
+      "M1-R16"
+    ],
+    "evidence": "并发预留/结算、暂停/取消/发布race、迟到费用审计。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G07",
+    "milestone": "M1",
+    "title": "质量与真实发布",
+    "requirements": [
+      "M1-R18",
+      "M1-R19",
+      "M1-R20"
+    ],
+    "evidence": "漏段/错数/否定/缺图、原件对照纠正、旧版不变和新静态产物。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G08",
+    "milestone": "M1",
+    "title": "任务中心与库",
+    "requirements": [
+      "M1-R17",
+      "M1-R21",
+      "M1-R24"
+    ],
+    "evidence": "真实进度/重连、多文件独立、内容查重和不重复覆盖。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M1-G09",
+    "milestone": "M1",
+    "title": "隐私、删除与恢复",
+    "requirements": [
+      "M1-R22",
+      "M1-R23",
+      "M1-R25"
+    ],
+    "evidence": "日志/密钥泄露检查、完整删除与已删除资源拒绝、Compose恢复后禁自动重发；无账户权限测试。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G01",
+    "milestone": "M2",
+    "title": "来源与编辑完整性",
+    "requirements": [
+      "M2-R01",
+      "M2-R02",
+      "M2-R06",
+      "M2-R11",
+      "M2-R12"
+    ],
+    "evidence": "跨页定位、源修订/映射、审校失效和冻结快照hash。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G02",
+    "milestone": "M2",
+    "title": "术语与局部重译",
+    "requirements": [
+      "M2-R03",
+      "M2-R04",
+      "M2-R05",
+      "M2-R17"
+    ],
+    "evidence": "词项优先级、影响集合、候选接受、锁定98段不变与人工记忆/机器缓存分离。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G03",
+    "milestone": "M2",
+    "title": "质量报告有效性",
+    "requirements": [
+      "M2-R07",
+      "M2-R08"
+    ],
+    "evidence": "独立风险评审边界、硬问题不可忽略、过期报告阻断。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G04",
+    "milestone": "M2",
+    "title": "多语言版本",
+    "requirements": [
+      "M2-R09",
+      "M2-R10"
+    ],
+    "evidence": "中文/日文等独立edition、源解析零重做、所有语言可选与名称本地化验收。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G05",
+    "milestone": "M2",
+    "title": "冲突、历史与回滚",
+    "requirements": [
+      "M2-R13",
+      "M2-R14",
+      "M2-R15"
+    ],
+    "evidence": "并发编辑/候选race/ABA/CAS、版本差异与历史immutable验证。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G06",
+    "milestone": "M2",
+    "title": "零模型重建和精确导出",
+    "requirements": [
+      "M2-R16",
+      "M2-R19"
+    ],
+    "evidence": "Provider调用计数0、旧hash不变、离线旧版和实例备份包验证。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G07",
+    "milestone": "M2",
+    "title": "检索及生命周期",
+    "requirements": [
+      "M2-R18",
+      "M2-R20"
+    ],
+    "evidence": "CJK字面检索、过期索引内容安全、删除race、M1→M2迁移恢复。",
+    "status": "not_evaluated"
+  },
+  {
+    "id": "M2-G08",
+    "milestone": "M2",
+    "title": "累计产品交付",
+    "requirements": [
+      "M2-R21"
+    ],
+    "evidence": "M0/M1全部退出证据继承、完整编辑出版E2E与维护者基于证据验收。",
+    "status": "not_evaluated"
+  }
+]

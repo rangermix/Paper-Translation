@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "repository_root": ".",
+  "previous_project_prefix": "bilingual-library-personal-pdf-v3/",
+  "prefixes": {
+    "harness/memory/": ".agent/memory/",
+    "harness/": ".agent/harness/",
+    "notes/": ".agent/notes/",
+    "evidence/": ".agent/tmp/evidence/",
+    "reports/": ".agent/tmp/reports/",
+    ".local-data/": ".agent/local-data/",
+    "apps/web/evidence/": ".agent/tmp/frontend/evidence/"
+  },
+  "files": {
+    "IMPLEMENTATION_STATUS.md": ".agent/IMPLEMENTATION_STATUS.md",
+    "apps/web/WORK_LOG.md": ".agent/notes/frontend-work-log.md",
+    "package-review.md": ".agent/notes/package-review.md",
+    "package-manifest.json": ".agent/tmp/validation/package-manifest.json",
+    "package-validation.json": ".agent/tmp/validation/package-validation.json",
+    "prototype-validation.json": ".agent/tmp/validation/prototype-validation.json",
+    "server-validation.json": ".agent/tmp/validation/server-validation.json",
+    "html/package-review.html": ".agent/tmp/validation/package-review.html"
+  },
+  "history_policy": "Archived records retain original bytes and source fingerprints. Resolve paths without rewriting their contents; changed maintained code does not satisfy old byte hashes.",
+  "local_runtime_policy": "local-data is persistent and ignored, never disposable scratch output. VM disks are relocated using the platform manager."
+}

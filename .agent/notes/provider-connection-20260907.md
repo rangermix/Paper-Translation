@@ -1,0 +1,18 @@
+# API connection test button · 2026-09-07
+
+Added Settings → AI 服务 → 测试 API 连接 / 密钥. Tests saved configuration only; unsaved public fields/key/clear action disable testing. A dialog names endpoint/protocol/model, fixed Hello. content plus translation schema, bounded input/output, possible cost, and budget when enabled. No library content is sent. Closing the dialog and pressing Enter in its budget input cannot submit the settings form.
+
+POST /api/v1/settings/provider/test uses configuration CAS, profile hash, idempotency, explicit external confirmation and optional controlled budget. It queues one provider_test Job/Task without a Document, uses existing four production adapters in the worker, and creates the normal Attempt/Permit ledger. No retry or protocol fallback. GET status and provider settings restore results after reload. Unknown permits persist, including when a later test is terminal; another test requires explicit duplicate-charge acceptance. Recovery never redispatches a settled test whose finish was lost. Synthetic response text and upstream error bodies are not exposed as test results.
+
+Evidence root: `.agent/tmp/connection-test-20260907-e9fb991b/`.
+
+- Backend: 156 passed, backend4.xml/log; includes 14 new cases, real dedicated PostgreSQL, all four production protocol adapters with synthetic HTTP transport, two actual loopback HTTP requests (success/401), CAS, two tabs, budget, key binding, unknown and settled crash recovery. Two existing Starlette deprecation warnings.
+- Browser: 53 passed, browser4.log and browser4/browser-results.json. New flow checks confirmation/single POST, cancellation/X-close/Enter no mutation, dirty configuration/key, authentication error sanitization, restored unknown risk, and mobile budget. Desktop 1440×1060, mobile 390×844. Browser skill/plugin absent; used repository Playwright and disposable Chromium.
+- Frontend: 16 unit tests passed, frontend-unit-final.log. Final Compose image build includes TypeScript/Vite build, docker-build-final.log.
+- Live runtime: http://127.0.0.1:8080/#/settings. runtime-final/runtime-ui.json proves page title/URL, nonblank settings/button, no framework overlay, no console errors, blank password field, opening/X-closing confirmation with zero writes. runtime-final PNGs are actual deployed UI; browser4 success screenshot uses a synthetic response.
+- App and worker healthy, same image sha256:e5b590943b81b401bfcb4d407fb2928809d029cac074e0a618af53e7a7844700, unique tag connection-test-20260907-e9fb991b and local alias. Schema remains 11. Root git HEAD 3c74d769b785644bee39e8224bb3197bbeac0646 does not describe the untracked implementation; scoped actual file hashes are in source-files.json.
+- public-before.json/public-final.json match on profile hash, generation, configuration and credential revisions, key presence and dispatch flag. No key file was read by the agent; no configured real provider was called. DB/parser/data left in place; only app/worker recreated. Temporary QA PostgreSQL container/network removed; production remains running.
+
+Preserved early failures: backend.log reflects test fixture dispatch disabled by default; backend2.log used an incorrect synthetic Gemini envelope and was corrected to the existing steps/model_output contract. Both final paths passed. One initial readiness request raced container startup; final health and UI succeeded. An intermediate app image differed from the worker while their changed backend hashes matched; final delivery pins both to the same image above.
+
+Scope maps to M1-P08/P09/P10 and G03/G05/G06/G09, without certifying their historical real-provider/release gates. Existing blocked real-provider and language certification remain unchanged. No commit made.

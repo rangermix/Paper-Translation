@@ -1,0 +1,57 @@
+[project]
+name = "bilingual-personal-pdf"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "fastapi==0.141.1",
+  "starlette==1.3.1",
+  "uvicorn==0.35.0",
+  "sqlalchemy==2.0.43",
+  "psycopg[binary]==3.2.9",
+  "pydantic==2.11.7",
+  "jsonschema==4.25.1",
+  "httpx==0.28.1",
+  "pillow==12.3.0",
+  "pypdf==6.16.1",
+  "pypdfium2==5.13.0",
+]
+
+[dependency-groups]
+dev = ["pytest==8.4.1", "pytest-cov==6.2.1", "pyyaml==6.0.2"]
+parser = [
+    "docling==2.94.0",
+    "transformers==5.10.1",
+    "lxml==6.1.0",
+    "opencv-contrib-python==4.10.0.84",
+    "torch==2.13.0+cpu",
+    "torchvision==0.28.0+cpu",
+    "onnxruntime==1.29.0",
+    "paddleocr[doc-parser]==3.7.0; sys_platform == 'linux'",
+    "paddlex==3.7.2; sys_platform == 'linux'",
+    "paddlepaddle==3.3.1; sys_platform == 'linux'",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", ".agent"]
+cache_dir = ".agent/tmp/cache/pytest"
+markers = ["postgres: requires a dedicated PostgreSQL test database", "live_provider: requires explicit budget and external processing authorization"]
+
+[tool.mypy]
+cache_dir = ".agent/tmp/cache/mypy"
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'", "sys_platform == 'win32'"]
+# One cv2 distribution: PaddleX checks the official contrib package metadata.
+# Docling/RapidOCR share its core image primitives.
+exclude-dependencies = ["opencv-python"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }

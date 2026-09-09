@@ -1,0 +1,95 @@
+<!doctype html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>工作流、质量、费用与内容安全 · v3 · 对照文库</title><style>
+:root{color-scheme:light;--bg:#f5f2ec;--paper:#fffdf9;--ink:#1d252c;--muted:#63716e;--line:#d9d5cc;--accent:#2e6f68;--blue:#315c8a;--code:#efede7;--font:17px}
+:root[data-theme=dark]{color-scheme:dark;--bg:#11171b;--paper:#182126;--ink:#edf1f2;--muted:#a8b4bb;--line:#344149;--accent:#80c8bd;--blue:#8eb9e6;--code:#222c32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:var(--font)/1.85 system-ui,-apple-system,"Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button,.button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:.45rem .8rem;font-size:14px;text-decoration:none;cursor:pointer}button:hover,.button:hover{border-color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px max(20px,calc((100vw - 1480px)/2));border-bottom:1px solid var(--line);background:var(--paper)}.brand{color:var(--ink);font-size:16px;font-weight:750;text-decoration:none}.version{font-size:13px;color:var(--muted);margin-left:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:34px;padding:32px 24px 70px}.sidebar{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}.docmenu summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:700}.sidebar nav{padding:8px 0 20px;border-bottom:1px solid var(--line)}.sidebar nav a{display:block;font-size:14px;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:7px}.sidebar nav a.active{background:var(--paper);color:var(--accent);font-weight:750;border-left:3px solid var(--accent)}.sidebar .toc{padding:18px 0;font-size:13px}.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}.toc a{display:block;padding:4px 4px;color:var(--muted);text-decoration:none;line-height:1.5}.toc a.sub{padding-left:15px}.content{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:36px 44px}.content h1{font:700 clamp(29px,3vw,40px)/1.32 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 20px;overflow-wrap:anywhere}.content h2{font-size:25px;line-height:1.45;margin:2.4rem 0 1rem;padding-top:8px;border-top:1px solid var(--line);scroll-margin-top:20px}.content h3{font-size:20px;line-height:1.6;margin:2rem 0 .6rem;color:var(--accent);scroll-margin-top:20px}.content p{margin:.8em 0}.content strong{font-weight:750}.content li{margin:.5em 0}.content ul,.content ol{padding-left:1.5em}.content blockquote{border-left:4px solid var(--accent);margin:1em 0;padding:.2em 1em;color:var(--muted);background:var(--bg)}.tablewrap{overflow-x:auto;width:100%;margin:20px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.7}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--bg);font-weight:750;white-space:nowrap}tr:last-child td{border-bottom:0}td{overflow-wrap:anywhere}pre{background:var(--code);padding:19px;border-radius:9px;overflow:auto;font:14px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;overflow-wrap:anywhere}p code,li code,td code{background:var(--code);padding:2px 5px;border-radius:4px}.foot{font-size:13px;color:var(--muted);margin-top:36px;border-top:1px solid var(--line);padding-top:16px}.portal{max-width:1160px;margin:auto;padding:52px 24px 70px}.portal h1{font:700 clamp(34px,5vw,55px)/1.25 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 16px}.intro{max-width:850px;color:var(--muted);font-size:18px}.notice{border-left:4px solid var(--accent);background:var(--paper);padding:17px 22px;margin:28px 0;border-radius:0 9px 9px 0}.stage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}.stage{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:24px}.stage h2{font-size:27px;margin:0 0 8px}.stage h3{font-size:18px;margin:0 0 12px}.stage p{font-size:15px;color:var(--muted);margin:0 0 14px}.stage .actions{margin-top:auto}.stage .count{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.resource-list{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.resource-list a{padding:14px 2px;border-bottom:1px solid var(--line);text-decoration:none}.section-title{font-size:24px;margin:34px 0 14px}.statline{font-size:14px;color:var(--muted);margin:12px 0}.wide-button{display:inline-block;background:var(--accent);color:var(--paper);padding:10px 16px;border-radius:9px;text-decoration:none;font-size:15px;margin:8px 8px 0 0}
+@media(max-width:1000px){.layout{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:24px 16px}.content{padding:28px}.stage-grid{gap:12px}.stage{padding:18px}.version{display:none}}
+@media(max-width:780px){.layout{display:block;padding:14px 12px 40px}.sidebar{position:relative;top:auto;max-height:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.sidebar nav{columns:2;column-gap:16px}.sidebar nav a{break-inside:avoid;padding:5px;font-size:13px}.sidebar .toc{padding:12px 0 0}.content{padding:24px 19px}.content h1{font-size:28px}.content h2{font-size:22px}.content h3{font-size:18px}.topbar{padding:12px 16px;align-items:flex-start}.topbar button,.topbar .button{padding:5px 8px;font-size:12px}.portal{padding:30px 18px 50px}.portal h1{font-size:34px}.intro{font-size:16px}.stage-grid{grid-template-columns:1fr;margin:22px 0}.resource-list{grid-template-columns:1fr}table{min-width:640px}body{--font:16px}}
+@media print{.topbar,.sidebar,.actions{display:none!important}body{background:white;color:black;font-size:11pt}.layout,.portal{display:block;padding:0;max-width:none}.content{padding:0;border:0;background:white}.content h2,.content h3{break-after:avoid}.tablewrap{overflow:visible;border:0}table{min-width:0;font-size:9pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:black}.stage-grid{display:block}.stage{break-inside:avoid;margin-bottom:12px}}
+</style></head><body><header class="topbar"><a class="brand" href="../index.html">对照文库 · 规格与实施<span class="version">v3.0 · 个人PDF版</span></a><div class="actions"><a class="button" href="../shared/workflow-quality-security.md" download>Markdown</a><button data-theme>明暗</button><button data-print>打印</button></div></header><div class="layout"><aside class="sidebar"><details class="docmenu" open><summary>文档导航</summary><nav><a class="" href="baseline.html">产品基线与范围</a><a class="" href="m0-spec.html">M0 · 产品 Spec</a><a class="" href="m0-plan.html">M0 · 实施 Plan</a><a class="" href="m1-spec.html">M1 · 产品 Spec</a><a class="" href="m1-plan.html">M1 · 实施 Plan</a><a class="" href="m2-spec.html">M2 · 产品 Spec</a><a class="" href="m2-plan.html">M2 · 实施 Plan</a><a class="" href="architecture-data.html">共享架构与数据</a><a class="active" href="workflow-quality-security.html">工作流、质量与安全</a><a class="" href="api-contract.html">HTTP / Worker 契约</a><a class="" href="verification-strategy.html">测试与发布策略</a><a class="" href="traceability.html">四向追踪矩阵</a><a class="" href="compose-contract.html">Docker Compose 交付契约</a><a class="" href="changelog.html">范围变更与迁移</a><a class="" href="agents.html">编码 Agent 交接</a><a class="" href="sources.html">依据与决策来源</a><a class="" href="readme.html">使用与交接说明</a></nav></details><details class="toc" open><summary>本页目录</summary><a class="" href="#h2">1. 业务状态与执行状态分离</a><a class="" href="#h3">2. 任务领取与租约</a><a class="" href="#h4">3. 外部派发许可</a><a class="" href="#h5">4. 重试与未知结果</a><a class="" href="#h6">5. 预算账本</a><a class="" href="#h7">6. 翻译单元与缓存</a><a class="" href="#h8">7. 质量检查与人工确认</a><a class="" href="#h9">8. 静态发布事务</a><a class="" href="#h10">9. 个人部署仍需的输入安全</a><a class="" href="#h11">10. 生命周期与恢复</a></details></aside><main class="content"><h1 id="h1">工作流、质量、费用与内容安全 · v3</h1>
+<p>本章保留此前可靠性要求，但去掉身份、权限和多租户逻辑。使用者是一个实例的唯一维护者；多个浏览器标签和Worker仍可并发。</p>
+<h2 id="h2">1. 业务状态与执行状态分离</h2>
+<pre><code class="language-text">PDF接收 → inspecting → source_only (M0)
+                         │ M1开始解析
+                         ▼
+parsing → preflight → translating → checking → needs_review / ready
+                                                │ 修正/重验
+                                                ▼
+sealed → building → verified artifact → published
+</code></pre>
+<p>业务job的<code>stage</code>与操作状态分别存储；<code>paused/cancel_requested/cancelled/failed/outcome_unknown/waiting_config/waiting_budget</code>不等于业务完成。已发布旧版与新job的状态分开展示。<code>source_only</code>是成功保存原件，不是成功翻译。</p>
+<p>结构預检逐页显示已覆盖文本、图表、允许排除的页眉页脚与未解决区域。每个正文区域必须进入来源树或未解清单；检测到一页扫描正文不能以“已提取其他页”继续。M1不支持用户选择跳过失败页生成完整译文。</p>
+<h2 id="h3">2. 任务领取与租约</h2>
+<p>Task拥有pending/leased/succeeded/failed/cancelled状态；Attempt独立记录一次尝试。PostgreSQL短事务<code>FOR UPDATE SKIP LOCKED</code>领取合格task，递增fence与attempt，写lease_expires，提交后才执行耗时工作。租约默认60秒、每15秒续租；可配置，按真实任务延迟测试。网络和解析期间不持行锁。[S6]</p>
+<p>提交内容时要求(task_id,fence,control_epoch)仍匹配。失效Worker可以提交幂等计费证据，但不能修改当前译文、复活删除文档或发布。成功单元立即持久化；恢复只运行缺失且安全重试的单元。</p>
+<h2 id="h4">3. 外部派发许可</h2>
+<p>每次调用前，以事务锁定job和预算记录，确认未暂停/取消/删除、外发确认有效、profile/source未变、有足够额度。原子创建DispatchPermit与预算预留后才发网络请求。</p>
+<p><strong>暂停成功</strong> 代表之后不再创建新许可，不意味着之前已发出的请求可撤销。许可一旦发放，保守地视作在途；若进程在真正发送前崩溃、无法证明未发送，也可能进入unknown。不得为了展示即时停止而释放潜在已计费额度。</p>
+<h2 id="h5">4. 重试与未知结果</h2>
+<p>能够证明未发送的连接故障，以及供应商明确表明未执行的限流响应，才允许自动退避重试。429并非在任何供应商都能直接断言未计费，适配器必须按其实际语义分类。默认至多3次传输尝试，至多1次付费结构修复。永久认证/模型配置错误停止，不自动切模型。</p>
+<p>请求已发送后读超时、断流、进程退出，结果记<code>outcome_unknown</code>。若供应商实际提供可用的request_id查询或幂等能力才使用；不得虚构端到端去重。默认暂停，保留未知成本的保守预留，展示“可能已计费”。维护者核对或明确接受重复收费风险后，才能新增attempt；旧未知成本仍计入潜在上限。</p>
+<p>SDK隐式重试必须禁用，所有重试都走相同账本。FakeProvider可制造超时但已执行、迟到、错ID、截断等；Fake测试通过不等于真实供应商行为已经证实。</p>
+<h2 id="h6">5. 预算账本</h2>
+<p>使用整数微货币金额，PriceSnapshot绑定币种、输入/缓存输入/输出/推理等实际计费维度、版本、估算规则和生效时间。无可信请求成本上界时不能启用“严格限额保证”；应等待配置，而不是用0代替未知费用。</p>
+<pre><code class="language-text">可派发余额 = limit - settled_actual - active_reserved - unresolved_risk
+</code></pre>
+<p>三个扣减集合互斥，同一attempt的unknown风险不能同时重复算入active_reserved。允许派发前，以估计输入tokens及最大可计费输出/推理tokens保守预留。实际用量结算释放差额；收到迟到用量时按attempt唯一键幂等结算。实例与job的预算必须同时检查；两份文档争用最后额度至多一个获许可。</p>
+<p>这约束的是已知计价规则下的本地派发，不是对供应商账单、费率临时变动或不可核对token计数的绝对保证。UI同时显示估算、实际、预留与未知，不把估算写成真实消费。</p>
+<h2 id="h7">6. 翻译单元与缓存</h2>
+<p>同一章节的短块可以合并请求，长块拆unit并保存owner_block_id/unit_order与重组规则。受保护原子不能切断。模型按unit_id返回，集合必须与请求双射；禁止仅用数组位置对齐。完成原因正常、非拒绝、无截断才可提交。多次修复仍不合法进入needs_review/failed。</p>
+<p>精确缓存键包括源内容、上下文、locale、provider/model/profile、提示、术语、归一化、分块版本。缓存是全实例内部数据，不含workspace键；跨文档ID映射必须确定且再验证保护原子。人工修订只在M2明确保存到个人翻译记忆，不静默覆盖机器精确缓存。</p>
+<h2 id="h8">7. 质量检查与人工确认</h2>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>规则</th>
+<th>能否忽略</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源完整性</td>
+<td>全文覆盖、阅读顺序、必需资产</td>
+<td>不能；先修正来源或明确不支持</td>
+</tr>
+<tr>
+<td>结果结构</td>
+<td>缺/重/未知ID、空译文、截断、AST非法</td>
+<td>不能</td>
+</tr>
+<tr>
+<td>保护内容</td>
+<td>数字/单位、变量、引用、公式、代码次数和内容</td>
+<td>不能无理由放过；必要格式变体用明确规则</td>
+</tr>
+<tr>
+<td>引用资源</td>
+<td>table网格、xref、脚注、文件hash、图片</td>
+<td>不能</td>
+</tr>
+<tr>
+<td>语义风险</td>
+<td>遗漏、否定、条件、比较、术语冲突</td>
+<td>需原件对照解决；不靠自评分绕过</td>
+</tr>
+<tr>
+<td>明示保留</td>
+<td>原图/无法可靠恢复的公式/表格原图</td>
+<td>只有范围允许且可见说明时接受</td>
+</tr>
+</tbody>
+</table></div>
+<p>QA指纹绑定source hash、target snapshot/generation、glossary、规则版本和必要profile。任何目标修改使对应人工确认失效、全局QA过期；机器检查不得生成human_reviewed。人工确认记录origin=manual_ui、时间、源/译指纹与说明，不记录虚构用户身份。</p>
+<p>独立模型语义评审是M2可选、默认关闭的付费任务，只产生有定位的issue，不直接写译文；同样走预算和外发确认。模型评分不是准确率。</p>
+<h2 id="h9">8. 静态发布事务</h2>
+<p>先封存指定源/译/QA，再在staging构建全部文件；校验引用与hash，写入新artifact前缀，确认可读后以Edition generation CAS更新指针。原子rename只在同卷使用，不能假设数据库与文件系统天然一个事务。</p>
+<p>崩溃发生在切换前：旧版继续可读，未引用的孤儿新产物可回收。切换后：所有文件已经完整；若存储后续损坏，返回明确错误而非拼接其他版本。回滚仅选择同Document+locale完整的旧artifact，新事件增加generation。禁止原地覆写已发表HTML。</p>
+<p>删除与发布竞争时先检查tombstone和control_epoch，再CAS。取消已先提交则不发布；如果发布先提交，后续取消不回溯抹掉已发表版，UI明确记录操作顺序。</p>
+<h2 id="h10">9. 个人部署仍需的输入安全</h2>
+<p>PDF签名和扩展名只是初筛，必须受限解码验证。限制体积、页数、对象解压、图像像素、CPU/内存/时间。禁止执行PDF JavaScript、Launch、外部链接、嵌入附件及动作。parser没有网络、DB或模型密钥；worker将输出当作不可信数据重新校验。</p>
+<p>source文字和模型输出HTML转义；受限IR白名单渲染，清除危险协议/属性。SVG等复杂资产优先栅格化或严格处理，不直接信任。禁止目录穿越、symlink、任意文件路径、命令注入。请求保护采用Host白名单、无通配CORS、写请求Origin/自定义同源标识检查；这不能阻止已能直接访问HTTP端口的人操作，不宣传为鉴权。</p>
+<p>app无登录，app文件响应不检查用户权限；只复核资源存在、归属关系、manifest、删除状态。数据库密码只是服务间技术连接配置，不形成产品账户。凭据只注入需要它的进程，默认日志不含全文/密钥，Compose secret不等于宿主文件已加密。[S3]</p>
+<h2 id="h11">10. 生命周期与恢复</h2>
+<p>归档只从常规列表隐藏；撤销发布只清当前指针；永久删除先tombstone禁止在线读/新任务/迟到写回，然后清理原件、IR、译文、候选、TM、索引、产物和导出，共享资产按引用计数回收。备份按明确期限淘汰，不声称即时擦除备份或已下载副本。</p>
+<p>备份通过Compose内CLI进入维护模式：停止新写/新许可、等待本地事务结束、保守登记在途unknown、数据库导出+复制不可变卷+manifest。恢复以维护模式启动，验证hash/引用/schema，禁外发直到核对unknown。不要把旧queued快照直接当“从没调用过模型”。恢复和维护不是Web导入ZIP/JSON的后门。</p>
+<footer class="foot">规格包 v3.0 · 2026-09-06 · 产品与计划尚待实施。所有内容已写入本地HTML，无需联网阅读。</footer></main></div><script>(()=>{const r=document.documentElement;try{r.dataset.theme=localStorage.getItem('spec-theme')||'light'}catch{}document.querySelectorAll('button[data-theme]').forEach(b=>b.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('spec-theme',r.dataset.theme)}catch{}}));document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>print()));if(innerWidth<780){const m=document.querySelector('.docmenu');if(m)m.removeAttribute('open');const t=document.querySelector('.toc');if(t)t.removeAttribute('open')}})();</script></body></html>

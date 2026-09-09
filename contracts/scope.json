@@ -1,0 +1,42 @@
+{
+  "version": "3.0",
+  "document_source_kinds": [
+    "pdf_upload"
+  ],
+  "import_source_kinds": [
+    "pdf_upload"
+  ],
+  "supported_upload_mime_types": [
+    "application/pdf"
+  ],
+  "url_import_enabled": false,
+  "automatic_remote_assets": false,
+  "identity_system": false,
+  "login_enabled": false,
+  "teams_enabled": false,
+  "acl_enabled": false,
+  "deployment": "docker_compose_only",
+  "reverse_proxy_included": false,
+  "runtime_dependency_downloads": false,
+  "enabled_source_formats_m1": [
+    "pdf_text"
+  ],
+  "out_of_scope": [
+    "ocr",
+    "non_pdf_upload",
+    "bilingual_input",
+    "ir_import",
+    "url_import",
+    "identity",
+    "teams",
+    "permissions",
+    "reverse_proxy",
+    "rag",
+    "generic_zip_import"
+  ],
+  "phase_requirements": {
+    "M0": 18,
+    "M1": 26,
+    "M2": 21
+  }
+}

@@ -1,0 +1,20 @@
+# Isolated PostgreSQL for implementation tests. Never merged into production.
+name: bilingual-personal-pdf-test
+services:
+  db:
+    image: postgres:15-bookworm@sha256:5d1d70e254e3c5d7d76847a9deebb18478cd518df37abf6b278d4bdb1fe5d96c
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: library_test
+      POSTGRES_USER: library_test
+      POSTGRES_PASSWORD: library_test_only
+    ports:
+      - "127.0.0.1:55439:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U library_test -d library_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    restart: "no"

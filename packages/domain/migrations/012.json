@@ -1,0 +1,31 @@
+{
+  "version": 12,
+  "statements": [
+    "ALTER TABLE documents ADD COLUMN original_filename text",
+    "ALTER TABLE documents ADD COLUMN title_user_edited boolean",
+    "ALTER TABLE documents ADD COLUMN title_origin varchar(40)",
+    "ALTER TABLE source_assets ADD COLUMN doi_discovery jsonb",
+    "ALTER TABLE source_assets ADD COLUMN bibliography jsonb",
+    "ALTER TABLE source_assets ADD COLUMN metadata_status varchar(40)",
+    "ALTER TABLE source_assets ADD COLUMN metadata_generation integer",
+    "ALTER TABLE uploads ADD COLUMN doi_discovery jsonb",
+    "ALTER TABLE jobs ADD COLUMN parent_job_id varchar(80) REFERENCES jobs(id)",
+    "ALTER TABLE jobs ADD COLUMN queued_at timestamptz",
+    "ALTER TABLE jobs ADD COLUMN started_at timestamptz",
+    "ALTER TABLE jobs ADD COLUMN finished_at timestamptz",
+    "ALTER TABLE jobs ADD COLUMN config_snapshot jsonb",
+    "ALTER TABLE jobs ADD COLUMN actual_model jsonb",
+    "ALTER TABLE jobs ADD COLUMN title_snapshot text",
+    "ALTER TABLE jobs ADD COLUMN quality_summary jsonb",
+    "ALTER TABLE tasks ADD COLUMN started_at timestamptz",
+    "ALTER TABLE tasks ADD COLUMN finished_at timestamptz",
+    "ALTER TABLE tasks ADD COLUMN actual_model jsonb",
+    "ALTER TABLE attempts ADD COLUMN started_at timestamptz",
+    "ALTER TABLE attempts ADD COLUMN finished_at timestamptz",
+    "ALTER TABLE attempts ADD COLUMN actual_model jsonb",
+    "CREATE TABLE task_logs (sequence bigserial PRIMARY KEY, job_id varchar(80) NOT NULL REFERENCES jobs(id), event_key varchar(200) NOT NULL, at timestamptz NOT NULL, level varchar(16) NOT NULL, stage varchar(40) NOT NULL, operation varchar(80) NOT NULL, task_id varchar(80), attempt_id varchar(80), page integer, unit_id varchar(160), message text NOT NULL, details jsonb NOT NULL, UNIQUE(job_id,event_key))",
+    "CREATE INDEX ix_task_logs_job_id ON task_logs(job_id,sequence)",
+    "CREATE INDEX ix_jobs_parent_job_id ON jobs(parent_job_id)",
+    "CREATE TABLE metadata_cache (key varchar(64) PRIMARY KEY, doi text NOT NULL, service varchar(40) NOT NULL, mapping_version varchar(40) NOT NULL, status varchar(40) NOT NULL, fetched_at timestamptz NOT NULL, expires_at timestamptz NOT NULL, value jsonb, response_snapshot jsonb)"
+  ]
+}

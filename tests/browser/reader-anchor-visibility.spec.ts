@@ -1,0 +1,29 @@
+import {test,expect} from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { inputPath } from './paths';
+import {readFile,writeFile} from 'node:fs/promises';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+const base=inputPath(process.env.LIBRARY_ANCHOR_EVIDENCE ?? readFileSync(inputPath('apps/web/evidence/latest-anchor-review.txt'),'utf8').trim());
+for(const template of ['reader-v1','reader-v2'])for(const format of ['single.html','bundle/index.html'])test(`${template} ${format} preserves visible anchors through initial hash, resize, zoom and storage denial`,async ({page}, testInfo) =>{
+ const dir=resolve(base,template);const response=JSON.parse(await readFile(resolve(dir,'response.json'),'utf8'));const errors:string[]=[];const outbound:string[]=[];
+ page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});page.on('request',r=>{if(/^https?:/.test(r.url()))outbound.push(r.url())});
+ await page.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Denied','SecurityError')}})});
+ const refs=['b63','b39'].map(bid=>({owner:bid,...response.source.blocks.find((b:any)=>b.id===bid).source_inline.find((n:any)=>n.type==='xref'&&n.target_block_id.startsWith('math-annotation-'))}));
+ const snapshots:any[]=[];
+ const verify=async(ref:any,stage:string)=>{
+  const img=page.locator(`[data-block-id="${ref.target_block_id}"] img`);let last:number|undefined;let stable=0;
+  await expect.poll(async()=>{const top=(await img.boundingBox())!.y;stable=last!==undefined&&Math.abs(last-top)<.5?stable+1:0;last=top;return stable;},{intervals:[70],timeout:5000}).toBeGreaterThanOrEqual(2);
+  const geometry=await img.evaluate(img=>{const b=img.getBoundingClientRect();const toolbar=document.querySelector('.toolbar')!;const t=toolbar.getBoundingClientRect();const position=getComputedStyle(toolbar).position;return {image:{top:b.top,bottom:b.bottom,height:b.height},toolbar:{top:t.top,bottom:t.bottom,height:t.height,position},visibleTop:position==='sticky'||position==='fixed'?Math.max(0,t.bottom):0}});
+  expect(geometry.image.top).toBeGreaterThanOrEqual(geometry.visibleTop);expect(geometry.image.bottom).toBeLessThanOrEqual(900);snapshots.push({stage,target:ref.target_block_id,...geometry});
+ };
+ await page.setViewportSize({width:1440,height:900});await page.goto(pathToFileURL(resolve(dir,format)).href+`#b-${refs[0].target_block_id}`);await verify(refs[0],'initial_fragment');
+ await expect(page.locator('#reader-storage-notice')).toBeVisible();await page.setViewportSize({width:320,height:900});await verify(refs[0],'resize_to_320');
+ await page.locator(`[data-block-id="${refs[1].owner}"] a[href="#b-${refs[1].target_block_id}"]`).click();await verify(refs[1],'clicked_original_math');
+ for(let i=0;i<6;i++)await page.getByRole('button',{name:'增大字号',exact:true}).click();await verify(refs[1],'font_30');
+ const name=format.startsWith('bundle')?'bundle':'single';await page.screenshot({path:testInfo.outputPath(`independent-anchor-${name}-320-font30.png`)});
+ await page.mouse.wheel(0,700);await expect.poll(async()=> (await page.locator(`[data-block-id="${refs[1].target_block_id}"] img`).boundingBox())!.y).toBeLessThan(-100);
+ await page.setViewportSize({width:390,height:900});await expect.poll(async()=> (await page.locator(`[data-block-id="${refs[1].target_block_id}"] img`).boundingBox())!.y).toBeLessThan(0);
+ await page.locator(`[data-block-id="${refs[1].owner}"] a[href="#b-${refs[1].target_block_id}"]`).click();await verify(refs[1],'same_hash_click_after_user_scroll');
+ expect(errors).toEqual([]);expect(outbound).toEqual([]);await writeFile(testInfo.outputPath(`independent-anchor-${name}.json`),JSON.stringify({reviewer:'/root/web_ui',source_hash:response.source_hash,format,template,snapshots,storage_denial_readable:true,user_scroll_not_overridden_on_resize:true,errors,outbound},null,2));
+});

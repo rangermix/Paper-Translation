@@ -1,0 +1,22 @@
+{
+  "units": [
+    {
+      "unit_id": "unit_p1",
+      "target_inline": [
+        {
+          "type": "text",
+          "text": "该任务有 "
+        },
+        {
+          "type": "protected_ref",
+          "ref": "n64"
+        },
+        {
+          "type": "text",
+          "text": " 个 token。"
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

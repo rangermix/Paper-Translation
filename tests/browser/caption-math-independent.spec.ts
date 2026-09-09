@@ -1,0 +1,16 @@
+import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { inputPath } from './paths';
+import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
+const dir=inputPath(process.env.LIBRARY_CAPTION_EVIDENCE ?? 'evidence/math-annotation-api-caption-1788658498333052000');
+for(const format of ['single.html','bundle/index.html'])test(`independent caption math links reach exact original image roots in ${format}`,async ({page}, testInfo) =>{
+ const response=JSON.parse(await readFile(resolve(dir,'response.json'),'utf8'));const source=response.source;const caption=source.blocks.find((b:any)=>b.id==='b63');const refs=caption.source_inline.filter((n:any)=>n.type==='xref'&&n.target_block_id.startsWith('math-annotation-'));
+ expect(refs.map((r:any)=>r.label)).toEqual(['d model','d ff']);const outbound:string[]=[];const errors:string[]=[];page.on('request',r=>{if(/^https?:/.test(r.url()))outbound.push(r.url());});page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(pathToFileURL(resolve(dir,format)).href);await expect(page.locator('body')).toContainText('DRAFT');const order=await page.locator('[data-block-id]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-block-id')));const figureIndex=order.indexOf(caption.owner_id);const captionIndex=order.indexOf('b63');expect(figureIndex).toBeLessThan(captionIndex);
+ let previous=captionIndex;for(const ref of refs){const i=order.indexOf(ref.target_block_id);expect(i).toBeGreaterThan(previous);previous=i;const target=page.locator(`[data-block-id="${ref.target_block_id}"]`);await expect(target).toHaveCount(1);await expect(target.locator('img')).toHaveCount(1);await page.locator('[data-block-id="b63"] a').filter({hasText:ref.label}).click();await expect(page).toHaveURL(new RegExp(`#b-${ref.target_block_id}$`));await expect(target).toBeInViewport();expect(await target.locator('img').evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);}
+ expect(previous).toBeLessThan(order.indexOf('b64'));const name=format.startsWith('bundle')?'bundle':'single';await page.locator('[data-block-id="b63"]').screenshot({path:testInfo.outputPath(`independent-${name}-caption.png`)});await page.setViewportSize({width:320,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
+ for(const [index,ref] of refs.entries()){const target=page.locator(`[data-block-id="${ref.target_block_id}"]`);await page.locator('[data-block-id="b63"] a').filter({hasText:ref.label}).click();await expect(target).toBeInViewport();await page.screenshot({path:testInfo.outputPath(`independent-${name}-math-${index+1}-320.png`)});}
+ expect(outbound).toEqual([]);expect(errors).toEqual([]);await writeFile(testInfo.outputPath(`independent-${name}-browser.json`),JSON.stringify({reviewer:'/root/web_ui',format,sha256:createHash('sha256').update(await readFile(resolve(dir,format))).digest('hex'),source_hash:response.source_hash,refs,caption_owner_preserved:true,roots_once_after_figure_caption:true,links_actually_clicked:true,viewport320:true,outbound,errors},null,2));
+});

@@ -1,0 +1,651 @@
+{
+  "scope": "Author-visible original PDF text and positions, not hand-authored parser IR or translated output",
+  "pdf_sha256": "dc77c4851f86cb2ae610d8f20e247741a128385c74f36da9da2a33760e273c31",
+  "page_size": [
+    612,
+    792
+  ],
+  "reading_sequence": [
+    "title",
+    "alpha",
+    "beta",
+    "gamma",
+    "continuation_a",
+    "continuation_b",
+    "epsilon",
+    "checklist",
+    "list_a",
+    "list_b",
+    "references",
+    "reference_a",
+    "reference_b"
+  ],
+  "items": [
+    {
+      "key": "title",
+      "kind": "heading",
+      "page": 1,
+      "level": 1,
+      "text": "Two column source ordering fixture",
+      "bbox": [
+        54,
+        38,
+        326.944,
+        57
+      ]
+    },
+    {
+      "key": "alpha",
+      "kind": "paragraph",
+      "page": 1,
+      "column": "left",
+      "text": "The first column starts with the orchard study. Researchers label each tree before they collect the leaves. The labels connect the field notes with the stored samples. This opening paragraph describes the preparation stage and gives the first step in the reading sequence.",
+      "lines": [
+        {
+          "page": 1,
+          "text": "The first column starts with the orchard study.",
+          "bbox": [
+            54,
+            93.5,
+            265.827,
+            107
+          ]
+        },
+        {
+          "page": 1,
+          "text": "Researchers label each tree before they collect",
+          "bbox": [
+            54,
+            107.5,
+            273.429,
+            121
+          ]
+        },
+        {
+          "page": 1,
+          "text": "the leaves. The labels connect the field notes with",
+          "bbox": [
+            54,
+            121.5,
+            285.70349999999996,
+            135
+          ]
+        },
+        {
+          "page": 1,
+          "text": "the stored samples. This opening paragraph",
+          "bbox": [
+            54,
+            135.5,
+            259.4325,
+            149
+          ]
+        },
+        {
+          "page": 1,
+          "text": "describes the preparation stage and gives the first",
+          "bbox": [
+            54,
+            149.5,
+            286.281,
+            163
+          ]
+        },
+        {
+          "page": 1,
+          "text": "step in the reading sequence.",
+          "bbox": [
+            54,
+            163.5,
+            191.7495,
+            177
+          ]
+        }
+      ],
+      "bbox": [
+        54,
+        93.5,
+        286.281,
+        177
+      ]
+    },
+    {
+      "key": "beta",
+      "kind": "paragraph",
+      "page": 1,
+      "column": "left",
+      "text": "The second paragraph stays in the left column. The team records the shade around each tree and places each sample in a clean container. These observations provide context for the later measurements. The complete left column is read before the right column begins.",
+      "lines": [
+        {
+          "page": 1,
+          "text": "The second paragraph stays in the left column.",
+          "bbox": [
+            54,
+            279.5,
+            272.274,
+            293
+          ]
+        },
+        {
+          "page": 1,
+          "text": "The team records the shade around each tree",
+          "bbox": [
+            54,
+            293.5,
+            267.612,
+            307
+          ]
+        },
+        {
+          "page": 1,
+          "text": "and places each sample in a clean container.",
+          "bbox": [
+            54,
+            307.5,
+            264.105,
+            321
+          ]
+        },
+        {
+          "page": 1,
+          "text": "These observations provide context for the later",
+          "bbox": [
+            54,
+            321.5,
+            275.77049999999997,
+            335
+          ]
+        },
+        {
+          "page": 1,
+          "text": "measurements. The complete left column is read",
+          "bbox": [
+            54,
+            335.5,
+            280.9995,
+            349
+          ]
+        },
+        {
+          "page": 1,
+          "text": "before the right column begins.",
+          "bbox": [
+            54,
+            349.5,
+            198.1545,
+            363
+          ]
+        }
+      ],
+      "bbox": [
+        54,
+        279.5,
+        280.9995,
+        363
+      ]
+    },
+    {
+      "key": "gamma",
+      "kind": "paragraph",
+      "page": 1,
+      "column": "right",
+      "text": "The right column begins with the laboratory stage. Each container receives the same handling procedure. The researchers record the preparation time and retain the original observation sheet. This paragraph follows both paragraphs in the left column and introduces the final stage.",
+      "lines": [
+        {
+          "page": 1,
+          "text": "The right column begins with the laboratory stage.",
+          "bbox": [
+            324,
+            93.5,
+            556.2705000000001,
+            107
+          ]
+        },
+        {
+          "page": 1,
+          "text": "Each container receives the same handling",
+          "bbox": [
+            324,
+            107.5,
+            524.76,
+            121
+          ]
+        },
+        {
+          "page": 1,
+          "text": "procedure. The researchers record the",
+          "bbox": [
+            324,
+            121.5,
+            503.73900000000003,
+            135
+          ]
+        },
+        {
+          "page": 1,
+          "text": "preparation time and retain the original",
+          "bbox": [
+            324,
+            135.5,
+            503.7495,
+            149
+          ]
+        },
+        {
+          "page": 1,
+          "text": "observation sheet. This paragraph follows both",
+          "bbox": [
+            324,
+            149.5,
+            541.6859999999999,
+            163
+          ]
+        },
+        {
+          "page": 1,
+          "text": "paragraphs in the left column and introduces the",
+          "bbox": [
+            324,
+            163.5,
+            548.7,
+            177
+          ]
+        },
+        {
+          "page": 1,
+          "text": "final stage.",
+          "bbox": [
+            324,
+            177.5,
+            374.778,
+            191
+          ]
+        }
+      ],
+      "bbox": [
+        324,
+        93.5,
+        556.2705000000001,
+        191
+      ]
+    },
+    {
+      "key": "continuation_a",
+      "kind": "paragraph",
+      "page": 1,
+      "column": "right",
+      "text": "The final paragraph on this page describes the transfer of the records. A reviewer compares the container labels with the observation sheet and checks the reading sequence in the source document. This paragraph continues on the following page and",
+      "lines": [
+        {
+          "page": 1,
+          "text": "The final paragraph on this page describes the",
+          "bbox": [
+            324,
+            279.5,
+            540.531,
+            293
+          ]
+        },
+        {
+          "page": 1,
+          "text": "transfer of the records. A reviewer compares the",
+          "bbox": [
+            324,
+            293.5,
+            548.6685,
+            307
+          ]
+        },
+        {
+          "page": 1,
+          "text": "container labels with the observation sheet and",
+          "bbox": [
+            324,
+            307.5,
+            542.8620000000001,
+            321
+          ]
+        },
+        {
+          "page": 1,
+          "text": "checks the reading sequence in the source",
+          "bbox": [
+            324,
+            321.5,
+            523.605,
+            335
+          ]
+        },
+        {
+          "page": 1,
+          "text": "document. This paragraph continues on the",
+          "bbox": [
+            324,
+            335.5,
+            526.524,
+            349
+          ]
+        },
+        {
+          "page": 1,
+          "text": "following page and",
+          "bbox": [
+            324,
+            349.5,
+            411.549,
+            363
+          ]
+        }
+      ],
+      "bbox": [
+        324,
+        279.5,
+        548.6685,
+        363
+      ]
+    },
+    {
+      "key": "continuation_b",
+      "kind": "paragraph",
+      "page": 2,
+      "column": "left",
+      "text": "keeps the same subject while moving to the first column. The reviewer places the checked record beside the corresponding sample. This completes the paragraph that began in the right column of the previous page.",
+      "lines": [
+        {
+          "page": 2,
+          "text": "keeps the same subject while moving to the first",
+          "bbox": [
+            54,
+            51.5,
+            276.92550000000006,
+            65
+          ]
+        },
+        {
+          "page": 2,
+          "text": "column. The reviewer places the checked record",
+          "bbox": [
+            54,
+            65.5,
+            279.834,
+            79
+          ]
+        },
+        {
+          "page": 2,
+          "text": "beside the corresponding sample. This completes",
+          "bbox": [
+            54,
+            79.5,
+            285.09450000000004,
+            93
+          ]
+        },
+        {
+          "page": 2,
+          "text": "the paragraph that began in the right column of",
+          "bbox": [
+            54,
+            93.5,
+            272.29499999999996,
+            107
+          ]
+        },
+        {
+          "page": 2,
+          "text": "the previous page.",
+          "bbox": [
+            54,
+            107.5,
+            140.3835,
+            121
+          ]
+        }
+      ],
+      "bbox": [
+        54,
+        51.5,
+        285.09450000000004,
+        121
+      ]
+    },
+    {
+      "key": "epsilon",
+      "kind": "paragraph",
+      "page": 2,
+      "column": "left",
+      "text": "A separate paragraph begins after the continued record. It describes how the team stores the completed sheets in a local folder. The folder preserves the original sequence and provides a stable reference for later review. This paragraph ends before the checklist in the right column.",
+      "lines": [
+        {
+          "page": 2,
+          "text": "A separate paragraph begins after the continued",
+          "bbox": [
+            54,
+            209.5,
+            279.2985,
+            223
+          ]
+        },
+        {
+          "page": 2,
+          "text": "record. It describes how the team stores the",
+          "bbox": [
+            54,
+            223.5,
+            258.25649999999996,
+            237
+          ]
+        },
+        {
+          "page": 2,
+          "text": "completed sheets in a local folder. The folder",
+          "bbox": [
+            54,
+            237.5,
+            262.929,
+            251
+          ]
+        },
+        {
+          "page": 2,
+          "text": "preserves the original sequence and provides a",
+          "bbox": [
+            54,
+            251.5,
+            274.605,
+            265
+          ]
+        },
+        {
+          "page": 2,
+          "text": "stable reference for later review. This paragraph",
+          "bbox": [
+            54,
+            265.5,
+            277.50300000000004,
+            279
+          ]
+        },
+        {
+          "page": 2,
+          "text": "ends before the checklist in the right column.",
+          "bbox": [
+            54,
+            279.5,
+            261.7635,
+            293
+          ]
+        }
+      ],
+      "bbox": [
+        54,
+        209.5,
+        279.2985,
+        293
+      ]
+    },
+    {
+      "key": "checklist",
+      "kind": "heading",
+      "page": 2,
+      "level": 2,
+      "text": "Checklist",
+      "bbox": [
+        324,
+        42,
+        377.352,
+        57
+      ]
+    },
+    {
+      "key": "list_a",
+      "kind": "list_item",
+      "page": 2,
+      "column": "right",
+      "text": "- Compare the sample label with its observation sheet.",
+      "lines": [
+        {
+          "page": 2,
+          "text": "- Compare the sample label with its observation",
+          "bbox": [
+            324,
+            73.5,
+            545.1614999999999,
+            87
+          ]
+        },
+        {
+          "page": 2,
+          "text": "sheet.",
+          "bbox": [
+            324,
+            87.5,
+            352.602,
+            101
+          ]
+        }
+      ],
+      "bbox": [
+        324,
+        73.5,
+        545.1614999999999,
+        101
+      ]
+    },
+    {
+      "key": "list_b",
+      "kind": "list_item",
+      "page": 2,
+      "column": "right",
+      "text": "- Store the checked record beside the sample.",
+      "lines": [
+        {
+          "page": 2,
+          "text": "- Store the checked record beside the sample.",
+          "bbox": [
+            324,
+            133.5,
+            538.767,
+            147
+          ]
+        }
+      ],
+      "bbox": [
+        324,
+        133.5,
+        538.767,
+        147
+      ]
+    },
+    {
+      "key": "references",
+      "kind": "heading",
+      "page": 2,
+      "level": 2,
+      "text": "References",
+      "bbox": [
+        324,
+        258,
+        388.692,
+        273
+      ]
+    },
+    {
+      "key": "reference_a",
+      "kind": "reference",
+      "page": 2,
+      "column": "right",
+      "text": "Adams, A. Orchard observation records. Local Methods Series, 2024.",
+      "lines": [
+        {
+          "page": 2,
+          "text": "Adams, A. Orchard observation records. Local",
+          "bbox": [
+            324,
+            289.5,
+            539.3340000000001,
+            303
+          ]
+        },
+        {
+          "page": 2,
+          "text": "Methods Series, 2024.",
+          "bbox": [
+            324,
+            303.5,
+            429.0525,
+            317
+          ]
+        }
+      ],
+      "bbox": [
+        324,
+        289.5,
+        539.3340000000001,
+        317
+      ]
+    },
+    {
+      "key": "reference_b",
+      "kind": "reference",
+      "page": 2,
+      "column": "right",
+      "text": "Baker, B. Preserving the reading sequence. Field Review Notes, 2025.",
+      "lines": [
+        {
+          "page": 2,
+          "text": "Baker, B. Preserving the reading sequence. Field",
+          "bbox": [
+            324,
+            349.5,
+            552.774,
+            363
+          ]
+        },
+        {
+          "page": 2,
+          "text": "Review Notes, 2025.",
+          "bbox": [
+            324,
+            363.5,
+            420.873,
+            377
+          ]
+        }
+      ],
+      "bbox": [
+        324,
+        349.5,
+        552.774,
+        377
+      ]
+    }
+  ],
+  "continuation": {
+    "parts": [
+      "continuation_a",
+      "continuation_b"
+    ],
+    "text": "The final paragraph on this page describes the transfer of the records. A reviewer compares the container labels with the observation sheet and checks the reading sequence in the source document. This paragraph continues on the following page and keeps the same subject while moving to the first column. The reviewer places the checked record beside the corresponding sample. This completes the paragraph that began in the right column of the previous page."
+  }
+}

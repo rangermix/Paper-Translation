@@ -1,0 +1,1 @@
+{"statements":["ALTER TABLE jobs ALTER COLUMN budget_micro DROP NOT NULL","ALTER TABLE dispatch_permits ALTER COLUMN reserved_micro DROP NOT NULL"],"version":11}

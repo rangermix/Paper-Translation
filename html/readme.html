@@ -1,0 +1,121 @@
+<!doctype html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>对照文库 · 个人 PDF 版 · 对照文库</title><style>
+:root{color-scheme:light;--bg:#f5f2ec;--paper:#fffdf9;--ink:#1d252c;--muted:#63716e;--line:#d9d5cc;--accent:#2e6f68;--blue:#315c8a;--code:#efede7;--font:17px}
+:root[data-theme=dark]{color-scheme:dark;--bg:#11171b;--paper:#182126;--ink:#edf1f2;--muted:#a8b4bb;--line:#344149;--accent:#80c8bd;--blue:#8eb9e6;--code:#222c32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:var(--font)/1.85 system-ui,-apple-system,"Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button,.button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:.45rem .8rem;font-size:14px;text-decoration:none;cursor:pointer}button:hover,.button:hover{border-color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px max(20px,calc((100vw - 1480px)/2));border-bottom:1px solid var(--line);background:var(--paper)}.brand{color:var(--ink);font-size:16px;font-weight:750;text-decoration:none}.version{font-size:13px;color:var(--muted);margin-left:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:34px;padding:32px 24px 70px}.sidebar{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}.docmenu summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:700}.sidebar nav{padding:8px 0 20px;border-bottom:1px solid var(--line)}.sidebar nav a{display:block;font-size:14px;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:7px}.sidebar nav a.active{background:var(--paper);color:var(--accent);font-weight:750;border-left:3px solid var(--accent)}.sidebar .toc{padding:18px 0;font-size:13px}.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}.toc a{display:block;padding:4px 4px;color:var(--muted);text-decoration:none;line-height:1.5}.toc a.sub{padding-left:15px}.content{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:36px 44px}.content h1{font:700 clamp(29px,3vw,40px)/1.32 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 20px;overflow-wrap:anywhere}.content h2{font-size:25px;line-height:1.45;margin:2.4rem 0 1rem;padding-top:8px;border-top:1px solid var(--line);scroll-margin-top:20px}.content h3{font-size:20px;line-height:1.6;margin:2rem 0 .6rem;color:var(--accent);scroll-margin-top:20px}.content p{margin:.8em 0}.content strong{font-weight:750}.content li{margin:.5em 0}.content ul,.content ol{padding-left:1.5em}.content blockquote{border-left:4px solid var(--accent);margin:1em 0;padding:.2em 1em;color:var(--muted);background:var(--bg)}.tablewrap{overflow-x:auto;width:100%;margin:20px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.7}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--bg);font-weight:750;white-space:nowrap}tr:last-child td{border-bottom:0}td{overflow-wrap:anywhere}pre{background:var(--code);padding:19px;border-radius:9px;overflow:auto;font:14px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;overflow-wrap:anywhere}p code,li code,td code{background:var(--code);padding:2px 5px;border-radius:4px}.foot{font-size:13px;color:var(--muted);margin-top:36px;border-top:1px solid var(--line);padding-top:16px}.portal{max-width:1160px;margin:auto;padding:52px 24px 70px}.portal h1{font:700 clamp(34px,5vw,55px)/1.25 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 16px}.intro{max-width:850px;color:var(--muted);font-size:18px}.notice{border-left:4px solid var(--accent);background:var(--paper);padding:17px 22px;margin:28px 0;border-radius:0 9px 9px 0}.stage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}.stage{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:24px}.stage h2{font-size:27px;margin:0 0 8px}.stage h3{font-size:18px;margin:0 0 12px}.stage p{font-size:15px;color:var(--muted);margin:0 0 14px}.stage .actions{margin-top:auto}.stage .count{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.resource-list{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.resource-list a{padding:14px 2px;border-bottom:1px solid var(--line);text-decoration:none}.section-title{font-size:24px;margin:34px 0 14px}.statline{font-size:14px;color:var(--muted);margin:12px 0}.wide-button{display:inline-block;background:var(--accent);color:var(--paper);padding:10px 16px;border-radius:9px;text-decoration:none;font-size:15px;margin:8px 8px 0 0}
+@media(max-width:1000px){.layout{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:24px 16px}.content{padding:28px}.stage-grid{gap:12px}.stage{padding:18px}.version{display:none}}
+@media(max-width:780px){.layout{display:block;padding:14px 12px 40px}.sidebar{position:relative;top:auto;max-height:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.sidebar nav{columns:2;column-gap:16px}.sidebar nav a{break-inside:avoid;padding:5px;font-size:13px}.sidebar .toc{padding:12px 0 0}.content{padding:24px 19px}.content h1{font-size:28px}.content h2{font-size:22px}.content h3{font-size:18px}.topbar{padding:12px 16px;align-items:flex-start}.topbar button,.topbar .button{padding:5px 8px;font-size:12px}.portal{padding:30px 18px 50px}.portal h1{font-size:34px}.intro{font-size:16px}.stage-grid{grid-template-columns:1fr;margin:22px 0}.resource-list{grid-template-columns:1fr}table{min-width:640px}body{--font:16px}}
+@media print{.topbar,.sidebar,.actions{display:none!important}body{background:white;color:black;font-size:11pt}.layout,.portal{display:block;padding:0;max-width:none}.content{padding:0;border:0;background:white}.content h2,.content h3{break-after:avoid}.tablewrap{overflow:visible;border:0}table{min-width:0;font-size:9pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:black}.stage-grid{display:block}.stage{break-inside:avoid;margin-bottom:12px}}
+</style></head><body><header class="topbar"><a class="brand" href="../index.html">对照文库 · 规格与实施<span class="version">v3.0 · 个人PDF版</span></a><div class="actions"><a class="button" href="../README.md" download>Markdown</a><button data-theme>明暗</button><button data-print>打印</button></div></header><div class="layout"><aside class="sidebar"><details class="docmenu" open><summary>文档导航</summary><nav><a class="" href="baseline.html">产品基线与范围</a><a class="" href="m0-spec.html">M0 · 产品 Spec</a><a class="" href="m0-plan.html">M0 · 实施 Plan</a><a class="" href="m1-spec.html">M1 · 产品 Spec</a><a class="" href="m1-plan.html">M1 · 实施 Plan</a><a class="" href="m2-spec.html">M2 · 产品 Spec</a><a class="" href="m2-plan.html">M2 · 实施 Plan</a><a class="" href="architecture-data.html">共享架构与数据</a><a class="" href="workflow-quality-security.html">工作流、质量与安全</a><a class="" href="api-contract.html">HTTP / Worker 契约</a><a class="" href="verification-strategy.html">测试与发布策略</a><a class="" href="traceability.html">四向追踪矩阵</a><a class="" href="compose-contract.html">Docker Compose 交付契约</a><a class="" href="changelog.html">范围变更与迁移</a><a class="" href="agents.html">编码 Agent 交接</a><a class="" href="sources.html">依据与决策来源</a><a class="active" href="readme.html">使用与交接说明</a></nav></details><details class="toc" open><summary>本页目录</summary><a class="" href="#h2">1. 从哪里开始</a><a class="" href="#h3">2. 运行本次交付的原型</a><a class="" href="#h4">3. 体验路径</a><a class="" href="#h5">4. 正式产品的 Compose 契约</a><a class="" href="#h6">5. 验证和状态</a><a class="" href="#h7">6. 目录和后续实施</a></details></aside><main class="content"><h1 id="h1">对照文库 · 个人 PDF 版</h1>
+<p>译文人工核对和逐段确认均为可选；通过完整性检查即可封存、发布和导出。语义/术语提示会保留。已有草稿若显示旧质量报告，重新运行一次质量检查即可，无需重新翻译。</p>
+<p><strong>v3.0 · 产品实现与验收中 · 2026-09-07</strong></p>
+<p>仓库已加入 M0–M2 的应用、后台任务、隔离解析器、数据库迁移、前端及验收 harness。<strong>全部退出门尚未通过，不能称为完整认证的 M2 release。</strong> 当前证据与缺口分别见 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">IMPLEMENTATION_STATUS.md</span> 和 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">逐门审计</span>。</p>
+<p>产品边界：<strong>仅 PDF、单实例、无用户/登录/团队/权限、仅 Docker Compose、无内置反代、无 OCR</strong> 。设置页可配置AI服务的endpoint、协议、model ID与API key；密钥保存在后端专用卷且不回显。未配置 Provider 时仍可保存和阅读原件。</p>
+<p>设置页支持四种接口，服务类型随协议自动匹配。切换接口类型会将地址和模型 ID 填为该接口的默认值，随后仍可手动修改；打开或重新读取配置保留已保存的值。endpoint 填完整请求 URL，不自动追加路径。切换只更新待保存表单，不自动保存或调用模型。</p>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>接口协议</th>
+<th>默认完整请求 URL</th>
+<th>默认模型 ID</th>
+<th>普通 API key 鉴权</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Responses（OpenAI 兼容）</td>
+<td><code>https://api.openai.com/v1/responses</code></td>
+<td><code>gpt-5.4-mini</code></td>
+<td><code>Authorization: Bearer</code></td>
+</tr>
+<tr>
+<td>Chat Completions（OpenAI 兼容）</td>
+<td><code>https://api.openai.com/v1/chat/completions</code></td>
+<td><code>gpt-5.4-mini</code></td>
+<td><code>Authorization: Bearer</code></td>
+</tr>
+<tr>
+<td>Gemini Interactions（原生）</td>
+<td><code>https://generativelanguage.googleapis.com/v1beta/interactions</code></td>
+<td><code>gemini-3.8-flash</code></td>
+<td><code>x-goog-api-key</code></td>
+</tr>
+<tr>
+<td>Claude Messages（原生）</td>
+<td><code>https://api.anthropic.com/v1/messages</code></td>
+<td><code>claude-sonnet-5</code></td>
+<td><code>x-api-key</code>，另发 <code>anthropic-version</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>上述表单默认模型 ID 于 2026-09-07 对照 <a href="https://developers.openai.com/api/docs/models/gpt-5.4-mini" rel="noopener noreferrer">OpenAI 模型文档</a>、<a href="https://ai.google.dev/gemini-api/docs/interactions-overview" rel="noopener noreferrer">Gemini Interactions 支持列表</a>、<a href="https://platform.claude.com/docs/en/models/overview" rel="noopener noreferrer">Claude 模型文档</a>核对；只是可编辑的起点，不代表当前凭据可用或已通过真实翻译验收。</p>
+<p>原生接口使用普通 API key，不包含 OAuth 或多 workspace 选择；四种协议均可明确选择无鉴权以连接无需密钥的本地服务。Claude 的 <code>api_version</code> 在高级选项设置，留空由后端使用 <code>2023-06-01</code>。Gemini 使用 Interactions，不转换为 generateContent。官方协议依据见本轮 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">Gemini 核对</span>与 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">Claude 独立核对</span>，这些记录不是真实模型调用。</p>
+<p>容器内 <code>localhost</code> 指容器自身，本机服务须填写容器可达的地址。配置可先保存；缺少模型、地址或鉴权条件时仍显示等待配置。保存不会发送测试请求。API key 留空保留，明确清除才移除当前 key；改变地址、协议或鉴权须重新输入或明确清除旧 key。Gemini 和 Claude 两个原生协议的响应 model 必须与配置匹配，仅 Gemini 允许去除 <code>models/</code> 前缀；使用原生模型别名时应填写服务实际返回的模型 ID。服务配置不包含在标准文库备份中，新宿主恢复后需重新填写。</p>
+<p><strong>预算与成本控制是可选项，新配置默认关闭。</strong> 关闭时无需填写费率或作业金额预算，仍保存请求、用量和未知结果记录；无法确定的金额显示为未计价（<code>null</code>），不当作免费。开启后需完整费率，并执行作业与实例预算检查。旧完整配置未包含开关字段时继续开启，已有明确选择不会因旧客户端省略字段而改变。</p>
+<p>设置显示当前三个应用上限：输入 <strong>32768 tokens</strong> 、输出 <strong>8192 tokens</strong> 、单元正文 <strong>2000 字符</strong> 。新配置采用这些默认值；已有自定义值继续保留。“恢复默认”仅替换三个上限，经原有版本检查保存，不改地址、协议或密钥。这些是应用请求限制，不是模型能力声明。明确填写的免费费率 <code>0</code> 仍有效；关闭成本控制不等于供应商免费。</p>
+<p>Gemini 请求显式 <code>store=false</code>；Claude Messages 没有该字段，也不主动启用缓存写入。两者均不承诺服务商不保留请求数据。Gemini 的输出与思考 token 合并计费；Claude 的输出计数已包含思考，不重复累加。开启成本控制时，缺失或矛盾用量、未定价维度（例如 Claude 缓存写入）或费用未确认会暂停核对。关闭时，已明确收到的合法译文可继续，金额保持未知；网络结果未知或返回模型不匹配仍停止自动派发，重试需明确承担风险。接口、故障服务和 UI 测试通过不等于真实模型兼容或语言质量认证。</p>
+<p>启动实际产品候选版本：</p>
+<pre><code class="language-powershell">docker compose -f deployment/compose.production.yaml build app parser db
+docker compose -f deployment/compose.production.yaml up -d --wait
+</code></pre>
+<p>打开 <code>http://127.0.0.1:8080</code>。部署宿主只需 Docker Engine 与 Compose，模型和依赖在镜像构建期取得并校验；运行期不下载。详见 <a href="../ops/deploy.md">部署</a>、<a href="../ops/restore.md">备份与恢复</a>、<a href="../ops/retention.md">保留与清理</a>。已有旧基础镜像的实例升级须遵照恢复文档，不能用新数据库镜像直接覆盖原卷。</p>
+<p>真实 Provider 验收仍需固定 model/profile/价格、后端密钥文件、测试预算及受控文本外发确认。FakeProvider 测试只验证任务、预算、版本隔离等行为，不证明真实模型兼容性或翻译质量。两篇原论文的完整来源对应复核也必须独立通过。</p>
+<p>所有语言均可直接选择，名称使用各自语言显示；配置确认仍绑定完整公开 profile hash，详细协议见<a href="../ops/languages.md">语言与配置确认</a>。</p>
+<h2 id="h2">1. 从哪里开始</h2>
+<p>打开<a href="../index.html">文档与原型总目录</a>。<a href="../prototype/index.html">交互原型</a>可直接离线打开；纸色、侧栏和阅读器沿用上一版。六份阶段文档与共享契约均提供Markdown和本地HTML。</p>
+<p>实现产品前按顺序读取：<a href="baseline.html">基线</a> → <a href="architecture-data.html">数据架构</a> → <a href="workflow-quality-security.html">任务与质量</a> → <a href="api-contract.html">API</a> → <a href="compose-contract.html">Compose交付</a> → 各阶段Spec/Plan。</p>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>产品Spec</th>
+<th>实施Plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0 PDF库与静态出版底座</td>
+<td><a href="m0-spec.html">M0 Spec</a></td>
+<td><a href="m0-plan.html">M0 Plan</a></td>
+</tr>
+<tr>
+<td>M1 真实PDF翻译</td>
+<td><a href="m1-spec.html">M1 Spec</a></td>
+<td><a href="m1-plan.html">M1 Plan</a></td>
+</tr>
+<tr>
+<td>M2 个人校对与版本管理</td>
+<td><a href="m2-spec.html">M2 Spec</a></td>
+<td><a href="m2-plan.html">M2 Plan</a></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="h3">2. 运行本次交付的原型</h2>
+<p>在解压目录执行：</p>
+<pre><code class="language-sh">docker compose up --build -d
+</code></pre>
+<p>打开 <code>http://localhost:8080</code>。停止用 <code>docker compose down</code>。可从<code>.env.example</code>创建<code>.env</code>调整绑定地址与端口；默认仅回环地址。无需安装Python、Node、数据库或反代。镜像首次构建需要取得Python基础镜像；<strong>运行阶段不下载依赖</strong> 。</p>
+<p>根目录<code>compose.yaml</code>运行的是<strong>设计原型静态服务器</strong> ，不是正式产品API。不会往服务器上传PDF、调用模型或写入产品数据库。它也不会启动并伪装一组没有实现的worker/db服务。原型服务器没有登录，仅供本地可信环境体验。</p>
+<p>原型真正可用：PDF选择的扩展名/大小/文件头初检、浏览器内条目管理、收藏与搜索、已有两篇静态论文阅读/单文件导出、演示草稿修改、候选冲突、历史回滚、术语和偏好保存。原型文件头检查不是完整PDF合法性检查。</p>
+<p>原型明确模拟：PDF解析、段落数量、费用估计、翻译、质量检查与发布状态。手动推进的流程样例固定为三段，<strong>与选择的PDF正文无关</strong> ，产物醒目标识“流程样例”。原件条目不会被样例译文悄悄替换。</p>
+<p>原型的浏览器 localStorage 仅保存演示状态；选中文件的 Object URL 与文件字节不持久，刷新后需重新选择原件。不要输入任何模型密钥。上方生产 Compose 入口使用 PostgreSQL 与命名卷保存实际产品状态，两者的数据互不替代。</p>
+<h2 id="h4">3. 体验路径</h2>
+<p>进入“PDF上传”，选择<a href="../fixtures/sample.pdf">人工合成测试PDF</a>或自己的PDF；非PDF被拒绝。加入原型文库后可查看原件。选择“演示翻译流程”进入任务，逐阶段推进，预检确认后继续；有质量异常的演示需要在校对中修正数字再发表样例。</p>
+<p>已发布流程样例可以编辑、产生重译候选、比较并接受、发布新版本、回滚、导出静态HTML。原有两篇论文始终独立保留，不会被演示改写。</p>
+<h2 id="h5">4. 正式产品的 Compose 契约</h2>
+<p><a href="../deployment/compose.production.yaml">deployment/compose.production.yaml</a>现在运行实际 <code>apps.api</code>、<code>workers.main</code> 和隔离 parser，包含 app/worker/parser/db 及 init/migrate/maintenance 服务。<code>images/</code> 提供源代码构建，<code>uv.lock</code>、前端 lock 和 parser model lock 固定依赖。真实镜像、离线新卷冷启动、原件完整性损坏检测和另一组新卷备份恢复已有执行记录；最终 release 仍须绑定稳定源码和实际镜像 digest 完成所有验收。</p>
+<p>正式发行必须提供已构建镜像或完整可构建源码与锁文件；全部本地运行依赖、原生PDF库、前端产物、阅读模板及启用的Docling模型随镜像交付。用户不另装这些依赖。外部翻译服务和用户API凭据不能打包，未配置模型时文库/阅读仍应启动。查看<a href="../deployment/dependency-inventory.json">依赖设计清单</a>；其中待定版本不是完成的release lock。</p>
+<p>不包含反代容器、TLS证书、用户管理、身份中间件或ACL服务。任何可达客户端都能操作实例；默认回环绑定不是登录替代品。</p>
+<h2 id="h6">5. 验证和状态</h2>
+<p><span title="Agent 工作资料；见源码仓库 .agent/ 目录">包检查报告</span>保留原设计包的历史检查结果。65 条需求、42 个工作包、130 个场景、24 个退出门的原始契约位于 <code>contracts/</code>；实际实现执行状态由 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">harness</span> 的追加式证据生成，见 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">IMPLEMENTATION_STATUS.md</span>。缺少当前源码绑定记录既不能算通过，也不表示已有实现不存在。</p>
+<p>harness 默认将独立子任务与来源/视觉/语义复核分配给 agent，以项目文件保存所有权、发现、失败、命令和下一步。标为人工或混合验证的场景必须有独立 agent 的实际复核，不能用同一实现者的自述、模拟数据或静态文件计数代替。</p>
+<p>可选的检查工具也通过Compose运行：</p>
+<pre><code class="language-sh">docker compose --profile tools run --build --rm verify
+</code></pre>
+<p>工具镜像在<strong>构建期</strong> 安装固定版本的文档检查依赖，运行时无外网；不会付费调用模型。这只检查本包，不是M0/M1/M2应用验收。检查输出在终端；容器中的JSON不被当成产品测试证据。</p>
+<p>本次环境若没有Docker daemon，检查报告会写明未执行镜像构建/Compose启动，不能以YAML静态解析替代这项验收。</p>
+<h2 id="h7">6. 目录和后续实施</h2>
+<p>项目文件直接位于 Git 仓库根目录，不再需要进入 <code>bilingual-library-personal-pdf-v3/</code> 子目录。<code>apps/</code>、<code>packages/</code>、<code>workers/</code>、<code>tests/</code>、<code>contracts/</code> 与部署文件保持原相对结构。</p>
+<p>Agent 工作资料统一位于 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">.agent/</span>：可复用验收代码在 <code>.agent/harness/</code>，工作记忆和笔记在 <code>.agent/memory/</code>、<code>.agent/notes/</code>，中间产物在 <code>.agent/tmp/</code>。持久本地环境与凭据相关状态在 <code>.agent/local-data/</code>。Git 忽略后两类本地数据，保留验收代码和长期文件记忆；Docker 镜像排除整个 <code>.agent/</code>。历史证据保留原字节，旧路径通过 <code>.agent/relocation.json</code> 映射。</p>
+<p><code>prototype/</code>为可操作UI与原有静态阅读资料；<code>milestones/</code>为六份主文档；<code>shared/</code>为共享契约；<code>contracts/</code>为Schema与追踪数据；<code>fixtures/</code>为人工测试资料；<code>deployment/</code>为目标Compose与依赖边界；<code>tools/</code>为本包构建与检查工具；<code>reference/</code>固定阅读样式及字节校验记录。</p>
+<p><a href="agents.html">AGENTS.md</a>给出编码Agent执行入口。不要把本次原型的localStorage、手动推进或固定段落当成正式API实现。旧包中冲突的多格式/身份/权限要求已被本版本取代，不与旧Spec叠加实施。</p>
+<footer class="foot">规格包 v3.0 · 2026-09-06 · 产品与计划尚待实施。所有内容已写入本地HTML，无需联网阅读。</footer></main></div><script>(()=>{const r=document.documentElement;try{r.dataset.theme=localStorage.getItem('spec-theme')||'light'}catch{}document.querySelectorAll('button[data-theme]').forEach(b=>b.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('spec-theme',r.dataset.theme)}catch{}}));document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>print()));if(innerWidth<780){const m=document.querySelector('.docmenu');if(m)m.removeAttribute('open');const t=document.querySelector('.toc');if(t)t.removeAttribute('open')}})();</script></body></html>

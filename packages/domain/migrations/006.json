@@ -1,0 +1,1 @@
+{"statements":["ALTER TABLE translation_memory ADD COLUMN IF NOT EXISTS generation integer NOT NULL DEFAULT 1"],"version":6}

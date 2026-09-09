@@ -1,0 +1,457 @@
+[
+  {
+    "id": "M0-R01",
+    "previous_title": "彻底移除链接导入",
+    "current_title": "仅 PDF 的产品入口",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R02",
+    "previous_title": "冻结现有阅读样式",
+    "current_title": "冻结现有阅读样式",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R03",
+    "previous_title": "显式已有双语输入",
+    "current_title": "PDF 原件入库与阶段边界",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R04",
+    "previous_title": "业务自有 v2 IR",
+    "current_title": "自有 RenderInput v3 与内部契约",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R05",
+    "previous_title": "源件、原文及机械清理可追溯",
+    "current_title": "原件与机械清理可追溯",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R06",
+    "previous_title": "一对一阅读与保留策略",
+    "current_title": "一对一阅读与保留策略",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R07",
+    "previous_title": "结构渲染完整而不猜测",
+    "current_title": "结构渲染完整而不猜测",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R08",
+    "previous_title": "确定性静态渲染",
+    "current_title": "确定性静态渲染",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R09",
+    "previous_title": "三种独立消费方式",
+    "current_title": "三种独立消费方式",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R10",
+    "previous_title": "无脚本可读与可访问控件",
+    "current_title": "无脚本可读与可访问控件",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R11",
+    "previous_title": "既有译读版的受控迁移",
+    "current_title": "两篇旧阅读页的受控保留",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R12",
+    "previous_title": "真实持久化文档库",
+    "current_title": "单实例持久文档库",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R13",
+    "previous_title": "最小身份与全资源鉴权",
+    "current_title": "无身份系统与直接访问边界",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R14",
+    "previous_title": "幂等构建与原子发布底座",
+    "current_title": "幂等构建与原子发布底座",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R15",
+    "previous_title": "未完成不伪装完成",
+    "current_title": "未完成不伪装完成",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R16",
+    "previous_title": "安全内容和本地资产",
+    "current_title": "安全内容和本地资产",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R17",
+    "previous_title": "版本边界与不可变快照",
+    "current_title": "版本边界与不可变快照",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M0-R18",
+    "previous_title": "可部署、备份和证据",
+    "current_title": "仅 Compose、完整运行依赖与恢复",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R01",
+    "previous_title": "安全上传会话",
+    "current_title": "PDF流式上传会话",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R02",
+    "previous_title": "受控文件格式矩阵",
+    "current_title": "PDF支持边界与可见失败",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R03",
+    "previous_title": "解析进程隔离",
+    "current_title": "完全离线的 PDF 解析容器",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R04",
+    "previous_title": "文本 PDF 的阅读顺序与覆盖账本",
+    "current_title": "文本 PDF 的阅读顺序与覆盖账本",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R05",
+    "previous_title": "本地 HTML/MD/TXT 解析",
+    "current_title": "PDF内部资源与失败页处理",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R06",
+    "previous_title": "翻译前结构预检",
+    "current_title": "翻译前结构预检",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R07",
+    "previous_title": "目标语言与外部处理授权",
+    "current_title": "目标语言与外部处理授权",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R08",
+    "previous_title": "首个真实 Provider 与可替代适配器",
+    "current_title": "首个真实 Provider 与可替代适配器",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R09",
+    "previous_title": "基于单元的分块与上下文",
+    "current_title": "基于单元的分块与上下文",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R10",
+    "previous_title": "按 ID 严格校验模型响应",
+    "current_title": "按 ID 严格校验模型响应",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R11",
+    "previous_title": "工作区内精确缓存",
+    "current_title": "个人库内精确翻译缓存",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R12",
+    "previous_title": "持久任务与真正恢复",
+    "current_title": "持久任务与真正恢复",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R13",
+    "previous_title": "有界错误恢复",
+    "current_title": "有界错误恢复",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R14",
+    "previous_title": "未知结果与计费不确定性",
+    "current_title": "未知结果与计费不确定性",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R15",
+    "previous_title": "预算预留与用量账本",
+    "current_title": "预算预留与用量账本",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R16",
+    "previous_title": "暂停、取消和恢复的竞态语义",
+    "current_title": "暂停、取消和恢复的竞态语义",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R17",
+    "previous_title": "真实任务进度与事件",
+    "current_title": "真实任务进度与事件",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R18",
+    "previous_title": "基本质量门禁",
+    "current_title": "基本质量门禁",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R19",
+    "previous_title": "基本校对可完成真实闭环",
+    "current_title": "基本校对可完成真实闭环",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R20",
+    "previous_title": "自动发布有明确条件",
+    "current_title": "自动发布有明确条件",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R21",
+    "previous_title": "真实文档库、查重与资源链",
+    "current_title": "真实文档库、查重与资源链",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R22",
+    "previous_title": "日志、审计与供应商隐私",
+    "current_title": "内容安全与供应商设置",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R23",
+    "previous_title": "删除、撤销发布与回收",
+    "current_title": "删除、撤销发布与回收",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R24",
+    "previous_title": "批量导入的独立性与资源公平",
+    "current_title": "批量导入的独立性与资源公平",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R25",
+    "previous_title": "生产部署与恢复演练",
+    "current_title": "Compose生产交付与故障恢复",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M1-R26",
+    "previous_title": "真实端到端验收而非演示",
+    "current_title": "真实端到端验收而非演示",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R01",
+    "previous_title": "完整来源对照工作台",
+    "current_title": "PDF来源对照工作台",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R02",
+    "previous_title": "可编辑草稿与不可变修订",
+    "current_title": "可编辑草稿与不可变修订",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R03",
+    "previous_title": "术语表修订",
+    "current_title": "个人术语表修订",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R04",
+    "previous_title": "术语作用范围与影响预览",
+    "current_title": "术语作用范围与影响预览",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R05",
+    "previous_title": "局部重译不伤及已审校内容",
+    "current_title": "局部重译不伤及已审校内容",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R06",
+    "previous_title": "审校状态可信",
+    "current_title": "审校状态可信",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R07",
+    "previous_title": "质量报告和问题处置闭环",
+    "current_title": "质量报告和问题处置闭环",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R08",
+    "previous_title": "辅助语义评审有边界",
+    "current_title": "辅助语义评审有边界",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R09",
+    "previous_title": "多目标语言 edition",
+    "current_title": "多目标语言 edition",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R10",
+    "previous_title": "语言能力与混合文本声明",
+    "current_title": "语言能力与混合文本声明",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R11",
+    "previous_title": "来源修正与新来源版本",
+    "current_title": "来源修正与新来源版本",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R12",
+    "previous_title": "跨来源修订映射与失效",
+    "current_title": "跨来源修订映射与失效",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R13",
+    "previous_title": "修订差异与审计",
+    "current_title": "修订差异与审计",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R14",
+    "previous_title": "并发校对与候选安全合并",
+    "current_title": "并发校对与候选安全合并",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R15",
+    "previous_title": "发布审批、历史与回滚",
+    "current_title": "发布审批、历史与回滚",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R16",
+    "previous_title": "仅换模板的零模型重建",
+    "current_title": "仅换模板的零模型重建",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R17",
+    "previous_title": "可控翻译记忆候选",
+    "current_title": "个人翻译记忆候选",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R18",
+    "previous_title": "正文检索与阅读位置",
+    "current_title": "个人正文检索与阅读位置",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R19",
+    "previous_title": "版本导出与可恢复数据包",
+    "current_title": "精确导出与 Compose 备份",
+    "disposition": "revised",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R20",
+    "previous_title": "可靠性、删除和迁移回归",
+    "current_title": "可靠性、删除和迁移回归",
+    "disposition": "retained",
+    "status": "planned"
+  },
+  {
+    "id": "M2-R21",
+    "previous_title": "完整编辑出版验收",
+    "current_title": "完整编辑出版验收",
+    "disposition": "retained",
+    "status": "planned"
+  }
+]

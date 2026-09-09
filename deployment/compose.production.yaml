@@ -1,0 +1,215 @@
+# Production source build; release digests are emitted after actual builds.
+# Root compose.yaml remains the historical prototype.
+name: bilingual-personal-pdf
+x-app: &app
+  image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
+  build:
+    context: ..
+    dockerfile: images/app.Dockerfile
+    args:
+      SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
+      SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"
+  platform: linux/amd64
+  init: true
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp:rw,nosuid,size=256m,mode=1777"]
+  environment: &app-environment
+    DATA_DIR: /data
+    UPLOADS_DIR: /uploads
+    PARSER_INPUTS_DIR: /parser_inputs
+    PARSER_OUTPUTS_DIR: /parser_outputs
+    DATABASE_CONFIG_FILE: /internal/database.json
+    PROVIDER_PROFILE_FILE: /config/provider-profile.json
+    PROVIDER_CONFIG_DIR: /provider_config
+    ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,app}"
+    APP_ORIGINS: "${APP_ORIGINS:-http://localhost:${PORT:-8080},http://127.0.0.1:${PORT:-8080}}"
+    READ_ONLY: "${READ_ONLY:-false}"
+  volumes:
+    - internal:/internal:ro
+    - ./provider-profile.json:/config/provider-profile.json:ro
+services:
+  init:
+    <<: *app
+    user: "0:0"
+    network_mode: none
+    cap_add: [CHOWN, FOWNER, DAC_OVERRIDE]
+    command: [python, -m, packages.maintenance, init-volumes]
+    environment:
+      DATA_DIR: /data
+      UPLOADS_DIR: /uploads
+      PARSER_INPUTS_DIR: /parser_inputs
+      PARSER_OUTPUTS_DIR: /parser_outputs
+      DATABASE_CONFIG_FILE: /internal/database.json
+      PROVIDER_CONFIG_DIR: /provider_config
+    volumes:
+      - data:/data
+      - uploads:/uploads
+      - internal:/internal
+      - parser_inputs:/parser_inputs
+      - parser_outputs:/parser_outputs
+      - backups:/backups
+      - provider_config:/provider_config
+      - pgdata:/pgdata
+    restart: "no"
+  db:
+    image: "${DATABASE_IMAGE:-bilingual-personal-pdf-db:local}"
+    build:
+      context: ..
+      dockerfile: images/database.Dockerfile
+      args:
+        SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
+        SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"
+    platform: linux/amd64
+    user: "999:999"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,nosuid,size=64m,mode=1777", "/var/run/postgresql:rw,nosuid,size=16m,mode=1777"]
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: library_runtime
+      POSTGRES_PASSWORD_FILE: /internal/db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - internal:/internal:ro
+    networks: [backend]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U library_runtime -d library"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    networks: [backend]
+    command: [python, -m, packages.maintenance, migrate]
+    volumes:
+      - data:/data
+      - internal:/internal:ro
+    depends_on:
+      db: {condition: service_healthy}
+    restart: "no"
+  app:
+    <<: *app
+    networks: [backend, http]
+    command: [uvicorn, apps.api.main:app, --host, 0.0.0.0, --port, "8080"]
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
+    volumes:
+      - data:/data
+      - uploads:/uploads
+      - internal:/internal:ro
+      - ./provider-profile.json:/config/provider-profile.json:ro
+      - provider_config:/provider_config
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+  worker:
+    <<: *app
+    command: [python, -m, workers.main]
+    environment:
+      <<: *app-environment
+      PROVIDER_KEY_FILE: /run/secrets/provider_key
+    volumes:
+      - data:/data
+      - uploads:/uploads
+      - internal:/internal:ro
+      - parser_inputs:/parser_inputs
+      - parser_outputs:/parser_outputs
+      - ./provider-profile.json:/config/provider-profile.json:ro
+      - provider_config:/provider_config:ro
+    secrets: [provider_key]
+    networks: [backend, provider_egress]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      parser: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -m, workers.main, --health]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    stop_grace_period: 60s
+    restart: unless-stopped
+  parser:
+    image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
+    build:
+      context: ..
+      dockerfile: images/parser.Dockerfile
+      args:
+        SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
+        SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"
+    platform: linux/amd64
+    init: true
+    command: [python, -m, workers.parser.main]
+    network_mode: none
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOCLING_ARTIFACTS_PATH: /opt/docling/models
+      PARSER_INPUTS: /inputs
+      PARSER_OUTPUTS: /outputs
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      - parser_inputs:/inputs:ro
+      - parser_outputs:/outputs
+    tmpfs: ["/tmp:rw,nosuid,size=512m,mode=1777"]
+    mem_limit: 16g
+    cpus: 4.0
+    pids_limit: 256
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -m, workers.parser.health]
+      interval: 15s
+      timeout: 10s
+      start_period: 30s
+      retries: 6
+    restart: unless-stopped
+  maintenance:
+    <<: *app
+    networks: [backend]
+    profiles: [maintenance]
+    command: [python, -m, packages.maintenance, --help]
+    volumes:
+      - data:/data
+      - uploads:/uploads
+      - internal:/internal:ro
+      - backups:/backups
+      - parser_inputs:/parser_inputs
+      - parser_outputs:/parser_outputs
+      - ./provider-profile.json:/config/provider-profile.json:ro
+    depends_on:
+      db: {condition: service_healthy}
+    restart: "no"
+volumes:
+  data:
+  uploads:
+  internal:
+  pgdata:
+  parser_inputs:
+  parser_outputs:
+  backups:
+  provider_config:
+networks:
+  backend:
+    internal: true
+  # Docker does not publish ports from an internal-only network. This bridge
+  # exposes the app's one explicitly loopback-bound HTTP port, without a proxy.
+  http:
+  provider_egress:
+secrets:
+  provider_key:
+    file: "${PROVIDER_KEY_FILE:-./provider_key.empty}"

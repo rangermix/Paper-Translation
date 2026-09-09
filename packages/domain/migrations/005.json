@@ -1,0 +1,1 @@
+{"statements":["ALTER TABLE documents ALTER COLUMN source_asset_id DROP NOT NULL"],"version":5}

@@ -1,0 +1,1432 @@
+[
+  {
+    "id": "M0-R01",
+    "milestone": "M0",
+    "title": "仅 PDF 的产品入口",
+    "rule": "用户创建来源只能上传 application/pdf 字节，服务器签名和受限 PDF 解码共同验证；不提供 URL、HTML、TXT、Markdown、DOCX、EPUB、ZIP、双语粘贴或 IR 导入 API/UI。原文中的普通引用超链接可保留但不自动获取。IR 样例和既有阅读页只作受控内置资料。",
+    "tests": [
+      {
+        "id": "M0-AT01A",
+        "requirement_id": "M0-R01",
+        "scenario": "Given 首次打开界面，When 检查上传页和创建来源接口，Then 仅一个 PDF 入口，只有 PDF 文件能进入接收/验证流程。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT01B",
+        "requirement_id": "M0-R01",
+        "scenario": "Given URL 字段、bilingual/text 来源、附件数组、HTML/DOCX/JSON 或伪装 PDF，When 直接请求导入，Then 415/422；不存在隐藏兼容路由。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R02",
+    "milestone": "M0",
+    "title": "冻结现有阅读样式",
+    "rule": "reader-v1.css 字节和 SHA-256 必须等于参考清单；阅读正文沿用原纸色、英蓝／译棕侧线、衬线、目录和工具条。为多语言使用原文／译文标签，保留现有 CSS 类兼容。管理 UI 可以迭代但不能改变既有制品。",
+    "tests": [
+      {
+        "id": "M0-AT02A",
+        "requirement_id": "M0-R02",
+        "scenario": "Given 两篇 legacy 基准和固定浏览器环境，When 打开桌面／手机截图，Then CSS 哈希相等、正文配对顺序相等，视觉差异在明确的导航允许区之外须审核。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT02B",
+        "requirement_id": "M0-R02",
+        "scenario": "Given 开发者悄悄修改 reader-v1.css 一个颜色值，When 跑模板验证，Then 失败；不允许自动接受新快照。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R03",
+    "milestone": "M0",
+    "title": "PDF 原件入库与阶段边界",
+    "rule": "M0 接收并流式保存 PDF，经隔离 inspector 进行有效性/加密/页数检查、SHA-256 查重后建立 source asset 与文档；能预览/下载原件、编辑题名/标签、收藏/归档。M0 不执行机器翻译和语义版面解析，新上传文件显示“原件已保存，翻译在 M1 启用”，不生成伪译文。内部 fixture 验证静态出版。",
+    "tests": [
+      {
+        "id": "M0-AT03A",
+        "requirement_id": "M0-R03",
+        "scenario": "Given 有效未加密 PDF，When 上传完成，Then 原始字节hash不变、真实页数可见，刷新/服务重启后文档仍存在且状态为source_only。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT03B",
+        "requirement_id": "M0-R03",
+        "scenario": "Given M0新上传PDF点击翻译，Then 功能尚未实现时明确不可用；不得把内置示例文本挂在该文件名下冒充译文。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R04",
+    "milestone": "M0",
+    "title": "自有 RenderInput v3 与内部契约",
+    "rule": "IR v3 仅 PDF 来源，无实例/用户/角色字段。source_revision.kind 固定 pdf_upload；每个源码 locator 都是 PDF 页码及 top-left-points bbox。保留全部块类型与不可变源/译快照。JSON Schema 是语法层，语义校验独立实现；IR 仅内部处理/备份格式，不作为新增文档入口。",
+    "tests": [
+      {
+        "id": "M0-AT04A",
+        "requirement_id": "M0-R04",
+        "scenario": "Given 内部全结构PDF来源fixture，When Schema和语义校验，Then 通过并能渲染；普通客户端只能上传PDF，不能POST该IR建文档。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT04B",
+        "requirement_id": "M0-R04",
+        "scenario": "Given unknown field、非PDF来源locator、重复block、环引用或workspace_id，Then 严格拒绝，不自动忽略兼容。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R05",
+    "milestone": "M0",
+    "title": "原件与机械清理可追溯",
+    "rule": "原 PDF 字节与哈希永久绑定来源资产；原解析输出、raw_text、normalized_text与编辑映射分开保存。只允许有证据的连字/断行等机械恢复；M0样例由人工核实，M1由解析器产生。源文修正产生新 SourceRevision，不通过译文编辑改原文。",
+    "tests": [
+      {
+        "id": "M0-AT05A",
+        "requirement_id": "M0-R05",
+        "scenario": "Given 原PDF中跨行单词和连字，When 记录机械清理，Then 可回到真实页图与raw区间，原资产hash始终不变。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT05B",
+        "requirement_id": "M0-R05",
+        "scenario": "Given 模型尝试重写英文或将source字段放入翻译响应，Then 响应被拒，原件及来源快照未修改。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R06",
+    "milestone": "M0",
+    "title": "一对一阅读与保留策略",
+    "rule": "每个必译内容块有且仅有一个可用结果；标题在 hero 中只出现一次；图／表内部子块由 owner_id 管理，不再出现在根阅读流中。代码、公式、参考文献和原图可按明确策略 retained，不可把缺译正文标成保留。",
+    "tests": [
+      {
+        "id": "M0-AT06A",
+        "requirement_id": "M0-R06",
+        "scenario": "Given 1 个标题、2 段、1 张 2×2 表、1 个图题和1段参考文献，When 渲染，Then 每个语义对象只渲染一次，所有必译文本紧邻译文。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT06B",
+        "requirement_id": "M0-R06",
+        "scenario": "Given 正文缺失结果、结果引用未知块或将正文伪标 retained，When 校验，Then 阻断发布。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R07",
+    "milestone": "M0",
+    "title": "结构渲染完整而不猜测",
+    "rule": "M0 renderer 必须支持 Schema 中全部已启用种类：标题、段落、列表、代码、数学、图片、图题、表格、表格单元、脚注、参考文献。长表横向滚动；不可靠公式只能显示已提供的原图／原式并声明。解析支持不等于渲染支持。",
+    "tests": [
+      {
+        "id": "M0-AT07A",
+        "requirement_id": "M0-R07",
+        "scenario": "Given 包含合并单元格、脚注回链、原图和数学表示的人工 IR，When 生成，Then 所有资源及锚点有效、单元格覆盖不重叠。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT07B",
+        "requirement_id": "M0-R07",
+        "scenario": "Given 未实现 block kind 或无可靠公式表示，When 构建，Then 明确失败／待处理，不静默跳过、不编造 LaTeX。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R08",
+    "milestone": "M0",
+    "title": "确定性静态渲染",
+    "rule": "渲染仅接受冻结 SourceRevision、TranslationRevision、模板与构建配置，绝不调用 LLM。固定输入和构建环境产生相同正文及资源字节；构建时间放 manifest、不进入正文。ZIP 文件时间和排序规范化，确定性比较排除审计时间。",
+    "tests": [
+      {
+        "id": "M0-AT08A",
+        "requirement_id": "M0-R08",
+        "scenario": "Given 同一冻结输入，在干净环境连续构建两次，Then index.html、CSS、JS、资产及 content_digest 相同。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT08B",
+        "requirement_id": "M0-R08",
+        "scenario": "Given 断开全部网络并关闭模型配置，When 构建已有双语，Then 仍成功；任何网络依赖测试判失败。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R09",
+    "milestone": "M0",
+    "title": "三种独立消费方式",
+    "rule": "在线静态页面（由app做请求与路径安全检查）、离线目录 ZIP、单文件 HTML 均包含完整正文。单文件内嵌 CSS/JS/图片；PDF 默认不嵌入，没有附带 PDF 时不显示必坏按钮。离线导出不包含凭据、私有管理 URL 或正文 fetch。",
+    "tests": [
+      {
+        "id": "M0-AT09A",
+        "requirement_id": "M0-R09",
+        "scenario": "Given 已发布 fixture，When 导出 ZIP 和单 HTML 后在断网 file:// 下打开，Then 正文、图表、样式均可读且没有自动外网请求。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT09B",
+        "requirement_id": "M0-R09",
+        "scenario": "Given include_source=false 或来源原件不可提供，When 导出，Then 原始 PDF 控件隐藏／说明另附，不出现 404 链接。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R10",
+    "milestone": "M0",
+    "title": "无脚本可读与可访问控件",
+    "rule": "禁用 JavaScript 默认显示全部双语内容；设置脚本只切换显示、字号、主题、阅读位置。键盘可访问目录与控件；320px 视口除表格／代码内部外不横向溢出；存储不可用时降级提示但正文仍可读。",
+    "tests": [
+      {
+        "id": "M0-AT10A",
+        "requirement_id": "M0-R10",
+        "scenario": "Given JS 被禁用或 localStorage 抛错，When 阅读文章，Then 原文、译文、图表和链接仍存在，不能被默认 CSS 隐藏。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT10B",
+        "requirement_id": "M0-R10",
+        "scenario": "Given 长标题、代码与移动视口，When tab 导航和放大字号，Then 无被遮挡主操作，焦点可见，正文不被裁切。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R11",
+    "milestone": "M0",
+    "title": "两篇旧阅读页的受控保留",
+    "rule": "已提供两篇论文作为可选内置示例包；迁移只接受release清单已知hash，通过compose内CLI执行，不提供任意HTML上传。保留原阅读样式、原文曾整理的legacy说明及PDF入口，不伪造逐块来源、精确译文或人工审校状态。",
+    "tests": [
+      {
+        "id": "M0-AT11A",
+        "requirement_id": "M0-R11",
+        "scenario": "Given 内置示例包与匹配manifest，When 运行seed-legacy两次，Then 每篇只建立一次旧版记录，正文/CSS与参考一致。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT11B",
+        "requirement_id": "M0-R11",
+        "scenario": "Given 未知HTML/hash变更或请求通过普通API上传旧网页，Then 拒绝；无精确bbox只显示原PDF入口。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R12",
+    "milestone": "M0",
+    "title": "单实例持久文档库",
+    "rule": "PostgreSQL保存单份个人文档库及目录状态；文件卷保存原件和不可变产物。文档不关联 User、Workspace、Tenant、Owner 或 ACL；收藏/偏好为全实例数据。浏览器缓存不能成为服务端事实源。",
+    "tests": [
+      {
+        "id": "M0-AT12A",
+        "requirement_id": "M0-R12",
+        "scenario": "Given 上传PDF并收藏/标记标签，When 换浏览器访问同实例或重建app容器，Then 读取相同库状态，无需登录。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT12B",
+        "requirement_id": "M0-R12",
+        "scenario": "Given 清空浏览器storage，Then 文档未丢失；数据库迁移与API不得要求虚拟用户/默认workspace。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R13",
+    "milestone": "M0",
+    "title": "无身份系统与直接访问边界",
+    "rule": "没有登录/注册/用户/组织/角色/会话/分享权限/鉴权网关。任何可访问实例端口的客户端具有同等完整能力。默认只绑定127.0.0.1:8080，应用直接服务UI/API/已发布静态文件；生产保留Host/Origin与不跨域请求保护、内容转义和安全路径检查，这些不是登录。反代、TLS、远程接入由用户自行处理，不交付配置。",
+    "tests": [
+      {
+        "id": "M0-AT13A",
+        "requirement_id": "M0-R13",
+        "scenario": "Given 空数据库Compose首次启动，When 打开应用及静态阅读页，Then 直接可用，没有owner创建、账号cookie、auth header或重定向登录。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT13B",
+        "requirement_id": "M0-R13",
+        "scenario": "Given 未允许Host/跨站写请求或路径穿越，Then 请求安全策略拒绝；不存在login/workspace/role路由，db端口不对主机发布。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R14",
+    "milestone": "M0",
+    "title": "幂等构建与原子发布底座",
+    "rule": "渲染／导出作为持久任务运行；短事务领取租约与 fencing token，提交检查 token。先生成完整不可变 artifact，再用 edition generation CAS 更新当前指针。进程崩溃最多留下未引用文件。",
+    "tests": [
+      {
+        "id": "M0-AT14A",
+        "requirement_id": "M0-R14",
+        "scenario": "Given 构建后写指针前杀死 worker，When 恢复并重试，Then 旧指针有效且至多一个新当前制品；不出现半页。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT14B",
+        "requirement_id": "M0-R14",
+        "scenario": "Given 过期 worker 和新 worker 同时提交，Then 过期写被拒；两个相同期望 generation 的发布仅一个成功。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R15",
+    "milestone": "M0",
+    "title": "未完成不伪装完成",
+    "rule": "草稿可保存和显式导出，但须醒目标识 DRAFT／缺失块数；缺块、未知引用、资产缺失和哈希异常不可被人工“忽略”后正常发布。当前发布指针只引用 verified artifact。",
+    "tests": [
+      {
+        "id": "M0-AT15A",
+        "requirement_id": "M0-R15",
+        "scenario": "Given 缺译草稿，When 用户选择“导出未完成草稿”并确认，Then 输出含具体缺失标记且不进入已发布列表。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT15B",
+        "requirement_id": "M0-R15",
+        "scenario": "Given 绕过前端直接请求 publish，When 有硬性问题，Then 409 QUALITY_BLOCKED，零 publication event。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R16",
+    "milestone": "M0",
+    "title": "安全内容和本地资产",
+    "rule": "只从受限 IR 生成 DOM；文本转义，不接受模型／导入者 raw HTML、JS、任意存储路径。图片按允许类型解码复核；CSP 限制脚本和网络；所有资产绑定本实例；已知样式模板允许列表。",
+    "tests": [
+      {
+        "id": "M0-AT16A",
+        "requirement_id": "M0-R16",
+        "scenario": "Given 文本含 <script> 和事件属性字样，When 在阅读器显示，Then 只显示文字；合法 PNG 本地显示。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT16B",
+        "requirement_id": "M0-R16",
+        "scenario": "Given javascript: 链接、带外链 SVG、CSS @import、指向其他 instance 的资产，Then 导入／构建拒绝或按明确规则移除，并无出站请求。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R17",
+    "milestone": "M0",
+    "title": "版本边界与不可变快照",
+    "rule": "SourceRevision 和已封存 TranslationRevision 不可变；编辑发生于 TranslationDraft，保存段落版本并使用 If-Match。ArtifactVersion 固定绑定三轴。M0 可限定每个 document 一个当前目标语言，但数据库必须容纳多语言 edition。",
+    "tests": [
+      {
+        "id": "M0-AT17A",
+        "requirement_id": "M0-R17",
+        "scenario": "Given 草稿封存后修改译文，When 保存，Then 产生新草稿／段落版本，原 sealed snapshot 和旧 HTML 哈希不变。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT17B",
+        "requirement_id": "M0-R17",
+        "scenario": "Given 同一草稿两个旧 ETag 保存，Then 首次成功、第二次 412；不能 last-write-wins。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M0-R18",
+    "milestone": "M0",
+    "title": "仅 Compose、完整运行依赖与恢复",
+    "rule": "正式运行只支持Docker Compose：app直接提供HTTP、worker执行耐久任务、隔离parser检查PDF、PostgreSQL和migrate均容器化。所有运行时、原生PDF库、构建输出、模板、所需模型资产在镜像/随release卷中；启动不执行pip/npm/模型下载。宿主只需Docker+Compose；密钥和外部翻译服务不是可打包库。M0具备版本清单与一致备份恢复。",
+    "tests": [
+      {
+        "id": "M0-AT18A",
+        "requirement_id": "M0-R18",
+        "scenario": "Given 仅安装Docker+Compose且无Python/Node/qpdf/PostgreSQL的干净宿主，When 使用已构建release启动并断开下载源，Then 能入库、内置样例阅读/导出，健康检查正确，卷重建后可恢复。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M0-AT18B",
+        "requirement_id": "M0-R18",
+        "scenario": "Given 数据卷损坏、必需运行依赖或镜像模型资产缺失，Then readiness明确失败，不运行时自动安装；不能将原型容器启动算正式M0验收。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R01",
+    "milestone": "M1",
+    "title": "PDF流式上传会话",
+    "rule": "复用M0 PDF上传；upload_id、实际接收字节上限、服务端哈希、过期清理、finalize幂等必须有效。导入仅接受已完成验证的PDF upload_id，无附件数组、远程资源或纯文本路径。中断和过期上传不成为合法来源。",
+    "tests": [
+      {
+        "id": "M1-AT01A",
+        "requirement_id": "M1-R01",
+        "scenario": "Given 50 MiB 内文本 PDF，When 上传并重复 finalize 相同内容，Then 返回同一 SHA／资产且只创建一次后续解析。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT01B",
+        "requirement_id": "M1-R01",
+        "scenario": "Given 超限流、伪 PDF、过期会话或 hash 不符，Then 413/422/409 且不进入解析；临时字节按规则清理。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R02",
+    "milestone": "M1",
+    "title": "PDF支持边界与可见失败",
+    "rule": "M0可保存通过检查的未加密PDF；M1/M2仅保证文本型PDF解析翻译。扫描或混合PDF存在无法抽取的正文时给OCR_REQUIRED并停在预检；不静默跳页。损坏、加密、超限或非PDF拒绝并说明；OCR、密码输入/破解和其他文件类型不在范围。",
+    "tests": [
+      {
+        "id": "M1-AT02A",
+        "requirement_id": "M1-R02",
+        "scenario": "Given 纯文本、双栏论文PDF和含正常图表的PDF，When 解析，Then 显示实际支持程度、页数和覆盖报告。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT02B",
+        "requirement_id": "M1-R02",
+        "scenario": "Given .pdf扩展的HTML/ZIP、加密PDF、损坏PDF或有扫描正文的PDF，Then 相应415/422/PDF_ENCRYPTED/OCR_REQUIRED；没有自动转其他格式或外发OCR。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R03",
+    "milestone": "M1",
+    "title": "完全离线的 PDF 解析容器",
+    "rule": "Docling和原生PDF检查器在parser服务运行：network_mode:none、无Provider/数据库凭据、非特权、只读root、有限CPU/内存/PID/tmp。模型及其revision/hash在build阶段准备并写入镜像；运行时artifacts_path指向固定目录，禁用远程服务和OCR。worker以本地spool提交一次性任务并验证输出；不挂Docker socket。",
+    "tests": [
+      {
+        "id": "M1-AT03A",
+        "requirement_id": "M1-R03",
+        "scenario": "Given parser镜像和网络探针PDF，When 冷启动解析，Then 无出网/无运行时下载、无密钥环境，所有模型由本地资产加载。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT03B",
+        "requirement_id": "M1-R03",
+        "scenario": "Given 解析OOM、超时或恶意输出路径，Then 当前attempt失败可恢复，worker拒绝越界/失效token输出，API/db仍健康。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R04",
+    "milestone": "M1",
+    "title": "文本 PDF 的阅读顺序与覆盖账本",
+    "rule": "使用 Docling 适配器转换为自有 IR；保留原解析输出。每页文本／图／表区域必须归入正文块、合法装饰排除或未解决区域；双栏、跨页段落和页眉页脚要显式处理。低置信度停预检，不让翻译模型重建源文。",
+    "tests": [
+      {
+        "id": "M1-AT04A",
+        "requirement_id": "M1-R04",
+        "scenario": "Given 经人工标注的双栏和跨页 fixture，When 解析，Then 正文顺序及覆盖与标注一致，段落有可核验页码坐标。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT04B",
+        "requirement_id": "M1-R04",
+        "scenario": "Given 中间一页未提取、乱序或只取得摘要，Then SOURCE_PARSE_REVIEW，停止确认／发布，不能凭非空文本判成功。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R05",
+    "milestone": "M1",
+    "title": "PDF内部资源与失败页处理",
+    "rule": "只从原PDF提取或裁剪图像/表格/公式；不跟随URI、Launch、JavaScript、嵌入文件、外部字体或远程引用。表格优先保留结构，不能可靠恢复时原图+明确警告；正文提取失败不得把整页标为图跳过翻译。无外部附件补齐接口。",
+    "tests": [
+      {
+        "id": "M1-AT05A",
+        "requirement_id": "M1-R05",
+        "scenario": "Given 带图题/脚注/跨页表格的PDF，When 提取，Then 每项绑定源页及资产hash；结构不确定表格有原图和可见处置。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT05B",
+        "requirement_id": "M1-R05",
+        "scenario": "Given PDF动作请求内网资源或一页正文全未抽取，Then 零请求；前者忽略动作，后者阻止全文发布，不凭原图存在放行。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R06",
+    "milestone": "M1",
+    "title": "翻译前结构预检",
+    "rule": "显示页数、正文／保留／未解决块、图表清单、语言、源件 SHA 和真实提取预览。用户必须先确认 source revision 与完整内容范围。M1 默认全文；不提供无提示跳过失败页。",
+    "tests": [
+      {
+        "id": "M1-AT06A",
+        "requirement_id": "M1-R06",
+        "scenario": "Given 解析通过的论文，When 打开 preflight 并确认，Then 记录该 source revision/hash、范围及确认时间及操作来源，随后源修改使旧确认失效。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT06B",
+        "requirement_id": "M1-R06",
+        "scenario": "Given preflight 有未解决正文或 OCR_REQUIRED，When 强行 confirm，Then 409，Provider 调用计数为零。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R07",
+    "milestone": "M1",
+    "title": "目标语言与外部处理授权",
+    "rule": "M1 认证 en↔zh-Hans，其他 locale 暂不承诺模型质量。导入显示目标、供应商、模型 ID、所发送内容和当前隐私说明版本；确认绑定具体 profile，改变供应商／来源需重新授权。",
+    "tests": [
+      {
+        "id": "M1-AT07A",
+        "requirement_id": "M1-R07",
+        "scenario": "Given 英文文本和已配置 profile，When 用户选择 zh-Hans 并确认外部发送，Then 授权记录可追溯且仅发送该源版本所需文本。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT07B",
+        "requirement_id": "M1-R07",
+        "scenario": "Given 未确认发送、语言不在 enabled matrix 或 profile 被更换，Then 不创建可派发翻译任务。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R08",
+    "milestone": "M1",
+    "title": "首个真实 Provider 与可替代适配器",
+    "rule": "M1 实现官方 OpenAI Responses 适配器及离线 FakeProvider 测试替身。model_id、能力、限速、价格与 prompt revision 均显式配置、固定快照；无自动 latest 和后备供应商。禁用工具调用、文件上传与 SDK 隐式重试。",
+    "tests": [
+      {
+        "id": "M1-AT08A",
+        "requirement_id": "M1-R08",
+        "scenario": "Given 测试授权和有效配置，When 执行真实小样本，Then 使用固定模型/结构化响应，记录实际请求ID、状态与用量；不向模型暴露工具。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT08B",
+        "requirement_id": "M1-R08",
+        "scenario": "Given 密钥无效、模型不存在或不支持所需输出能力，Then PROVIDER_CONFIG/AUTH 错误并停止，不静默换模型。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R09",
+    "milestone": "M1",
+    "title": "基于单元的分块与上下文",
+    "rule": "同章节短块可批量请求；长块分为有序 unit，保护原子不得拆开。每请求有输入/输出上限与上下文预算；源文标题、局部邻文和术语策略固定。重新组装仍是原文的一段对应译文一段。",
+    "tests": [
+      {
+        "id": "M1-AT09A",
+        "requirement_id": "M1-R09",
+        "scenario": "Given 一段超过单请求上限的长文本含公式，When 分片翻译再组装，Then 源块 ID/边界不变、unit 无重无漏、公式保持完整。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT09B",
+        "requirement_id": "M1-R09",
+        "scenario": "Given 无法放入限制的单个保护原子，Then UNIT_TOO_LARGE，不能截断或分裂公式后继续。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R10",
+    "milestone": "M1",
+    "title": "按 ID 严格校验模型响应",
+    "rule": "响应必须与批次 requested unit 集合双射，正确终止且非拒绝；结果顺序可不同。检查目标 AST、空结果、重复/未知 ID、保护原子多重集合。结构化输出符合 Schema 不代表语义正确。",
+    "tests": [
+      {
+        "id": "M1-AT10A",
+        "requirement_id": "M1-R10",
+        "scenario": "Given Provider 乱序返回完整单元，When 校验，Then 按 ID 正确落库并按来源顺序重组。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT10B",
+        "requirement_id": "M1-R10",
+        "scenario": "Given 漏一个 ID、重复一个 ID、输出截断或伪造文件路径，Then 不提交该批不合格结果；记录可定位错误并按上限修复／待校对。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R11",
+    "milestone": "M1",
+    "title": "个人库内精确翻译缓存",
+    "rule": "缓存作用域仅当前数据库实例，不增加用户或workspace键；键包含源内容hash、上下文hash、locale、模型/profile/提示/术语/归一化/分块版本。只存验证合格的机器结果。跨文档复用须重绑定本地ID并复核保护原子，人工修改不自动污染机器精确缓存。",
+    "tests": [
+      {
+        "id": "M1-AT11A",
+        "requirement_id": "M1-R11",
+        "scenario": "Given 同实例完全相同请求快照，When 再次翻译，Then 命中合格缓存、无新增Provider调用、记录cache_hit。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT11B",
+        "requirement_id": "M1-R11",
+        "scenario": "Given 文本相同但术语/邻文/源原子/模型任一变化，Then 未命中；失效或已删除来源缓存不被使用。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R12",
+    "milestone": "M1",
+    "title": "持久任务与真正恢复",
+    "rule": "作业／任务／尝试记录独立。API 返回 202，worker 持久化每批和单元结果、阶段检查点。重启从缺失／可安全重试任务恢复；过期租约使用 fencing 拒绝迟到内容写。",
+    "tests": [
+      {
+        "id": "M1-AT12A",
+        "requirement_id": "M1-R12",
+        "scenario": "Given 翻译完成30%后关闭浏览器并重启 worker，When 恢复，Then 成功结果不重译，未派发任务继续，最终只有一个有效发布。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT12B",
+        "requirement_id": "M1-R12",
+        "scenario": "Given 外部请求已派发但进程崩溃、结果未知，Then 不能普通重领后直接再次计费；转 outcome_unknown 等待处理。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R13",
+    "milestone": "M1",
+    "title": "有界错误恢复",
+    "rule": "确定未发送的连接故障、供应商明确限流等可重试；默认最多3次传输尝试（含首发）、一次结构修复，所有付费尝试均计入预算。认证错误停止；语义异常不无限循环。",
+    "tests": [
+      {
+        "id": "M1-AT13A",
+        "requirement_id": "M1-R13",
+        "scenario": "Given 两次明确未执行的429后成功，When 重试，Then 退避遵守 Retry-After、计数可见、第三次成功正常继续。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT13B",
+        "requirement_id": "M1-R13",
+        "scenario": "Given 永久401或连续无效结构超过上限，Then 停止并给操作建议，不能发生不受限收费循环。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R14",
+    "milestone": "M1",
+    "title": "未知结果与计费不确定性",
+    "rule": "attempt dispatching/sent 后超时进入 outcome_unknown。优先依据 request_id 和供应商实际可用能力核对；无法确认默认暂停，保留预算占用。用户明确允许重试时，新 attempt 另计，旧不确定成本按保守上限计入风险。",
+    "tests": [
+      {
+        "id": "M1-AT14A",
+        "requirement_id": "M1-R14",
+        "scenario": "Given 请求实际完成但客户端未收到，When worker恢复，Then 展示未知状态、可能收费、可核对/承担风险重试，并保持预算预留。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT14B",
+        "requirement_id": "M1-R14",
+        "scenario": "Given 用户未确认重复计费风险，When 后台轮询重试，Then 不发送第二次请求；本地 Idempotency-Key 不能被解释为供应商去重保证。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R15",
+    "milestone": "M1",
+    "title": "预算预留与用量账本",
+    "rule": "输入/输出单价使用版本化 PriceSnapshot，整数微货币精度。每次派发前原子预留输入与输出上限以及可计费推理等上限；作业和实例限额均检查。实际、预留、保守未知成本不能重复计算。",
+    "tests": [
+      {
+        "id": "M1-AT15A",
+        "requirement_id": "M1-R15",
+        "scenario": "Given 两个任务并发争用只够一个请求的剩余额度，When authorize-dispatch，Then 只一个得到许可；结算后账本一致。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT15B",
+        "requirement_id": "M1-R15",
+        "scenario": "Given 没有可信计价上限、余额不足或价格快照已被用户更改而无重新授权，Then 暂停／拒绝，不把未知费用当0。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R16",
+    "milestone": "M1",
+    "title": "暂停、取消和恢复的竞态语义",
+    "rule": "暂停／取消事务生效后不得批准新的 dispatch permit；此前已批准请求视为在途，可能仍发送/完成/计费。暂停保留已验证结果；取消永远不自动发布该任务，迟到用量仍能审计入账。",
+    "tests": [
+      {
+        "id": "M1-AT16A",
+        "requirement_id": "M1-R16",
+        "scenario": "Given 任务运行且有在途请求，When 暂停后恢复，Then 新派发停止、已有用量可结算，恢复只处理仍缺单元。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT16B",
+        "requirement_id": "M1-R16",
+        "scenario": "Given 取消与最后一批返回／发布并发，Then 以事务顺序决定；取消已先提交时后续发布被拒，旧已发布版本不受影响。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R17",
+    "milestone": "M1",
+    "title": "真实任务进度与事件",
+    "rule": "分开显示阶段、完成块数/总必需块、完成单元数、在途请求、用量和问题。上传按字节、解析按已检查页、翻译按已验证块。SSE 可断线重连并回退到轮询，不展示定时器假百分比。",
+    "tests": [
+      {
+        "id": "M1-AT17A",
+        "requirement_id": "M1-R17",
+        "scenario": "Given 浏览器重连且事件窗口过期，When 查询 snapshot，Then 与持久任务状态一致，不需要从头回放才能正确显示。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT17B",
+        "requirement_id": "M1-R17",
+        "scenario": "Given 长块被拆为多个unit或任务重试，Then 不把请求数当段落数，也不能显示100%但正文缺块。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R18",
+    "milestone": "M1",
+    "title": "基本质量门禁",
+    "rule": "必译覆盖、保护原子、数字/单位、资产/脚注/xref 检查必须运行；对可疑否定、比较、长度等给风险提示，标 machine_checked 不等于 human_reviewed。源正文缺失不可被“保留原样”绕过。 2026-09-07：译文人工核对/确认与语义、术语提示处置均为可选；未核对不阻止封存、发布、导出。保留真实核对状态与质量提示，硬完整性错误及过期QA仍阻断。",
+    "tests": [
+      {
+        "id": "M1-AT18A",
+        "requirement_id": "M1-R18",
+        "scenario": "Given 正确输出及已声明原图保留策略，When 校验，Then QA 指纹绑定当前源与译文快照，允许进入发布审批。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT18B",
+        "requirement_id": "M1-R18",
+        "scenario": "Given 64变32、丢否定的标注夹具或缺图，Then 数字/缺图触发硬阻断，语义风险保留为可选核对提示且不阻止发布；不得伪造human_reviewed或自动将提示标为已解决。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R19",
+    "milestone": "M1",
+    "title": "基本校对可完成真实闭环",
+    "rule": "M1 提供受限译文修正、问题列表、源文只读及最小 PDF 页图/文本定位，不等待 M2 才能处理失败。编辑后必须重新校验，结构问题需修复来源或重新导入，不可在译文里抹去证据。",
+    "tests": [
+      {
+        "id": "M1-AT19A",
+        "requirement_id": "M1-R19",
+        "scenario": "Given 某块数字误译，When 对照原页修正译文并重新验证，Then 新草稿版本通过且允许发布，旧错误版本仍可审计。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT19B",
+        "requirement_id": "M1-R19",
+        "scenario": "Given 用户改动后复用旧 QA 报告／旧 ETag 发布，Then 412/409 阻止。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R20",
+    "milestone": "M1",
+    "title": "自动发布有明确条件",
+    "rule": "用户选择 auto_publish 后，仅在预检授权有效、结构完整、无硬完整性阻断（未人工核对的语义与术语提示不阻断）、预算状态正常且任务未取消时自动封存/构建/CAS发布。默认首次导入 manual_approval，保存个人默认可显式改为自动。",
+    "tests": [
+      {
+        "id": "M1-AT20A",
+        "requirement_id": "M1-R20",
+        "scenario": "Given 符合全部条件并授权自动发布的任务，When 完成校验，Then 生成新静态版并加入库，无需读者在线翻译。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT20B",
+        "requirement_id": "M1-R20",
+        "scenario": "Given 同文档旧版已发布、新任务存在阻断，Then 旧版指针保持不变，新任务进入 needs_review，而非自动替换。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R21",
+    "milestone": "M1",
+    "title": "真实文档库、查重与资源链",
+    "rule": "列表显示文件来源而非 URL；在本实例按文件哈希提示已有文件，可选择复用来源或建独立文档，不按文件名自动覆盖。源件、页图、译文和产物互相关联，元数据修改不修改出版快照。",
+    "tests": [
+      {
+        "id": "M1-AT21A",
+        "requirement_id": "M1-R21",
+        "scenario": "Given 同一 PDF 换文件名再次上传，When 导入，Then 提示相同内容但由用户决定复用；不同目标处理不覆盖原语言版。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT21B",
+        "requirement_id": "M1-R21",
+        "scenario": "Given 同名但字节不同文件，Then 不判定为同版、不替换旧来源。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R22",
+    "milestone": "M1",
+    "title": "内容安全与供应商设置",
+    "rule": "日志默认只含资源ID、操作来源manual_ui/system、错误码、用量和耗时，不含全文/密钥。Provider密钥从只读secret文件注入worker，不进入浏览器、PDF解析器、IR或导出。默认不持久化原始Provider响应；store=false不等于供应商绝不保留。只有用户明确确认后才外发正文，模型没有工具。",
+    "tests": [
+      {
+        "id": "M1-AT22A",
+        "requirement_id": "M1-R22",
+        "scenario": "Given 成功、失败、重试和取消路径，When 检查日志／导出，Then 没有明文密钥和全文，审计可串联 request/attempt/revision。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT22B",
+        "requirement_id": "M1-R22",
+        "scenario": "Given 模型输出包含诱导发送密钥的文字，Then 仅作为内容处理，绝不出现工具或非允许主机请求。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R23",
+    "milestone": "M1",
+    "title": "删除、撤销发布与回收",
+    "rule": "归档仅隐藏；撤销发布清空当前指针且历史仍可从历史访问；永久删除立即 tombstone 并阻止所有读/写/新派发，异步清理源件、译文、缓存、制品、导出。共享资产需引用检查，备份按保留期限过期。",
+    "tests": [
+      {
+        "id": "M1-AT23A",
+        "requirement_id": "M1-R23",
+        "scenario": "Given 删除一篇有在途请求和离线导出的文档，When 确认永久删除，Then 在线访问立即失效，后续结果不能复活文档，用户获知离线副本不可收回。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT23B",
+        "requirement_id": "M1-R23",
+        "scenario": "Given 资产仍被另一个文档引用或备份未过期，Then 不误删共享资产；界面显示实际清理状态，不声称备份即刻消失。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R24",
+    "milestone": "M1",
+    "title": "批量导入的独立性与资源公平",
+    "rule": "允许一次选择最多10个源文件，各自具有 import/job、预检确认与预算。失败不回滚其他成功文档；后台按实例并发上限派发，解析资源限额与翻译请求限额分开。",
+    "tests": [
+      {
+        "id": "M1-AT24A",
+        "requirement_id": "M1-R24",
+        "scenario": "Given 同批3个有效文件和1个无效文件，When 导入，Then 三份可继续、一份显示失败，进度不混淆。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT24B",
+        "requirement_id": "M1-R24",
+        "scenario": "Given 超过批量或并发上限，Then 排队／拒绝超额部分，不启动无限解析进程，不让小文件永远饿死。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R25",
+    "milestone": "M1",
+    "title": "Compose生产交付与故障恢复",
+    "rule": "正式发布包含app/worker/parser/db/migrate全部镜像或可自动build定义及锁文件、模型资产hash、持久卷与恢复CLI。parser不出网，worker外部API能力显式配置；app不持Provider密钥。缺失API配置不阻止库/阅读启动。恢复先禁用新外发，未知请求不重复收费执行。",
+    "tests": [
+      {
+        "id": "M1-AT25A",
+        "requirement_id": "M1-R25",
+        "scenario": "Given 数据库和内容卷备份，When 通过Compose运维容器恢复到新宿主，Then 旧产物可读、未知请求待核对、其他本地任务安全恢复，不需安装宿主脚本依赖。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT25B",
+        "requirement_id": "M1-R25",
+        "scenario": "Given 未配置Provider密钥或价格，Then 阅读和PDF保存正常，新翻译等待配置；Compose里没有反代/身份服务。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M1-R26",
+    "milestone": "M1",
+    "title": "真实端到端验收而非演示",
+    "rule": "发布门槛要求真实上传、真实解析和至少一个已授权真实 Provider 小样本；故障注入使用可控 FakeProvider。两篇既有论文用于版面与完整性回归；其旧译文不是逐字金标准。性能报告分解析/排队/模型/渲染。",
+    "tests": [
+      {
+        "id": "M1-AT26A",
+        "requirement_id": "M1-R26",
+        "scenario": "Given 固定语料和批准测试预算，When 完成端到端并人工核对高风险样本，Then 有源哈希、输出、用量、问题和验收证据。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M1-AT26B",
+        "requirement_id": "M1-R26",
+        "scenario": "Given 只有 mock 全绿、固定示例段落或未执行的真模型用例，Then M1 不得标 completed；外部资源缺失记录 blocked。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R01",
+    "milestone": "M2",
+    "title": "PDF来源对照工作台",
+    "rule": "工作台显示保存的原PDF页图、当前块、机械清理记录、译文与问题；bbox统一top-left-points，并支持裁剪框、旋转和跨页多定位。只有PDF定位组件，没有DOM/TXT定位面板。legacy无精确来源时诚实降级。",
+    "tests": [
+      {
+        "id": "M2-AT01A",
+        "requirement_id": "M2-R01",
+        "scenario": "Given 跨两页段落，When 点击来源定位，Then 两个真实原页片段正确高亮且显示页码／坐标转换。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT01B",
+        "requirement_id": "M2-R01",
+        "scenario": "Given legacy 文章无逐块来源，Then 显示“无精确定位”与原件入口，不合成虚构 bbox。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R02",
+    "milestone": "M2",
+    "title": "可编辑草稿与不可变修订",
+    "rule": "TranslationDraft 可编辑；每次更改追加 SegmentVersion 并增加 draft generation。封存后产生不可变 TranslationRevision 快照，历史结果保留。仅目标文本／AST可修改，源文修改另走来源修订。",
+    "tests": [
+      {
+        "id": "M2-AT02A",
+        "requirement_id": "M2-R02",
+        "scenario": "Given 已发布版开始修改一个段落，When 保存并封存，Then 新译文修订有parent/base和操作来源/时间/原因，旧修订哈希不变。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT02B",
+        "requirement_id": "M2-R02",
+        "scenario": "Given 使用旧ETag覆盖、重复提交或访问不属本草稿的block，Then 412/幂等返回/404，不覆盖其他更改。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R03",
+    "milestone": "M2",
+    "title": "个人术语表修订",
+    "rule": "按源/目标语言管理精确词项、推荐译法、允许变体、禁用译法、原样保留和注释。修改产生不可变GlossaryRevision；文档专用项覆盖个人全库项，同级冲突在派发前解决。没有组织/成员或术语ACL。",
+    "tests": [
+      {
+        "id": "M2-AT03A",
+        "requirement_id": "M2-R03",
+        "scenario": "Given 全库术语和某文档覆盖项不同，When 确认翻译，Then 固定有效合并快照及优先级，并预览受影响块。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT03B",
+        "requirement_id": "M2-R03",
+        "scenario": "Given 同级词项互斥强制译法，Then GLOSSARY_CONFLICT；不随机选取或悄悄覆盖。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R04",
+    "milestone": "M2",
+    "title": "术语作用范围与影响预览",
+    "rule": "新增／修改术语只影响显式新任务，旧发布版不变。匹配规则版本化，区分大小写、单词边界与CJK子串，不执行任意用户正则。预览受影响块后可建局部重译候选。",
+    "tests": [
+      {
+        "id": "M2-AT04A",
+        "requirement_id": "M2-R04",
+        "scenario": "Given 修改3个术语但仅2块包含匹配词，When 查看影响并确认，Then 只为这2块建立候选，快照可追踪。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT04B",
+        "requirement_id": "M2-R04",
+        "scenario": "Given 人工已锁定块含新术语，Then 提示潜在冲突但不自动覆盖，旧审校状态仍对应旧术语版本。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R05",
+    "milestone": "M2",
+    "title": "局部重译不伤及已审校内容",
+    "rule": "用户按块／章节/问题选择候选重译；仅选定单元发给模型，但带固定局部上下文。候选结果与当前译文并排，明确接受后才更新草稿。已人工确认内容默认锁定，不被批量结果替换。",
+    "tests": [
+      {
+        "id": "M2-AT05A",
+        "requirement_id": "M2-R05",
+        "scenario": "Given 100段中2段请求重译、其余98段已审校，When 候选完成，Then 98段内容与审校记录字节不变，只存在2段待选择候选。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT05B",
+        "requirement_id": "M2-R05",
+        "scenario": "Given 批量接受试图触及未明确选中的锁定块，Then 409并列出块，不能默认全覆盖。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R06",
+    "milestone": "M2",
+    "title": "审校状态可信",
+    "rule": "segment区分 not_reviewed、machine_checked、human_reviewed，并绑定源 hash、目标版本和术语/QA基线；人改不自动等于人已确认。任何目标修改使该段确认失效；审校动作不可伪装为机器输出。 2026-09-07：译文人工核对/确认与语义、术语提示处置均为可选；未核对不阻止封存、发布、导出。保留真实核对状态与质量提示，硬完整性错误及过期QA仍阻断。",
+    "tests": [
+      {
+        "id": "M2-AT06A",
+        "requirement_id": "M2-R06",
+        "scenario": "Given 人工确认后再次修改一个字符，When 保存，Then 仅该段审校状态失效，保留此前确认历史。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT06B",
+        "requirement_id": "M2-R06",
+        "scenario": "Given Provider返回 human_reviewed 字段或自评分100，Then 忽略／拒绝该字段，不增加人工确认数。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R07",
+    "milestone": "M2",
+    "title": "质量报告和问题处置闭环",
+    "rule": "问题有 severity、rule/version、block/unit、证据和当前指纹。硬结构阻断不能忽略；语义风险可通过具体源对照确认解决；允许的警告可带原因接受并进入出版质量说明。检查结果过期需重算。 2026-09-07：译文人工核对/确认与语义、术语提示处置均为可选；未核对不阻止封存、发布、导出。保留真实核对状态与质量提示，硬完整性错误及过期QA仍阻断。",
+    "tests": [
+      {
+        "id": "M2-AT07A",
+        "requirement_id": "M2-R07",
+        "scenario": "Given 否定/比较风险与完整合法译文，When 不进行人工核对，Then 可封存发布导出且保留提示和未核对状态；自愿对照原件确认时，另存真实证据和操作来源。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT07B",
+        "requirement_id": "M2-R07",
+        "scenario": "Given 缺块／资产hash错误尝试“忽略”，Then 操作拒绝；旧 QA 报告不得批准新草稿。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R08",
+    "milestone": "M2",
+    "title": "辅助语义评审有边界",
+    "rule": "可配置独立评审调用检查遗漏、否定、数字关系与术语。它只生成有定位的issue，不直接编辑，也不把评分宣称为准确率；按同样预算、授权、重试和隐私流程执行。默认不开启额外付费评审。",
+    "tests": [
+      {
+        "id": "M2-AT08A",
+        "requirement_id": "M2-R08",
+        "scenario": "Given 用户启用受预算约束的评审，When 返回风险，Then 每条issue附源/译片段和规则；用户可复核。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT08B",
+        "requirement_id": "M2-R08",
+        "scenario": "Given 评审模型不可用或预算不足，Then 该评审状态明确未完成；不得伪称审查通过，也不自动换供应商。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R09",
+    "milestone": "M2",
+    "title": "多目标语言 edition",
+    "rule": "同一 Document 和 SourceRevision 可拥有多个 target locale，唯一键(document_id,target_language)。新增语言复用源件/解析/资产，但创建独立译文与当前 artifact 指针；所有语言均可直接选择，实际质量取决于所选模型。",
+    "tests": [
+      {
+        "id": "M2-AT09A",
+        "requirement_id": "M2-R09",
+        "scenario": "Given 中文版已发布，When 从同一英文源新增日语版，Then 解析器调用数为零、中文 artifact/current pointer不变。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT09B",
+        "requirement_id": "M2-R09",
+        "scenario": "Given 对已存在locale再次创建，Then 返回既有edition或显式新revision流程，不生成重复edition或覆盖另一语言。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R10",
+    "milestone": "M2",
+    "title": "语言能力与混合文本声明",
+    "rule": "locale使用规范化标签，保留脚本地区差异；来源语言可按块覆盖。所有语言与组合均开放，不使用实验模式、额外语言确认或语言专属发布限制；选项及语言标签使用各自语言的名称。来源未确定时仍需人工选择；语言开放不代表任意模型的质量或RTL布局已获认证。",
+    "tests": [
+      {
+        "id": "M2-AT10A",
+        "requirement_id": "M2-R10",
+        "scenario": "Given zh-Hans与zh-Hant两个目标，When 建版与切换，Then 独立指针、标签与缓存，不被统一折叠为zh。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT10B",
+        "requirement_id": "M2-R10",
+        "scenario": "Given 任意规范语言标签，Then 无需额外语言确认即可建版和翻译，显示语言自身名称；低置信来源仍需人工选择，不自动当en处理。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R11",
+    "milestone": "M2",
+    "title": "来源修正与新来源版本",
+    "rule": "允许在来源工作台修正解析顺序、漏页映射、段落拆并和机械文本误提取，必须核对本地原件并保存理由。产生新的 SourceRevision，原件不变时复用资产，新文件时新资产；不能改写原作者内容为“更通顺”。",
+    "tests": [
+      {
+        "id": "M2-AT11A",
+        "requirement_id": "M2-R11",
+        "scenario": "Given 双栏顺序误判，When 修复并确认，Then 产生新source revision与差异记录，旧版原文和发布页保持。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT11B",
+        "requirement_id": "M2-R11",
+        "scenario": "Given 用户试图从译文编辑端改变源文或无证据添加一段作者未写的内容，Then 阻止并要求走显式非忠实注释，而非篡改原文。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R12",
+    "milestone": "M2",
+    "title": "跨来源修订映射与失效",
+    "rule": "新旧源块映射分类 exact/moved/changed/split/merged/unmatched；稳定ID只保证版本内。只有内容、保护原子及上下文指纹完全相同才可复用，changed/split/merged须重译或人工搬迁；上下文变化也须失效相关缓存/审校。",
+    "tests": [
+      {
+        "id": "M2-AT12A",
+        "requirement_id": "M2-R12",
+        "scenario": "Given 新文件只在前面插入一段，When 对比映射，Then 未变块通过内容和上下文校验识别，不因顺序号碰巧相同而错配。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT12B",
+        "requirement_id": "M2-R12",
+        "scenario": "Given 文本相同但章节语境或数字原子变化，Then 不继承旧 human_reviewed 和精确缓存，不静默迁移。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R13",
+    "milestone": "M2",
+    "title": "修订差异与审计",
+    "rule": "展示源/译版本摘要及按块差异，包含新增、删除、移动、修改、重译来源、术语/模型/提示变化和人工接受记录。审计可追踪但不会在普通列表泄露全文。",
+    "tests": [
+      {
+        "id": "M2-AT13A",
+        "requirement_id": "M2-R13",
+        "scenario": "Given 一次源更改与一次目标局部更改，When 对比两版本，Then 明确区分源变化与译变化，能定位到具体块和决策。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT13B",
+        "requirement_id": "M2-R13",
+        "scenario": "Given 自动候选未被接受，Then 不出现在已发布版本内容中，不能把候选生成时间当出版时间。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R14",
+    "milestone": "M2",
+    "title": "并发校对与候选安全合并",
+    "rule": "M2仍非实时协同编辑器；多个标签页通过ETag与逐块版本检测防止覆盖。接受候选须匹配base target version、source hash及glossary。冲突时保留双方结果，用户明确选用或合并。",
+    "tests": [
+      {
+        "id": "M2-AT14A",
+        "requirement_id": "M2-R14",
+        "scenario": "Given 候选运行时用户改了同一段，When 候选返回后点接受，Then 提示差异冲突且当前修改不丢失。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT14B",
+        "requirement_id": "M2-R14",
+        "scenario": "Given 两个接受请求同时使用旧base，Then 至多一个成功，另一个412；不最后写入胜出。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R15",
+    "milestone": "M2",
+    "title": "发布审批、历史与回滚",
+    "rule": "每个语言版独立发布；发布封存特定草稿、QA、template，再以单调generation CAS切换。回滚只切换到同文档同locale且完整可读的既有artifact，新增publication event，不改写历史。",
+    "tests": [
+      {
+        "id": "M2-AT15A",
+        "requirement_id": "M2-R15",
+        "scenario": "Given A→B发布后回滚A，When 读取当前，Then 返回A，generation继续递增，B仍可由历史进入。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT15B",
+        "requirement_id": "M2-R15",
+        "scenario": "Given 跨文档/跨语言artifact、缺失资产、已删除文档或ABA旧generation回滚，Then 拒绝且当前不变。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R16",
+    "milestone": "M2",
+    "title": "仅换模板的零模型重建",
+    "rule": "模板注册具有ID、版本、CSS/JS/renderer hash和安全审核。为现有冻结源/译快照生成新artifact，预览确认后切换；可批量排队，保持失败文档当前版本不变。reader-v1永不原地修改。",
+    "tests": [
+      {
+        "id": "M2-AT16A",
+        "requirement_id": "M2-R16",
+        "scenario": "Given 20篇已发表文档和新批准模板，When 执行仅重排构建，Then Provider调用与翻译缓存写入均为0，旧制品字节不变。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT16B",
+        "requirement_id": "M2-R16",
+        "scenario": "Given 新模板不支持某种结构或资源构建失败，Then 仅该文档报错，不全局切到半成品，不回退让模型写HTML。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R17",
+    "milestone": "M2",
+    "title": "个人翻译记忆候选",
+    "rule": "精确机器缓存与人工翻译记忆分开。显式保存已核对的源/目标/上下文/来源引用；近似命中仅是候选，显示差异，接受前不写当前译文。默认随来源文档永久删除；用户可在删除前明确另存为独立个人词句条目，不存在跨用户隔离。",
+    "tests": [
+      {
+        "id": "M2-AT17A",
+        "requirement_id": "M2-R17",
+        "scenario": "Given 两个相似但不同句子，When 匹配，Then 显示差异与原件来源，未接受不能成为正式译文。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT17B",
+        "requirement_id": "M2-R17",
+        "scenario": "Given 来源已永久删除且未明确独立保存，Then 记忆及索引不可再返回，后台回收不误删仍被使用资产。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R18",
+    "milestone": "M2",
+    "title": "个人正文检索与阅读位置",
+    "rule": "检索当前已发布源/译文，承诺字面子串匹配、保留CJK语义，结果链接artifact+block。阅读进度为实例级(document,locale,artifact)记录，多浏览器共享，无账户ID。索引异步更新前必须复核当前generation及删除状态。",
+    "tests": [
+      {
+        "id": "M2-AT18A",
+        "requirement_id": "M2-R18",
+        "scenario": "Given 连续中文词组或英文原文查询，When 检索，Then 返回当前已发布匹配片段及固定版本锚点。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT18B",
+        "requirement_id": "M2-R18",
+        "scenario": "Given 发布/撤销/删除与索引更新并发，Then 不返回旧当前/已删除片段；无效书签提示迁移，不错误跳段。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R19",
+    "milestone": "M2",
+    "title": "精确导出与 Compose 备份",
+    "rule": "可选具体artifact导出单文件HTML或目录ZIP，原PDF仅显式包含。完整备份覆盖数据库/IR/源件/版本/账本，通过Compose内CLI验证和恢复，无Web上传ZIP/JSON入口，不包含Provider密钥和私有诊断日志。恢复不是新增文档方式。",
+    "tests": [
+      {
+        "id": "M2-AT19A",
+        "requirement_id": "M2-R19",
+        "scenario": "Given 选择旧版本与include_source，When 导出，Then 输出旧版完整内容、资源hash与原PDF，离线无需网络。",
+        "mode": "automated",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT19B",
+        "requirement_id": "M2-R19",
+        "scenario": "Given 下载前文档已永久删除或备份内容hash不符，Then 拒绝提供/恢复；已下载的离线副本不可撤回。",
+        "mode": "automated",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R20",
+    "milestone": "M2",
+    "title": "可靠性、删除和迁移回归",
+    "rule": "扩展缓存、记忆、索引、候选和旧版本后，删除、备份、恢复和数据库迁移仍覆盖所有对象。迁移采用先扩展后切换，先备份并验证回滚方案；读取旧sealed artifact不需强制升级。",
+    "tests": [
+      {
+        "id": "M2-AT20A",
+        "requirement_id": "M2-R20",
+        "scenario": "Given M1数据含未完成任务、旧制品和预算预留，When 升级M2并恢复演练，Then 数据一致、unknown不重复派发、旧文章仍可读。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT20B",
+        "requirement_id": "M2-R20",
+        "scenario": "Given 删除同时有重建／候选写入／检索更新，Then tombstone和版本检查阻止复活，GC只删无引用对象。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "id": "M2-R21",
+    "milestone": "M2",
+    "title": "完整编辑出版验收",
+    "rule": "端到端必须包含一个真实来源修正、一次锁定段落局部重译、两种目标语言、语义核对、冲突、模板重建、回滚与离线导出。所有M0/M1门禁继续有效，不以功能增加为理由放宽原文忠实性。",
+    "tests": [
+      {
+        "id": "M2-AT21A",
+        "requirement_id": "M2-R21",
+        "scenario": "Given 完整产品验收脚本，When 依序运行，Then 每步有版本/预算/审校证据且全部计划测试通过。",
+        "mode": "mixed",
+        "status": "planned"
+      },
+      {
+        "id": "M2-AT21B",
+        "requirement_id": "M2-R21",
+        "scenario": "Given 只录了UI演示、质量检查被关闭或旧回归失败，Then M2 gate不通过，即使新页面能点击。",
+        "mode": "mixed",
+        "status": "planned"
+      }
+    ]
+  }
+]

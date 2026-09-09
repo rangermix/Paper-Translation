@@ -1,0 +1,2 @@
+# PDF fixtures and source documents must retain their exact binary contents.
+*.pdf binary

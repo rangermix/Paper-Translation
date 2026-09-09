@@ -1,0 +1,805 @@
+{
+  "purpose": "M0 authored renderer fixture, never M1 parser gold",
+  "pdf_sha256": "ba16720c95d207bc0497bed93d393686788c01451a9aad38b8c3da558f4deb8f",
+  "page_count": 2,
+  "blocks": {
+    "title": {
+      "source_text": "A deliberately long publication title for reviewing offline bilingual reading, merged table cells, exact code, and cross-page source locations",
+      "target_text": "离线双语阅读复杂结构样例：长标题、合并单元格、原样代码与跨页来源位置",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            35,
+            501.639,
+            103
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "level": 1
+      }
+    },
+    "section-one": {
+      "source_text": "Section one: explicit structure",
+      "target_text": "第一节：明确的结构",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            139,
+            232.85399999999998,
+            158
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "level": 2
+      }
+    },
+    "intro": {
+      "source_text": "Every visible cell below belongs to the same authored source table.",
+      "target_text": "下方每个可见单元格都属于同一个人工编写的原表。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            174,
+            377.701,
+            190
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "regular-table": {
+      "source_text": "",
+      "target_text": null,
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            220,
+            530,
+            296
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "representation": "structured",
+        "rows": 2,
+        "columns": 2,
+        "caption_block_ids": [
+          "regular-table-caption"
+        ],
+        "cells": [
+          {
+            "row": 0,
+            "column": 0,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "regular-state"
+          },
+          {
+            "row": 0,
+            "column": 1,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "regular-value"
+          },
+          {
+            "row": 1,
+            "column": 0,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "regular-saved"
+          },
+          {
+            "row": 1,
+            "column": 1,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "regular-count"
+          }
+        ]
+      }
+    },
+    "regular-state": {
+      "source_text": "State",
+      "target_text": "状态",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50.0,
+            220,
+            290.0,
+            258
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "regular-value": {
+      "source_text": "Value",
+      "target_text": "值",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            290.0,
+            220,
+            530.0,
+            258
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "regular-saved": {
+      "source_text": "Saved",
+      "target_text": "已保存",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50.0,
+            258,
+            290.0,
+            296
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "regular-count": {
+      "source_text": "64",
+      "target_text": "64",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            290.0,
+            258,
+            530.0,
+            296
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "regular-table-caption": {
+      "source_text": "Table one. A complete two by two grid.",
+      "target_text": "表一：完整的两行两列表格。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            306,
+            239.53,
+            322
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "deep-code": {
+      "source_text": "Deep subsection: exact long code",
+      "target_text": "深入小节：原样保留长代码",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            349,
+            260.112,
+            368
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "level": 4
+      }
+    },
+    "long-code": {
+      "source_text": "checkpoint = save_document(source_revision, translation_revision, expected_generation, immutable=True)\nif checkpoint.outcome == \"unknown\":\n    do_not_dispatch_a_second_request(checkpoint.request_id, preserve_reserved_budget=True)\nelse:\n    publish_after_verifying_every_asset(checkpoint.artifact_directory, expected_hash=checkpoint.sha256)",
+      "target_text": null,
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            387,
+            544.4000000000001,
+            472
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "code_language": "python"
+      }
+    },
+    "cross-page": {
+      "source_text": "This paragraph begins on page one and continues on page two.\nThe second source location is part of the same paragraph, not a new block.",
+      "target_text": "本段开始于第一页，并延续到第二页。第二个来源位置仍属于同一段，而不是新块。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 1,
+          "bbox": [
+            50,
+            637,
+            361.245,
+            653
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        },
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            45,
+            416.85,
+            61
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "section-two": {
+      "source_text": "Section two: merged cells and retained originals",
+      "target_text": "第二节：合并单元格与保留原件",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            88,
+            347.23400000000004,
+            107
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "level": 2
+      }
+    },
+    "merged-table": {
+      "source_text": "",
+      "target_text": null,
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            137,
+            530,
+            251
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "representation": "structured",
+        "rows": 3,
+        "columns": 3,
+        "caption_block_ids": [
+          "merged-table-caption"
+        ],
+        "cells": [
+          {
+            "row": 0,
+            "column": 0,
+            "row_span": 2,
+            "column_span": 1,
+            "content_block_id": "merged-label"
+          },
+          {
+            "row": 0,
+            "column": 1,
+            "row_span": 1,
+            "column_span": 2,
+            "content_block_id": "merged-columns"
+          },
+          {
+            "row": 1,
+            "column": 1,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "merged-left"
+          },
+          {
+            "row": 1,
+            "column": 2,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "merged-right"
+          },
+          {
+            "row": 2,
+            "column": 0,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "merged-a"
+          },
+          {
+            "row": 2,
+            "column": 1,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "merged-b"
+          },
+          {
+            "row": 2,
+            "column": 2,
+            "row_span": 1,
+            "column_span": 1,
+            "content_block_id": "merged-c"
+          }
+        ]
+      }
+    },
+    "merged-label": {
+      "source_text": "State group",
+      "target_text": "状态组",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50.0,
+            137,
+            210.0,
+            213
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-columns": {
+      "source_text": "Combined columns",
+      "target_text": "合并列",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            210.0,
+            137,
+            530.0,
+            175
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-left": {
+      "source_text": "Left",
+      "target_text": "左侧",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            210.0,
+            175,
+            370.0,
+            213
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-right": {
+      "source_text": "Right",
+      "target_text": "右侧",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            370.0,
+            175,
+            530.0,
+            213
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-a": {
+      "source_text": "A",
+      "target_text": "甲",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50.0,
+            213,
+            210.0,
+            251
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-b": {
+      "source_text": "B",
+      "target_text": "乙",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            210.0,
+            213,
+            370.0,
+            251
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-c": {
+      "source_text": "C",
+      "target_text": "丙",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            370.0,
+            213,
+            530.0,
+            251
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "merged-table-caption": {
+      "source_text": "Table two. Row span two and column span two in a three by three grid.",
+      "target_text": "表二：三行三列表格中跨两行与跨两列的单元格。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            261,
+            396.049,
+            277
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "list": {
+      "source_text": "Keep the original figure, code, formula, footnote, and reference.",
+      "target_text": "保留原图、代码、公式、脚注和参考文献。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            307,
+            358.781,
+            323
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "list_ordered": true,
+        "list_index": 1
+      }
+    },
+    "figure": {
+      "source_text": "",
+      "target_text": null,
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            337,
+            410,
+            437
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "asset_id": "figure_png",
+        "caption_block_ids": [
+          "figure-caption"
+        ]
+      }
+    },
+    "figure-caption": {
+      "source_text": "Figure one. Three original colour patches.",
+      "target_text": "图一：三个原始色块。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            444,
+            253.588,
+            460
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "formula": {
+      "source_text": "x + 1",
+      "target_text": null,
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            479,
+            83.0,
+            495
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {
+        "representation": "plain"
+      }
+    },
+    "note-reference": {
+      "source_text": "Read the authored note before treating this as evidence.",
+      "target_text": "在将其视为证据之前，请阅读人工编写的注释。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            516,
+            324.549,
+            532
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "footnote": {
+      "source_text": "Authored fixture only. No parser accuracy or Provider quality is asserted.",
+      "target_text": "仅为人工编写的样例；不声称解析精度或Provider质量。",
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            558,
+            371.22999999999996,
+            573
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    },
+    "reference": {
+      "source_text": "Reference: local acceptance fixture, two original PDF pages.",
+      "target_text": null,
+      "provenance": [
+        {
+          "type": "pdf",
+          "asset_id": "source_pdf",
+          "page": 2,
+          "bbox": [
+            50,
+            598,
+            317.89,
+            613
+          ],
+          "coordinate_system": "top-left-points",
+          "page_size": [
+            612,
+            792
+          ]
+        }
+      ],
+      "attributes": {}
+    }
+  }
+}

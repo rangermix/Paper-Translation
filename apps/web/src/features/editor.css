@@ -1,0 +1,20 @@
+.editor-quality { margin-top: 24px; }
+.editor-quality h3, .quality-group h4 { margin: 0; }
+.quality-group { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.quality-risks { background: var(--paper); }
+.issue-actions { margin-top: 12px; }
+.numeric-difference { margin-top: 12px; overflow-wrap: anywhere; }
+.numeric-difference p { margin: 6px 0; }
+.segment { scroll-margin-top: 24px; }
+.segment:focus { outline: 2px solid var(--accent); outline-offset: 3px; }
+.segment[hidden], .segment-content[hidden] { display: none; }
+.segment.collapsed .segment-header { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+.segment-toggle { min-width: 80px; }
+.segment-preview { margin: 12px 0 0; font-size: 13px; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow-wrap: anywhere; }
+.blocked-segment { border-left: 3px solid var(--warn); }
+@media (max-width: 600px) {
+  .quality-group { padding: 12px; }
+  .editor-quality > .stack { align-items: flex-start; }
+  .segment .segment-header { gap: 12px; }
+  .segment-preview { -webkit-line-clamp: 2; }
+}

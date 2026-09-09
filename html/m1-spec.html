@@ -1,0 +1,279 @@
+<!doctype html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>M1 产品 Spec · 真实 PDF 解析、翻译与发布 · 对照文库</title><style>
+:root{color-scheme:light;--bg:#f5f2ec;--paper:#fffdf9;--ink:#1d252c;--muted:#63716e;--line:#d9d5cc;--accent:#2e6f68;--blue:#315c8a;--code:#efede7;--font:17px}
+:root[data-theme=dark]{color-scheme:dark;--bg:#11171b;--paper:#182126;--ink:#edf1f2;--muted:#a8b4bb;--line:#344149;--accent:#80c8bd;--blue:#8eb9e6;--code:#222c32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:var(--font)/1.85 system-ui,-apple-system,"Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button,.button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:.45rem .8rem;font-size:14px;text-decoration:none;cursor:pointer}button:hover,.button:hover{border-color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px max(20px,calc((100vw - 1480px)/2));border-bottom:1px solid var(--line);background:var(--paper)}.brand{color:var(--ink);font-size:16px;font-weight:750;text-decoration:none}.version{font-size:13px;color:var(--muted);margin-left:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:34px;padding:32px 24px 70px}.sidebar{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}.docmenu summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:700}.sidebar nav{padding:8px 0 20px;border-bottom:1px solid var(--line)}.sidebar nav a{display:block;font-size:14px;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:7px}.sidebar nav a.active{background:var(--paper);color:var(--accent);font-weight:750;border-left:3px solid var(--accent)}.sidebar .toc{padding:18px 0;font-size:13px}.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}.toc a{display:block;padding:4px 4px;color:var(--muted);text-decoration:none;line-height:1.5}.toc a.sub{padding-left:15px}.content{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:36px 44px}.content h1{font:700 clamp(29px,3vw,40px)/1.32 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 20px;overflow-wrap:anywhere}.content h2{font-size:25px;line-height:1.45;margin:2.4rem 0 1rem;padding-top:8px;border-top:1px solid var(--line);scroll-margin-top:20px}.content h3{font-size:20px;line-height:1.6;margin:2rem 0 .6rem;color:var(--accent);scroll-margin-top:20px}.content p{margin:.8em 0}.content strong{font-weight:750}.content li{margin:.5em 0}.content ul,.content ol{padding-left:1.5em}.content blockquote{border-left:4px solid var(--accent);margin:1em 0;padding:.2em 1em;color:var(--muted);background:var(--bg)}.tablewrap{overflow-x:auto;width:100%;margin:20px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.7}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--bg);font-weight:750;white-space:nowrap}tr:last-child td{border-bottom:0}td{overflow-wrap:anywhere}pre{background:var(--code);padding:19px;border-radius:9px;overflow:auto;font:14px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;overflow-wrap:anywhere}p code,li code,td code{background:var(--code);padding:2px 5px;border-radius:4px}.foot{font-size:13px;color:var(--muted);margin-top:36px;border-top:1px solid var(--line);padding-top:16px}.portal{max-width:1160px;margin:auto;padding:52px 24px 70px}.portal h1{font:700 clamp(34px,5vw,55px)/1.25 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 16px}.intro{max-width:850px;color:var(--muted);font-size:18px}.notice{border-left:4px solid var(--accent);background:var(--paper);padding:17px 22px;margin:28px 0;border-radius:0 9px 9px 0}.stage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}.stage{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:24px}.stage h2{font-size:27px;margin:0 0 8px}.stage h3{font-size:18px;margin:0 0 12px}.stage p{font-size:15px;color:var(--muted);margin:0 0 14px}.stage .actions{margin-top:auto}.stage .count{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.resource-list{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.resource-list a{padding:14px 2px;border-bottom:1px solid var(--line);text-decoration:none}.section-title{font-size:24px;margin:34px 0 14px}.statline{font-size:14px;color:var(--muted);margin:12px 0}.wide-button{display:inline-block;background:var(--accent);color:var(--paper);padding:10px 16px;border-radius:9px;text-decoration:none;font-size:15px;margin:8px 8px 0 0}
+@media(max-width:1000px){.layout{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:24px 16px}.content{padding:28px}.stage-grid{gap:12px}.stage{padding:18px}.version{display:none}}
+@media(max-width:780px){.layout{display:block;padding:14px 12px 40px}.sidebar{position:relative;top:auto;max-height:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.sidebar nav{columns:2;column-gap:16px}.sidebar nav a{break-inside:avoid;padding:5px;font-size:13px}.sidebar .toc{padding:12px 0 0}.content{padding:24px 19px}.content h1{font-size:28px}.content h2{font-size:22px}.content h3{font-size:18px}.topbar{padding:12px 16px;align-items:flex-start}.topbar button,.topbar .button{padding:5px 8px;font-size:12px}.portal{padding:30px 18px 50px}.portal h1{font-size:34px}.intro{font-size:16px}.stage-grid{grid-template-columns:1fr;margin:22px 0}.resource-list{grid-template-columns:1fr}table{min-width:640px}body{--font:16px}}
+@media print{.topbar,.sidebar,.actions{display:none!important}body{background:white;color:black;font-size:11pt}.layout,.portal{display:block;padding:0;max-width:none}.content{padding:0;border:0;background:white}.content h2,.content h3{break-after:avoid}.tablewrap{overflow:visible;border:0}table{min-width:0;font-size:9pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:black}.stage-grid{display:block}.stage{break-inside:avoid;margin-bottom:12px}}
+</style></head><body><header class="topbar"><a class="brand" href="../index.html">对照文库 · 规格与实施<span class="version">v3.0 · 个人PDF版</span></a><div class="actions"><a class="button" href="../milestones/M1-spec.md" download>Markdown</a><button data-theme>明暗</button><button data-print>打印</button></div></header><div class="layout"><aside class="sidebar"><details class="docmenu" open><summary>文档导航</summary><nav><a class="" href="baseline.html">产品基线与范围</a><a class="" href="m0-spec.html">M0 · 产品 Spec</a><a class="" href="m0-plan.html">M0 · 实施 Plan</a><a class="active" href="m1-spec.html">M1 · 产品 Spec</a><a class="" href="m1-plan.html">M1 · 实施 Plan</a><a class="" href="m2-spec.html">M2 · 产品 Spec</a><a class="" href="m2-plan.html">M2 · 实施 Plan</a><a class="" href="architecture-data.html">共享架构与数据</a><a class="" href="workflow-quality-security.html">工作流、质量与安全</a><a class="" href="api-contract.html">HTTP / Worker 契约</a><a class="" href="verification-strategy.html">测试与发布策略</a><a class="" href="traceability.html">四向追踪矩阵</a><a class="" href="compose-contract.html">Docker Compose 交付契约</a><a class="" href="changelog.html">范围变更与迁移</a><a class="" href="agents.html">编码 Agent 交接</a><a class="" href="sources.html">依据与决策来源</a><a class="" href="readme.html">使用与交接说明</a></nav></details><details class="toc" open><summary>本页目录</summary><a class="" href="#h2">1. 产品目标与前提</a><a class="" href="#h3">2. 核心流程与明确排除</a><a class="" href="#h4">3. 页面及状态规格</a><a class="" href="#h5">4. 编号需求与验收场景</a><a class="sub" href="#m1-r01">M1-R01 · PDF流式上传会话</a><a class="sub" href="#m1-r02">M1-R02 · PDF支持边界与可见失败</a><a class="sub" href="#m1-r03">M1-R03 · 完全离线的 PDF 解析容器</a><a class="sub" href="#m1-r04">M1-R04 · 文本 PDF 的阅读顺序与覆盖账本</a><a class="sub" href="#m1-r05">M1-R05 · PDF内部资源与失败页处理</a><a class="sub" href="#m1-r06">M1-R06 · 翻译前结构预检</a><a class="sub" href="#m1-r07">M1-R07 · 目标语言与外部处理授权</a><a class="sub" href="#m1-r08">M1-R08 · 首个真实 Provider 与可替代适配器</a><a class="sub" href="#m1-r09">M1-R09 · 基于单元的分块与上下文</a><a class="sub" href="#m1-r10">M1-R10 · 按 ID 严格校验模型响应</a><a class="sub" href="#m1-r11">M1-R11 · 个人库内精确翻译缓存</a><a class="sub" href="#m1-r12">M1-R12 · 持久任务与真正恢复</a><a class="sub" href="#m1-r13">M1-R13 · 有界错误恢复</a><a class="sub" href="#m1-r14">M1-R14 · 未知结果与计费不确定性</a><a class="sub" href="#m1-r15">M1-R15 · 预算预留与用量账本</a><a class="sub" href="#m1-r16">M1-R16 · 暂停、取消和恢复的竞态语义</a><a class="sub" href="#m1-r17">M1-R17 · 真实任务进度与事件</a><a class="sub" href="#m1-r18">M1-R18 · 基本质量门禁</a><a class="sub" href="#m1-r19">M1-R19 · 基本校对可完成真实闭环</a><a class="sub" href="#m1-r20">M1-R20 · 自动发布有明确条件</a><a class="sub" href="#m1-r21">M1-R21 · 真实文档库、查重与资源链</a><a class="sub" href="#m1-r22">M1-R22 · 内容安全与供应商设置</a><a class="sub" href="#m1-r23">M1-R23 · 删除、撤销发布与回收</a><a class="sub" href="#m1-r24">M1-R24 · 批量导入的独立性与资源公平</a><a class="sub" href="#m1-r25">M1-R25 · Compose生产交付与故障恢复</a><a class="sub" href="#m1-r26">M1-R26 · 真实端到端验收而非演示</a><a class="" href="#h32">5. 非功能、边界与失败要求</a><a class="" href="#h33">6. 退出门与可演示交付</a></details></aside><main class="content"><h1 id="h1">M1 产品 Spec · 真实 PDF 解析、翻译与发布</h1>
+<p><strong>版本3.0 · 个人PDF版 · 待实现</strong></p>
+<h2 id="h2">1. 产品目标与前提</h2>
+<p>把已保存PDF从真实解析带到可核验的双语静态网页；在付费调用前完成外发确认、预算、未知结果、重试和恢复机制。</p>
+<p><strong>进入条件：</strong> M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控FakeProvider和有上限的真实调用测试预算。</p>
+<p>本阶段只有一个使用者，不引入用户实体。规格依赖<a href="baseline.html">产品基线</a>、<a href="architecture-data.html">共享数据契约</a>、<a href="workflow-quality-security.html">工作流和质量</a>、<a href="api-contract.html">API</a>、<a href="compose-contract.html">Compose契约</a>。</p>
+<h2 id="h3">2. 核心流程与明确排除</h2>
+<p>原PDF → 本地Docling → 页/块覆盖预检 → 确认来源+locale+profile+费用 → 逐unit翻译 → 结构/语义风险检查 → 必要时基础校对 → 封存并发表。</p>
+<p><strong>排除范围：</strong> OCR/加密PDF处理、其他格式、任意远程源、自动切供应商、不限次数自修复和多人权限均不实现。</p>
+<h2 id="h4">3. 页面及状态规格</h2>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>页面</th>
+<th>必需信息与操作</th>
+<th>边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>上传与原件</td>
+<td>复用M0，批量PDF各自独立</td>
+<td>不重新开放附件或网页入口</td>
+</tr>
+<tr>
+<td>结构预检</td>
+<td>页图、阅读顺序、块/区域覆盖、未解决问题、估价</td>
+<td>正文缺页/扫描需求不能确认</td>
+</tr>
+<tr>
+<td>翻译任务</td>
+<td>stage、verified块/unit、请求数、actual/reserved/unknown费用</td>
+<td>没有假百分比；断线后快照恢复</td>
+</tr>
+<tr>
+<td>基础校对</td>
+<td>源文只读、原PDF页图、目标编辑和重验</td>
+<td>修改译文不改源；旧QA不能发布新稿</td>
+</tr>
+<tr>
+<td>配置状态</td>
+<td>profile/model/能力/价格/隐私版本</td>
+<td>不在前端保存密钥；无Provider仍能读库</td>
+</tr>
+</tbody>
+</table></div>
+<p>输入错误留在当前页并保留有效选择；耗时操作返回job而不是锁住界面。操作完成显示真实已完成范围，失败给对应资源/错误码；不以人工按“继续演示”的结果作为正式成功。</p>
+<h2 id="h5">4. 编号需求与验收场景</h2>
+<p>以下每个MUST是退出门的一部分；AT均为待执行产品测试，不是本包自检结果。</p>
+<h3 id="m1-r01">M1-R01 · PDF流式上传会话</h3>
+<p><strong>MUST：</strong> 复用M0 PDF上传；upload_id、实际接收字节上限、服务端哈希、过期清理、finalize幂等必须有效。导入仅接受已完成验证的PDF upload_id，无附件数组、远程资源或纯文本路径。中断和过期上传不成为合法来源。</p>
+<p><strong>M1-AT01A</strong> （自动化，planned）</p>
+<p>Given 50 MiB 内文本 PDF，When 上传并重复 finalize 相同内容，Then 返回同一 SHA／资产且只创建一次后续解析。</p>
+<p><strong>M1-AT01B</strong> （自动化，planned）</p>
+<p>Given 超限流、伪 PDF、过期会话或 hash 不符，Then 413/422/409 且不进入解析；临时字节按规则清理。</p>
+<h3 id="m1-r02">M1-R02 · PDF支持边界与可见失败</h3>
+<p><strong>MUST：</strong> M0可保存通过检查的未加密PDF；M1/M2仅保证文本型PDF解析翻译。扫描或混合PDF存在无法抽取的正文时给OCR_REQUIRED并停在预检；不静默跳页。损坏、加密、超限或非PDF拒绝并说明；OCR、密码输入/破解和其他文件类型不在范围。</p>
+<p><strong>M1-AT02A</strong> （自动化，planned）</p>
+<p>Given 纯文本、双栏论文PDF和含正常图表的PDF，When 解析，Then 显示实际支持程度、页数和覆盖报告。</p>
+<p><strong>M1-AT02B</strong> （自动化，planned）</p>
+<p>Given .pdf扩展的HTML/ZIP、加密PDF、损坏PDF或有扫描正文的PDF，Then 相应415/422/PDF_ENCRYPTED/OCR_REQUIRED；没有自动转其他格式或外发OCR。</p>
+<h3 id="m1-r03">M1-R03 · 完全离线的 PDF 解析容器</h3>
+<p><strong>MUST：</strong> Docling和原生PDF检查器在parser服务运行：network_mode:none、无Provider/数据库凭据、非特权、只读root、有限CPU/内存/PID/tmp。模型及其revision/hash在build阶段准备并写入镜像；运行时artifacts_path指向固定目录，禁用远程服务和OCR。worker以本地spool提交一次性任务并验证输出；不挂Docker socket。</p>
+<p><strong>M1-AT03A</strong> （自动化，planned）</p>
+<p>Given parser镜像和网络探针PDF，When 冷启动解析，Then 无出网/无运行时下载、无密钥环境，所有模型由本地资产加载。</p>
+<p><strong>M1-AT03B</strong> （自动化，planned）</p>
+<p>Given 解析OOM、超时或恶意输出路径，Then 当前attempt失败可恢复，worker拒绝越界/失效token输出，API/db仍健康。</p>
+<h3 id="m1-r04">M1-R04 · 文本 PDF 的阅读顺序与覆盖账本</h3>
+<p><strong>MUST：</strong> 使用 Docling 适配器转换为自有 IR；保留原解析输出。每页文本／图／表区域必须归入正文块、合法装饰排除或未解决区域；双栏、跨页段落和页眉页脚要显式处理。低置信度停预检，不让翻译模型重建源文。</p>
+<p><strong>M1-AT04A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 经人工标注的双栏和跨页 fixture，When 解析，Then 正文顺序及覆盖与标注一致，段落有可核验页码坐标。</p>
+<p><strong>M1-AT04B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 中间一页未提取、乱序或只取得摘要，Then SOURCE_PARSE_REVIEW，停止确认／发布，不能凭非空文本判成功。</p>
+<h3 id="m1-r05">M1-R05 · PDF内部资源与失败页处理</h3>
+<p><strong>MUST：</strong> 只从原PDF提取或裁剪图像/表格/公式；不跟随URI、Launch、JavaScript、嵌入文件、外部字体或远程引用。表格优先保留结构，不能可靠恢复时原图+明确警告；正文提取失败不得把整页标为图跳过翻译。无外部附件补齐接口。</p>
+<p><strong>M1-AT05A</strong> （自动化，planned）</p>
+<p>Given 带图题/脚注/跨页表格的PDF，When 提取，Then 每项绑定源页及资产hash；结构不确定表格有原图和可见处置。</p>
+<p><strong>M1-AT05B</strong> （自动化，planned）</p>
+<p>Given PDF动作请求内网资源或一页正文全未抽取，Then 零请求；前者忽略动作，后者阻止全文发布，不凭原图存在放行。</p>
+<h3 id="m1-r06">M1-R06 · 翻译前结构预检</h3>
+<p><strong>MUST：</strong> 显示页数、正文／保留／未解决块、图表清单、语言、源件 SHA 和真实提取预览。用户必须先确认 source revision 与完整内容范围。M1 默认全文；不提供无提示跳过失败页。</p>
+<p><strong>M1-AT06A</strong> （自动化，planned）</p>
+<p>Given 解析通过的论文，When 打开 preflight 并确认，Then 记录该 source revision/hash、范围及确认时间及操作来源，随后源修改使旧确认失效。</p>
+<p><strong>M1-AT06B</strong> （自动化，planned）</p>
+<p>Given preflight 有未解决正文或 OCR_REQUIRED，When 强行 confirm，Then 409，Provider 调用计数为零。</p>
+<h3 id="m1-r07">M1-R07 · 目标语言与外部处理授权</h3>
+<p><strong>MUST：</strong> M1 认证 en↔zh-Hans，其他 locale 暂不承诺模型质量。导入显示目标、供应商、模型 ID、所发送内容和当前隐私说明版本；确认绑定具体 profile，改变供应商／来源需重新授权。</p>
+<p><strong>M1-AT07A</strong> （自动化，planned）</p>
+<p>Given 英文文本和已配置 profile，When 用户选择 zh-Hans 并确认外部发送，Then 授权记录可追溯且仅发送该源版本所需文本。</p>
+<p><strong>M1-AT07B</strong> （自动化，planned）</p>
+<p>Given 未确认发送、语言不在 enabled matrix 或 profile 被更换，Then 不创建可派发翻译任务。</p>
+<h3 id="m1-r08">M1-R08 · 首个真实 Provider 与可替代适配器</h3>
+<p><strong>MUST：</strong> M1 实现官方 OpenAI Responses 适配器及离线 FakeProvider 测试替身。model_id、能力、限速、价格与 prompt revision 均显式配置、固定快照；无自动 latest 和后备供应商。禁用工具调用、文件上传与 SDK 隐式重试。</p>
+<p>2026-09-06用户补充：设置页允许配置 OpenAI 兼容 Responses / Chat Completions、原生 Gemini Interactions、原生 Claude Messages 的完整 endpoint 与 model ID。协议自动匹配 provider；OpenAI 使用 Bearer，Gemini 使用 <code>x-goog-api-key</code>，Claude 使用 <code>x-api-key</code> 与 <code>anthropic-version</code>。原生限普通 API key，不含 OAuth/多 workspace；均允许明确无鉴权。Claude <code>api_version</code> 默认为 <code>2023-06-01</code>，高级选项可填 <code>YYYY-MM-DD</code>，其他协议不发送该字段。切协议不改自定义 URL，不静默重绑旧 key；配置未填完整可先保存，缺少所需鉴权或开启金额控制却缺价时不得派发；请求上限采用下述应用默认值，未知价格不补零。保存不自动调用 Provider。</p>
+<p>用户输入的模型名称原样使用，Gemini 和 Claude 两个原生协议的响应 model 仍须严格匹配（仅 Gemini 正规化 <code>models/</code> 前缀）；别名应填写服务实际返回的 ID，不自动换模型。原生用量归一后采用相同账本：Gemini 输出加思考，Claude 输出已含思考且输入汇总未缓存/缓存读/缓存写。开启金额控制时，未定价维度、必需用量缺失/矛盾和费用未确认保留 <code>outcome_unknown</code> 等待核对。关闭金额控制时可保存已验证合法目标，未定金额保留 <code>null</code>，不能当免费成功；网络未知和模型不匹配仍阻止自动重发。具体配置、并发、密钥与响应规则见<a href="api-contract.html">共享 API 契约</a>；本轮 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">Gemini 官方核对</span>与 <span title="Agent 工作资料；见源码仓库 .agent/ 目录">Claude 独立核对</span>不替代 M1-AT08A 的真实受控调用，真实模型/语言认证 blocked 边界不变。</p>
+<p><strong>M1-AT08A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 测试授权和有效配置，When 执行真实小样本，Then 使用固定模型/结构化响应，记录实际请求ID、状态与用量；不向模型暴露工具。</p>
+<p><strong>M1-AT08B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 密钥无效、模型不存在或不支持所需输出能力，Then PROVIDER_CONFIG/AUTH 错误并停止，不静默换模型。</p>
+<h3 id="m1-r09">M1-R09 · 基于单元的分块与上下文</h3>
+<p><strong>MUST：</strong> 同章节短块可批量请求；长块分为有序 unit，保护原子不得拆开。每请求有输入/输出上限与上下文预算；源文标题、局部邻文和术语策略固定。重新组装仍是原文的一段对应译文一段。</p>
+<p><strong>M1-AT09A</strong> （自动化，planned）</p>
+<p>Given 一段超过单请求上限的长文本含公式，When 分片翻译再组装，Then 源块 ID/边界不变、unit 无重无漏、公式保持完整。</p>
+<p><strong>M1-AT09B</strong> （自动化，planned）</p>
+<p>Given 无法放入限制的单个保护原子，Then UNIT_TOO_LARGE，不能截断或分裂公式后继续。</p>
+<h3 id="m1-r10">M1-R10 · 按 ID 严格校验模型响应</h3>
+<p><strong>MUST：</strong> 响应必须与批次 requested unit 集合双射，正确终止且非拒绝；结果顺序可不同。检查目标 AST、空结果、重复/未知 ID、保护原子多重集合。结构化输出符合 Schema 不代表语义正确。</p>
+<p><strong>M1-AT10A</strong> （自动化，planned）</p>
+<p>Given Provider 乱序返回完整单元，When 校验，Then 按 ID 正确落库并按来源顺序重组。</p>
+<p><strong>M1-AT10B</strong> （自动化，planned）</p>
+<p>Given 漏一个 ID、重复一个 ID、输出截断或伪造文件路径，Then 不提交该批不合格结果；记录可定位错误并按上限修复／待校对。</p>
+<h3 id="m1-r11">M1-R11 · 个人库内精确翻译缓存</h3>
+<p><strong>MUST：</strong> 缓存作用域仅当前数据库实例，不增加用户或workspace键；键包含源内容hash、上下文hash、locale、模型/profile/提示/术语/归一化/分块版本。只存验证合格的机器结果。跨文档复用须重绑定本地ID并复核保护原子，人工修改不自动污染机器精确缓存。</p>
+<p><strong>M1-AT11A</strong> （自动化，planned）</p>
+<p>Given 同实例完全相同请求快照，When 再次翻译，Then 命中合格缓存、无新增Provider调用、记录cache_hit。</p>
+<p><strong>M1-AT11B</strong> （自动化，planned）</p>
+<p>Given 文本相同但术语/邻文/源原子/模型任一变化，Then 未命中；失效或已删除来源缓存不被使用。</p>
+<h3 id="m1-r12">M1-R12 · 持久任务与真正恢复</h3>
+<p><strong>MUST：</strong> 作业／任务／尝试记录独立。API 返回 202，worker 持久化每批和单元结果、阶段检查点。重启从缺失／可安全重试任务恢复；过期租约使用 fencing 拒绝迟到内容写。</p>
+<p><strong>M1-AT12A</strong> （自动化，planned）</p>
+<p>Given 翻译完成30%后关闭浏览器并重启 worker，When 恢复，Then 成功结果不重译，未派发任务继续，最终只有一个有效发布。</p>
+<p><strong>M1-AT12B</strong> （自动化，planned）</p>
+<p>Given 外部请求已派发但进程崩溃、结果未知，Then 不能普通重领后直接再次计费；转 outcome_unknown 等待处理。</p>
+<h3 id="m1-r13">M1-R13 · 有界错误恢复</h3>
+<p><strong>MUST：</strong> 确定未发送的连接故障、供应商明确限流等可重试；默认最多3次传输尝试（含首发）、一次结构修复，所有付费尝试均计入预算。认证错误停止；语义异常不无限循环。</p>
+<p><strong>M1-AT13A</strong> （自动化，planned）</p>
+<p>Given 两次明确未执行的429后成功，When 重试，Then 退避遵守 Retry-After、计数可见、第三次成功正常继续。</p>
+<p><strong>M1-AT13B</strong> （自动化，planned）</p>
+<p>Given 永久401或连续无效结构超过上限，Then 停止并给操作建议，不能发生不受限收费循环。</p>
+<h3 id="m1-r14">M1-R14 · 未知结果与计费不确定性</h3>
+<p><strong>MUST：</strong> attempt dispatching/sent 后超时进入 outcome_unknown。优先依据 request_id 和供应商实际可用能力核对；无法确认默认暂停，保留预算占用。用户明确允许重试时，新 attempt 另计，旧不确定成本按保守上限计入风险。</p>
+<p><strong>M1-AT14A</strong> （自动化，planned）</p>
+<p>Given 请求实际完成但客户端未收到，When worker恢复，Then 展示未知状态、可能收费、可核对/承担风险重试，并保持预算预留。</p>
+<p><strong>M1-AT14B</strong> （自动化，planned）</p>
+<p>Given 用户未确认重复计费风险，When 后台轮询重试，Then 不发送第二次请求；本地 Idempotency-Key 不能被解释为供应商去重保证。</p>
+<h3 id="m1-r15">M1-R15 · 预算预留与用量账本</h3>
+<p><strong>2026-09-07 用户需求补充：</strong> 金额控制为可选项，新配置默认关闭。下述 PriceSnapshot、金额预算与预留 MUST/AT 适用于 <code>cost_control_enabled=true</code> 的场景；旧完整配置/已授权快照缺字段仍按 true。关闭时四种外发入口可不填费率或金额预算，但仍创建 Attempt/Permit、执行并发/外发确认/控制 epoch；Job 预算与 Permit 预留为 <code>null</code>，未定实费为 <code>null</code>，不冒充免费。HTTP 已完成且目标校验通过时缺失用量不阻止保存；网络未知结果和原生模型不匹配仍阻止自动重发。旧 unknown 不因切换开关消失，风险重试仍需明确确认。</p>
+<p>三项应用上限默认 <code>max_input_tokens=32768</code>、<code>max_output_tokens=8192</code>、<code>max_unit_characters=2000</code>，新设置固化有效值并显示当前值/服务端 defaults。重置仅替换三项上限，通过原 CAS 保存且保留 endpoint/key。读取不更改旧不可变 profile/hash。正式真实模型验收仍要求批准的测试预算；历史 AT 结果不得因此重标通过。</p>
+<p><strong>MUST：</strong> 输入/输出单价使用版本化 PriceSnapshot，整数微货币精度。每次派发前原子预留输入与输出上限以及可计费推理等上限；作业和实例限额均检查。实际、预留、保守未知成本不能重复计算。</p>
+<p><strong>M1-AT15A</strong> （自动化，planned）</p>
+<p>Given 两个任务并发争用只够一个请求的剩余额度，When authorize-dispatch，Then 只一个得到许可；结算后账本一致。</p>
+<p><strong>M1-AT15B</strong> （自动化，planned）</p>
+<p>Given 没有可信计价上限、余额不足或价格快照已被用户更改而无重新授权，Then 暂停／拒绝，不把未知费用当0。</p>
+<h3 id="m1-r16">M1-R16 · 暂停、取消和恢复的竞态语义</h3>
+<p><strong>MUST：</strong> 暂停／取消事务生效后不得批准新的 dispatch permit；此前已批准请求视为在途，可能仍发送/完成/计费。暂停保留已验证结果；取消永远不自动发布该任务，迟到用量仍能审计入账。</p>
+<p><strong>M1-AT16A</strong> （自动化，planned）</p>
+<p>Given 任务运行且有在途请求，When 暂停后恢复，Then 新派发停止、已有用量可结算，恢复只处理仍缺单元。</p>
+<p><strong>M1-AT16B</strong> （自动化，planned）</p>
+<p>Given 取消与最后一批返回／发布并发，Then 以事务顺序决定；取消已先提交时后续发布被拒，旧已发布版本不受影响。</p>
+<h3 id="m1-r17">M1-R17 · 真实任务进度与事件</h3>
+<p><strong>MUST：</strong> 分开显示阶段、完成块数/总必需块、完成单元数、在途请求、用量和问题。上传按字节、解析按已检查页、翻译按已验证块。SSE 可断线重连并回退到轮询，不展示定时器假百分比。</p>
+<p><strong>M1-AT17A</strong> （自动化，planned）</p>
+<p>Given 浏览器重连且事件窗口过期，When 查询 snapshot，Then 与持久任务状态一致，不需要从头回放才能正确显示。</p>
+<p><strong>M1-AT17B</strong> （自动化，planned）</p>
+<p>Given 长块被拆为多个unit或任务重试，Then 不把请求数当段落数，也不能显示100%但正文缺块。</p>
+<h3 id="m1-r18">M1-R18 · 基本质量门禁</h3>
+<p><strong>MUST：</strong> 必译覆盖、保护原子、数字/单位、资产/脚注/xref 检查必须运行；对可疑否定、比较、长度等给风险提示，标 machine_checked 不等于 human_reviewed。源正文缺失不可被“保留原样”绕过。</p>
+<p><strong>M1-AT18A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 正确输出及已声明原图保留策略，When 校验，Then QA 指纹绑定当前源与译文快照，允许进入发布审批。</p>
+<p><strong>M1-AT18B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 64 变32、丢否定的标注夹具或缺图，Then 分别触发硬阻断／高风险校对，不能以模型自评分高放行。</p>
+<h3 id="m1-r19">M1-R19 · 基本校对可完成真实闭环</h3>
+<p><strong>MUST：</strong> M1 提供受限译文修正、问题列表、源文只读及最小 PDF 页图/文本定位，不等待 M2 才能处理失败。编辑后必须重新校验，结构问题需修复来源或重新导入，不可在译文里抹去证据。</p>
+<p><strong>M1-AT19A</strong> （自动化，planned）</p>
+<p>Given 某块数字误译，When 对照原页修正译文并重新验证，Then 新草稿版本通过且允许发布，旧错误版本仍可审计。</p>
+<p><strong>M1-AT19B</strong> （自动化，planned）</p>
+<p>Given 用户改动后复用旧 QA 报告／旧 ETag 发布，Then 412/409 阻止。</p>
+<h3 id="m1-r20">M1-R20 · 自动发布有明确条件</h3>
+<p><strong>MUST：</strong> 用户选择 auto_publish 后，仅在预检授权有效、结构完整、无硬阻断/未解决高风险、预算状态正常且任务未取消时自动封存/构建/CAS发布。默认首次导入 manual_approval，保存个人默认可显式改为自动。</p>
+<p><strong>M1-AT20A</strong> （自动化，planned）</p>
+<p>Given 符合全部条件并授权自动发布的任务，When 完成校验，Then 生成新静态版并加入库，无需读者在线翻译。</p>
+<p><strong>M1-AT20B</strong> （自动化，planned）</p>
+<p>Given 同文档旧版已发布、新任务存在阻断，Then 旧版指针保持不变，新任务进入 needs_review，而非自动替换。</p>
+<h3 id="m1-r21">M1-R21 · 真实文档库、查重与资源链</h3>
+<p><strong>MUST：</strong> 列表显示文件来源而非 URL；在本实例按文件哈希提示已有文件，可选择复用来源或建独立文档，不按文件名自动覆盖。源件、页图、译文和产物互相关联，元数据修改不修改出版快照。</p>
+<p><strong>M1-AT21A</strong> （自动化，planned）</p>
+<p>Given 同一 PDF 换文件名再次上传，When 导入，Then 提示相同内容但由用户决定复用；不同目标处理不覆盖原语言版。</p>
+<p><strong>M1-AT21B</strong> （自动化，planned）</p>
+<p>Given 同名但字节不同文件，Then 不判定为同版、不替换旧来源。</p>
+<h3 id="m1-r22">M1-R22 · 内容安全与供应商设置</h3>
+<p><strong>MUST：</strong> 日志默认只含资源ID、操作来源manual_ui/system、错误码、用量和耗时，不含全文/密钥。按2026-09-06用户补充，Provider密钥可在设置页一次性输入后保存至后端专用secret文件，worker只读；保存后不回显，不写浏览器持久存储、PDF解析器、IR或导出。默认不持久化原始Provider响应。OpenAI兼容请求及Gemini Interactions显式<code>store=false</code>，这不等于供应商绝不保留数据；Claude Messages无<code>store</code>字段，不主动启用缓存写入，也不覆盖模型默认思考行为。以实际服务保留政策为准。只有用户明确确认后才外发正文，模型没有工具，思考内容不作为译文保存。</p>
+<p><strong>M1-AT22A</strong> （自动化，planned）</p>
+<p>Given 成功、失败、重试和取消路径，When 检查日志／导出，Then 没有明文密钥和全文，审计可串联 request/attempt/revision。</p>
+<p><strong>M1-AT22B</strong> （自动化，planned）</p>
+<p>Given 模型输出包含诱导发送密钥的文字，Then 仅作为内容处理，绝不出现工具或非允许主机请求。</p>
+<h3 id="m1-r23">M1-R23 · 删除、撤销发布与回收</h3>
+<p><strong>MUST：</strong> 归档仅隐藏；撤销发布清空当前指针且历史仍可从历史访问；永久删除立即 tombstone 并阻止所有读/写/新派发，异步清理源件、译文、缓存、制品、导出。共享资产需引用检查，备份按保留期限过期。</p>
+<p><strong>M1-AT23A</strong> （自动化，planned）</p>
+<p>Given 删除一篇有在途请求和离线导出的文档，When 确认永久删除，Then 在线访问立即失效，后续结果不能复活文档，用户获知离线副本不可收回。</p>
+<p><strong>M1-AT23B</strong> （自动化，planned）</p>
+<p>Given 资产仍被另一个文档引用或备份未过期，Then 不误删共享资产；界面显示实际清理状态，不声称备份即刻消失。</p>
+<h3 id="m1-r24">M1-R24 · 批量导入的独立性与资源公平</h3>
+<p><strong>MUST：</strong> 允许一次选择最多10个源文件，各自具有 import/job、预检确认与预算。失败不回滚其他成功文档；后台按实例并发上限派发，解析资源限额与翻译请求限额分开。</p>
+<p><strong>M1-AT24A</strong> （自动化，planned）</p>
+<p>Given 同批3个有效文件和1个无效文件，When 导入，Then 三份可继续、一份显示失败，进度不混淆。</p>
+<p><strong>M1-AT24B</strong> （自动化，planned）</p>
+<p>Given 超过批量或并发上限，Then 排队／拒绝超额部分，不启动无限解析进程，不让小文件永远饿死。</p>
+<h3 id="m1-r25">M1-R25 · Compose生产交付与故障恢复</h3>
+<p><strong>MUST：</strong> 正式发布包含app/worker/parser/db/migrate全部镜像或可自动build定义及锁文件、模型资产hash、持久卷与恢复CLI。parser不出网，worker外部API能力显式配置；app不持Provider密钥。缺失API配置不阻止库/阅读启动。恢复先禁用新外发，未知请求不重复收费执行。</p>
+<p><strong>M1-AT25A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 数据库和内容卷备份，When 通过Compose运维容器恢复到新宿主，Then 旧产物可读、未知请求待核对、其他本地任务安全恢复，不需安装宿主脚本依赖。</p>
+<p><strong>M1-AT25B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 未配置Provider密钥或价格，Then 阅读和PDF保存正常，新翻译等待配置；Compose里没有反代/身份服务。</p>
+<h3 id="m1-r26">M1-R26 · 真实端到端验收而非演示</h3>
+<p><strong>MUST：</strong> 发布门槛要求真实上传、真实解析和至少一个已授权真实 Provider 小样本；故障注入使用可控 FakeProvider。两篇既有论文用于版面与完整性回归；其旧译文不是逐字金标准。性能报告分解析/排队/模型/渲染。</p>
+<p><strong>M1-AT26A</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 固定语料和批准测试预算，When 完成端到端并人工核对高风险样本，Then 有源哈希、输出、用量、问题和验收证据。</p>
+<p><strong>M1-AT26B</strong> （自动化＋人工/环境验证，planned）</p>
+<p>Given 只有 mock 全绿、固定示例段落或未执行的真模型用例，Then M1 不得标 completed；外部资源缺失记录 blocked。</p>
+<h2 id="h32">5. 非功能、边界与失败要求</h2>
+<p>延迟、费用与性能分阶段记录，不编造每篇耗时。多标签页与Worker竞争使用generation/fence；恢复不等同重新调用模型。</p>
+<p>没有登录不代表可以执行上传内容；PDF解析无网络/秘密且资源受限。仅支持Compose，不安排替代部署。阅读静态化不取消资源存在性和删除状态检查。配置、容量、完整性与无JS阅读要求继承产品基线。</p>
+<h2 id="h33">6. 退出门与可演示交付</h2>
+<p>上传真实双栏PDF，确认全文覆盖与外发成本；使用已批准真实Provider完成小样本。中途重启worker和关闭浏览器，成功块不重复翻译；模拟已收费超时进入unknown且不自动重试；64→32错误被阻断、修复后生成新静态版。</p>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>名称</th>
+<th>必需证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M1-G01</td>
+<td>安全本地输入</td>
+<td>仅PDF矩阵/超限/伪装文件/PDF动作/零远程资源抓取/解析隔离检查。</td>
+</tr>
+<tr>
+<td>M1-G02</td>
+<td>真实源结构完整</td>
+<td>标注PDF语料、页面覆盖账本、缺页/OCR阻断、过期预检确认负测。</td>
+</tr>
+<tr>
+<td>M1-G03</td>
+<td>真实Provider与授权</td>
+<td>已授权真实请求证据（敏感部分脱敏）、语言matrix、成本、配置失败测试。</td>
+</tr>
+<tr>
+<td>M1-G04</td>
+<td>对齐和缓存</td>
+<td>长段分片重组、响应错误集合、跨文档/上下文缓存隔离。</td>
+</tr>
+<tr>
+<td>M1-G05</td>
+<td>任务恢复与未知状态</td>
+<td>逐个崩溃窗口、限定重试、超时不重复收费派发的状态证据。</td>
+</tr>
+<tr>
+<td>M1-G06</td>
+<td>预算和操作竞态</td>
+<td>并发预留/结算、暂停/取消/发布race、迟到费用审计。</td>
+</tr>
+<tr>
+<td>M1-G07</td>
+<td>质量与真实发布</td>
+<td>漏段/错数/否定/缺图、原件对照纠正、旧版不变和新静态产物。</td>
+</tr>
+<tr>
+<td>M1-G08</td>
+<td>任务中心与库</td>
+<td>真实进度/重连、多文件独立、内容查重和不重复覆盖。</td>
+</tr>
+<tr>
+<td>M1-G09</td>
+<td>隐私、删除与恢复</td>
+<td>日志/密钥泄露检查、完整删除与已删除资源拒绝、Compose恢复后禁自动重发；无账户权限测试。</td>
+</tr>
+</tbody>
+</table></div>
+<p>全部gate初始状态not_evaluated。详见<a href="m1-plan.html">M1 Plan</a>；没有已执行证据不得标completed。</p>
+<footer class="foot">规格包 v3.0 · 2026-09-06 · 产品与计划尚待实施。所有内容已写入本地HTML，无需联网阅读。</footer></main></div><script>(()=>{const r=document.documentElement;try{r.dataset.theme=localStorage.getItem('spec-theme')||'light'}catch{}document.querySelectorAll('button[data-theme]').forEach(b=>b.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('spec-theme',r.dataset.theme)}catch{}}));document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>print()));if(innerWidth<780){const m=document.querySelector('.docmenu');if(m)m.removeAttribute('open');const t=document.querySelector('.toc');if(t)t.removeAttribute('open')}})();</script></body></html>

@@ -1,0 +1,351 @@
+<!doctype html><html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>M2 实施 Plan · 个人校对、多语言和版本管理 · 对照文库</title><style>
+:root{color-scheme:light;--bg:#f5f2ec;--paper:#fffdf9;--ink:#1d252c;--muted:#63716e;--line:#d9d5cc;--accent:#2e6f68;--blue:#315c8a;--code:#efede7;--font:17px}
+:root[data-theme=dark]{color-scheme:dark;--bg:#11171b;--paper:#182126;--ink:#edf1f2;--muted:#a8b4bb;--line:#344149;--accent:#80c8bd;--blue:#8eb9e6;--code:#222c32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:var(--font)/1.85 system-ui,-apple-system,"Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button,.button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:.45rem .8rem;font-size:14px;text-decoration:none;cursor:pointer}button:hover,.button:hover{border-color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px max(20px,calc((100vw - 1480px)/2));border-bottom:1px solid var(--line);background:var(--paper)}.brand{color:var(--ink);font-size:16px;font-weight:750;text-decoration:none}.version{font-size:13px;color:var(--muted);margin-left:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:34px;padding:32px 24px 70px}.sidebar{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}.docmenu summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:700}.sidebar nav{padding:8px 0 20px;border-bottom:1px solid var(--line)}.sidebar nav a{display:block;font-size:14px;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:7px}.sidebar nav a.active{background:var(--paper);color:var(--accent);font-weight:750;border-left:3px solid var(--accent)}.sidebar .toc{padding:18px 0;font-size:13px}.toc summary{font-weight:700;cursor:pointer;margin-bottom:8px}.toc a{display:block;padding:4px 4px;color:var(--muted);text-decoration:none;line-height:1.5}.toc a.sub{padding-left:15px}.content{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:36px 44px}.content h1{font:700 clamp(29px,3vw,40px)/1.32 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 20px;overflow-wrap:anywhere}.content h2{font-size:25px;line-height:1.45;margin:2.4rem 0 1rem;padding-top:8px;border-top:1px solid var(--line);scroll-margin-top:20px}.content h3{font-size:20px;line-height:1.6;margin:2rem 0 .6rem;color:var(--accent);scroll-margin-top:20px}.content p{margin:.8em 0}.content strong{font-weight:750}.content li{margin:.5em 0}.content ul,.content ol{padding-left:1.5em}.content blockquote{border-left:4px solid var(--accent);margin:1em 0;padding:.2em 1em;color:var(--muted);background:var(--bg)}.tablewrap{overflow-x:auto;width:100%;margin:20px 0;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px;line-height:1.7}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--bg);font-weight:750;white-space:nowrap}tr:last-child td{border-bottom:0}td{overflow-wrap:anywhere}pre{background:var(--code);padding:19px;border-radius:9px;overflow:auto;font:14px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em;overflow-wrap:anywhere}p code,li code,td code{background:var(--code);padding:2px 5px;border-radius:4px}.foot{font-size:13px;color:var(--muted);margin-top:36px;border-top:1px solid var(--line);padding-top:16px}.portal{max-width:1160px;margin:auto;padding:52px 24px 70px}.portal h1{font:700 clamp(34px,5vw,55px)/1.25 ui-serif,Georgia,"Noto Serif CJK SC",serif;letter-spacing:-.02em;margin:0 0 16px}.intro{max-width:850px;color:var(--muted);font-size:18px}.notice{border-left:4px solid var(--accent);background:var(--paper);padding:17px 22px;margin:28px 0;border-radius:0 9px 9px 0}.stage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:32px 0}.stage{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:24px}.stage h2{font-size:27px;margin:0 0 8px}.stage h3{font-size:18px;margin:0 0 12px}.stage p{font-size:15px;color:var(--muted);margin:0 0 14px}.stage .actions{margin-top:auto}.stage .count{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.resource-list{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.resource-list a{padding:14px 2px;border-bottom:1px solid var(--line);text-decoration:none}.section-title{font-size:24px;margin:34px 0 14px}.statline{font-size:14px;color:var(--muted);margin:12px 0}.wide-button{display:inline-block;background:var(--accent);color:var(--paper);padding:10px 16px;border-radius:9px;text-decoration:none;font-size:15px;margin:8px 8px 0 0}
+@media(max-width:1000px){.layout{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:24px 16px}.content{padding:28px}.stage-grid{gap:12px}.stage{padding:18px}.version{display:none}}
+@media(max-width:780px){.layout{display:block;padding:14px 12px 40px}.sidebar{position:relative;top:auto;max-height:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.sidebar nav{columns:2;column-gap:16px}.sidebar nav a{break-inside:avoid;padding:5px;font-size:13px}.sidebar .toc{padding:12px 0 0}.content{padding:24px 19px}.content h1{font-size:28px}.content h2{font-size:22px}.content h3{font-size:18px}.topbar{padding:12px 16px;align-items:flex-start}.topbar button,.topbar .button{padding:5px 8px;font-size:12px}.portal{padding:30px 18px 50px}.portal h1{font-size:34px}.intro{font-size:16px}.stage-grid{grid-template-columns:1fr;margin:22px 0}.resource-list{grid-template-columns:1fr}table{min-width:640px}body{--font:16px}}
+@media print{.topbar,.sidebar,.actions{display:none!important}body{background:white;color:black;font-size:11pt}.layout,.portal{display:block;padding:0;max-width:none}.content{padding:0;border:0;background:white}.content h2,.content h3{break-after:avoid}.tablewrap{overflow:visible;border:0}table{min-width:0;font-size:9pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:black}.stage-grid{display:block}.stage{break-inside:avoid;margin-bottom:12px}}
+</style></head><body><header class="topbar"><a class="brand" href="../index.html">对照文库 · 规格与实施<span class="version">v3.0 · 个人PDF版</span></a><div class="actions"><a class="button" href="../milestones/M2-plan.md" download>Markdown</a><button data-theme>明暗</button><button data-print>打印</button></div></header><div class="layout"><aside class="sidebar"><details class="docmenu" open><summary>文档导航</summary><nav><a class="" href="baseline.html">产品基线与范围</a><a class="" href="m0-spec.html">M0 · 产品 Spec</a><a class="" href="m0-plan.html">M0 · 实施 Plan</a><a class="" href="m1-spec.html">M1 · 产品 Spec</a><a class="" href="m1-plan.html">M1 · 实施 Plan</a><a class="" href="m2-spec.html">M2 · 产品 Spec</a><a class="active" href="m2-plan.html">M2 · 实施 Plan</a><a class="" href="architecture-data.html">共享架构与数据</a><a class="" href="workflow-quality-security.html">工作流、质量与安全</a><a class="" href="api-contract.html">HTTP / Worker 契约</a><a class="" href="verification-strategy.html">测试与发布策略</a><a class="" href="traceability.html">四向追踪矩阵</a><a class="" href="compose-contract.html">Docker Compose 交付契约</a><a class="" href="changelog.html">范围变更与迁移</a><a class="" href="agents.html">编码 Agent 交接</a><a class="" href="sources.html">依据与决策来源</a><a class="" href="readme.html">使用与交接说明</a></nav></details><details class="toc" open><summary>本页目录</summary><a class="" href="#h2">1. 进入条件与实施策略</a><a class="" href="#h3">2. 工作包依赖总表</a><a class="" href="#h4">3. 逐包实施与完成检查</a><a class="sub" href="#m2-p01">M2-P01 · 迁移设计与M1数据基线</a><a class="sub" href="#m2-p02">M2-P02 · PDF来源对照与来源修订</a><a class="sub" href="#m2-p03">M2-P03 · 审校草稿与冲突控制</a><a class="sub" href="#m2-p04">M2-P04 · 术语表与影响分析</a><a class="sub" href="#m2-p05">M2-P05 · 局部重译候选与接受</a><a class="sub" href="#m2-p06">M2-P06 · 质量中心与辅助评审</a><a class="sub" href="#m2-p07">M2-P07 · 多语言edition与能力验收</a><a class="sub" href="#m2-p08">M2-P08 · 发布历史与回滚</a><a class="sub" href="#m2-p09">M2-P09 · 模板注册与批量零模型重建</a><a class="sub" href="#m2-p10">M2-P10 · 个人翻译记忆与删除语义</a><a class="sub" href="#m2-p11">M2-P11 · 全文检索和阅读定位</a><a class="sub" href="#m2-p12">M2-P12 · 版本导出与全生命周期</a><a class="sub" href="#m2-p13">M2-P13 · 端到端/性能/安全评审</a><a class="sub" href="#m2-p14">M2-P14 · M2退出门与交付</a><a class="" href="#h19">4. 数据迁移、故障与发布检查</a><a class="" href="#h20">5. 退出演示脚本</a><a class="" href="#h21">6. 编码 Agent 开始提示</a></details></aside><main class="content"><h1 id="h1">M2 实施 Plan · 个人校对、多语言和版本管理</h1>
+<p><strong>2026-09-07 用户补充：取消译文强制人工核对/确认。</strong> 段落确认、语义和术语问题核对均为可选；未确认或未处置的高风险提示不阻止封存、手动发布、自动发布或导出，提示及实际核对状态仍保留。缺段、数字/保护原子不一致、资源损坏等硬完整性问题和过期 QA 仍阻断。修改后只需重跑本地质量检查，不要求再次人工确认。此补充覆盖下文旧的强制核对表述；外发授权、未知请求风险处理及来源修正证据规则不变。</p>
+<p><strong>版本3.0 · 对应<a href="m2-spec.html">M2 Spec</a> · 所有工作包not_started</strong></p>
+<h2 id="h2">1. 进入条件与实施策略</h2>
+<p>M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用预留的M1数据库快照测试升级；没有新增多人协作范围。</p>
+<p>沿用既有设计和领域模型，先写退出测试，再按依赖实施。前端原型只提供交互参考，不将localStorage、固定译文或手动推进移植为正式后端。</p>
+<h2 id="h3">2. 工作包依赖总表</h2>
+<div aria-label="可横向滚动的数据表" class="tablewrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>工作包</th>
+<th>工作内容</th>
+<th>前置依赖</th>
+<th>工程人日估算</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M2-P01</td>
+<td>迁移设计与M1数据基线</td>
+<td>M1-P16</td>
+<td>2–3</td>
+</tr>
+<tr>
+<td>M2-P02</td>
+<td>PDF来源对照与来源修订</td>
+<td>M2-P01</td>
+<td>4–6</td>
+</tr>
+<tr>
+<td>M2-P03</td>
+<td>审校草稿与冲突控制</td>
+<td>M2-P01</td>
+<td>3–5</td>
+</tr>
+<tr>
+<td>M2-P04</td>
+<td>术语表与影响分析</td>
+<td>M2-P01</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>M2-P05</td>
+<td>局部重译候选与接受</td>
+<td>M2-P02, M2-P03, M2-P04</td>
+<td>3–5</td>
+</tr>
+<tr>
+<td>M2-P06</td>
+<td>质量中心与辅助评审</td>
+<td>M2-P03, M2-P04</td>
+<td>3–5</td>
+</tr>
+<tr>
+<td>M2-P07</td>
+<td>多语言edition与能力验收</td>
+<td>M2-P01, M2-P04, M2-P05</td>
+<td>3–5</td>
+</tr>
+<tr>
+<td>M2-P08</td>
+<td>发布历史与回滚</td>
+<td>M2-P03, M2-P06, M2-P07</td>
+<td>2–4</td>
+</tr>
+<tr>
+<td>M2-P09</td>
+<td>模板注册与批量零模型重建</td>
+<td>M2-P08</td>
+<td>2–3</td>
+</tr>
+<tr>
+<td>M2-P10</td>
+<td>个人翻译记忆与删除语义</td>
+<td>M2-P03, M2-P04, M2-P05</td>
+<td>2–4</td>
+</tr>
+<tr>
+<td>M2-P11</td>
+<td>全文检索和阅读定位</td>
+<td>M2-P08</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>M2-P12</td>
+<td>版本导出与全生命周期</td>
+<td>M2-P09, M2-P10, M2-P11</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>M2-P13</td>
+<td>端到端/性能/安全评审</td>
+<td>M2-P02, M2-P05, M2-P06, M2-P07, M2-P12</td>
+<td>3–5</td>
+</tr>
+<tr>
+<td>M2-P14</td>
+<td>M2退出门与交付</td>
+<td>M2-P13</td>
+<td>1–2</td>
+</tr>
+</tbody>
+</table></div>
+<p>顺序相加估算为37–59工程人日，是包括测试/修复的规划量级，不是AI运行时间、日历工期或承诺。可并行工作按依赖图安排；原文核对、真实Provider、镜像构建与环境限制会影响实际时间。需求中的职责可由同一维护者/编码Agent执行，不要求建立多人团队。</p>
+<h2 id="h4">3. 逐包实施与完成检查</h2>
+<h3 id="m2-p01">M2-P01 · 迁移设计与M1数据基线</h3>
+<p><strong>前置：</strong> M1-P16。 <strong>需求：</strong> M2-R02, M2-R09, M2-R20。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>migrations/004_editorial.sql</code></li>
+<li><code>docs/M2-migration.md</code></li>
+<li><code>tests/fixtures/m1_snapshot/</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>清点M1 source/draft/artifact/usage与未完成作业。</li>
+<li>为segment history、candidate、glossary、TM、index设计增量表，复用既有版本键。</li>
+<li>先扩展后切换，定义回滚与读取旧artifact不变。</li>
+</ol>
+<p><strong>完成检查：</strong> M1快照可升级/恢复，未执行Provider任务不会自动重发。</p>
+<p><strong>回归范围：</strong> M2-AT02A, M2-AT02B, M2-AT09A, M2-AT09B, M2-AT20A, M2-AT20B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p02">M2-P02 · PDF来源对照与来源修订</h3>
+<p><strong>前置：</strong> M2-P01。 <strong>需求：</strong> M2-R01, M2-R11, M2-R12。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>apps/web/features/source-review/</code></li>
+<li><code>packages/source_revisions/</code></li>
+<li><code>tests/browser/pdf-locator.spec.ts</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>实现本地PDF页图、高亮、旋转cropbox和跨页locator。</li>
+<li>有原件证据的拆并/顺序/机械提取修正生成新来源修订。</li>
+<li>explicit映射exact/moved/changed/split/merged与上下文失效，不支持DOM/TXT locator。</li>
+</ol>
+<p><strong>完成检查：</strong> 来源坐标真实、旧快照不变，无虚构证据。</p>
+<p><strong>回归范围：</strong> M2-AT01A, M2-AT01B, M2-AT11A, M2-AT11B, M2-AT12A, M2-AT12B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p03">M2-P03 · 审校草稿与冲突控制</h3>
+<p><strong>前置：</strong> M2-P01。 <strong>需求：</strong> M2-R02, M2-R06, M2-R13, M2-R14。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>apps/web/features/editor/</code></li>
+<li><code>packages/editorial/drafts.py</code></li>
+<li><code>tests/concurrency/test_edit_conflicts.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>逐段版本、If-Match、撤销为新版本，明确保存与人工确认不同。</li>
+<li>审校记录绑定source/target版本，任何修改使对应确认失效。</li>
+<li>版本diff区分源与译变化，冲突保留两方供手工处理。</li>
+</ol>
+<p><strong>完成检查：</strong> 多标签页/迟到自动结果不能覆盖手工编辑。</p>
+<p><strong>回归范围：</strong> M2-AT02A, M2-AT02B, M2-AT06A, M2-AT06B, M2-AT13A, M2-AT13B, M2-AT14A, M2-AT14B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p04">M2-P04 · 术语表与影响分析</h3>
+<p><strong>前置：</strong> M2-P01。 <strong>需求：</strong> M2-R03, M2-R04。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/glossaries/</code></li>
+<li><code>apps/web/features/glossary/</code></li>
+<li><code>tests/unit/test_term_matching.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>固定源/目标语言、词项变体、must/preferred/forbidden语义与优先级。</li>
+<li>产生不可变glossary revision，匹配规则包含英文边界和CJK子串。</li>
+<li>影响预览只挑选相关块，人工锁定块仅提示。</li>
+</ol>
+<p><strong>完成检查：</strong> 冲突可定位；术语更新不静默重写旧版本。</p>
+<p><strong>回归范围：</strong> M2-AT03A, M2-AT03B, M2-AT04A, M2-AT04B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p05">M2-P05 · 局部重译候选与接受</h3>
+<p><strong>前置：</strong> M2-P02, M2-P03, M2-P04。 <strong>需求：</strong> M2-R05, M2-R06, M2-R12, M2-R14。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/editorial/candidates.py</code></li>
+<li><code>apps/web/features/retranslation/</code></li>
+<li><code>tests/concurrency/test_candidate_merge.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>选择块/章节生成候选，不直接更改草稿，复用M1预算/Provider/任务。</li>
+<li>接受检查base target/source/context/glossary版本，保持reviewed块锁。</li>
+<li>源变化重用必须有映射证据，changed需重译。</li>
+</ol>
+<p><strong>完成检查：</strong> 100段重译2段时其余98段字节和审校状态不动。</p>
+<p><strong>回归范围：</strong> M2-AT05A, M2-AT05B, M2-AT06A, M2-AT06B, M2-AT12A, M2-AT12B, M2-AT14A, M2-AT14B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p06">M2-P06 · 质量中心与辅助评审</h3>
+<p><strong>前置：</strong> M2-P03, M2-P04。 <strong>需求：</strong> M2-R07, M2-R08。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/quality/issues.py</code></li>
+<li><code>packages/review_provider/</code></li>
+<li><code>apps/web/features/quality/</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>issues绑定QA指纹和证据，硬阻断无ignore，warnings有理由接受。</li>
+<li>可选独立语义评审采用同一外发确认和预算管线，不直接写译文。</li>
+<li>评审失败/未跑明确显示，检验否定/限定词/比较关系fixture。</li>
+</ol>
+<p><strong>完成检查：</strong> 改变草稿后QA必过期；模型评分不会变人工通过。</p>
+<p><strong>回归范围：</strong> M2-AT07A, M2-AT07B, M2-AT08A, M2-AT08B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p07">M2-P07 · 多语言edition与能力验收</h3>
+<p><strong>前置：</strong> M2-P01, M2-P04, M2-P05。 <strong>需求：</strong> M2-R09, M2-R10。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>apps/web/features/editions/</code></li>
+<li><code>packages/locales/</code></li>
+<li><code>.agent/tmp/reports/M2-language-matrix.md</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>规范化locale保留脚本差异，新增版复用source。</li>
+<li>按locale绑定current artifact和任务，所有语言组合均可直接选择，名称使用各自语言。</li>
+<li>对ja/de/zh-Hant准备人工审校样本，未知质量不保证。</li>
+</ol>
+<p><strong>完成检查：</strong> 新增日文版不重新解析或覆盖中文；任意语言不受能力矩阵限制，仍执行普通外发确认与质量检查。</p>
+<p><strong>回归范围：</strong> M2-AT09A, M2-AT09B, M2-AT10A, M2-AT10B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p08">M2-P08 · 发布历史与回滚</h3>
+<p><strong>前置：</strong> M2-P03, M2-P06, M2-P07。 <strong>需求：</strong> M2-R13, M2-R15。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/publisher/history.py</code></li>
+<li><code>apps/web/features/history/</code></li>
+<li><code>tests/concurrency/test_publish_rollback.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>封存特定draft/QA/template并使用单调generation CAS。</li>
+<li>实现版本对比、同locale完整artifact回滚和事件历史。</li>
+<li>增加ABA/回滚与删除并发/QA过期/跨语言负测试。</li>
+</ol>
+<p><strong>完成检查：</strong> A→B→A回滚不复用旧generation，不修改A/B任何字节。</p>
+<p><strong>回归范围：</strong> M2-AT13A, M2-AT13B, M2-AT15A, M2-AT15B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p09">M2-P09 · 模板注册与批量零模型重建</h3>
+<p><strong>前置：</strong> M2-P08。 <strong>需求：</strong> M2-R16。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/templates/registry.py</code></li>
+<li><code>packages/publisher/rebuild.py</code></li>
+<li><code>tests/integration/test_zero_model_rebuild.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>模板安全审查与内容能力声明，CSS hash版本化。</li>
+<li>预览单篇再队列批量；每篇独立CAS/错误，不隐式切换全部。</li>
+<li>加Provider调用计数拦截和旧制品hash断言。</li>
+</ol>
+<p><strong>完成检查：</strong> 仅改模板20篇重建的模型调用严格为零。</p>
+<p><strong>回归范围：</strong> M2-AT16A, M2-AT16B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p10">M2-P10 · 个人翻译记忆与删除语义</h3>
+<p><strong>前置：</strong> M2-P03, M2-P04, M2-P05。 <strong>需求：</strong> M2-R17。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/translation_memory/</code></li>
+<li><code>apps/web/features/memory/</code></li>
+<li><code>tests/integration/test_memory_lifecycle.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>人工核对结果显式另存，记录来源/语境/审校证据；无用户字段。</li>
+<li>近似推荐显示差异而非自动发布；机器精确缓存独立。</li>
+<li>默认随来源删除，明确选择独立保留的个人条目例外并可再次删除。</li>
+</ol>
+<p><strong>完成检查：</strong> 语境变化不误复用，删除及旧候选不能复活内容。</p>
+<p><strong>回归范围：</strong> M2-AT17A, M2-AT17B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p11">M2-P11 · 全文检索和阅读定位</h3>
+<p><strong>前置：</strong> M2-P08。 <strong>需求：</strong> M2-R18。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/search/</code></li>
+<li><code>apps/web/features/search/</code></li>
+<li><code>tests/security/test_search_generations.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>索引仅当前已发布源/译块，按字面子串语义实现CJK与英文。</li>
+<li>发布outbox驱动generation索引，返回前核对当前指针/删除状态；无ACL或用户条件。</li>
+<li>命中锚定artifact+block，阅读进度按版本存储和可解释迁移。</li>
+</ol>
+<p><strong>完成检查：</strong> 没有过期/删除内容泄露，读者不会被带到另一个语义段落。</p>
+<p><strong>回归范围：</strong> M2-AT18A, M2-AT18B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p12">M2-P12 · 版本导出与全生命周期</h3>
+<p><strong>前置：</strong> M2-P09, M2-P10, M2-P11。 <strong>需求：</strong> M2-R19, M2-R20。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>packages/exporter/project_backup.py</code></li>
+<li><code>ops/M2-retention.md</code></li>
+<li><code>tests/integration/test_m2_restore.py</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>精确artifact导出与Compose实例备份分开，验证manifest；无Web ZIP/JSON恢复入口。</li>
+<li>扩展tombstone/GC到candidate/glossary引用/TM/index/export。</li>
+<li>升级/恢复与删除竞态再演练，处理未知账单。</li>
+</ol>
+<p><strong>完成检查：</strong> 旧版可离线读；被删文档在线所有派生资源不可访问。</p>
+<p><strong>回归范围：</strong> M2-AT19A, M2-AT19B, M2-AT20A, M2-AT20B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p13">M2-P13 · 端到端/性能/安全评审</h3>
+<p><strong>前置：</strong> M2-P02, M2-P05, M2-P06, M2-P07, M2-P12。 <strong>需求：</strong> M2-R01, M2-R05, M2-R07, M2-R08, M2-R09, M2-R14, M2-R15, M2-R16, M2-R18, M2-R20, M2-R21。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>.agent/tmp/reports/M2-editorial-e2e.md</code></li>
+<li><code>.agent/tmp/reports/M2-security.md</code></li>
+<li><code>.agent/tmp/reports/M2-performance.md</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>执行真实源修正→局部重译→人工确认→多语言→模板重建→回滚→导出。</li>
+<li>故障注入及跨文档引用、过期索引、删除、多标签页冲突回归；无跨账户测试。</li>
+<li>独立核查质量评分和状态没有伪通过，补充桌面/手机视觉证据。</li>
+</ol>
+<p><strong>完成检查：</strong> 全部M0/M1/M2回归都有证据，不以演示替代真实流水。</p>
+<p><strong>回归范围：</strong> M2-AT01A, M2-AT01B, M2-AT05A, M2-AT05B, M2-AT07A, M2-AT07B, M2-AT08A, M2-AT08B, M2-AT09A, M2-AT09B, M2-AT14A, M2-AT14B, M2-AT15A, M2-AT15B, M2-AT16A, M2-AT16B, M2-AT18A, M2-AT18B, M2-AT20A, M2-AT20B, M2-AT21A, M2-AT21B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h3 id="m2-p14">M2-P14 · M2退出门与交付</h3>
+<p><strong>前置：</strong> M2-P13。 <strong>需求：</strong> M2-R01, M2-R02, M2-R03, M2-R04, M2-R05, M2-R06, M2-R07, M2-R08, M2-R09, M2-R10, M2-R11, M2-R12, M2-R13, M2-R14, M2-R15, M2-R16, M2-R17, M2-R18, M2-R19, M2-R20, M2-R21。</p>
+<p><strong>产出代码/文件位置（待实现，不是本包已提供模块）：</strong></p>
+<ul>
+<li><code>.agent/tmp/reports/M2-exit.md</code></li>
+<li><code>.agent/tmp/reports/M2-evidence.json</code></li>
+<li><code>ops/release.md</code></li>
+</ul>
+<p><strong>步骤：</strong></p>
+<ol>
+<li>对照每条需求、AT、任务和gate检查无遗漏。</li>
+<li>确认OCR/其他格式/登录/团队/反代部署没有重新进入范围。</li>
+<li>冻结release manifest和恢复手册，说明限制与后续独立决策。</li>
+</ol>
+<p><strong>完成检查：</strong> 所有硬门通过且review sign-off可追溯，未执行一律不冒充完成。</p>
+<p><strong>回归范围：</strong> M2-AT01A, M2-AT01B, M2-AT02A, M2-AT02B, M2-AT03A, M2-AT03B, M2-AT04A, M2-AT04B, M2-AT05A, M2-AT05B, M2-AT06A, M2-AT06B, M2-AT07A, M2-AT07B, M2-AT08A, M2-AT08B, M2-AT09A, M2-AT09B, M2-AT10A, M2-AT10B, M2-AT11A, M2-AT11B, M2-AT12A, M2-AT12B, M2-AT13A, M2-AT13B, M2-AT14A, M2-AT14B, M2-AT15A, M2-AT15B, M2-AT16A, M2-AT16B, M2-AT17A, M2-AT17B, M2-AT18A, M2-AT18B, M2-AT19A, M2-AT19B, M2-AT20A, M2-AT20B, M2-AT21A, M2-AT21B。保存命令、commit、测试输出、必要截图/日志与失败记录；成功声明必须关联证据路径。</p>
+<h2 id="h19">4. 数据迁移、故障与发布检查</h2>
+<p>M2先在上阶段快照上演练升级：保留原件/封存IR/产物hash，增加表而不改写历史版本。恢复先暂停外发，outcome_unknown不能当pending重发。</p>
+<p>每次正式候选发布需要所有本地依赖镜像就绪，Docker-only冷启成功、parser无运行期下载、单端口无反代、无身份页面/接口/数据表。环境缺失的Docker或真实模型测试标blocked，不能以YAML解析或FakeProvider代替。</p>
+<h2 id="h20">5. 退出演示脚本</h2>
+<p>在100段fixture仅重译2段，其余98段内容/确认记录不变；在候选运行时修改一段触发冲突。增加日语版不重解析；20篇换模板Provider调用0；A→B→A回滚generation递增；旧版离线导出和M1→M2恢复通过。</p>
+<p>对每个gate提供：关联需求/AT、运行环境、实际结果、证据路径、已知限制、决定。角色标签是实施职责，不是产品账号。保持不支持功能的测试为明确拒绝，而非悄悄接受。</p>
+<h2 id="h21">6. 编码 Agent 开始提示</h2>
+<pre><code class="language-text">实施对照文库 v3 的 M2。先完整读取 00-product-baseline.md、shared/*、deployment/compose-contract.md、milestones/M2-spec.md 和本Plan；以最新五条用户约束为最高优先级。
+检查实际代码和上阶段证据，先为 M2 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
+只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
+保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。
+原型功能不等于生产实现。所有报告区分已运行、未运行和环境阻塞；禁止将mock测试当真实模型/Compose验收。
+完成一个工作包后保存代码、测试与证据再更新状态；跨包条件未满足不标完成。需要密钥或测试预算时报告精确阻塞，不跳过退出门。
+</code></pre>
+<footer class="foot">规格包 v3.0 · 2026-09-06 · 产品与计划尚待实施。所有内容已写入本地HTML，无需联网阅读。</footer></main></div><script>(()=>{const r=document.documentElement;try{r.dataset.theme=localStorage.getItem('spec-theme')||'light'}catch{}document.querySelectorAll('button[data-theme]').forEach(b=>b.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('spec-theme',r.dataset.theme)}catch{}}));document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>print()));if(innerWidth<780){const m=document.querySelector('.docmenu');if(m)m.removeAttribute('open');const t=document.querySelector('.toc');if(t)t.removeAttribute('open')}})();</script></body></html>

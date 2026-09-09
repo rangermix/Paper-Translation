@@ -1,0 +1,58 @@
+# Docker Compose deployment
+
+Production uses `deployment/compose.production.yaml`; the root Compose file is
+the historical prototype. Run these commands from the project root. Only Docker
+Engine and Compose are required on the deployment host.
+
+An existing pre-release instance using PostgreSQL15-bookworm must first follow
+the fresh-project backup/restore upgrade in `ops/restore.md`. Do not run these
+new default startup commands against its original PostgreSQL volume: the base
+distribution and libc/collation version changed. The final default is the pinned
+PostgreSQL15-trixie base verified with fresh-volume restore. The database image
+is built from that fixed base with build-time security updates, always runs as
+uid999, and omits the unused root-only `gosu` binary. `DATABASE_IMAGE` can select
+an already built immutable database image; offline startup never downloads it.
+
+```powershell
+docker compose -f deployment/compose.production.yaml build app parser db
+docker compose -f deployment/compose.production.yaml up -d --wait
+docker compose -f deployment/compose.production.yaml ps
+```
+
+Open `http://127.0.0.1:8080`. There is no registration, account, owner or login.
+Setting `PORT` changes the published port and the default allowed localhost/
+127.0.0.1 browser origins together. An explicit `APP_ORIGINS` overrides those
+derived values when custom hostnames are required.
+Every client that can reach this port can modify the library. The default port
+binds loopback; no reverse proxy is included. PostgreSQL has no host port. The
+separate `deployment/compose.test.yaml` exposes an isolated test database and must
+never be merged into production.
+
+Builds fetch dependencies and the pinned Docling models inside Docker. Runtime
+containers never install packages or models. The parser has no network and no
+database or Provider secret. Missing model assets fail readiness. Use
+`docker compose -f deployment/compose.production.yaml logs --tail 100` to inspect
+failures; do not paste credentials or document content into reports.
+
+The default Provider profile is `{}` and the mounted key file is empty. The app
+can save/read PDFs with no model configuration. Paid processing stays blocked
+until a fixed official OpenAI profile, prices and worker-only secret are provided,
+then confirmed with a budget for the specific content. Never put the key in the
+frontend, PDF parser, source IR, image, URL or command arguments. Versioned profile
+changes require renewed authorization. Extra M2 language pairs remain disabled
+until their controlled samples have evidence of verification.
+
+Source builds are development candidates until the acceptance report, image
+digests, dependency/model hashes, SBOM/licenses, vulnerability report and restore
+exercise have all been verified. A successful `config` or image build alone does
+not satisfy the release gates. Evidence lives in `.agent/tmp/evidence/`; incomplete gates
+remain visible in `.agent/IMPLEMENTATION_STATUS.md`.
+
+Stop without deleting the data:
+
+```powershell
+docker compose -f deployment/compose.production.yaml down
+```
+
+Do not append `--volumes` to the production stop command: that deletes the library
+volumes. A fresh-instance or recovery test must use its own Compose project name.

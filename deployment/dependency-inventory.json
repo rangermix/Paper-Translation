@@ -1,0 +1,84 @@
+{
+  "version": "3.0",
+  "status": "design_inventory_not_release_lock",
+  "host_prerequisites": [
+    "Docker Engine",
+    "Docker Compose v2"
+  ],
+  "runtime_installs_allowed": false,
+  "external_translation_service_bundled": false,
+  "dependencies": [
+    {
+      "name": "Frontend bundle (React, TypeScript, Vite build output)",
+      "image": "app",
+      "first_phase": "M0",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "Build-time Node and locked npm packages; no browser CDN"
+    },
+    {
+      "name": "Python, FastAPI, database driver, migrations, schema/template packages",
+      "image": "app/worker",
+      "first_phase": "M0",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "Pinned dependency closure, no startup installation"
+    },
+    {
+      "name": "PostgreSQL server and compatible backup client",
+      "image": "db/maintenance",
+      "first_phase": "M0",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "In Compose; actual major and data directory verified on release"
+    },
+    {
+      "name": "PDF inspector and native decoding/rendering/image libraries",
+      "image": "parser",
+      "first_phase": "M0",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "All system libs present; no host binary dependency"
+    },
+    {
+      "name": "Docling and enabled layout/table model assets",
+      "image": "parser",
+      "first_phase": "M1",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "Pinned revisions + per-file hashes; artifacts_path local, OCR disabled"
+    },
+    {
+      "name": "Provider SDK/HTTP client and tokenizer",
+      "image": "worker",
+      "first_phase": "M1",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "SDK retries disabled; tokens/pricing verified per profile"
+    },
+    {
+      "name": "Static templates and math build assets",
+      "image": "worker/app",
+      "first_phase": "M0",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "reader-v1 CSS hash fixed; licenses verified"
+    },
+    {
+      "name": "Runtime browser safety and test toolchains",
+      "image": "test image",
+      "first_phase": "M0",
+      "version": null,
+      "digest_or_hash": null,
+      "status": "must_lock_during_implementation",
+      "notes": "CI/test-only; users do not install Playwright/Node/Python"
+    }
+  ]
+}

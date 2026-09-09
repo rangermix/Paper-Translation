@@ -1,0 +1,18 @@
+# Explicit acceptance-only override: fresh named volumes, no outbound network.
+# Use -p bilingual-offline-acceptance and security-upgrade candidate image vars.
+services:
+  db:
+    image: "${DATABASE_IMAGE:-bilingual-personal-pdf-db:acceptance-candidate}"
+  app:
+    volumes:
+      - ../harness:/harness:ro
+      - ../.agent/tmp/evidence/offline-compose:/evidence
+  maintenance:
+    volumes:
+      - ../harness:/harness:ro
+      - ../.agent/tmp/evidence/offline-compose:/evidence
+networks:
+  http:
+    internal: true
+  provider_egress:
+    internal: true

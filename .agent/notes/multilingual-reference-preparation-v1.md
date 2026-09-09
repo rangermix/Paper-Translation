@@ -1,0 +1,7 @@
+Reference-only preparation completed by `/root/ir_publisher_parser`, 2026-09-06. Tracked source fingerprint remains `d99e5795269d6638306f897d964ba3e9d048af712796ec2390850a0f2041b7a6`.
+
+`evidence/live-provider-closure-scope/multilingual-reference-v1.json` contains agent-authored EN→ja/de/zh-Hant reference text and meaning-based criteria for all four controlled-en blocks. SHA256 `989621410836acfde7d45df17d558af3234bd96829892aee72b1d5ccad630620`; accompanying `.md` explains the limits. Original manifest SHA `b92ca3816e9f7ea1a28319b96a0c5a74ff3d4c6f436f2248600a3b6d89da2790` and PDF SHA `16601b66faeaea415f9052d1bb8a5af4bf684144586ad067fcf5de664abc685d` were independently recomputed and unchanged. Parse result/page/M2spec hashes and original block locators are included.
+
+Reference criteria preserve64tokens/oneprotectedref, prohibit a second request when the first outcome isunknown, do not substitute failed forunknown, and distinguish lack of proof of universal safety from universal unsafety. Natural semantically equivalent wording is allowed; neither exact-reference matching nor Provider self-score is an acceptance gate.
+
+No Provider request, secret read, product settings change or live language certification occurred. Each target certification remains `not_run`; actual authorized responses/costs/output hashes and independent semantic review are still required. `/root/web_ui` was assigned independent source/reference review and should write a separate version-bound report, leaving this v1 immutable.

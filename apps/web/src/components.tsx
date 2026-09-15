@@ -52,10 +52,10 @@ export function Issues({ issues, checkState, onNavigate, onResolve, resolveDisab
     return <li key={issue.id ?? i} className={`issue ${important ? 'important' : issue.severity}`}>{issue.severity === 'info' ? <details><summary>{issue.message ?? label}</summary>{content}</details> : content}</li>;
   })}</ul>;
 }
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function Modal({ title, children, onClose, busy = false }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); const el = ref.current; return () => el?.close(); }, []);
-  return <dialog ref={ref} aria-label={title} onCancel={onClose}><div className="stack between"><h2>{title}</h2><button className="icon-btn" type="button" aria-label="关闭" onClick={onClose}><Icon name="close"/></button></div>{children}</dialog>;
+  return <dialog ref={ref} aria-label={title} aria-busy={busy} onCancel={event => { if (busy) event.preventDefault(); else onClose(); }}><div className="stack between"><h2>{title}</h2><button className="icon-btn" type="button" aria-label="关闭" disabled={busy} onClick={onClose}><Icon name="close"/></button></div>{children}</dialog>;
 }
 export function PdfLocator({ documentId, originalUrl, locators = [] }: { documentId: string; originalUrl?: string; locators?: Locator[] }) {
   const [failed, setFailed] = useState<Record<string, boolean>>({});

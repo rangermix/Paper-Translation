@@ -31,3 +31,12 @@
 ## Validation boundary
 
 Use synthetic local jobs and an isolated database; no real model calls or production history clearing. Preserve published artifacts and provider configuration. A build/test result does not claim a production rollout.
+
+## Verified outcome
+
+- Backend checkpoint `16c8331`: 44 focused PostgreSQL tests passed, including schema upgrades, retained evidence, lifecycle/queue and billing regressions. Restored the registered CRLF bytes of migration 12 and protected them with its own Git attribute; all 13 staged migration checksums match.
+- Frontend: 18 unit tests, TypeScript/Vite build, and 33 Playwright checks passed. Desktop and mobile confirmation, cancellation, empty/error states, filters, pagination, and retained-history viewing were exercised. Browser plugin was absent; the repository Playwright runner was used.
+- Independent review identified and verified the pending-dismiss fix: cancel, close, and Escape cannot dismiss a submitted clear operation. Other dialogs retain their default behavior.
+- Built UI at isolated `127.0.0.1:18194` used the real HTTP API and Compose PostgreSQL: three finished jobs cleared, running and unknown jobs remained, refresh preserved visibility, and logs/original PDF remained readable. No external provider calls or production data clearing occurred.
+- Evidence: `.agent/tmp/clear-task-history-20260915/backend-2.xml`, `browser-final/browser-results.json`, `frontend-unit.log`, `frontend-build.log`, and `live-1789479100295/live-result.json`. Initial failing tests and intermediate harness failures are retained separately.
+- Production rollout was not performed. The running 8080 instance still returned 404 for the new history endpoint at verification time; upgrade app/worker and apply schema 13 to expose the feature there.

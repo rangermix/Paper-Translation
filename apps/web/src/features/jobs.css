@@ -1,6 +1,7 @@
 .job-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
 .job-toolbar .searchbox{max-width:440px;min-width:0}
 .job-toolbar>.small{white-space:nowrap}
+.job-history-controls{margin-bottom:16px;gap:12px;flex-wrap:wrap}
 .job-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
 .job-filters button{border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font-size:13px;line-height:1.5;padding:8px 13px;min-height:38px}
 .job-filters button:hover{color:var(--ink);background:var(--paper)}

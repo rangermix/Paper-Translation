@@ -67,12 +67,26 @@ def assert_current(session, lease, *, allow_paused=False):
     # Includes index/cache FK insertion: it can implicitly lock Document even
     # when no explicit get_document(lock=True) appears in the worker code.
     lock_lifecycle(session)
-    job = session.scalar(select(Job).where(Job.id == lease.job_id).with_for_update())
-    task = session.scalar(select(Task).where(Task.id == lease.task_id).with_for_update())
-    require(job and task and task.fence == lease.fence and task.status == 'leased' and task.lease_expires > now(), 'FENCE_EXPIRED')
+    job = session.scalar(select(Job).where(Job.id == lease.job_id).with_for_update().execution_options(populate_existing=True))
+    task = session.scalar(select(Task).where(Task.id == lease.task_id).with_for_update().execution_options(populate_existing=True))
+    # Once a live lease is checked under these locks, no other transaction can
+    # renew, reclaim or cancel it until commit/rollback. Local result validation
+    # can exceed the lease duration while holding the locks. Rechecking wall
+    # time at finish would reject our own commit and repeatedly redo inference.
+    # Bind this proof to the exact transaction/savepoint that owns the locks;
+    # a later transaction (or a rolled-back savepoint) must check expiry again.
+    transaction = session.get_nested_transaction() or session.get_transaction()
+    checked_transaction, checked = session.info.get('locked_leases', (None, set()))
+    if checked_transaction is not transaction:
+        checked = set()
+    identity = (lease.job_id, lease.task_id, lease.attempt_id, lease.fence, lease.control_epoch)
+    require(job and task and task.fence == lease.fence and task.status == 'leased'
+        and (identity in checked or task.lease_expires > now()), 'FENCE_EXPIRED')
     require(job.control_epoch == lease.control_epoch and job.status in (('running', 'paused') if allow_paused else ('running',)), 'CONTROL_CHANGED')
     if job.document_id and task.kind != 'cleanup':
         get_document(session, job.document_id)
+    checked.add(identity)
+    session.info['locked_leases'] = (transaction, checked)
     return job, task
 
 

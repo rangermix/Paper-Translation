@@ -27,6 +27,9 @@ def test_profile(profile):
 
 def provider_for(profile):
     endpoint, protocol, auth_mode, key_file = resolve_provider_credentials(profile)
+    if protocol == 'local_translation':
+        from .local_translation import LocalTranslation
+        return LocalTranslation()
     if protocol in ('gemini_interactions', 'claude_messages'):
         return NativeProvider(profile, key_file, timeout=30)
     return OpenAIResponses(key_file, endpoint=endpoint, api_protocol=protocol, auth_mode=auth_mode, timeout=30)
@@ -79,6 +82,13 @@ def execute_test(db, cfg, lease):
         bounded = test_profile(profile)
         request_body([TEST_UNIT], bounded, [])
         provider = provider_for(profile)
+        if profile.get('api_protocol') == 'local_translation':
+            def check_current():
+                with db.transaction() as session:
+                    assert_current(session, lease)
+                if provider_profile() != profile:
+                    raise ProviderFailure('PROVIDER_PROFILE_STALE', 'not_sent')
+            provider.prepare(profile, check_current)
     except (ProviderFailure, ValueError):
         stop('PROVIDER_CONFIG'); return
     try:

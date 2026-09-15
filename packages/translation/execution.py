@@ -132,7 +132,7 @@ def retry_or_stop(db,lease,failure,cfg=None):
             task.status=job.status='outcome_unknown'
         elif failure.code in {'PROVIDER_CONFIG','PROVIDER_UNSUPPORTED_RESPONSE'}:
             task.status='failed';job.status='waiting_config'
-        elif failure.code == 'PROVIDER_REFUSAL':
+        elif failure.code in {'PROVIDER_REFUSAL', 'UNIT_TOO_LARGE'}:
             task.status='failed';job.status='pending'
         elif failure.outcome in {'not_sent','not_executed'} and task.attempts<3:
             task.status=job.status='pending';task.available_at=now()+timedelta(seconds=max(failure.retry_after,min(2**task.attempts,30)))
@@ -233,13 +233,23 @@ def execute_translation(db,cfg,lease,provider=None):
         commit_unit(db,cfg,lease,unit,cached_nodes,key,profile,cache_hit=True);return
     if checkpoint is not None:
         commit_unit(db,cfg,lease,unit,checkpoint[0],key,profile,origin_attempt_id=checkpoint[1]);return
+    managed_provider = provider is None
     if provider is None:
         # Deployment changes invalidate the confirmed profile; a test double must be injected explicitly.
         if provider_profile()!=public_profile(profile):
             wait_without_dispatch(db,lease,'PROVIDER_PROFILE_STALE');return
         try:
             endpoint,protocol,auth_mode,key_file=resolve_provider_credentials(profile)
-            if protocol in ('gemini_interactions','claude_messages'):
+            if protocol == 'local_translation':
+                from packages.providers.local_translation import LocalTranslation
+                provider=LocalTranslation()
+                def check_current():
+                    with db.transaction() as session:
+                        assert_current(session,lease)
+                    if provider_profile()!=public_profile(profile):
+                        raise ProviderFailure('PROVIDER_PROFILE_STALE','not_sent')
+                provider.prepare(profile,check_current)
+            elif protocol in ('gemini_interactions','claude_messages'):
                 provider=NativeProvider(profile,key_file)
             elif not {'endpoint','api_protocol','auth_mode'} & profile.keys():
                 # Preserve the explicitly configured legacy deployment contract.
@@ -251,12 +261,16 @@ def execute_translation(db,cfg,lease,provider=None):
     try:
         request_body([unit],profile,glossary,review=lease.kind=='semantic_review')
         with db.transaction() as session:
+            if managed_provider and profile.get('api_protocol')=='local_translation' and provider_profile()!=public_profile(profile):
+                raise ProviderFailure('PROVIDER_PROFILE_STALE','not_sent')
             authorize(session,lease,reserve_cost(profile),profile.get('price'))
             job=session.get(Job,lease.job_id);job.progress=job.progress|{'requests':job.progress.get('requests',0)+1};emit(session,job)
     except DomainError as exc:
         if exc.code in {'BUDGET_PAUSED','INSTANCE_CONCURRENCY_LIMIT','DISPATCH_DISABLED'}:wait_without_dispatch(db,lease,exc.code);return
         raise
     except (ValueError,ProviderFailure) as exc:
+        if profile.get('api_protocol')=='local_translation' and getattr(exc,'code',None)=='UNIT_TOO_LARGE':
+            retry_or_stop(db,lease,exc,cfg);return
         wait_without_dispatch(db,lease,getattr(exc,'code','PROVIDER_CONFIG'));return
     try:
         from packages.jobs.history import record_api_model

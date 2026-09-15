@@ -83,6 +83,21 @@ def managed_profile():
     return _bundle(root, pointer['revision']) if pointer else None
 
 
+def previous_external(root, identifier):
+    visited = set()
+    while identifier:
+        if identifier in visited:
+            raise ValueError('PROVIDER_CONFIG_STORAGE')
+        visited.add(identifier)
+        profile = _bundle(root, identifier)
+        if profile.get('api_protocol') != 'local_translation':
+            return profile
+        identifier = _read(_revision(root, identifier) / 'operation.json')['previous_revision']
+    from packages.domain.config import external_provider_profile
+    legacy = external_provider_profile()
+    return legacy if legacy.get('configured') and legacy.get('api_protocol') != 'local_translation' else None
+
+
 def _key_present(path):
     if path.is_symlink():
         raise ValueError('PROVIDER_CONFIG_STORAGE')
@@ -115,6 +130,7 @@ def configuration_view():
         profile = _bundle(root, pointer['revision'])
         present = _key_present(_revision(root, pointer['revision']) / 'key')
         return {**profile, 'profile_hash': digest(profile), 'generation': pointer['generation'],
+                **({'previous_external': previous_external(root, pointer['revision'])} if profile.get('api_protocol') == 'local_translation' else {}),
                 'has_api_key': present, 'credential_status': 'stored' if present else 'missing', 'config_source': 'managed',
                 **_availability(profile, present), **_display_defaults(profile)}
     profile = external_provider_profile()
@@ -221,6 +237,8 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
         raise DomainError('PROVIDER_CONFIG_INVALID', status=422) from None
     require(type(clear_api_key) is bool and (api_key is None or isinstance(api_key, str)), 'REQUEST_INVALID', status=422)
     key = (api_key or '').strip()
+    local = profile['api_protocol'] == 'local_translation'
+    require(not (local and (key or clear_api_key)), 'LOCAL_MODEL_NO_CREDENTIALS', status=422)
     require(len(key) <= 8192 and all(33 <= ord(c) < 127 for c in key), 'PROVIDER_KEY_INVALID', status=422)
     require(not (key and clear_api_key), 'PROVIDER_KEY_ACTION_CONFLICT', status=422)
     root = config_root()
@@ -245,6 +263,7 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
                 old_profile = _bundle(root, cursor)
                 present = _key_present(_revision(root, cursor) / 'key')
                 return {**old_profile, 'profile_hash': digest(old_profile), 'generation': operation['generation'],
+                        **({'previous_external': previous_external(root, cursor)} if old_profile.get('api_protocol') == 'local_translation' else {}),
                         'has_api_key': present, 'credential_status': 'stored' if present else 'missing', 'config_source': 'managed',
                         **_availability(old_profile, present), **_display_defaults(old_profile)}
             cursor = operation['previous_revision']
@@ -259,17 +278,23 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
             profile.setdefault(name, old.get(name, default))
         profile = validate_public_profile(profile, allow_incomplete=True)
         old_key_path = (_revision(root, pointer['revision']) / 'key') if pointer else Path(os.environ.get('PROVIDER_KEY_FILE', '/run/secrets/provider_key'))
-        if not clear_api_key and not key and (pointer or old.get('configured')):
+        key_source = old
+        if not local and old.get('api_protocol') == 'local_translation' and pointer:
+            prior = previous_external(root, pointer['revision'])
+            if prior:
+                key_source = prior
+                old_key_path = (_revision(root, prior['config_revision']) / 'key') if prior.get('config_revision') else Path(os.environ.get('PROVIDER_KEY_FILE', '/run/secrets/provider_key'))
+        if not local and not clear_api_key and not key and (pointer or old.get('configured')):
             present = _key_present(old_key_path)
             if pointer is None and old.get('auth_mode', 'bearer') != 'none':
                 require(_key_present(old_key_path), 'PROVIDER_KEY_REQUIRED')
             if present:
-                require((old.get('endpoint', '' if pointer else DEFAULT_ENDPOINT), old.get('api_protocol', 'responses'), old.get('auth_mode', 'bearer')) ==
+                require((key_source.get('endpoint', '' if key_source.get('config_revision') else DEFAULT_ENDPOINT), key_source.get('api_protocol', 'responses'), key_source.get('auth_mode', 'bearer')) ==
                         (profile.get('endpoint', ''), profile['api_protocol'], profile['auth_mode']), 'PROVIDER_KEY_REBIND_REQUIRED')
                 key = old_key_path.read_text('utf-8').strip()
                 require(len(key) <= 8192 and all(33 <= ord(c) < 127 for c in key), 'PROVIDER_KEY_INVALID', status=422)
         identifier = uuid.uuid4().hex
-        credential = old.get('credential_revision') if not clear_api_key and not (api_key or '').strip() and pointer else uuid.uuid4().hex
+        credential = (key_source.get('credential_revision') or uuid.uuid4().hex) if not local and not clear_api_key and not (api_key or '').strip() and pointer else uuid.uuid4().hex
         new_profile = {**profile, 'config_revision': identifier, 'credential_revision': credential}
         versions = root / 'versions'
         if versions.is_symlink():
@@ -290,6 +315,7 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
         _fsync_dir(root)
         present = bool(key and not clear_api_key)
         return {**new_profile, 'profile_hash': digest(new_profile), 'generation': generation + 1,
+                **({'previous_external': previous_external(root, identifier)} if local else {}),
                 'has_api_key': present, 'credential_status': 'stored' if present else 'missing', 'config_source': 'managed',
                 **_availability(new_profile, present), **_display_defaults(new_profile)}
 

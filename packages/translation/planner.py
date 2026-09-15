@@ -12,6 +12,13 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
     selected=set(block_ids) if block_ids else None
     all_blocks=source['blocks'];by={b['id']:b for b in all_blocks};atoms=source['protected_atoms'];units=[]
     limit=profile.get('max_unit_characters',2000)
+    if profile.get('api_protocol') == 'local_translation':
+        from packages.local_models.catalog import get_model
+        model = get_model(profile['model_id'])
+        available = min(profile['max_input_tokens'], model['context_size'] - min(profile['max_output_tokens'], 2048))
+        limit = min(limit, max(1, (available - 2048) // 4))
+    def atom_size(atom):
+        return max(len(atom['value']), 32) if profile.get('api_protocol') == 'local_translation' else len(atom['value'])
     for index,block in enumerate(all_blocks):
         if selected is not None and block['id'] not in selected:continue
         if not block['translatable'] or block['language']==target_locale:continue
@@ -26,7 +33,7 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
             else:
                 ref=f'link-{node_index}';value=node.get('text',node.get('label',''))
                 normalized.append({'type':'protected_ref','ref':ref});local_atoms[ref]={'kind':'citation','value':value};restore[ref]=deepcopy(node)
-        if nonblocking and any(len(atom['value']) > limit for atom in local_atoms.values()):
+        if nonblocking and any(atom_size(atom) > limit for atom in local_atoms.values()):
             # Never split or rewrite an indivisible source atom to satisfy a
             # provider limit. Other blocks proceed; this one retains its source.
             continue
@@ -34,9 +41,10 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
         for node in normalized:
             text=node.get('text') if node['type']=='text' else local_atoms[node['ref']]['value']
             if node['type']=='protected_ref':
-                if len(text)>limit:raise ValueError('UNIT_TOO_LARGE')
-                if current and size+len(text)>limit:batches.append(current);current=[];size=0
-                current.append(node);size+=len(text)
+                width=atom_size(local_atoms[node['ref']])
+                if width>limit:raise ValueError('UNIT_TOO_LARGE')
+                if current and size+width>limit:batches.append(current);current=[];size=0
+                current.append(node);size+=width
             else:
                 while text:
                     free=limit-size

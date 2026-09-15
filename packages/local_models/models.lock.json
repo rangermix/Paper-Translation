@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "hy-mt2-1.8b-q8",
+      "label": "Hy-MT2-1.8B Q8",
+      "family": "hy",
+      "bits": 8,
+      "runtime": "mlx",
+      "format": "safetensors",
+      "repo": "mlx-community/Hy-MT2-1.8B-8bit",
+      "revision": "f54bb3b8885363fd8b83d63d50b50a12a138321f",
+      "context_size": 8192,
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": "chat_template.jinja",
+          "sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee",
+          "size": 654
+        },
+        {
+          "path": "config.json",
+          "sha256": "dc8cdfe7dba52d60296152c533aa9afbc5918dfd5deb98693fdb05ac3817495f",
+          "size": 1688
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "0e28667f1cb4c7b880b9223b2d87978f88e79ed7ae037de1021f826c18d4ed6f",
+          "size": 221
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "48fc521875c36d09d6d631bd74cf57304a8e8c1191fa08316437759690f3c9b7",
+          "size": 1903246631
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "sha256": "bfdd9df0dc0dd2da346417e7a822719dffa95522adabc868a622b1b7ab2a8e2b",
+          "size": 57380
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "b475bbef1b0b2fd57dcb865332b546475bd1ede2deb3bb91bafd0c047a8a530a",
+          "size": 9527287
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "9c8fad86305966b62964ad3f4b56d00fb3234141028a31710ca312ba3e417cd9",
+          "size": 359
+        }
+      ]
+    },
+    {
+      "id": "milmmt-46-4b-q4",
+      "label": "MiLMMT-46-4B Q4",
+      "family": "milmmt",
+      "bits": 4,
+      "runtime": "mlx",
+      "format": "safetensors",
+      "repo": "shraey/milmmt-46-4b-mlx-4bit",
+      "revision": "5ab3064f33e24d0bacb7126eaa5284d926ee05b3",
+      "context_size": 8192,
+      "license": "gemma",
+      "files": [
+        {
+          "path": "config.json",
+          "sha256": "78c3f4553bc38bc4e9becc67613f88c691740117977347af7a90787cbcaf0569",
+          "size": 2711
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "f54c76982ad0aa54f0fc247cd017586570b4b9a3dc9653f86246eb13a82af8a4",
+          "size": 210
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "3ce54f79ca0d673022cace89cb4357c695e8a30bd791672197a82b05bb711120",
+          "size": 2560876251
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "sha256": "71690d582db0a74c650235dfd102c866c6ddfb4c6ef2a75bd6460f5732158d9b",
+          "size": 79954
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "daab2354f8a74e70d70b4d1f804939b68a8c9624dd06cb7858e52dd8970e9726",
+          "size": 33384567
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "c4bb1cf181c6dba7a75b2427fbd0b1656f054be253d9267598bd4cc5fabb11ff",
+          "size": 804
+        }
+      ]
+    },
+    {
+      "id": "hy-mt2-7b-q4",
+      "label": "Hy-MT2-7B Q4",
+      "family": "hy",
+      "bits": 4,
+      "runtime": "mlx",
+      "format": "safetensors",
+      "repo": "mlx-community/Hy-MT2-7B-4bit",
+      "revision": "9b7204bdb161490a8ce49ce607c1310cc3fd03ad",
+      "context_size": 8192,
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": "chat_template.jinja",
+          "sha256": "788ac16c5d7bfefc28655928ad524c8f378a44cb24d24fb125d6a5859b167677",
+          "size": 662
+        },
+        {
+          "path": "config.json",
+          "sha256": "03ce74a3e7160193621b85ac637537278de6214f2677513c35f3eb343056883a",
+          "size": 1721
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "56cd0974cae79f49ecaec4a02936bcabed2a4c8d8b6a780bf4a94ccbf344a78b",
+          "size": 217
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "3f4ae381527394ed768ca8eed3cf69940d9d54415bf555c26072d6c0d5f94a42",
+          "size": 4221806239
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "sha256": "20976f5c66c1dd333a2877f7d253b0ceb5188bad283b001cd6248f3e054bb82d",
+          "size": 57380
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "4185389a69284fdd3ebf737c6120bbeee36cbed9763151fa5bac5986a39e05d4",
+          "size": 16388221
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "c22cbe91c8a483be0947552bc45505f4f5d32b1d5ad6bdaa38e49f5aac6d8e7a",
+          "size": 277
+        }
+      ]
+    },
+    {
+      "id": "milmmt-46-12b-q4",
+      "label": "MiLMMT-46-12B Q4",
+      "family": "milmmt",
+      "bits": 4,
+      "runtime": "mlx",
+      "format": "safetensors",
+      "repo": "mlx-community/MiLMMT-46-12B-v0.1-4bit",
+      "revision": "184f0d7ff022d769fdec0dfdc3a37995bdb94285",
+      "context_size": 8192,
+      "license": "gemma",
+      "files": [
+        {
+          "path": "config.json",
+          "sha256": "20d09f7c78d028f973b2b011d9df30d6f68087f10e209717573c0580a8bfcce6",
+          "size": 3136
+        },
+        {
+          "path": "generation_config.json",
+          "sha256": "3ddcb768803aca045e5c92f767dfc72d9b6680b2b469d0d3d28b4ea1cd455d87",
+          "size": 168
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "sha256": "7c58a1144f6a1403a2b3c92bf8abf28ec1514093f04a5d3d040b95d8d24d8f44",
+          "size": 5367402100
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "sha256": "82c3ca0c158843114f9c01f74f7f5c050680841e4da6105a966422eec5f00b03",
+          "size": 1818630813
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "sha256": "0a60440eefe7c6bfee0f07223b22640e9f5d3e7f7bda56303ec2a4dbb73fa451",
+          "size": 132288
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "699f9e158c1d67f7ee753c3c9fefb5109da61015374d02fac3b384f9fab00015",
+          "size": 33378162
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "492d8ae4e982d769c317518b8f659628ba93220f4d27bb3f7787427e7f67f6d6",
+          "size": 812
+        }
+      ]
+    }
+  ]
+}

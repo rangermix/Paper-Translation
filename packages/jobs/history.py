@@ -94,7 +94,14 @@ def record_api_model(db, lease, profile, response=None):
     if not isinstance(reported, str) or not 0 < len(reported) <= 256 or any(ord(c) < 32 for c in reported):
         reported = None
     fields = {k: profile[k] for k in ('provider', 'api_protocol', 'config_revision', 'endpoint') if k in profile}
-    model = ModelIdentity(kind='api', model_id=reported, evidence_source='api_response' if response is not None else 'api_dispatch', **fields).model_dump(exclude_none=True)
+    local = profile.get('api_protocol') == 'local_translation'
+    if local:
+        from packages.local_models.catalog import get_model
+        entry = get_model(profile['model_id'])
+        fields.update(engine='mlx', revision=entry['revision'], models=[{'name': entry['label'], 'bits': entry['bits']}])
+    model = ModelIdentity(kind='local' if local else 'api', model_id=reported,
+        evidence_source=('local_response' if local else 'api_response') if response is not None else ('local_dispatch' if local else 'api_dispatch'),
+        **fields).model_dump(exclude_none=True)
     with db.transaction() as session:
         lock_lifecycle(session, allow_maintenance=True)
         attempt = session.get(Attempt, lease.attempt_id)

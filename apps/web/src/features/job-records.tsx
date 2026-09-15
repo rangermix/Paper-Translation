@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ActionFeedback, ErrorNotice, Status } from '../components';
+import { ErrorNotice, Status } from '../components';
 import { resourceId } from '../domain';
-import { useAction, useResource } from '../hooks';
+import { useResource } from '../hooks';
 import type { ExecutionTimes, Job, ModelIdentity, TaskLog } from '../types';
 import { jobOperation } from './job-presentation';
 
@@ -51,10 +51,10 @@ export function ModelView({ model, historical = false }: { model?: ModelIdentity
 }
 
 type LogPage = { items: TaskLog[]; next_cursor?: number | null };
+const logLevels = { info: '信息', warning: '提示', error: '错误' };
 export function JobRecords({ job }: { job: Job }) {
-  const [filter, setFilter] = useState({ level: '', stage: '', cursors: [] as number[] });
-  const action = useAction();
-  const params = new URLSearchParams({ limit: '50' });
+  const [filter, setFilter] = useState({ level: '', stage: '', limit: 50, cursors: [] as number[] });
+  const params = new URLSearchParams({ limit: String(filter.limit) });
   if (filter.level) params.set('level', filter.level);
   if (filter.stage) params.set('stage', filter.stage);
   const cursor = filter.cursors.at(-1);
@@ -70,26 +70,35 @@ export function JobRecords({ job }: { job: Job }) {
     {!!job.child_jobs?.length && <div className="job-children"><h4>后续与子任务</h4>{job.child_jobs.map(child => <p key={child.id}>
       <a href={`#/jobs/${child.id}`}>{jobOperation(child.stage)}</a> <Status value={child.status}/>
     </p>)}</div>}
-    <h4>任务日志</h4><div className="stack job-log-controls">
+    <h4>任务日志</h4><div className="job-log-controls">
       <label>等级 <select value={filter.level} onChange={e => setFilter(old => ({ ...old, level: e.target.value, cursors: [] }))}>
         <option value="">全部</option><option value="info">信息</option><option value="warning">提示</option><option value="error">错误</option>
       </select></label>
       <label>阶段 <select value={filter.stage} onChange={e => setFilter(old => ({ ...old, stage: e.target.value, cursors: [] }))}>
-        <option value="">全部</option>{[...new Set([job.stage, ...(logs.data?.items.map(item => item.stage) ?? [])])].map(stage => <option key={stage} value={stage}>{jobOperation(stage)}</option>)}
+        <option value="">全部</option>{[...new Set([job.stage, filter.stage, ...(logs.data?.items.map(item => item.stage) ?? [])])].filter(Boolean).map(stage => <option key={stage} value={stage}>{jobOperation(stage)}</option>)}
       </select></label>
-      <a className="btn sm" href={`/api/v1/jobs/${resourceId(job.id)}/logs/download`} download>下载全部脱敏日志</a>
-      <button className="btn sm" disabled={!logs.data?.items.length || action.pending} onClick={() => void action.run(async () => {
-        await navigator.clipboard.writeText(logs.data!.items.map(item => JSON.stringify(item)).join('\n'));
-      }, '本页日志已复制。')}>复制本页</button>
-    </div><ActionFeedback {...action}/><ErrorNotice error={logs.error} retry={logs.reload}/>
+      <span className="small muted">点击日志展开详情</span>
+    </div><ErrorNotice error={logs.error} retry={logs.reload}/>
+    {logs.loading && <p className="small muted" role="status">正在加载日志…</p>}
     {logs.data?.items.length === 0 && <p className="muted">{job.config_snapshot ? '此筛选下暂无日志。' : '历史记录未保存日志。'}</p>}
-    <ol className="task-logs">{logs.data?.items.map(entry => <li key={entry.sequence}>
-      <time dateTime={entry.at}>{timestamp(entry.at)}</time> <span>{entry.message}</span>
-      {entry.page != null && <span> · 第 {entry.page} 页</span>}
-      <details><summary>日志详情</summary><pre>{JSON.stringify(entry, null, 2)}</pre></details>
+    <ol className="task-logs" aria-label="任务日志" aria-busy={logs.loading}>{logs.data?.items.map(entry => <li key={entry.sequence}>
+      <details><summary className="task-log-summary">
+        <time dateTime={entry.at}>{timestamp(entry.at)}</time>
+        <span className={`task-log-level ${entry.level}`}>{logLevels[entry.level]}</span>
+        <span className="task-log-message">{entry.message}</span>
+        <span className="task-log-page">{entry.page != null ? `第 ${entry.page} 页` : ''}</span>
+        <span className="task-log-chevron" aria-hidden="true">›</span>
+      </summary><pre>{JSON.stringify(entry, null, 2)}</pre></details>
     </li>)}</ol>
-    <div className="stack"><button className="btn sm" disabled={!filter.cursors.length} onClick={() => setFilter(old => ({ ...old, cursors: old.cursors.slice(0, -1) }))}>上一页日志</button>
-      <button className="btn sm" disabled={logs.data?.next_cursor == null} onClick={() => { const next = logs.data?.next_cursor; if (next != null) setFilter(old => ({ ...old, cursors: [...old.cursors, next] })); }}>下一页日志</button>
+    <div className="job-log-pagination">
+      <label>每页日志 <select value={filter.limit} onChange={e => setFilter(old => ({ ...old, limit: Number(e.target.value), cursors: [] }))}>
+        {[10, 25, 50, 100].map(limit => <option key={limit} value={limit}>{limit} 条</option>)}
+      </select></label>
+      <nav className="job-log-pages" aria-label="日志分页">
+        <button className="btn sm" disabled={logs.loading || !filter.cursors.length} onClick={() => setFilter(old => ({ ...old, cursors: old.cursors.slice(0, -1) }))}>上一页日志</button>
+        <span className="small muted" aria-live="polite">第 {filter.cursors.length + 1} 页</span>
+        <button className="btn sm" disabled={logs.loading || !!logs.error || logs.data?.next_cursor == null} onClick={() => { const next = logs.data?.next_cursor; if (next != null) setFilter(old => ({ ...old, cursors: [...old.cursors, next] })); }}>下一页日志</button>
+      </nav>
     </div>
   </section>;
 }

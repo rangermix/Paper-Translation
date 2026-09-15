@@ -48,6 +48,8 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
   const active = !!result && activeStates.includes(result.status);
+  const local = provider.api_protocol === 'local_translation';
+  const describe = (code?: string | null) => local && code === 'DISPATCH_DISABLED' ? '模型请求已暂停，请启用本页的模型请求开关并保存。' : description(code);
   const controlled = costControlEnabled(provider);
   const unknown = result?.status === 'outcome_unknown';
   const riskRequired = unknown || provider.connection_test_has_unknown === true;
@@ -91,7 +93,7 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
 
   return <div className="provider-connection">
     <button className="btn" type="button" disabled={!canTest} onClick={() => { setRisk(false); setConfirm(true); }}>
-      {sending ? '正在提交测试…' : active ? '正在测试连接…' : '测试 API 连接 / 密钥'}
+      {sending ? '正在提交测试…' : active ? '正在测试连接…' : local ? '测试本地翻译模型' : '测试 API 连接 / 密钥'}
     </button>
     {dirty && <p className="field-note">请先保存当前修改，再测试连接。</p>}
     {message && <p role="alert" className="notice error-notice">{message}{active && <button className="btn sm" type="button" onClick={() => setReadVersion(value => value + 1)}>读取测试状态</button>}</p>}
@@ -99,16 +101,16 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
       <strong>{result.status === 'succeeded' ? '连接测试通过：服务已接受请求并返回有效结果。'
         : active ? '正在测试已保存的配置，请稍候…'
         : unknown ? '测试结果未知，可能已计费；不会自动重试。'
-        : result.status === 'cancelled' ? '测试已取消。已发送的请求仍可能计费。' : description(result.code)}</strong>
-      {unknown && result.code && result.code !== 'OUTCOME_UNKNOWN' && <p>{description(result.code)}</p>}
+        : result.status === 'cancelled' ? '测试已取消。已发送的请求仍可能计费。' : describe(result.code)}</strong>
+      {unknown && result.code && result.code !== 'OUTCOME_UNKNOWN' && <p>{describe(result.code)}</p>}
       {result.completed_at && <p className="small muted">上次测试：{new Date(result.completed_at).toLocaleString()}{result.elapsed_ms != null ? ` · ${(result.elapsed_ms / 1000).toFixed(2)} 秒` : ''}</p>}
       {!active && <p className="small muted">费用：{result.actual_micro == null || unknown ? '未计算' : `USD ${(result.actual_micro / 1_000_000).toFixed(6)}`}</p>}
       <a className="small" href={`#/jobs/${encodeURIComponent(result.id)}`}>查看测试任务</a>
     </div>}
-    {confirm && <Modal title="测试 API 连接 / 密钥" onClose={() => setConfirm(false)}>
-      <p>向以下已保存的服务发送一次固定测试文本 <code>Hello.</code> 和结构化输出要求，检查连接、鉴权及模型响应。使用后端保存的密钥，不发送论文内容。</p>
+    {confirm && <Modal title={local ? '测试本地翻译模型' : '测试 API 连接 / 密钥'} onClose={() => setConfirm(false)}>
+      {local ? <p>按需下载已选模型并在本机翻译固定测试文本 <code>Hello.</code>，不发送论文内容。</p> : <p>向以下已保存的服务发送一次固定测试文本 <code>Hello.</code> 和结构化输出要求，检查连接、鉴权及模型响应。使用后端保存的密钥，不发送论文内容。</p>}
       <dl className="kv"><dt>接口</dt><dd>{providerProtocols[provider.api_protocol ?? 'responses'].label}</dd><dt>服务地址</dt><dd>{provider.endpoint}</dd><dt>模型</dt><dd>{provider.model_id}</dd></dl>
-      <p className="field-note">本次输入上限 {Math.min(provider.max_input_tokens ?? 32768, 8192)} token，输出上限 {Math.min(provider.max_output_tokens ?? 8192, 256)} token。服务可能收费；测试通过仅代表本次连接和响应有效。</p>
+      <p className="field-note">本次输入上限 {Math.min(provider.max_input_tokens ?? 32768, 8192)} token，输出上限 {Math.min(provider.max_output_tokens ?? 8192, 256)} token。{local ? '测试在本机运行。' : '服务可能收费；'}测试通过仅代表本次连接和响应有效。</p>
       {controlled ? <label className="field">本次测试预算（USD）<input className="input" inputMode="decimal" value={budget} onChange={event => setBudget(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} placeholder="例如 0.10"/></label>
         : <p className="field-note">成本控制未启用，本次不设金额预算；未知费用显示为未计算。</p>}
       {riskRequired && <label className="check"><input type="checkbox" checked={risk} onChange={event => setRisk(event.target.checked)}/>我接受再次测试可能重复计费的风险</label>}

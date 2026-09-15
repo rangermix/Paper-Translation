@@ -6,6 +6,7 @@ import { costControlEnabled, defaultTokenLimits } from './cost-control';
 import { providerProtocols } from './provider-protocol';
 import { ProviderConnection } from './provider-connection';
 import { DispatchSettings } from './dispatch-settings';
+import { LocalModels } from './local-models';
 
 type Fields = {
   endpoint: string; protocol: NonNullable<Provider['api_protocol']>; auth: NonNullable<Provider['auth_mode']>;
@@ -65,15 +66,15 @@ export function ProviderSettings({ provider, loading, error, reload, onSaved, on
 }) {
   return <section className="panel provider-panel" aria-labelledby="provider-title">
     <div className="stack between"><h2 id="provider-title">AI 服务</h2><span className="pill">兼容与原生接口</span></div>
-    <p className="muted">设置翻译使用的服务地址与模型。保存只更新配置；开始翻译时仍需单独确认外发；预算与成本控制可以选择启用。</p>
-    <DispatchSettings onSaved={onDispatchSaved}/>
+    <p className="muted">选择本地翻译模型或配置 API 服务。保存只更新配置；模型在开始翻译或准备模型时按需下载。</p>
+    <DispatchSettings onSaved={onDispatchSaved} local={provider?.api_protocol === 'local_translation'}/>
     <ErrorNotice error={error} retry={reload}/>
     {loading && <Loading/>}
     {provider && !error && <ProviderForm initial={provider} onSaved={onSaved}/>}
   </section>;
 }
 
-function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value: Provider) => void }) {
+function ProviderForm({ initial, onSaved }: { initial: Provider & { previous_external?: Provider }; onSaved: (value: Provider) => void }) {
   const [base, setBase] = useState(initial);
   const [fields, setFields] = useState(() => fromProvider(initial));
   const [apiKey, setApiKey] = useState('');
@@ -89,21 +90,26 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     setFields(old => ({ ...old, [key]: value })); setNotice('');
   };
   const protocol = providerProtocols[fields.protocol];
+  const local = fields.protocol === 'local_translation';
   function changeProtocol(value: Fields['protocol']) {
     if (value === fields.protocol) return;
+    if (local && initial.previous_external?.api_protocol === value) {
+      setFields(fromProvider(initial.previous_external)); setApiKey(''); setClearKey(false); setNotice(''); return;
+    }
     const selected = providerProtocols[value];
     setFields(old => ({ ...old, protocol: value, endpoint: selected.defaultEndpoint, model: selected.defaultModel,
-      version: value === 'claude_messages' ? old.version || '2023-06-01' : old.version, auth: old.auth === 'none' ? 'none' : selected.auth }));
-    setApiKey(''); setNotice('');
+      version: value === 'claude_messages' ? old.version || '2023-06-01' : old.version, auth: value === 'local_translation' ? 'none' : old.auth === 'none' ? 'none' : selected.auth,
+      ...(value === 'local_translation' ? { costControl: false, inputTokens: '6144', outputTokens: '2048', unitCharacters: '1500' } : {}) }));
+    setApiKey(''); setClearKey(false); setNotice('');
   }
   const rebind = base.has_api_key !== false && (fields.endpoint.trim() !== (base.endpoint ?? '') || fields.protocol !== (base.api_protocol ?? 'responses') || fields.auth !== (base.auth_mode ?? 'bearer'));
-  const mustRebind = rebind && !apiKey && !clearKey;
+  const mustRebind = !local && rebind && !apiKey && !clearKey;
   const invalidUrl = endpointInvalid(fields.endpoint.trim());
-  const invalidPrice = [fields.inputPrice, fields.cachedPrice, fields.outputPrice].some(value => Number.isNaN(micro(value)));
+  const invalidPrice = !local && [fields.inputPrice, fields.cachedPrice, fields.outputPrice].some(value => Number.isNaN(micro(value)));
   const invalidTokens = tokenInvalid(fields.inputTokens, 1_000_000) || tokenInvalid(fields.outputTokens, 1_000_000) || tokenInvalid(fields.unitCharacters, 10_000);
   const invalidKey = /[\r\n]/.test(apiKey) || apiKey.length > 8192;
   const invalidVersion = fields.protocol === 'claude_messages' && fields.version !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(fields.version);
-  const canSave = !pending && !refreshRequired && !latest && !mustRebind && !invalidUrl && !invalidPrice && !invalidTokens && !invalidKey && !invalidVersion && !!etagFor(base);
+  const canSave = !pending && !refreshRequired && !latest && !mustRebind && !invalidUrl && !invalidPrice && !invalidTokens && !invalidKey && !invalidVersion && (!local || !!fields.model) && !!etagFor(base);
   function applyLatest(value: Provider, keepInput: boolean) {
     setLoadedVersion(version => version + 1);
     setBase(value); onSaved(value); setLatest(undefined); setRefreshRequired(false); setError(undefined); setApiKey('');
@@ -128,19 +134,19 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     const profile = {
       provider: protocol.provider, endpoint: fields.endpoint.trim(), api_protocol: fields.protocol, auth_mode: fields.auth, model_id: fields.model.trim(),
       ...(fields.protocol === 'claude_messages' && fields.version ? { api_version: fields.version } : {}),
-      cost_control_enabled: fields.costControl, enabled_pairs: base.enabled_pairs ?? [], semantic_review_enabled: base.semantic_review_enabled ?? false,
+      cost_control_enabled: local ? false : fields.costControl, enabled_pairs: base.enabled_pairs ?? [], semantic_review_enabled: local ? false : base.semantic_review_enabled ?? false,
       ...(fields.inputTokens !== '' ? { max_input_tokens: Number(fields.inputTokens) } : {}),
       ...(fields.outputTokens !== '' ? { max_output_tokens: Number(fields.outputTokens) } : {}),
       ...(fields.unitCharacters !== '' ? { max_unit_characters: Number(fields.unitCharacters) } : {}),
-      ...(hasPrice ? { price } : {}),
+      ...(!local && hasPrice ? { price } : {}),
     };
-    const key = fields.auth !== 'none' ? apiKey : '';
+    const key = !local && fields.auth !== 'none' ? apiKey : '';
     setApiKey('');
     try {
       const value = await api<Provider>('/settings/provider', { method: 'PUT', etag: etagFor(base),
-        body: { profile, ...(key ? { api_key: key } : {}), ...(clearKey ? { clear_api_key: true } : {}) } });
+        body: { profile, ...(key ? { api_key: key } : {}), ...(!local && clearKey ? { clear_api_key: true } : {}) } });
       applyLatest(value, false);
-      setNotice(value.configured && value.dispatch_configuration_ready !== false ? 'AI 服务配置已保存。保存未请求模型；凭据有效性尚未通过模型调用验证。'
+      setNotice(local ? '本地模型配置已保存。首次翻译将按需下载；也可先准备模型。' : value.configured && value.dispatch_configuration_ready !== false ? 'AI 服务配置已保存。保存未请求模型；凭据有效性尚未通过模型调用验证。'
         : 'AI 服务配置已保存，仍等待配置。补全缺失字段后才能发起翻译。');
     } catch (reason) {
       const safe = saveError(reason); setError(safe);
@@ -158,8 +164,9 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     <fieldset disabled={pending} className="provider-fields">
       <div className="two-cols">
         <label className="field">接口类型<select aria-label="接口类型" value={fields.protocol} onChange={event => changeProtocol(event.target.value as Fields['protocol'])}>{Object.entries(providerProtocols).map(([value, entry]) => <option key={value} value={value}>{entry.label}</option>)}</select></label>
-        <label className="field">鉴权方式<select aria-label="鉴权方式" value={fields.auth} onChange={event => { update('auth', event.target.value as Fields['auth']); setApiKey(''); }}><option value={protocol.auth}>API 密钥（{protocol.keyLabel}）</option><option value="none">无鉴权（本地或无需密钥的服务）</option></select></label>
+        {!local && <label className="field">鉴权方式<select aria-label="鉴权方式" value={fields.auth} onChange={event => { update('auth', event.target.value as Fields['auth']); setApiKey(''); }}><option value={protocol.auth}>API 密钥（{protocol.keyLabel}）</option><option value="none">无鉴权（本地或无需密钥的服务）</option></select></label>}
       </div>
+      {local ? <LocalModels value={fields.model} onChange={value => update('model', value)}/> : <>
       <label className="field">完整请求 URL<input className="input" type="url" value={fields.endpoint} onChange={event => { update('endpoint', event.target.value); setApiKey(''); }} maxLength={2048} placeholder={protocol.defaultEndpoint} autoCapitalize="none" spellCheck={false}/></label>
       <p className="field-note">切换接口类型会填入默认地址和模型，仍可手动修改。填写完整接口路径，不自动追加路由。地址从后端容器访问；localhost 指该容器自身。URL 不得包含密钥、用户名、查询参数或片段。</p>
       {invalidUrl && <p className="field-note error-text">请输入包含接口路径的 HTTP(S) 地址，不含鉴权信息、查询参数或片段。</p>}
@@ -171,15 +178,16 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
       {rebind && <p className="notice">服务地址或接口类型已变化，或已切换鉴权方式。请重新输入用于新配置的密钥，或明确清除已保存的密钥；旧密钥不会自动绑定到新配置。</p>}
       <label className="check"><input type="checkbox" checked={fields.costControl} onChange={event => update('costControl', event.target.checked)}/>启用预算与成本控制</label>
       <p className="field-note">保存后生效，仅用于采用新配置的请求。{fields.costControl ? '启用时须填写实际费率，并在外发前确认任务预算。' : '关闭时无需费率或任务预算，不限制金额；服务仍可能收费。已有价格保留，无法计算的费用不会显示成 0。'}</p>
+      </>}
       <details className="provider-advanced"><summary>高级选项：价格与请求限制</summary>
         {fields.protocol === 'claude_messages' && <><label className="field">Anthropic API 版本<input className="input" value={fields.version} onChange={event => update('version', event.target.value)} placeholder="2023-06-01" maxLength={10}/></label><p className="field-note">留空由后端使用 2023-06-01；自定义版本使用 YYYY-MM-DD 格式，并作为 anthropic-version 请求头发送。</p>{invalidVersion && <p className="field-note error-text">API 版本须为 YYYY-MM-DD 格式。</p>}</>}
-        <p className="field-note">价格为可选配置，币种为 USD。启用成本控制时，须按服务实际费率填写；关闭时可留空。未知价格不按 0 处理，免费服务可明确填 0。</p>
+        {!local && <><p className="field-note">价格为可选配置，币种为 USD。启用成本控制时，须按服务实际费率填写；关闭时可留空。未知价格不按 0 处理，免费服务可明确填 0。</p>
         <div className="two-cols">
           <label className="field">输入价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.inputPrice} onChange={event => update('inputPrice', event.target.value)}/></label>
           <label className="field">缓存输入价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.cachedPrice} onChange={event => update('cachedPrice', event.target.value)}/></label>
           <label className="field">输出价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.outputPrice} onChange={event => update('outputPrice', event.target.value)}/></label>
         </div>
-        <label className="check"><input type="checkbox" checked={fields.includesReasoning} onChange={event => update('includesReasoning', event.target.checked)}/>我已核对输出费率适用于推理 token（如有）；费用按合并后的输出用量计算。</label>
+        <label className="check"><input type="checkbox" checked={fields.includesReasoning} onChange={event => update('includesReasoning', event.target.checked)}/>我已核对输出费率适用于推理 token（如有）；费用按合并后的输出用量计算。</label></>}
         <div className="two-cols">
           <label className="field">单次输入 token 上限<input className="input" inputMode="numeric" value={fields.inputTokens} onChange={event => update('inputTokens', event.target.value)}/></label>
           <label className="field">单次输出 token 上限<input className="input" inputMode="numeric" value={fields.outputTokens} onChange={event => update('outputTokens', event.target.value)}/></label>

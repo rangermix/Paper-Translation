@@ -12,7 +12,7 @@ function messageFor(reason: unknown) {
   return '无法确认外部请求设置的最新状态。请重新读取后再操作。';
 }
 
-export function DispatchSettings({ onSaved }: { onSaved?: () => void }) {
+export function DispatchSettings({ onSaved, local = false }: { onSaved?: () => void; local?: boolean }) {
   const [state, setState] = useState<DispatchState>();
   const [selected, setSelected] = useState<boolean | null>(null);
   const [risk, setRisk] = useState(false);
@@ -46,14 +46,15 @@ export function DispatchSettings({ onSaved }: { onSaved?: () => void }) {
       const value = await api<DispatchState>('/settings/dispatch', { method: 'PATCH', etag: etagFor(state),
         body: { dispatch_disabled: !allowed, ...(riskRequired ? { accept_unknown_risk: risk, reason: reason.trim() } : {}) } });
       setState(value); setSelected(null); setRisk(false); setReason('');
-      setNotice(value.dispatch_disabled ? '已暂停新的外部 API 请求。已发出的请求仍可能完成并计费。' : '已允许外部 API 请求。测试连接和翻译仍需各自确认外发。');
+      setNotice(local ? (value.dispatch_disabled ? '已暂停新的模型请求。' : '已允许模型请求。本地翻译在本机执行。') : value.dispatch_disabled ? '已暂停新的外部 API 请求。已发出的请求仍可能完成并计费。' : '已允许外部 API 请求。测试连接和翻译仍需各自确认外发。');
       onSaved?.();
     } catch (reason) { setError(messageFor(reason)); setMustRead(true); }
     finally { running.current = false; setSaving(false); }
   }
   return <section className="provider-dispatch" aria-labelledby="dispatch-title" id="external-api-requests">
-    <div className="stack between"><h3 id="dispatch-title">外部 API 请求</h3>{state && <span className={`pill ${state.dispatch_disabled ? 'warn' : 'ready'}`}>{state.dispatch_disabled ? '已暂停' : '已允许'}</span>}</div>
-    <label className="check"><input type="checkbox" checked={allowed} disabled={loading || saving || !state || state.maintenance} onChange={event => { setSelected(event.target.checked); setNotice(''); setRisk(false); setReason(''); }}/>允许外部 API 请求</label>
+    <div className="stack between"><h3 id="dispatch-title">{local ? '模型请求' : '外部 API 请求'}</h3>{state && <span className={`pill ${state.dispatch_disabled ? 'warn' : 'ready'}`}>{state.dispatch_disabled ? '已暂停' : '已允许'}</span>}</div>
+    <label className="check"><input type="checkbox" checked={allowed} disabled={loading || saving || !state || state.maintenance} onChange={event => { setSelected(event.target.checked); setNotice(''); setRisk(false); setReason(''); }}/>允许{local ? '模型请求' : '外部 API 请求'}</label>
+    {local && <p className="muted small">此实例开关同时控制本地和 API 模型。当前选择的本地模型只在本机处理文本。</p>}
     <p className="muted small">保存后立即生效，重启后保留。关闭会阻止新的连接测试和翻译请求；已发出的请求仍可能完成并计费。开启后，已确认的排队任务可继续；暂停和结果未知的任务仍需单独处理。</p>
     {state?.maintenance && <p className="field-note">实例正在维护，此开关暂不可修改；维护结束后仍保持暂停，须在此手动开启。</p>}
     {state && state.unknown_attempts > 0 && <p className="field-note">仍有 {state.unknown_attempts} 个请求结果未知，可能已计费。保留的未知费用：{money(state.unknown_micro)}。开启不会清除费用或自动重试这些请求。</p>}

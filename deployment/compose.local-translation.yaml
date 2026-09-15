@@ -1,0 +1,50 @@
+# Add to compose.production.yaml (and compose.mlx.yaml when Paddle uses MLX).
+# No model downloads at Compose startup; Settings/first translation prepares one model.
+services:
+  local-model-init:
+    image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
+    platform: linux/amd64
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    command: [python, -c, "import os; os.chown('/model_cache',10001,10001); os.chmod('/model_cache',0o700)"]
+    volumes: [local_translation_models:/model_cache]
+    restart: "no"
+  local-translator:
+    image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
+    platform: linux/amd64
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,nosuid,size=64m,mode=1777"]
+    command: [uvicorn, packages.local_models.service:app, --host, 0.0.0.0, --port, "8090", --no-access-log]
+    environment:
+      LOCAL_MODEL_CACHE: /model_cache
+      PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
+    volumes: [local_translation_models:/model_cache]
+    networks: [local_model_control, model_inference]
+    depends_on:
+      local-model-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health',timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    mem_limit: 768m
+    cpus: 1
+    restart: unless-stopped
+  app:
+    networks: [local_model_control]
+  worker:
+    networks: [local_model_control]
+networks:
+  local_model_control:
+    internal: true
+  model_inference:
+volumes:
+  local_translation_models:

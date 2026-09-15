@@ -12,6 +12,45 @@ from .library import Session
 router = APIRouter(prefix='/api/v1')
 
 
+@router.get('/settings/local-models')
+def local_models():
+    import httpx
+    from packages.local_models.catalog import ENDPOINT, public_models
+    from .common import response
+    try:
+        with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
+            result = client.get(ENDPOINT.rsplit('/v1/', 1)[0] + '/models')
+            result.raise_for_status()
+            states = {row['id']: row for row in result.json()['models']}
+        # Metadata is always our pinned catalog; the service reports status only.
+        return response({'models': [{**m, **{k: states.get(m['id'], {}).get(k) for k in
+            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes')}} for m in public_models()]})
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        return response({'models': [{**m, 'status': 'unavailable', 'code': 'LOCAL_MODEL_SERVICE_UNAVAILABLE'} for m in public_models()]})
+
+
+@router.post('/settings/local-models/{identifier}/prepare', status_code=202)
+def prepare_local_model(identifier: str, request: Request, session=Session):
+    import httpx
+    from packages.local_models.catalog import ENDPOINT, get_model
+    from .common import command
+    try:
+        model = get_model(identifier)
+    except ValueError:
+        raise DomainError('LOCAL_MODEL_UNKNOWN', status=404) from None
+    def execute():
+        lock_lifecycle(session)
+        try:
+            with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
+                result = client.post(ENDPOINT.rsplit('/v1/', 1)[0] + '/models/' + model['id'] + '/prepare')
+                result.raise_for_status()
+                state = result.json()
+            return {k: state[k] for k in ('status', 'code', 'downloaded_bytes', 'total_bytes') if k in state}
+        except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            raise DomainError('LOCAL_MODEL_SERVICE_UNAVAILABLE', status=503) from None
+    return command(session, request, {}, execute, 202)
+
+
 class ProviderSettings(StrictModel):
     profile: dict
     api_key: SecretStr | None = None

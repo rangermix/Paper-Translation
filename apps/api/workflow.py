@@ -6,7 +6,7 @@ from fastapi import APIRouter, Header, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
 from pydantic import Field, field_validator
-from sqlalchemy import and_, or_, select, tuple_
+from sqlalchemy import and_, func, or_, select, tuple_, update
 
 from packages.billing.ledger import budget_totals
 from packages.billing.price import cost_control_enabled, reserve_cost, validate_profile
@@ -19,6 +19,7 @@ from packages.editorial.drafts import create_draft
 from packages.ir import block_hash, digest, validate_source
 from packages.jobs.queue import emit
 from packages.jobs.history import log_view, time_view
+from packages.jobs.visibility import clearable_history, visible_history
 from packages.storage import read_snapshot, write_snapshot
 from packages.translation.languages import canonical_locale, translation_profile
 from .common import StrictModel, command, page, response
@@ -117,10 +118,13 @@ def list_jobs(status: str | None = None, document_id: str | None = None, cursor:
               q: str = Query('', max_length=255), group: Literal['all', 'active', 'attention', 'completed', 'cancelled'] = 'all',
               stage: str | None = Query(None, max_length=40), parent_job_id: str | None = None,
               model: str | None = Query(None, max_length=256),
+              include_cleared: bool = False,
               limit: int = Query(30, ge=1, le=100), session=Session):
     query = select(Job).outerjoin(Document).outerjoin(Upload,
         and_(Job.stage == 'inspect', Upload.id == Job.payload['upload_id'].astext)
     )
+    if not include_cleared:
+        query = query.where(visible_history())
     if stage:
         query = query.where(Job.stage == stage)
     if parent_job_id:
@@ -151,6 +155,36 @@ def list_jobs(status: str | None = None, document_id: str | None = None, cursor:
         query = query.where(tuple_(Job.created_at, Job.id) < tuple_(anchor.created_at, anchor.id))
     jobs = list(session.scalars(query.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit + 1)))
     return page([job_view(session, j, details=False) for j in jobs[:limit]], jobs[limit-1].id if len(jobs) > limit else None)
+
+
+@router.get('/jobs/history')
+def task_history(session=Session):
+    settings = session.get(Settings, 'singleton')
+    count = session.scalar(select(func.count()).select_from(Job).where(clearable_history()))
+    return response({'generation': settings.generation, 'clearable_count': count})
+
+
+class ClearTaskHistory(StrictModel):
+    confirm: Literal[True]
+
+    @field_validator('confirm', mode='before')
+    @classmethod
+    def require_confirmation(cls, value):
+        if value is not True:
+            raise ValueError('Explicit confirmation is required')
+        return value
+
+
+@router.post('/jobs/history/clear')
+def clear_task_history(body: ClearTaskHistory, request: Request, session=Session):
+    def execute():
+        settings = lock_singleton(session)
+        match_generation(settings, request.headers.get('If-Match'))
+        result = session.execute(update(Job).where(clearable_history())
+            .values(history_cleared_generation=Job.generation))
+        settings.generation += 1
+        return {'generation': settings.generation, 'cleared_count': result.rowcount}
+    return command(session, request, body.model_dump(), execute)
 
 
 @router.get('/jobs/{job_id}')

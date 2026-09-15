@@ -11,7 +11,7 @@ from .errors import DomainError, require
 from .models import Document, Settings
 
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 
 def migration_history():

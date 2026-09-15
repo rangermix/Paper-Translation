@@ -1,0 +1,6 @@
+{
+  "version": 13,
+  "statements": [
+    "ALTER TABLE jobs ADD COLUMN history_cleared_generation integer"
+  ]
+}

@@ -180,6 +180,7 @@ class Job(Entity, Versioned, Base):
     actual_model: Mapped[dict | None] = mapped_column(JSONB)
     title_snapshot: Mapped[str | None] = mapped_column(Text)
     quality_summary: Mapped[dict | None] = mapped_column(JSONB)
+    history_cleared_generation: Mapped[int | None] = mapped_column(Integer)
 
 
 class Task(Entity, Base):

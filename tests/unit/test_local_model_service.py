@@ -113,3 +113,31 @@ def test_translation_backend_cache_cap_is_scoped(tmp_path, monkeypatch):
     assert cap(ident, 8192, 16, 1024, 9999999) == 513 * 1024
     assert cap(ident, 8192, 16, 1024, 100) == 100
     assert cap('paddle-artifact', 8192, 16, 1024, 9999999) == 9999999
+
+
+def test_paddle_tag_resolves_to_explicit_owned_artifact(tmp_path, monkeypatch):
+    from packages.local_models.service import Manager
+    import json
+    paddle = 'sha256:' + 'a' * 64
+    monkeypatch.setenv('PADDLE_MLX_MODEL_ID', paddle)
+    calls = []
+    def handle(request):
+        calls.append(request)
+        if request.url.path == '/engines/ps':
+            return httpx.Response(200, json=[{'backend_name':'vllm','model_name':'docker.io/local/paddle:latest'}])
+        if request.url.path == '/models':
+            return httpx.Response(200, json=[{'id':paddle,'tags':['docker.io/local/paddle:latest']}])
+        assert json.loads(request.content)['models'] == [paddle]
+        return httpx.Response(200, json={'unloaded_runners':1})
+    Manager(tmp_path,httpx.MockTransport(handle)).reserve_gpu(models()[0])
+    assert calls[-1].method == 'POST'
+
+
+def test_gpu_handoff_does_not_proceed_when_model_became_active(tmp_path):
+    from packages.local_models.service import Manager
+    import pytest
+    other = artifact(models()[1])['id']
+    def handle(request):
+        return httpx.Response(200, json=[{'backend_name':'vllm','model_name':other}] if request.method=='GET' else {'unloaded_runners':0})
+    with pytest.raises(ValueError, match='LOCAL_MODEL_BUSY'):
+        Manager(tmp_path,httpx.MockTransport(handle)).reserve_gpu(models()[0])

@@ -64,12 +64,25 @@ class Manager:
             response = client.get(DMR + '/engines/ps')
             response.raise_for_status()
             others = [r for r in response.json() if r.get('backend_name') == 'vllm' and r.get('model_name') != target]
-            if any(r.get('in_use') or r.get('loading') or r.get('model_name') not in owned for r in others):
+            if any(r.get('in_use') or r.get('loading') for r in others):
+                raise ValueError('LOCAL_MODEL_BUSY')
+            aliases = {identifier: identifier for identifier in owned}
+            if any(r.get('model_name') not in aliases for r in others):
+                inventory = client.get(DMR + '/models')
+                inventory.raise_for_status()
+                for entry in inventory.json():
+                    if entry.get('id') in owned:
+                        aliases.update({tag: entry['id'] for tag in entry.get('tags') or []})
+            if any(r.get('model_name') not in aliases for r in others):
                 raise ValueError('LOCAL_MODEL_BUSY')
             if others:
-                response = client.post(DMR + '/engines/unload', json={
-                    'backend': 'vllm', 'models': [r['model_name'] for r in others]})
+                retire = list(dict.fromkeys(aliases[r['model_name']] for r in others))
+                response = client.post(DMR + '/engines/unload', json={'backend': 'vllm', 'models': retire})
                 response.raise_for_status()
+                # DMR atomically refuses to evict runners with active references.
+                # A request may have started after our status read.
+                if response.json().get('unloaded_runners', 0) < len(retire):
+                    raise ValueError('LOCAL_MODEL_BUSY')
 
     def configuration_matches(self, model):
         with self.client() as client:

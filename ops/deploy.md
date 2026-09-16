@@ -4,6 +4,47 @@ Production uses `deployment/compose.production.yaml`; the root Compose file is
 the historical prototype. Run these commands from the project root. Only Docker
 Engine and Compose are required on the deployment host.
 
+## Single-file CPU / CUDA / MLX example
+
+`compose.example.yaml` contains the full stack with CPU enabled and commented
+CUDA and Apple MLX alternatives. Copy it to the repository root as `compose.yaml`
+(replacing the bundled prototype configuration in your local copy):
+
+```sh
+cp compose.example.yaml compose.yaml
+```
+
+Keep exactly one mode block active near the top of the copied file. For CUDA or
+MLX, comment out the CPU block and uncomment the complete chosen block, including
+the top-level `models` section for MLX. The shared services need no edits.
+
+CUDA needs a compatible NVIDIA GPU, driver, and Docker GPU access. MLX needs
+Apple Silicon, Compose 2.38+, Docker Model Runner with a working vLLM Metal
+backend, and the packaged Paddle model. Follow
+[`deployment/extraction-acceleration.md`](../deployment/extraction-acceleration.md)
+to package and verify it, then fill the model ID fields in the copied file or
+provide their values in a root `.env` file. Uncommenting MLX does not install or
+verify its backend. Hardware modes do not automatically fall back to CPU.
+
+Before upgrading an existing instance, follow the backup/upgrade instructions
+below. In particular, a PostgreSQL15-bookworm instance must complete the
+fresh-project [backup/restore upgrade](restore.md) before using these images with
+its data.
+
+Build and start the selected mode:
+
+```sh
+docker compose up --build -d
+```
+
+The example uses the same project name and volume names as the production
+configuration, so it targets the same library. Keep any existing custom project
+name, port, and image/environment overrides when adopting it. This example
+configures PDF parsing acceleration; existing optional local translation services
+still use `deployment/compose.local-translation.yaml` with the production files.
+
+## Existing deployment script and production files
+
 On macOS/Linux, `./deploy.sh` builds the production images, starts the services,
 waits for health checks, and shows their status. Pass your existing Compose
 options to keep optional services and configuration, for example:

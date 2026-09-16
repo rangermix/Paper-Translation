@@ -15,6 +15,7 @@ async function setup(page: Page, stale = false) {
       }
       return route.fulfill({ json: preferences, headers: { ETag: `"${preferences.generation}"` } });
     }
+    if (path.endsWith('/settings/parser-environment')) return route.fulfill({ json: { online: true, detected_at: Date.now() / 1000, system: 'Linux', architecture: 'x86_64', cpu_count: 4, memory_bytes: 8 * 1024 ** 3, default: 'cpu', options: [{ id: 'cpu', profiles: ['docling-v1', 'granite-docling-v1', 'paddleocr-vl-1.6-v1'] }, { id: 'cuda', profiles: [], reason: 'CUDA_UNAVAILABLE_OR_MODEL_UNSUPPORTED' }, { id: 'mlx', profiles: [], reason: 'MLX_IMAGE_BACKEND_UNAVAILABLE' }] } });
     if (path.endsWith('/settings/provider')) return route.fulfill({ json: { configured: false, dispatch_disabled: true, endpoint: '', model_id: '', generation: 2 } });
     if (path.endsWith('/settings/dispatch')) return route.fulfill({ json: { generation: 3, dispatch_disabled: true, unknown_attempts: 0, inflight_requests: 0 } });
     if (path.endsWith('/capabilities')) return route.fulfill({ json: { phase: 'M2', features: { translation: true }, source_mime_types: ['application/pdf'] } });
@@ -103,4 +104,91 @@ test('mobile parsing controls fit the viewport', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await panel.screenshot({ path: outputDirectory('parser-mobile.png') });
   expect(errors).toEqual([]);
+});
+
+test('new default is Paddle when a legacy preferences response omits parser selection', async ({ page }) => {
+  const { writes } = await setup(page);
+  await page.route('**/api/v1/settings/preferences', route => route.fulfill({
+    json: { generation: 3, locale: 'zh-Hans', publish_policy: 'manual_approval', theme: 'light', parser_timeout_seconds: 7200 },
+    headers: { ETag: '"3"' },
+  }));
+  await page.goto('/#/settings');
+  await expect(page.getByLabel('默认 PDF 解析方案')).toHaveValue('paddleocr-vl-1.6-v1');
+  await expect(page.getByRole('region', { name: 'PDF 解析', exact: true })).toContainText('运行设备');
+  await page.goto('/#/documents/doc_test');
+  await expect(page.getByLabel('本次 PDF 解析方案')).toHaveValue('paddleocr-vl-1.6-v1');
+  expect(writes).toHaveLength(0);
+});
+
+
+test('detected environment offers available runtimes and persists the choice', async ({ page }) => {
+  const { writes, errors } = await setup(page);
+  await page.goto('/#/settings');
+  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+  await expect(panel).toContainText('Linux · x86_64 · 4 核 CPU · 内存上限 8.0 GiB');
+  const devices = panel.getByLabel('运行设备', { exact: true });
+  await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
+  await expect(devices.locator('option[value="cuda"]')).toBeDisabled();
+  await expect(devices.locator('option[value="mlx"]')).toBeDisabled();
+  await expect(panel).toContainText('当前部署没有可用的 Docker MLX 图像推理后端');
+  await devices.selectOption('cpu');
+  await panel.getByRole('button', { name: '保存解析设置' }).click();
+  await expect(panel).toContainText('解析设置已保存');
+  expect(writes[0]).toMatchObject({ body: { parser_accelerator: 'cpu' }, headers: { 'if-match': '"3"' } });
+  await page.reload();
+  await expect(devices).toHaveValue('cpu');
+  await panel.getByLabel('默认 PDF 解析方案').selectOption('paddleocr-vl-1.6-v1');
+  await expect(panel).toContainText('当前内存较低');
+  await panel.screenshot({ path: outputDirectory('environment-settings.png') });
+  expect(errors).toEqual([]);
+});
+
+test('environment expiry disables explicit choices until refresh recovers', async ({ page }) => {
+  await setup(page);
+  let online = false;
+  await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ json: {
+    online, default: 'cpu', options: online ? [{ id: 'cpu', profiles: ['docling-v1'] }] : [],
+  } }));
+  await page.goto('/#/settings');
+  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+  const devices = panel.getByLabel('运行设备', { exact: true });
+  await expect(panel).toContainText('解析环境暂不可用');
+  await expect(devices.locator('option[value="cpu"]')).toBeDisabled();
+  online = true;
+  await panel.getByRole('button', { name: '刷新环境' }).click();
+  await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
+});
+
+
+test('failed environment refresh revokes previously available options', async ({ page }) => {
+  await setup(page);
+  await page.goto('/#/settings');
+  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+  const devices = panel.getByLabel('运行设备', { exact: true });
+  await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
+  await devices.selectOption('cpu');
+  await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: 'Environment unavailable' } } }));
+  await panel.getByRole('button', { name: '刷新环境' }).click();
+  await expect(panel).toContainText('解析环境暂不可用');
+  await expect(devices.locator('option[value="cpu"]')).toBeDisabled();
+  await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeDisabled();
+});
+
+
+test('unsupported deployment default requires an available runtime choice', async ({ page }) => {
+  await setup(page);
+  await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ json: {
+    online: true, default: 'mlx', options: [{ id: 'cpu', profiles: ['docling-v1', 'paddleocr-vl-1.6-v1'] }, { id: 'mlx', profiles: [], reason: 'MLX_IMAGE_BACKEND_UNAVAILABLE' }],
+  } }));
+  await page.goto('/#/settings');
+  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+  const devices = panel.getByLabel('运行设备', { exact: true });
+  // Non-Paddle profiles explicitly use CPU in the MLX deployment.
+  await expect(devices.locator('option[value="deployment"]')).toHaveText('部署默认（CPU）');
+  await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeEnabled();
+  await panel.getByLabel('默认 PDF 解析方案').selectOption('paddleocr-vl-1.6-v1');
+  await expect(devices.locator('option[value="deployment"]')).toBeDisabled();
+  await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeDisabled();
+  await devices.selectOption('cpu');
+  await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeEnabled();
 });

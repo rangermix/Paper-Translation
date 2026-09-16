@@ -53,6 +53,8 @@ def parse_spool(db, cfg, lease):
             descriptor['asset_id'] = asset_id
         if lease.kind == 'parse':
             descriptor['profile']['parser_profile_revision'] = selected_profile(lease.payload)
+            if lease.payload.get('parser_accelerator'):
+                descriptor['accelerator'] = lease.payload['parser_accelerator']
     write_request(cfg.parser_inputs, descriptor, source_pdf)
     output_dir = cfg.parser_outputs / lease.task_id / str(lease.fence)
     deadline = time.monotonic() + max(0, (expires_at - now()).total_seconds()) + PARSER_RESULT_GRACE_SECONDS

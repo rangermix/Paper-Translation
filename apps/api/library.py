@@ -12,8 +12,9 @@ from sqlalchemy import case, or_, select, text
 from urllib.parse import urlencode
 
 from packages.translation.languages import canonical_locale
-from packages.parsers.profiles import ParserProfile, selected_profile
+from packages.parsers.profiles import ParserProfile, preferred_profile
 from packages.parsers.timeouts import selected_timeout_seconds
+from packages.parsers.environment import resolve_accelerator
 from packages.domain.config import provider_profile
 from packages.domain.workflow import TERMINAL_STATES
 from packages.translation.pipeline import PipelineOptions, freeze_pipeline
@@ -29,6 +30,14 @@ router = APIRouter(prefix='/api/v1')
 # Commit or roll back before response headers are sent. Request-scoped yield
 # teardown can acknowledge a mutation whose transaction has not committed yet.
 Session = Depends(session_dependency, scope='function')
+
+
+def frozen_parser_runtime(preferences, profile):
+    try:
+        choice = resolve_accelerator(preferences, profile)
+    except ValueError:
+        require(False, 'PARSER_ACCELERATOR_UNAVAILABLE', '所选运行设备当前不可用，请刷新解析环境后重新选择。')
+    return {'parser_accelerator': choice} if choice else {}
 
 
 def upload_view(session, upload):
@@ -238,7 +247,8 @@ def create_import(body: ImportCreate, request: Request, session=Session):
         if body.workflow:
             preferences = session.get(Settings, 'singleton').preferences
             job = enqueue(session, 'parse', {'source_asset_id': doc.source_asset_id,
-                'parser_profile_revision': body.parser_profile_revision or selected_profile(preferences),
+                **frozen_parser_runtime(preferences, body.parser_profile_revision or preferred_profile(preferences)),
+                'parser_profile_revision': body.parser_profile_revision or preferred_profile(preferences),
                 'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
                 'source_language': doc.source_language, 'document_generation': doc.generation,
                 'workflow': freeze_pipeline(body.workflow, doc.source_asset_id)}, doc.id)
@@ -372,10 +382,11 @@ def parse(document_id: str, body: ParseRequest, request: Request, session=Sessio
         match_generation(doc, request.headers.get('If-Match'))
         require(doc.source_asset_id == body.source_asset_id, 'SOURCE_STALE')
         preferences = session.get(Settings, 'singleton').preferences
-        selection = body.parser_profile_revision or selected_profile(preferences)
+        selection = body.parser_profile_revision or preferred_profile(preferences)
         pending = session.scalar(select(Job).where(Job.document_id == doc.id, Job.stage == 'parse', Job.status.in_(['pending', 'running'])))
         require(pending is None, 'PARSE_IN_PROGRESS')
         job = enqueue(session, 'parse', {**body.model_dump(), 'parser_profile_revision': selection, 'document_generation': doc.generation,
+            **frozen_parser_runtime(preferences, selection),
             'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
             'source_language': doc.source_language,
             'workflow': freeze_pipeline(body.workflow, doc.source_asset_id) if body.workflow else None}, doc.id)

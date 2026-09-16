@@ -27,7 +27,7 @@ parser = [
     "torchvision==0.28.0+cpu",
     "onnxruntime==1.29.0",
     "paddleocr[doc-parser]==3.7.0; sys_platform == 'linux'",
-    "paddlex==3.7.2; sys_platform == 'linux'",
+    "paddlex[genai-client]==3.7.2; sys_platform == 'linux'",
     "paddlepaddle==3.3.1; sys_platform == 'linux'",
 ]
 

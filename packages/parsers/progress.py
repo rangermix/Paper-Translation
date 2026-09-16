@@ -81,6 +81,8 @@ def read_progress(output, request, cursor=0):
 def local_identity(selection, lock):
     from packages.parsers.config import CPU_THREADS
     from packages.parsers.profiles import GRANITE_MODEL, GRANITE_PROFILE, PADDLE_MODEL, PADDLE_PROFILE
+    from .runtime import runtime_config
+    runtime = runtime_config(selection)
     ids = ({PADDLE_MODEL, 'PaddlePaddle/PP-DocLayoutV3'} if selection == PADDLE_PROFILE else
            {GRANITE_MODEL} if selection == GRANITE_PROFILE else
            {'docling-project/docling-layout-old', 'docling-project/docling-models', 'docling-project/CodeFormulaV2', 'RapidAI/RapidOCR'})
@@ -88,7 +90,7 @@ def local_identity(selection, lock):
     writer = _writer.get()
     from packages.parsers.timeouts import request_timeout_seconds
     return {'kind': 'local', 'model_id': PADDLE_MODEL if selection == PADDLE_PROFILE else GRANITE_MODEL if selection == GRANITE_PROFILE else 'docling-standard',
-        'models': models, 'parser_profile_revision': selection, 'device': 'cpu', 'threads': CPU_THREADS,
+        'models': models, 'parser_profile_revision': selection, **runtime.identity(), 'threads': CPU_THREADS,
         'engine': 'paddleocr' if selection == PADDLE_PROFILE else 'docling',
         'engine_version': lock['paddleocr_version' if selection == PADDLE_PROFILE else 'docling_version'],
         'timeout_seconds': request_timeout_seconds(writer['request']) if writer else None,

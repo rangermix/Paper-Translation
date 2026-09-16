@@ -5,6 +5,24 @@ from packages.parsers.inspect import PDFError
 from packages.ir import strict_loads
 
 
+def test_probe_uses_recent_parent_verification_without_rehashing_weights(tmp_path, monkeypatch):
+    import time
+    from packages.ir import canonical_bytes
+    from workers.parser import health
+    limit = 4 * 1024**3
+    monkeypatch.setattr(health, 'verify_memory_envelope', lambda: limit)
+    monkeypatch.setenv('PARSER_OUTPUTS', str(tmp_path))
+    # The worker owns model verification; a probe should only read its receipt.
+    monkeypatch.setenv('DOCLING_ARTIFACTS_PATH', str(tmp_path / 'not-read-by-probe'))
+    receipt = {'timestamp': time.time(), 'models_verified': True, 'memory_limit_bytes': limit}
+    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(receipt))
+    health.main()
+    receipt['timestamp'] -= 31
+    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(receipt))
+    with pytest.raises(SystemExit, match='heartbeat stale'):
+        health.main()
+
+
 def test_missing_models_never_create_healthy_heartbeat(tmp_path, monkeypatch):
     from workers.parser.main import ModelHealth
     monkeypatch.setattr('workers.parser.main.verify_memory_envelope', lambda: 4 * 1024**3)

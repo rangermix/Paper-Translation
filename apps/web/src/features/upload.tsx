@@ -21,7 +21,7 @@ export function UploadPage({ capability }: { capability?: Capability }) {
   const profile = provider.data;
   const costControlled = costControlEnabled(profile);
   const consent = Boolean(profile?.profile_hash && consentHash === profile.profile_hash);
-  const selectedParser = parser ?? preferences.data?.parser_profile_revision ?? 'docling-v1';
+  const selectedParser = parser ?? preferences.data?.parser_profile_revision ?? 'paddleocr-vl-1.6-v1';
   const maxBytes = capability?.limits?.max_pdf_bytes ?? 50 * 1024 * 1024; const maxBatch = capability?.limits?.max_batch_files ?? 10;
   const update = (id: string, changes: Partial<Row>) => setRows(old => old.map(row => row.id === id ? { ...row, ...changes } : row));
   function select(files: File[]) { try { setRows(validatePdfSelection(files, maxBytes, maxBatch).map(x => ({ ...x, id: crypto.randomUUID() }))); setConsentHash(''); setError(undefined); } catch (reason) { setError(reason as Error); } }

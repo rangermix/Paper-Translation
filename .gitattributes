@@ -1,5 +1,7 @@
 # PDF fixtures and source documents must retain their exact binary contents.
 *.pdf binary
-# This frozen migration was registered with a CRLF byte checksum.
-# Preserve its exact bytes rather than changing the registered checksum.
+# These frozen artifacts were registered with CRLF byte checksums. Preserve
+# their exact bytes on every platform; do not normalize or regenerate hashes.
 packages/domain/migrations/012.json -text whitespace=cr-at-eol
+packages/templates/reader-v3.css -text whitespace=cr-at-eol
+packages/templates/reader-v3.js -text whitespace=cr-at-eol

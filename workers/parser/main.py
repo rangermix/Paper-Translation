@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import multiprocessing
 import os
 import re
 import shutil
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +18,7 @@ from packages.parsers.spool import validate_request
 from packages.parsers.models import verify_models
 from packages.parsers.config import CPU_THREADS, MEMORY_LIMIT_BYTES
 from packages.parsers.timeouts import request_timeout_seconds
+from workers.parser.process import ParserProcess
 
 
 class ModelHealth:
@@ -25,18 +26,21 @@ class ModelHealth:
     def __init__(self, outputs, artifacts_path):
         self.outputs, self.artifacts_path = Path(outputs), Path(artifacts_path)
         self.checked_at, self.version, self.memory_limit = None, None, None
+        self.environment = None
 
     def heartbeat(self, active_task=None):
         if self.checked_at is None or time.monotonic() - self.checked_at >= 60:
             try:
                 self.memory_limit = verify_memory_envelope()
                 lock = verify_models(self.artifacts_path)
+                from packages.parsers.environment import detect_environment
+                self.environment = detect_environment()
             except BaseException:
                 (self.outputs/'heartbeat.json').unlink(missing_ok=True)
                 raise
             self.checked_at, self.version = time.monotonic(), lock['docling_version']
         payload = {'timestamp': time.time(), 'models_verified': True, 'parser_version': self.version,
-            'memory_limit_bytes': self.memory_limit}
+            'memory_limit_bytes': self.memory_limit, 'environment': self.environment}
         if active_task:
             payload['active_task'] = active_task
         temporary = self.outputs/'heartbeat.tmp'
@@ -152,7 +156,15 @@ def run_once(input_root, output_root, heartbeat=None):
                 finish(result_file,request,'failed',{'code':'PARSER_TIMEOUT','message':'Request deadline expired'})
                 return True
             source = safe_path(inputs,expected+'/original.pdf')
-            process = multiprocessing.get_context('spawn').Process(target=process_request,args=(request,source,result_file.parent))
+            from packages.parsers.runtime import child_executable
+            from packages.parsers.profiles import selected_profile
+            try:
+                executable = child_executable(selected_profile(request.get('profile', {})), request.get('accelerator')) if request.get('operation', 'parse') == 'parse' else sys.executable
+            except (PDFError, ValueError) as exc:
+                finish(result_file, request, 'failed', {'code': getattr(exc, 'code', 'PARSER_ACCELERATOR_INVALID'), 'message': 'Parser deployment configuration is unavailable'})
+                return True
+            process = ParserProcess([executable, '-m', 'workers.parser.child',
+                str(candidate), str(source), str(result_file.parent)])
             until = time.monotonic() + min(seconds, request_timeout_seconds(request))
             process.start()
             while process.is_alive() and time.monotonic()<until:

@@ -60,7 +60,7 @@ def test_parser_uses_configured_limit_and_absolute_deadline(tmp_path, monkeypatc
     child.join = join
     child.kill = lambda: setattr(child, 'killed', True)
     monkeypatch.setattr(parser, 'time', SimpleNamespace(monotonic=lambda: clock.elapsed))
-    monkeypatch.setattr(parser, 'multiprocessing', SimpleNamespace(get_context=lambda _: SimpleNamespace(Process=lambda **_: child)))
+    monkeypatch.setattr(parser, 'ParserProcess', lambda _: child)
     assert parser.run_once(inputs, outputs)
     result = strict_loads((outputs / 'task-timeout/1/result.json').read_bytes())
     assert result['status'] == status

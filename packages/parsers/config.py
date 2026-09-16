@@ -1,30 +1,33 @@
-"""Reproducible CPU-only pipelines, with models supplied by the image."""
+"""Reproducible local pipelines, with models supplied by the image."""
 from packages.ir import digest
-from .profiles import DEFAULT_PROFILE, GRANITE_PROFILE, GRANITE_MODEL, selected_profile
+from .runtime import runtime_config
+from .profiles import DOCLING_PROFILE, GRANITE_PROFILE, GRANITE_MODEL, selected_profile
 
 CPU_THREADS = 4
 MEMORY_LIMIT_BYTES = 16 * 1024**3
 
 
-def pipeline_fingerprint(lock, profile=DEFAULT_PROFILE):
+def pipeline_fingerprint(lock, profile=DOCLING_PROFILE):
     selected_profile({'parser_profile_revision': profile})
-    if profile not in (DEFAULT_PROFILE, GRANITE_PROFILE):
+    runtime = runtime_config(profile)
+    if profile not in (DOCLING_PROFILE, GRANITE_PROFILE):
         raise ValueError('PARSER_PROFILE_INVALID')
     if profile == GRANITE_PROFILE:
         return digest({'pipeline': lock.get('pipeline_revision'), 'profile': profile, 'models': lock,
-            'device': 'cpu', 'threads': CPU_THREADS, 'dtype': 'float32', 'batch_size': 1,
+            'device': runtime.device, 'threads': CPU_THREADS, 'dtype': runtime.dtype, 'batch_size': 1,
             'scale': 2.0, 'force_backend_text': False, 'max_new_tokens': 8192})
     return digest({'pipeline': lock.get('pipeline_revision', 'legacy'), 'models': lock,
-                   'device': 'cpu', 'threads': CPU_THREADS, 'ocr': 'rapidocr-onnxruntime',
-                   'formula': True, 'code': True, 'table': 'accurate', 'vlm_dtype': 'float32',
+                   'device': runtime.device, 'threads': CPU_THREADS, 'ocr': 'rapidocr-onnxruntime',
+                   'formula': True, 'code': True, 'table': 'accurate', 'vlm_dtype': runtime.dtype,
                    'elements_batch_size': 1})
 
 
-def pipeline_options(artifacts_path, lock, profile=DEFAULT_PROFILE):
+def pipeline_options(artifacts_path, lock, profile=DOCLING_PROFILE):
     selected_profile({'parser_profile_revision': profile})
-    if profile not in (DEFAULT_PROFILE, GRANITE_PROFILE):
+    runtime = runtime_config(profile)
+    if profile not in (DOCLING_PROFILE, GRANITE_PROFILE):
         raise ValueError('PARSER_PROFILE_INVALID')
-    from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+    from docling.datamodel.accelerator_options import AcceleratorOptions
     from docling.datamodel.layout_model_specs import DOCLING_LAYOUT_V2
     from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptions, TableFormerMode
     from docling.datamodel.vlm_engine_options import TransformersVlmEngineOptions
@@ -36,12 +39,12 @@ def pipeline_options(artifacts_path, lock, profile=DEFAULT_PROFILE):
         from docling.datamodel.pipeline_options import VlmPipelineOptions
         options = VlmPipelineOptions(artifacts_path=artifacts_path,
             enable_remote_services=False, allow_external_plugins=False,
-            accelerator_options=AcceleratorOptions(num_threads=CPU_THREADS, device=AcceleratorDevice.CPU))
+            accelerator_options=AcceleratorOptions(num_threads=CPU_THREADS, device=runtime.device))
         options.vlm_options.model_spec = options.vlm_options.model_spec.model_copy(update={
             'default_repo_id': GRANITE_MODEL, 'revision': repos[GRANITE_MODEL]['revision'],
             'max_new_tokens': 8192, 'trust_remote_code': False})
         options.vlm_options.engine_options = TransformersVlmEngineOptions(
-            device='cpu', torch_dtype='float32', compile_model=False)
+            device=runtime.device, torch_dtype=runtime.dtype, compile_model=False)
         options.vlm_options.batch_size = 1
         options.vlm_options.scale = 2.0
         options.vlm_options.force_backend_text = False
@@ -55,10 +58,10 @@ def pipeline_options(artifacts_path, lock, profile=DEFAULT_PROFILE):
     options.layout_options.model_spec = DOCLING_LAYOUT_V2.model_copy(update={
         'revision': repos['docling-project/docling-layout-old']['revision']})
     options.table_structure_options.mode = TableFormerMode.ACCURATE
-    options.accelerator_options = AcceleratorOptions(num_threads=CPU_THREADS, device=AcceleratorDevice.CPU)
+    options.accelerator_options = AcceleratorOptions(num_threads=CPU_THREADS, device=runtime.device)
     options.code_formula_options.model_spec = options.code_formula_options.model_spec.model_copy(update={
         'revision': repos['docling-project/CodeFormulaV2']['revision']})
     # Compilation has a large cold-start cost; FP32 also works on CPUs without BF16 acceleration.
     options.code_formula_options.engine_options = TransformersVlmEngineOptions(
-        device='cpu', torch_dtype='float32', compile_model=False)
+        device=runtime.device, torch_dtype=runtime.dtype, compile_model=False)
     return options

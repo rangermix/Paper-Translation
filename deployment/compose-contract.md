@@ -1,5 +1,9 @@
 # Docker Compose 交付与依赖打包契约
 
+**2026-09-13 用户补充：检测环境与可选设备。** 设置页显示解析容器实际可使用的系统、架构、CPU 配额、内存上限、GPU 与检测时间，并按当前模型提供可用设备选择；不可用选项解释原因。设置沿用 CAS，新任务冻结解析后的设备，已排队任务不随偏好变化。parser 心跳提供能力报告，API 只读挂载 parser_outputs；不暴露或接受模型服务地址及凭据。检测过期/刷新失败时撤销可用状态。2026-09-13 已以本地 Docker 后端镜像完成 MLX 图像与受控 PDF 实测；部署记录成功证明后开放 MLX，模型或后端变化须清除并重新验证证明，未验证时仍显示不可用（见加速部署文档）；CPU 运行时可用不等于任何模型都能装入当前内存。
+
+**2026-09-09 用户补充：解析加速。** 新任务未保存解析偏好时默认 PaddleOCR-VL-1.6，保留明确偏好与旧任务。部署始终使用 Docker Compose，优先统一镜像：CPU / NVIDIA CUDA 共用解析代码，CUDA 镜像隔离 PyTorch 与 Paddle 的依赖；Apple MLX 通过 Docker Model Runner 的 vLLM Metal 及 Compose models 管理，不部署独立宿主 Python 服务。MLX 仅用于 Paddle 识别，版面与其他方案保持 CPU；运行记录保存实际后端。固定权重、秘密隔离、旧产物不变与非阻断质量规则继续适用。实现与未执行的硬件验收范围见 [加速部署](extraction-acceleration.md)。此补充覆盖下方 CPU-only 和无模型网络的旧限定，仅 MLX 部署允许访问 Docker 管理的本机推理服务。
+
 **2026-09-09 下一轮部署计划（待实施）。** NB 工作流保留离线 CPU parser；DOI/Crossref 请求由后端 metadata_lookup 任务执行，不给 parser 联网或挂载 Provider 密钥。新增任务日志与元数据需持久化、备份和增量迁移演练，完成后同步交付 app/worker/parser。参见 [执行计划](../milestones/nonblocking-workflow-plan.md)，当前 Compose 尚未因此更改。
 
 **2026-09-08 可配置超时。** 新解析默认 120 分钟，设置页支持 1–1440 整数分钟，随任务冻结。worker deadline、等待循环、parser 墙钟和子进程 CPU 秒限制统一使用该任务值；上传检查及无超时字段的旧任务仍限 15 分钟。此补充覆盖下文固定 15 分钟解析限制。部署需同步更新 app / worker / parser；无需模型更新或数据库 schema 迁移，保留 4 CPU / 16 GiB / 256 PID 与 network_mode:none。

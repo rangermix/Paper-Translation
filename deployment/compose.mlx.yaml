@@ -1,0 +1,28 @@
+# Docker Desktop / Apple Silicon + Docker Model Runner with vLLM Metal.
+# Compose >= 2.38. Package the locked Paddle weights before deployment;
+# see deployment/extraction-acceleration.md. No native app-managed server.
+services:
+  parser:
+    # The shared CPU image performs PDF inspection and Paddle layout detection.
+    network_mode: !reset null
+    networks: [model_inference]
+    environment:
+      PARSER_ACCELERATOR: mlx
+      PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:?Set the packaged Paddle model sha256 ID}"
+      # Set only after actual image inference passes with this model/backend.
+      PARSER_MLX_VERIFIED_MODEL_ID: "${PARSER_MLX_VERIFIED_MODEL_ID:-}"
+      NO_PROXY: model-runner.docker.internal
+      no_proxy: model-runner.docker.internal
+    models:
+      - paddle_extraction
+models:
+  paddle_extraction:
+    # Floating local model tag; setup resolves its current content ID below.
+    model: "${PADDLE_MLX_MODEL:-docker.io/local/paddleocr-vl-1.6:latest}"
+    context_size: 8192
+    # DMR configures models before the explicit inference endpoint is selected.
+    # vLLM-only flags here are rejected by its default configuration backend.
+networks:
+  # Connectivity to Docker Desktop's managed model runtime, not the DB network.
+  # This bridge is not an egress firewall. The application endpoint is fixed.
+  model_inference:

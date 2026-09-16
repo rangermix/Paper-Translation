@@ -256,6 +256,8 @@ class DoclingParser:
             selection = selected_profile(profile)
         except ValueError as exc:
             raise PDFError('PARSER_PROFILE_INVALID') from exc
+        from .runtime import runtime_config, require_device
+        require_device(runtime_config(selection), selection)
         lock = verify_models(self.artifacts_path)
         from .progress import local_identity, report_progress
         report_progress('loading_model', model=local_identity(selection, lock))

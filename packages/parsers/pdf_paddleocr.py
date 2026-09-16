@@ -1,4 +1,4 @@
-"""Official PaddleOCR-VL pipeline, CPU only, with independent PDF evidence."""
+"""Official PaddleOCR-VL pipeline, with independent PDF evidence."""
 from __future__ import annotations
 
 import os
@@ -7,6 +7,7 @@ from pathlib import Path
 
 from packages.ir import canonical_bytes, digest
 from .config import CPU_THREADS
+from .runtime import runtime_config, require_device, verify_mlx_service
 from .inspect import PDFError, inspect_pdf
 from .models import verify_models
 from .pdf_docling import DoclingParser, overlap
@@ -22,7 +23,8 @@ def paddle_options(artifacts_path, lock):
     config['SubModules']['LayoutDetection']['batch_size'] = 1
     config['SubModules']['VLRecognition']['batch_size'] = 1
     repos = {repo['repo_id']: repo for repo in lock['repositories']}
-    return dict(pipeline_version='v1.6', device='cpu', engine='paddle', cpu_threads=CPU_THREADS,
+    runtime = runtime_config(PADDLE_PROFILE)
+    options = dict(pipeline_version='v1.6', device=runtime.paddle_device, engine='paddle', cpu_threads=CPU_THREADS,
         enable_hpi=False, enable_mkldnn=False, enable_cinn=False,
         layout_detection_model_name='PP-DocLayoutV3',
         layout_detection_model_dir=str(artifacts_path / repos['PaddlePaddle/PP-DocLayoutV3']['local_directory']),
@@ -32,6 +34,11 @@ def paddle_options(artifacts_path, lock):
         use_doc_orientation_classify=False, use_doc_unwarping=False,
         use_layout_detection=True, use_chart_recognition=False, use_seal_recognition=False,
         format_block_content=False, paddlex_config=config)
+    if runtime.device == 'mlx':
+        options.pop('vl_rec_model_dir')
+        options.update(vl_rec_backend=runtime.backend, vl_rec_server_url=runtime.server_url,
+            vl_rec_api_model_name=runtime.model_id)
+    return options
 
 
 def page_items(result, page, image_size):
@@ -77,10 +84,14 @@ class PaddleOCRParser:
             raise PDFError('PARSER_PROFILE_INVALID') from exc
         if set(profile) - {'language', 'limits', 'created_at', 'parser_profile_revision'} or selection != PADDLE_PROFILE:
             raise PDFError('PARSER_PROFILE_INVALID')
+        runtime = runtime_config(selection)
+        require_device(runtime, selection)
         lock = verify_models(self.artifacts_path)
+        if runtime.device == 'mlx':
+            verify_mlx_service(runtime)
         from .progress import local_identity, report_progress, remaining_seconds
         report_progress('loading_model', model=local_identity(selection, lock))
-        for package, key in [('paddleocr', 'paddleocr_version'), ('paddlex', 'paddlex_version'), ('paddlepaddle', 'paddlepaddle_version')]:
+        for package, key in [('paddleocr', 'paddleocr_version'), ('paddlex', 'paddlex_version'), ('paddlepaddle-gpu' if runtime.device.startswith('cuda') else 'paddlepaddle', 'paddlepaddle_version')]:
             if version(package) != lock[key]:
                 raise PDFError('PARSER_VERSION_MISMATCH')
         inspection = inspect_pdf(local_pdf, profile.get('limits'))
@@ -95,7 +106,7 @@ class PaddleOCRParser:
         import paddle
         import pypdfium2 as pdfium
         from paddleocr import PaddleOCRVL
-        paddle.set_device('cpu')
+        paddle.set_device(runtime.paddle_device)
         pipeline = PaddleOCRVL(**paddle_options(self.artifacts_path, lock))
         report_progress('model_loaded', model=local_identity(selection, lock))
         raw, items = [], []
@@ -156,9 +167,9 @@ class PaddleOCRParser:
             pipeline.close()
         (output / 'paddleocr.json').write_bytes(canonical_bytes({'pages': raw}))
         model = next(repo for repo in lock['repositories'] if repo['repo_id'] == PADDLE_MODEL)
-        fingerprint = digest({'profile': PADDLE_PROFILE, 'lock': lock, 'device': 'cpu',
+        fingerprint = digest({'profile': PADDLE_PROFILE, 'lock': lock, **runtime.identity(),
             'threads': CPU_THREADS, 'batch_size': 1, 'scale': 2.0, 'max_new_tokens': 4096,
-            'preprocessing': False, 'engine': 'paddle', 'backend': 'native', 'table_adapter': TABLE_HTML_VERSION})
+            'preprocessing': False, 'engine': 'paddle', 'backend': runtime.backend, 'table_adapter': TABLE_HTML_VERSION})
         result = DoclingParser(self.artifacts_path).adapt(items, inspection, local_pdf, asset_id, output,
             profile=profile, parser_version=lock['paddleocr_version'], parser_name='paddleocr',
             enrichment={'model': PADDLE_MODEL, 'revision': model['revision']}, pipeline_hash=fingerprint)

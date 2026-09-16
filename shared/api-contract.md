@@ -1,5 +1,7 @@
 # API、命令与 Worker 契约 · v3
 
+**2026-09-13 解析环境与设备选择。** `GET /api/v1/settings/parser-environment` 返回 parser 心跳中的当前环境（online、detected_at、system、architecture、cpu_count、memory_bytes、gpu_name、default、options）。每个选项以 id、可用 profile 列表和不可用原因描述；心跳超过 90 秒或检测超过 180 秒时返回 offline 和空选项。`GET/PATCH /settings/preferences` 支持 `parser_accelerator`：deployment（缺省）、cpu、cuda、mlx，沿用 If-Match；未知值返回 422，当前模型不可用的显式设备返回 409，不保存。新解析任务在入队时解析并冻结实际设备，任务配置记录和 spool 携带该值；执行期间不重新读取用户偏好。部署默认在有新心跳时同样校验；旧部署没有环境报告且没有显式选择时保留旧默认行为。新用户默认模型为 PaddleOCR-VL-1.6，已保存选择保持不变。当前 Docker MLX 图像后端不可用时不提供 MLX 选择；环境接口不接收 endpoint 或凭据。
+
 **2026-09-09 已规划、待实现的接口扩展。** NB 计划统一非阻断 issues、执行/质量状态分离、部分结果、任务实际模型与起止/耗时/持久化日志，以及 DOI/元数据状态和书目信息。`unresolved`、`can_translate` 和旧 QA 阻断字段需同步兼容迁移，不能只解禁前端。新契约详见 [NB Spec](../milestones/nonblocking-workflow-spec.md)；现有端点尚未因文档登记改变。
 
 **2026-09-08 解析超时设置。** `GET/PATCH /settings/preferences` 增加 `parser_timeout_seconds`：严格 JSON 整数，60–86400 且为 60 的倍数；缺省读取为 7200，不通过 GET 改写已有偏好。PATCH 沿用 generation / If-Match，null 与其他可选偏好一样表示不修改。解析入队事务读取当前偏好并将时限写入 Task payload；执行时不重新读取。spool 根字段 `timeout_seconds` 与 UTC `deadline` 对应，旧任务/旧请求缺字段时按 900 秒处理。上传检查固定 900 秒，设置不影响 Provider HTTP timeout。

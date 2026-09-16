@@ -103,6 +103,7 @@ services:
     volumes:
       - data:/data
       - uploads:/uploads
+      - parser_outputs:/parser_outputs:ro
       - internal:/internal:ro
       - ./provider-profile.json:/config/provider-profile.json:ro
       - provider_config:/provider_config

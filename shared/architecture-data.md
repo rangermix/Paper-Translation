@@ -1,5 +1,7 @@
 # 共享架构与数据契约 · v3
 
+**2026-09-13 解析设备。** Settings.preferences 增加可选 parser_accelerator。parser 通过当前解释器和隔离的 Paddle CUDA 解释器探测可用设备，将脱敏能力报告写入模型验证心跳；API 只读挂载 parser_outputs。新任务把解析后的 cpu/cuda/mlx 写入 Task.payload 与配置快照，worker 转发为 spool.accelerator，独立 parser 子进程才应用该枚举值，不修改父进程环境。CPU/CUDA 使用同一 CUDA 镜像配方；Apple 的 Docker MLX 图像后端未满足条件时明确不可用，不能把 Linux 容器推断为可访问宿主 Metal。
+
 **2026-09-09 下一轮数据设计（待实施）。** 增量扩展任务/尝试时间、实际模型快照与持久日志；统一页级质量异常和自动恢复证据；新增 DOI 发现、书目元数据、来源与标题优先级。内容质量失败不作为流水线许可条件，旧来源/发布快照保持不可变。详见 [NB Spec](../milestones/nonblocking-workflow-spec.md) 与 [NB-P01–12](../milestones/nonblocking-workflow-plan.md)。
 
 **2026-09-08 解析时限。** Settings.preferences 持久化 `parser_timeout_seconds`，新任务缺省 7200 秒，Task.payload 冻结该值。worker 按快照创建 spool 的 `timeout_seconds` 和绝对 deadline，并只额外等待 10 秒结果落盘；parser 取绝对 deadline 剩余时间与请求时限的较小值，子进程 CPU 秒上限为时限 × 4。旧任务/请求无字段时保留 900 秒；检查任务仍为 900 秒。超时、取消和 fence 检查继续生效，不改变解析模型指纹或既有来源。

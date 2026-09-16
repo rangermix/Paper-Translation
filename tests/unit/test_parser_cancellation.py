@@ -3,17 +3,14 @@ import json
 from pathlib import Path
 import threading
 import time
+import sys
 
 from packages.ir import digest
 from packages.parsers.spool import write_request
 from workers.parser.main import run_once
+from workers.parser.process import ParserProcess
 
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def slow_child(request, source, output):
-    (Path(output)/'private-text.txt').write_text('Synthetic private output', encoding='utf-8')
-    time.sleep(20)
 
 
 def test_active_child_is_killed_and_content_removed_on_tombstone(tmp_path, monkeypatch):
@@ -22,7 +19,10 @@ def test_active_child_is_killed_and_content_removed_on_tombstone(tmp_path, monke
         'max_pages': 20, 'deadline': (datetime.now(timezone.utc)+timedelta(seconds=30)).isoformat(),
         'operation': 'inspect', 'parser_version': 'inspector-v1'}
     write_request(inputs, request, ROOT/'fixtures/sample.pdf')
-    monkeypatch.setattr('workers.parser.main.process_request', slow_child)
+    # Exercise real subprocess termination, with a deterministic slow child.
+    script = "from pathlib import Path; import sys, time; (Path(sys.argv[1])/'private-text.txt').write_text('Synthetic private output'); time.sleep(20)"
+    monkeypatch.setattr('workers.parser.main.ParserProcess',
+        lambda command: ParserProcess([sys.executable, '-c', script, command[-1]]))
     def cancel():
         for _ in range(300):
             if (outputs/'task-private/1/private-text.txt').exists():

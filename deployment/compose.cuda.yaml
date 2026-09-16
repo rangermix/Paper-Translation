@@ -1,0 +1,18 @@
+# Unified image supports CPU and CUDA; only the parser receives a GPU.
+# docker compose -f deployment/compose.production.yaml -f deployment/compose.cuda.yaml up -d --build
+services:
+  parser:
+    image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:cuda}"
+    build:
+      args:
+        PARSER_FLAVOR: cuda
+    environment:
+      PARSER_ACCELERATOR: cuda
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

@@ -47,6 +47,10 @@ class ModelIdentity(Contract):
     engine: str | None = None
     engine_version: str | None = None
     device: str | None = None
+    backend: str | None = None
+    layout_device: str | None = None
+    inference_engine: str | None = None
+    model_artifact_id: str | None = None
     threads: int | None = None
     timeout_seconds: int | None = None
     provider: str | None = None

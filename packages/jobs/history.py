@@ -63,7 +63,7 @@ def config_snapshot(stage, payload):
         parsed = urlsplit(profile['endpoint'])
         if parsed.scheme in {'http', 'https'} and not parsed.username and not parsed.password:
             result['endpoint'] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
-    for key in ('parser_profile_revision', 'parser_timeout_seconds', 'timeout_seconds', 'locale', 'source_language', 'publish_policy'):
+    for key in ('parser_profile_revision', 'parser_accelerator', 'parser_timeout_seconds', 'timeout_seconds', 'locale', 'source_language', 'publish_policy'):
         if key in payload:
             result[key] = copy.deepcopy(payload[key])
     result['task_kind'] = stage

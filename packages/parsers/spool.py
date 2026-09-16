@@ -10,7 +10,7 @@ from .models import parser_version
 from .profiles import selected_profile
 from .timeouts import request_timeout_seconds
 
-REQUEST_KEYS = {'task_id','fence','source_sha256','max_pages','deadline','timeout_seconds','parser_version','operation','asset_id','profile'}
+REQUEST_KEYS = {'task_id','fence','source_sha256','max_pages','deadline','timeout_seconds','parser_version','operation','asset_id','profile','accelerator'}
 
 
 def validate_request(request):
@@ -24,6 +24,8 @@ def validate_request(request):
     if type(request['max_pages']) is not int or not 1 <= request['max_pages'] <= 200: raise ValueError('PARSER_REQUEST_INVALID')
     if request.get('operation','parse') not in {'inspect','parse'}: raise ValueError('PARSER_REQUEST_INVALID')
     request_timeout_seconds(request)
+    if 'accelerator' in request and request['accelerator'] not in ('cpu', 'cuda', 'mlx'):
+        raise ValueError('PARSER_REQUEST_INVALID: accelerator')
     if not isinstance(request.get('profile', {}), dict): raise ValueError('PARSER_REQUEST_INVALID: profile')
     selection = selected_profile(request.get('profile', {}))
     expected_version = 'inspector-v1' if request.get('operation','parse') == 'inspect' else parser_version(selection)

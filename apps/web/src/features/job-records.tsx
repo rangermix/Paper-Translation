@@ -46,6 +46,9 @@ export function ModelView({ model, historical = false }: { model?: ModelIdentity
       {model.config_revision && <><dt>配置版本</dt><dd>{model.config_revision}</dd></>}
       {model.engine && <><dt>本地引擎</dt><dd>{model.engine} {model.engine_version}</dd></>}
       {model.device && <><dt>运行设备</dt><dd>{model.device.toUpperCase()}{model.threads != null ? ` · ${model.threads} 线程` : ''}</dd></>}
+      {model.inference_engine && <><dt>推理后端</dt><dd>{model.inference_engine}</dd></>}
+      {model.layout_device && <><dt>版面检测设备</dt><dd>{model.layout_device.toUpperCase()}</dd></>}
+      {model.model_artifact_id && <><dt>模型制品</dt><dd className="mono">{model.model_artifact_id}</dd></>}
       {model.timeout_seconds != null && <><dt>任务时限</dt><dd>{duration(model.timeout_seconds * 1000)}</dd></>}
       {model.models?.map(entry => <div className="model-revision" key={entry.model_id}><dt>{entry.model_id}</dt><dd className="mono">{entry.revision}</dd></div>)}
     </dl></details>}

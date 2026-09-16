@@ -14,12 +14,18 @@ from packages.ir import digest, flatten_inline
 from packages.storage import read_snapshot
 from packages.templates import list_templates
 from packages.translation.languages import canonical_locale
-from packages.parsers.profiles import ParserProfile, selected_profile
+from packages.parsers.profiles import ParserProfile, preferred_profile
 from packages.parsers.timeouts import MIN_PARSE_TIMEOUT_SECONDS, MAX_PARSE_TIMEOUT_SECONDS, selected_timeout_seconds
 from .common import StrictModel, command, page, response
-from .library import Session, edition_view
+from .library import Session, edition_view, frozen_parser_runtime
 
 router = APIRouter(prefix='/api/v1')
+
+
+@router.get('/settings/parser-environment')
+def parser_environment():
+    from packages.parsers.environment import read_environment
+    return response(read_environment())
 
 
 @router.get('/settings/provider')
@@ -39,7 +45,7 @@ def provider_view(session, profile):
         'connection_test_has_unknown': has_unknown_test(session, profile.get('profile_hash', '')),
         'language_policy': 'all',
         'price_revision': profile.get('price', {}).get('revision'), 'prices': profile.get('price'),
-        'currency': profile.get('price', {}).get('currency', 'USD'), 'parser_profile_revision': selected_profile(settings.preferences),
+        'currency': profile.get('price', {}).get('currency', 'USD'), 'parser_profile_revision': preferred_profile(settings.preferences),
         'privacy_note': privacy_notice(profile),
         'dispatch_disabled': settings.dispatch_disabled, 'instance_budget_micro': settings.instance_budget_micro,
         'costs': budget_totals(session), 'privacy_notice': privacy_notice(profile)}
@@ -49,7 +55,8 @@ def provider_view(session, profile):
 def preferences(session=Session):
     settings = session.get(Settings, 'singleton')
     return response({'generation': settings.generation, 'theme': 'system', **settings.preferences,
-        'parser_profile_revision': selected_profile(settings.preferences),
+        'parser_accelerator': settings.preferences.get('parser_accelerator', 'deployment'),
+        'parser_profile_revision': preferred_profile(settings.preferences),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)})
 
 
@@ -78,6 +85,7 @@ def patch_dispatch_settings(body: DispatchSettings, request: Request, session=Se
 
 
 class Preferences(StrictModel):
+    parser_accelerator: Literal['deployment', 'cpu', 'cuda', 'mlx'] | None = None
     parser_profile_revision: ParserProfile | None = None
     parser_timeout_seconds: int | None = Field(None, strict=True,
         ge=MIN_PARSE_TIMEOUT_SECONDS, le=MAX_PARSE_TIMEOUT_SECONDS, multiple_of=60)
@@ -97,10 +105,14 @@ def patch_preferences(body: Preferences, request: Request, session=Session):
     writable(session)
     settings = session.scalar(select(Settings).where(Settings.id == 'singleton').with_for_update().execution_options(populate_existing=True))
     match_generation(settings, request.headers.get('If-Match'))
+    merged = {**settings.preferences, **body.model_dump(exclude_none=True)}
+    if body.parser_accelerator is not None or (body.parser_profile_revision is not None and merged.get('parser_accelerator', 'deployment') != 'deployment'):
+        frozen_parser_runtime(merged, preferred_profile(merged))
     settings.preferences = {**settings.preferences, **body.model_dump(exclude_none=True)}
     settings.generation += 1
     return response({'generation': settings.generation, 'theme': 'system', **settings.preferences,
-        'parser_profile_revision': selected_profile(settings.preferences),
+        'parser_accelerator': settings.preferences.get('parser_accelerator', 'deployment'),
+        'parser_profile_revision': preferred_profile(settings.preferences),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)})
 
 

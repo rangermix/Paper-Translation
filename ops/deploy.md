@@ -4,6 +4,17 @@ Production uses `deployment/compose.production.yaml`; the root Compose file is
 the historical prototype. Run these commands from the project root. Only Docker
 Engine and Compose are required on the deployment host.
 
+On macOS/Linux, `./deploy.sh` builds the production images, starts the services,
+waits for health checks, and shows their status. Pass your existing Compose
+options to keep optional services and configuration, for example:
+
+```sh
+./deploy.sh --env-file .agent/local-data/mlx-docker-20260913/mlx.env \
+  -f deployment/compose.mlx.yaml -f deployment/compose.local-translation.yaml
+```
+
+The script stops if a command fails and preserves existing volumes.
+
 An existing pre-release instance using PostgreSQL15-bookworm must first follow
 the fresh-project backup/restore upgrade in `ops/restore.md`. Do not run these
 new default startup commands against its original PostgreSQL volume: the base

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from packages.domain.db import get_document, get_entity
 from packages.domain.errors import DomainError, match_generation, require
-from packages.domain.models import Draft, Edition, Job, Permit, SegmentVersion, SourceRevision, Task, new_id, now
+from packages.domain.models import Draft, Edition, Job, Permit, SegmentVersion, Settings, SourceRevision, Task, new_id, now
 from packages.editorial.drafts import create_draft, current_segments, validate_target
 from packages.ir import digest
 from packages.jobs.queue import emit
@@ -55,6 +55,7 @@ def preflight(draft_id: str, request: Request, session=Session):
     blocked, planning = None, {}
     try:
         assert_no_active_requests(session, previous_jobs(session, draft))
+        require(not session.get(Settings, 'singleton').dispatch_disabled, 'DISPATCH_DISABLED')
         profile = checked_profile(profile.get('profile_revision'), source['language'], edition.target_locale)
         planning = source_plan(source, edition.target_locale, profile)
     except DomainError as exc:
@@ -78,6 +79,7 @@ def continue_translation(draft_id: str, body: TranslateEdition, request: Request
         require(body.external_processing_confirmed, 'EXTERNAL_PROCESSING_UNCONFIRMED')
         jobs = previous_jobs(session, old)
         assert_no_active_requests(session, jobs)
+        require(not session.get(Settings, 'singleton').dispatch_disabled, 'DISPATCH_DISABLED')
         profile = language_profile(checked_profile(body.profile_revision, source['language'], edition.target_locale,
             body.profile_hash), source, edition.target_locale)
         budget = checked_budget(profile, body.budget_micro)

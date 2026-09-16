@@ -158,6 +158,8 @@ def wait_without_dispatch(db,lease,code):
         task.available_at=now()+timedelta(seconds=2)
         # No actual transport attempt occurred; contention must not consume retry allowance.
         task.attempts=max(0,task.attempts-1)
+        attempt=session.get(Attempt,lease.attempt_id)
+        attempt.state='not_executed';attempt.finished_at=now()
         if code=='INSTANCE_CONCURRENCY_LIMIT':job.status='pending'
         elif code=='BUDGET_PAUSED':job.status='waiting_budget'
         else:job.status='waiting_config'

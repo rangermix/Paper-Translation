@@ -91,3 +91,49 @@ def test_saved_parse_result_exposes_current_translation_draft(client, database, 
         session.get(Document, 'doc_fixture').current_source_id = 'src_fixture'
     stale = client.get('/api/v1/imports/saved_parse/preflight').json()
     assert stale['status'] == 'superseded' and stale['translation_targets'] == []
+
+
+def test_parse_only_result_can_translate_with_current_configuration_end_to_end(client, database, monkeypatch):
+    from packages.providers.fake import FakeProvider
+    from packages.jobs.queue import claim
+    from packages.translation.execution import execute_translation
+    from workers.main import publish
+    db, cfg = database
+    ir = seed_editor(db, cfg)
+    profile = PROFILE | {'cost_control_enabled': False}
+    monkeypatch.setattr('packages.translation.pipeline.provider_profile', lambda: profile)
+    monkeypatch.setattr('packages.domain.config.provider_profile', lambda: profile)
+    monkeypatch.setattr('apps.api.workflow.provider_profile', lambda: profile)
+    with db.transaction() as session:
+        session.get(Settings, 'singleton').dispatch_disabled = False
+        parent = Job(id='parse_parent', document_id='doc_fixture', stage='parse', status='succeeded',
+            payload={'workflow': freeze_pipeline(PipelineOptions(translate=False), 'source_pdf')})
+        source = SourceDraft(id='parse_result', document_id='doc_fixture', asset_id='source_pdf',
+            base_revision_id='src_fixture', source=ir['source_revision'], coverage={}, evidence={})
+        session.add_all([parent, source]); session.flush()
+        advance_parse(session, cfg, source, parent)
+    initial = claim(db)
+    assert initial.kind == 'publish'
+    publish(db, cfg, initial)
+    result = client.get('/api/v1/imports/parse_result/preflight').json()
+    draft = result['translation_targets'][0]['draft_id']
+    preflight = client.get(f'/api/v1/drafts/{draft}/translation-preflight').json()
+    body = {key: preflight[key] for key in ('source_revision_id', 'source_hash', 'profile_hash')}
+    body.update(profile_revision=profile['profile_revision'], external_processing_confirmed=True, publish_policy='auto_publish')
+    response = client.post(f'/api/v1/drafts/{draft}/translate', json=body,
+        headers={'If-Match': '"'+str(preflight['generation'])+'"', 'Idempotency-Key': 'parse-to-translation'})
+    assert response.status_code == 202, response.text
+    provider = FakeProvider()
+    while lease := claim(db):
+        if lease.kind == 'publish':
+            publish(db, cfg, lease)
+        elif lease.kind == 'index':
+            from packages.search import update_index
+            update_index(db, cfg, lease)
+        else:
+            execute_translation(db, cfg, lease, provider)
+    job = client.get('/api/v1/jobs/'+response.json()['job_id']).json()
+    assert job['status'] in ('succeeded', 'completed_with_warnings')
+    assert job['verified_blocks'] == job['total_blocks'] > 0
+    assert provider.calls and job['request_count'] > 0
+    assert job['progress']['publication_job_id']

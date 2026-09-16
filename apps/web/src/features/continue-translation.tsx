@@ -13,6 +13,7 @@ type Preflight = { generation: number; source_revision_id: string; source_hash: 
 const reasons: Record<string, string> = {
   PROVIDER_CONFIG: '请先在设置中完成 AI 服务配置。', JOB_ACTIVE: '还有任务正在执行或暂停，请先等待完成或取消。',
   REQUEST_IN_FLIGHT: '仍有请求在途，请等待结果。', OUTCOME_UNKNOWN: '存在结果未知的付费请求，请先在任务中心处理。',
+  DISPATCH_DISABLED: '模型请求已暂停，请在设置中开启请求后刷新状态。',
 };
 
 export function ContinueTranslation({ draftId, close }: { draftId: string; close: () => void }) {
@@ -41,6 +42,7 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
       <label className="check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>
         同意向上述服务发送必要源文、上下文和术语，{controlled ? '并在本次预算内翻译。' : '我了解未设置金额上限，服务仍可能收费。'}</label>
       <div className="dialog-actions"><a className="btn" href="#/settings" onClick={close}>AI 服务设置</a>
+        <button className="btn" type="button" disabled={result.loading || action.pending} onClick={result.reload}>刷新状态</button>
         <button className="btn primary" disabled={action.pending || !p.can_translate || !consent || controlled && !budgetValid(budget)}>开始翻译未完成内容</button></div>
     </form>}
   </Modal>;

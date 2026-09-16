@@ -79,3 +79,20 @@ def test_waiting_configuration_continuation_uses_new_consent_and_cancels_old_wai
         assert session.get(Job, 'old').status == 'cancelled'
         new = session.get(Job, result.json()['job_id'])
         assert new.payload['origin'] == 'explicit_continuation' and new.payload['confirmed_at']
+
+
+def test_continuation_reports_paused_dispatch_instead_of_claiming_config_is_ready(client, database, monkeypatch):
+    db, cfg = database
+    prepare(db, cfg, monkeypatch, state='waiting_config')
+    with db.transaction() as session:
+        session.get(Settings, 'singleton').dispatch_disabled = True
+    p = client.get('/api/v1/drafts/draft_fixture/translation-preflight').json()
+    assert p['can_translate'] is False and p['blocked_reason'] == 'DISPATCH_DISABLED'
+    body = {key: p[key] for key in ('source_revision_id', 'source_hash', 'profile_hash')}
+    body.update(profile_revision=PROFILE['profile_revision'], external_processing_confirmed=True)
+    result = client.post('/api/v1/drafts/draft_fixture/translate', json=body,
+        headers={'If-Match': '"'+str(p['generation'])+'"', 'Idempotency-Key': 'paused-no-new-job'})
+    assert result.status_code == 409 and result.json()['error']['code'] == 'DISPATCH_DISABLED'
+    with db.transaction() as session:
+        assert session.get(Job, 'old').status == 'waiting_config'
+        assert len(session.scalars(select(Draft)).all()) == 1

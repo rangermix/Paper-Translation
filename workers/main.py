@@ -308,6 +308,17 @@ def execute(db, cfg, lease):
                 permit = session.scalar(select(Permit).where(Permit.attempt_id == attempt.id))
                 if permit and permit.state in ('reserved', 'unknown'):
                     permit.state, attempt.state, task.status, job.status = 'unknown', 'outcome_unknown', 'outcome_unknown', 'outcome_unknown'
+                elif code == 'CONTROL_CHANGED' and job.status in {'pending', 'paused', 'waiting_config', 'waiting_budget', 'outcome_unknown'}:
+                    # A sibling unit can pause dispatch or yield capacity while
+                    # this lease is already running. Preserve that scheduling
+                    # state and its cause; it is not a failure of this job.
+                    task.status = 'pending'
+                    if permit is None:
+                        task.attempts = max(0, task.attempts - 1)
+                        attempt.state = 'not_executed'
+                    attempt.finished_at = now()
+                    emit(session, job)
+                    return
                 else:
                     task.status, job.status = 'failed', 'failed'
                 job.error = {'code': code}

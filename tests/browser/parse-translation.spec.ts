@@ -4,7 +4,7 @@ import { outputDirectory } from './paths';
 test('saved parse result starts real translation after current-destination confirmation', async ({ page }) => {
   const requests: any[] = [], errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
-  const profile = { configured: true, provider: 'local', api_protocol: 'local_translation', model_id: 'fixed-local-model',
+  const profile = { configured: true, provider: 'local', api_protocol: 'local_translation', model_id: 'sha256:6c8b1184cdeda6e89259a4cda227c53919aae0dae5fdc3c272284e808194127c',
     endpoint: 'http://local-translator:8090/v1/completions', profile_revision: 'current-profile', cost_control_enabled: false };
   await page.route('**/api/v1/**', route => {
     const request = route.request(), path = new URL(request.url()).pathname.slice(7);
@@ -30,10 +30,11 @@ test('saved parse result starts real translation after current-destination confi
   await expect(page.getByRole('heading', { name: '解析结果', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /开始翻译/ }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText('fixed-local-model', { exact: true })).toBeVisible();
+  await expect(dialog.getByText(profile.model_id, { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: '开始翻译未完成内容' })).toBeDisabled();
   expect(requests).toEqual([]);
   await dialog.getByRole('checkbox').check();
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: outputDirectory('parse-translation-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

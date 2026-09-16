@@ -34,7 +34,7 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
           external_processing_confirmed: consent, publish_policy: 'auto_publish' } });
       close(); location.hash = `/jobs/${job.job_id}`;
     }); }}>
-      <p>{languageName(p.source_language)} → {languageName(p.locale)} · {p.profile.model_id || '模型未配置'}</p>
+      <p>{languageName(p.source_language)} → {languageName(p.locale)}</p>
       <ProviderDestination profile={p.profile}/><CostControlNotice enabled={controlled}/>
       {p.blocked_reason && <p className="notice">{reasons[p.blocked_reason] ?? '当前无法继续，请刷新页面查看最新状态。'}</p>}
       {controlled && <label className="field">本次任务预算（{p.profile.currency || 'USD'}）<input className="input" type="number"

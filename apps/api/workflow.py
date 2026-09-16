@@ -284,7 +284,14 @@ def preflight(import_id: str, session=Session):
     diagnostics = aggregate_source_issues(coverage, source)
     execution = session.get(Job, draft.evidence.get('job_id')) if draft.evidence.get('job_id') else session.scalar(
         select(Job).join(Task, Task.job_id == Job.id).where(Task.result['import_id'].astext == draft.id).limit(1))
-    ready = bool(source.get('blocks')) and not draft.evidence.get('superseded_by') and not draft.evidence.get('sealed_revision_id')
+    sealed_id = draft.evidence.get('sealed_revision_id')
+    document = get_document(session, draft.document_id)
+    superseded = bool(draft.evidence.get('superseded_by') or sealed_id and document.current_source_id != sealed_id)
+    targets = [{'draft_id': current.id, 'target_locale': edition.target_locale}
+        for edition, current in session.execute(select(Edition, Draft).join(Draft, Edition.current_draft_id == Draft.id)
+            .where(Edition.document_id == draft.document_id, Draft.source_revision_id == sealed_id)
+            .order_by(Edition.target_locale))] if sealed_id and not superseded else []
+    ready = bool(source.get('blocks')) and not superseded and not sealed_id
     planning = {'estimated_cost_micro': None, 'estimate_micro': None, 'currency': 'USD'}
     estimate_locale = session.get(Settings, 'singleton').preferences.get('locale', 'zh-Hans')
     if ready:
@@ -315,7 +322,8 @@ def preflight(import_id: str, session=Session):
         'unresolved': unresolved, 'unresolved_blocks': len(diagnostics['issues']), 'can_translate': ready,
         'issues': diagnostics['issues'], 'quality': diagnostics['quality'], 'diagnostic_count': len(unresolved),
         'actual_model': execution.actual_model if execution else None,
-        'status': 'superseded' if draft.evidence.get('superseded_by') else 'sealed' if draft.evidence.get('sealed_revision_id') else 'ready' if ready else 'unavailable', 'pages': pages,
+        'status': 'superseded' if superseded else 'sealed' if sealed_id else 'ready' if ready else 'unavailable', 'pages': pages,
+        'translation_targets': targets,
         'required_blocks': sum(bool(b.get('translatable')) for b in source.get('blocks', [])),
         'retained_blocks': sum(not b.get('translatable') for b in source.get('blocks', [])),
         'assets': [{'id': a['id'], 'kind': a.get('kind', a.get('media_type', 'asset')), 'status': 'available'} for a in source.get('assets', [])],

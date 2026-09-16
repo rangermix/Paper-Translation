@@ -69,3 +69,25 @@ def test_import_starts_frozen_pipeline_and_replay_does_not_duplicate(client, dat
         assert len(jobs) == 1
         assert jobs[0].config_snapshot['target_locale'] == 'ja'
         assert jobs[0].payload['parser_timeout_seconds'] == 7200
+
+
+def test_saved_parse_result_exposes_current_translation_draft(client, database, monkeypatch):
+    from packages.domain.models import Edition
+    db, cfg = database
+    ir = seed_editor(db, cfg)
+    monkeypatch.setattr('packages.translation.pipeline.provider_profile', lambda: PROFILE | {'cost_control_enabled': False})
+    with db.transaction() as session:
+        parent = Job(id='parse_parent', document_id='doc_fixture', stage='parse', status='running',
+            payload={'workflow': freeze_pipeline(PipelineOptions(translate=False), 'source_pdf')})
+        source = SourceDraft(id='saved_parse', document_id='doc_fixture', asset_id='source_pdf',
+            base_revision_id='src_fixture', source=ir['source_revision'], coverage={}, evidence={})
+        session.add_all([parent, source]); session.flush()
+        advance_parse(session, cfg, source, parent)
+        draft_id = parent.progress['draft_id']
+    p = client.get('/api/v1/imports/saved_parse/preflight').json()
+    assert p['status'] == 'sealed'
+    assert p['translation_targets'] == [{'draft_id': draft_id, 'target_locale': 'zh-Hans'}]
+    with db.transaction() as session:
+        session.get(Document, 'doc_fixture').current_source_id = 'src_fixture'
+    stale = client.get('/api/v1/imports/saved_parse/preflight').json()
+    assert stale['status'] == 'superseded' and stale['translation_targets'] == []

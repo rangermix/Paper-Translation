@@ -1,6 +1,7 @@
 """Bounded native/page recovery before building source IR; never uses a translator."""
 from copy import deepcopy
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 import re
 import time
 
@@ -9,7 +10,7 @@ from .progress import report_progress
 
 PROSE_LABELS = {'text', 'paragraph', 'list_item'}
 COMPLEX_LABELS = {'table', 'picture', 'formula', 'code'}
-RULE_VERSION = 'native-page-recovery-v1'
+RULE_VERSION = 'native-paragraph-recovery-v2'
 
 
 def _bounds(item, page):
@@ -34,6 +35,107 @@ def _item(ref, label, text, bounds, page, **extra):
 
 def _compact(text):
     return ''.join(comparison_text(text).split())
+
+
+def _matches(region, row):
+    text = _compact(region['text'])
+    original = _compact(row.get('orig', row.get('text', '')))
+    # A PDF line's discretionary hyphen may be exposed as U+0002. Only
+    # ignore a trailing marker when the remaining text exists in the parser
+    # paragraph; this comparison never edits either source representation.
+    if re.search(r'[^\W\d_][-\x02]$', text):
+        text = text[:-1]
+    return bool(text) and text in original
+
+
+def _union(boxes):
+    return [min(b[0] for b in boxes), min(b[1] for b in boxes),
+            max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def _has_columns(regions, page_width):
+    if not page_width:
+        return False
+    left = [r['bbox'] for r in regions if r['bbox'][2] <= page_width / 2]
+    right = [r['bbox'] for r in regions if r['bbox'][0] >= page_width / 2]
+    # Font changes can split every line into short runs; use their combined
+    # extent on each side of the gutter, not the width of an individual run.
+    return bool(left and right and all(_union(side)[2] - _union(side)[0] > page_width * .25 for side in (left, right)))
+
+
+def _native_lines(regions, page_width=None):
+    """Join adjacent font runs on one baseline, never across a column gap."""
+    lines = []
+    middle = page_width / 2 if page_width else None
+    columns = _has_columns(regions, page_width)
+    for region in sorted(regions, key=lambda r: (r['bbox'][1], r['bbox'][0])):
+        box = region['bbox']
+        candidates = []
+        for line in lines:
+            bounds = _union([r['bbox'] for r in line])
+            if columns and (bounds[2] <= middle <= box[0] or box[2] <= middle <= bounds[0]):
+                continue
+            height = max(1, min(box[3] - box[1], bounds[3] - bounds[1]))
+            overlap = min(box[3], bounds[3]) - max(box[1], bounds[1])
+            gap = max(0, box[0] - bounds[2], bounds[0] - box[2])
+            if overlap >= height * .5 and gap <= height * 1.5:
+                candidates.append((gap, line))
+        if candidates:
+            min(candidates, key=lambda pair: pair[0])[1].append(region)
+        else:
+            lines.append([region])
+    output = []
+    for line in lines:
+        line.sort(key=lambda r: r['bbox'][0])
+        text = line[0]['text'].strip()
+        for previous, region in zip(line, line[1:]):
+            # Very close glyphs belong to one word (including style changes).
+            height = max(1, min(previous['bbox'][3] - previous['bbox'][1], region['bbox'][3] - region['bbox'][1]))
+            gap = region['bbox'][0] - previous['bbox'][2]
+            text += (' ' if gap > height * .2 else '') + region['text'].strip()
+        output.append({'text': text, 'bbox': _union([r['bbox'] for r in line])})
+    return sorted(output, key=lambda r: (r['bbox'][1], r['bbox'][0]))
+
+
+def _paragraph_text(lines):
+    return comparison_text('\n'.join(line['text'] for line in lines))
+
+
+def _repair_text(row, regions, page):
+    if _has_columns(regions, page['page_size'][0]):
+        return None  # A broad model box is not proof of a single paragraph.
+    candidate = _paragraph_text(_native_lines(regions))
+    original = row.get('orig', row.get('text', ''))
+    changes = SequenceMatcher(None, original.split(), candidate.split(), autojunk=False).get_opcodes()
+    # Native extraction is often less faithful for math, font runs and PDF
+    # hyphens. Only accept an insertion that retains every existing token in
+    # order; substitutions/deletions remain visible quality diagnostics.
+    if original.strip() and any(tag == 'insert' for tag, *_ in changes) and all(tag in {'equal', 'insert'} for tag, *_ in changes):
+        return candidate
+    return None
+
+
+def _new_paragraphs(regions, page):
+    lines = _native_lines(regions, page['page_size'][0])
+    ordered = _page_order([_item(str(i), 'text', line['text'], line['bbox'], page)
+                           for i, line in enumerate(lines)], page)
+    groups = []
+    for row in ordered:
+        line = lines[int(row['self_ref'])]
+        box = line['bbox']
+        previous = groups[-1][-1] if groups else None
+        bounds = previous['bbox'] if previous else None
+        height = max(1, box[3] - box[1])
+        # A gap or indentation is a paragraph boundary. Unknown layout stays
+        # separate rather than merging across columns, lists, or blank lines.
+        continues = bounds and 0 <= box[1] - bounds[3] <= min(height, bounds[3] - bounds[1]) * .45
+        continues = continues and abs(box[0] - bounds[0]) <= height * .5
+        if continues:
+            groups[-1].append(line)
+        else:
+            groups.append([line])
+    return [_item(f'nb-native-{page["page"]}-{i}', 'text', _paragraph_text(group),
+                  _union([line['bbox'] for line in group]), page) for i, group in enumerate(groups)]
 
 
 def _page_order(items, page):
@@ -87,33 +189,57 @@ def recover_items(items, pages, *, local_reparse=None, remaining_seconds=None):
         for region in native:
             complex_or_kept = [row for row in local if row.get('label') not in PROSE_LABELS and
                 _overlap(region['bbox'], _bounds(row, page)) >= .6]
-            if any(row.get('label') in COMPLEX_LABELS or _compact(region['text']) in _compact(row.get('orig', row.get('text', '')))
-                   for row in complex_or_kept):
+            if complex_or_kept:
                 continue
             prose_native.append(region)
-        missing = [r for r in prose_native if not any(_overlap(r['bbox'], _bounds(row, page)) >= .6 and
-            _compact(r['text']) in _compact(row.get('orig', row.get('text', ''))) for row in local)]
+        prose = [row for row in local if row.get('label') in PROSE_LABELS]
+        assigned = {row['self_ref']: [] for row in prose}
+        outside = []
+        for region in prose_native:
+            owners = [row for row in prose if _overlap(region['bbox'], _bounds(row, page)) >= .6]
+            if not owners:
+                # Model rectangles sometimes stop before the final baseline.
+                # Nearby exact text is proof of coverage, not another paragraph.
+                box = region['bbox']; height = max(1, box[3] - box[1])
+                for row in prose:
+                    bounds = _bounds(row, page)
+                    aligned = min(box[2], bounds[2]) - max(box[0], bounds[0]) >= (box[2] - box[0]) * .6
+                    if aligned and bounds[1] - height * 1.5 <= box[1] <= bounds[3] + height * 1.5 and _matches(region, row):
+                        owners.append(row)
+            if owners:
+                owner = min(owners, key=lambda row: (_bounds(row, page)[2] - _bounds(row, page)[0]) *
+                            (_bounds(row, page)[3] - _bounds(row, page)[1]))
+                assigned[owner['self_ref']].append(region)
+            else:
+                outside.append(region)
+        damaged = [row for row in prose if any(not _matches(r, row) for r in assigned[row['self_ref']])]
+        missing = outside + [r for row in damaged for r in assigned[row['self_ref']] if not _matches(r, row)]
+        crossing = [row for row in damaged if len(row.get('prov', [])) > 1]
         if missing:
             report_progress('recovery_started', page=number, phase='native_text')
-            # Reconstruct page-local prose once, retaining complex containers,
-            # headings and captions. This avoids adding fragments twice under
-            # a broad but incomplete paragraph rectangle.
-            removable = [row for row in local if row.get('label') in PROSE_LABELS and len(row.get('prov', [])) == 1]
-            crossing = [row for row in local if row.get('label') in PROSE_LABELS and len(row.get('prov', [])) > 1]
-            if not crossing:
-                replacement = [_item(f'nb-native-{number}-{index}', 'text', region['text'], region['bbox'], page)
-                               for index, region in enumerate(prose_native)]
-                before = [row.get('orig', row.get('text', '')) for row in removable]
-                result = [row for row in result if row not in removable]
-                result.extend(replacement)
+            before = [row.get('orig', row.get('text', '')) for row in prose]
+            repairs = [(row, _repair_text(row, assigned[row['self_ref']], page)) for row in damaged if row not in crossing]
+            repaired = [row for row, text in repairs if text is not None]
+            uncertain = [row for row, text in repairs if text is None] + crossing
+            for row, text in repairs:
+                # Preserve this parser paragraph's identity and geometry.
+                # Full native evidence within it replaces only this paragraph.
+                if text is not None:
+                    row['orig'] = row['text'] = text
+            replacement = _new_paragraphs(outside, page)
+            result.extend(replacement)
+            if repaired or replacement:
                 local = [row for row in result if _bounds(row, page)]
                 ordered = _page_order(local, page)
                 first = min((result.index(row) for row in local), default=len(result))
                 result = [row for row in result if row not in local]
                 result[first:first] = ordered
-                record('native_page_recovery', before, [row['text'] for row in replacement], recovered_regions=len(missing))
-            else:
-                record('native_recovery_uncertain', [], [], result='retained_page')
+                record('native_page_recovery', before,
+                       [row.get('orig', row.get('text', '')) for row in ordered if row.get('label') in PROSE_LABELS],
+                       recovered_regions=len(missing), repaired_paragraphs=len(repaired), added_paragraphs=len(replacement))
+            if uncertain:
+                unchanged = [row.get('orig', row.get('text', '')) for row in uncertain]
+                record('native_recovery_uncertain', unchanged, unchanged, result='retained_page')
             report_progress('recovery_completed', page=number, phase='native_text')
         readable = any(row.get('orig', row.get('text', '')).strip() for row in local if row.get('label') not in COMPLEX_LABELS)
         if not native and not readable and local_reparse is not None and remaining_seconds() > 1:

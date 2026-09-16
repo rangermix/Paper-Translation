@@ -1,0 +1,8 @@
+.recovery-comparison { margin-block: 1.5rem; min-width: 0; }
+.recovery-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+.recovery-columns > div { min-width: 0; }
+.recovery-columns h5 { font-size: 1rem; margin-block: 1rem .5rem; }
+.recovery-columns ol { padding-inline-start: 1.6rem; }
+.recovery-columns li { padding-inline-start: .2rem; }
+.recovery-columns p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+@media (max-width: 700px) { .recovery-columns { grid-template-columns: minmax(0, 1fr); } }

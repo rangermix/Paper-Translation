@@ -194,6 +194,29 @@ def get_job(job_id: str, session=Session):
     return response(job_view(session, readable_job(session, job_id)))
 
 
+@router.get('/jobs/{job_id}/recovery')
+def recovery_comparison(job_id: str, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), session=Session):
+    job = readable_job(session, job_id)
+    require(job.stage == 'recovery' and not job_content_deleted(session, job), 'NOT_FOUND', status=404)
+    draft = session.get(SourceDraft, job.payload.get('source_draft_id')) if job.payload.get('source_draft_id') else None
+    require(not draft or draft.document_id == job.document_id, 'NOT_FOUND', status=404)
+    entries = (draft.evidence.get('inspection') or {}).get('automatic_recovery', []) if draft else []
+    index = job.payload.get('evidence_index')
+    entry = entries[index] if isinstance(index, int) and 0 <= index < len(entries) else None
+    if not entry or any(entry.get(key) != job.payload.get(key) for key in ('page', 'action', 'rule_version')):
+        return response({'available': False, 'page': job.payload.get('page')})
+    def paragraphs(value):
+        return [value] if isinstance(value, str) else [str(row) for row in value] if isinstance(value, list) else []
+    before, after = paragraphs(entry.get('before')), paragraphs(entry.get('after'))
+    total = max(len(before), len(after))
+    return response({'available': True, 'page': entry['page'], 'action': entry['action'],
+        'rule_version': entry['rule_version'], 'result': entry.get('result', 'recovered'),
+        'before': before[offset:offset + limit], 'after': after[offset:offset + limit],
+        'before_count': len(before), 'after_count': len(after), 'offset': offset,
+        'next_offset': offset + limit if offset + limit < total else None,
+        'original_url': source_url(job.document_id, 'source_draft_id', draft.id, entry['page'])})
+
+
 @router.get('/jobs/{job_id}/logs')
 def job_logs(job_id: str, cursor: int | None = Query(None, ge=0), limit: int = Query(50, ge=1, le=200),
              level: Literal['info', 'warning', 'error'] | None = None, stage: str | None = None, session=Session):

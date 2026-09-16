@@ -13,7 +13,7 @@ from packages.publisher import verify_artifact
 from packages.storage import atomic_write,safe_path
 
 ROOT=Path(__file__).resolve().parents[2]
-RELEASE_MANIFEST_HASH='487013ade690a5766252f123dddf9f457b99759be15bb08e70d5631735ccb810'
+RELEASE_MANIFEST_HASH='b7320b3615c304ce45de8bce2ebfffc9fc552642d53a8fd661ea14a2b12875f3'
 
 
 def checked_release():

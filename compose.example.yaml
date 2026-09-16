@@ -1,6 +1,6 @@
 # Copy this file to compose.yaml in the repository root, then run:
 #   docker compose up --build -d
-# This replaces the bundled prototype configuration in your local copy.
+# This replaces the root include with a standalone, customizable configuration.
 # Existing instances: check the backup/upgrade instructions in ops/deploy.md first.
 # Keep exactly ONE mode block active: CPU (default), CUDA, or MLX.
 # To switch, comment the active block and uncomment the chosen block.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Bounded design-package checks. Never marks application gates complete or calls a provider."""
+"""Repository contract checks. Never marks application gates complete or calls a provider."""
 from __future__ import annotations
-import copy,hashlib,json,re,sys,subprocess,shutil,os
+import copy,hashlib,json,re,os
 from datetime import datetime,timezone
 from uuid import uuid4
 from pathlib import Path
@@ -108,12 +108,16 @@ def main():
  def reference():
   for p,h in load('reference/reference-files.sha256.json').items():must(digest((R/p).read_bytes())==h,'changed reference '+p)
  check('controlled reader resources match manifest',reference)
- check('no font or actual credential files in handoff',lambda:must(not any(p.suffix.lower() in {'.ttf','.otf','.woff','.woff2','.eot','.pem','.key'} or p.name=='.env' for p in package_files()),'font/secret found'))
+ check('no font or actual credential files in package',lambda:must(not any(p.suffix.lower() in {'.ttf','.otf','.woff','.woff2','.eot','.pem','.key'} or p.name=='.env' for p in package_files()),'font/secret found'))
  def composed():
-  c=yaml.safe_load((R/'compose.yaml').read_text());must(set(c['services'])=={'prototype','verify'},'unexpected root services')
-  must('127.0.0.1' in c['services']['prototype']['ports'][0],'bind')
+  c=yaml.safe_load((R/'compose.yaml').read_text())
+  must(c['include']==['deployment/compose.production.yaml'],'root production include')
+  must(set(c['services'])=={'verify'} and c['services']['verify']['profiles']==['tools'],'unexpected root services')
+  must(c['services']['verify']['network_mode']=='none' and not c['services']['verify'].get('ports'),'verification isolation')
   p=yaml.safe_load((R/'deployment/compose.production.yaml').read_text());s=p['services']
+  must(c['name']==p['name'],'production project and volume identity')
   must(set(s)=={'init','db','migrate','app','worker','parser','maintenance'},'target services')
+  must('127.0.0.1' in s['app']['ports'][0],'bind')
   must([k for k,v in s.items() if 'ports' in v]==['app'],'unexpected published port')
   must(s['parser']['network_mode']=='none' and not s['parser'].get('secrets'),'parser internet/secrets')
   must('secrets' not in s['app'] and s['worker']['secrets']==['provider_key'],'key boundary')
@@ -135,24 +139,22 @@ def main():
     must(target.exists(),f'{p.relative_to(R)} -> {h}')
  check('all Markdown links resolve',docs)
  def html():
-  parsers={p.resolve():BeautifulSoup(p.read_text(),'html.parser') for p in package_files('.html')
-   if p.relative_to(R).parts[0] in {'html','prototype','index.html'}}
+  release=load('reference/legacy-manifest.json')
+  # Seed navigation is patched to the app root at import; reference bytes stay frozen.
+  patch=release['navigation_patch']
+  parsers={(R/item['html_path']).resolve():BeautifulSoup(
+   (R/item['html_path']).read_text().replace(patch['from'],patch['to'],1),'html.parser')
+   for item in release['documents']}
   for p,soup in parsers.items():
    for n in soup.select('a[href],img[src],script[src],link[href],iframe[src]'):
     h=n.get('href',n.get('src',''))
-    if h.startswith(('http:','https:','mailto:','data:','blob:','javascript:')):continue
+    if h=='/' or h.startswith(('http:','https:','mailto:','data:','blob:','javascript:')):continue
     path,_,anchor=h.partition('#');t=(p.parent/unquote(path)).resolve() if path else p
     must(t.exists(),f'{p.relative_to(R)} -> {h}')
     if anchor and not anchor.startswith('/') and t in parsers:
      must(parsers[t].find(id=unquote(anchor)) is not None,f'unknown anchor {p.name} -> {h}')
- check('offline documentation/prototype HTML navigation, resources and real anchors resolve',html)
- def forbidden_ui():
-  js=(R/'prototype/src/app.js').read_text()
-  for token in ['import-bilingual','login-form','workspace_id','import-url','type="url"']:
-   must(token not in js,'unexpected public UI '+token)
-  must('accept=".pdf,application/pdf"' in js,'input accept PDF')
- check('prototype has only PDF intake and no identity routes',forbidden_ui)
- report={'purpose':'Design-package validation only; NOT application acceptance','version':'3.0','checks':checks,'passed':sum(x['result']=='pass' for x in checks),'failed':sum(x['result']=='fail' for x in checks),'counts':{'requirements':len(req),'work_packages':len(tasks),'acceptance_scenarios':len(ats),'gates':len(gates)},'production_milestones':{'M0':'not_implemented','M1':'not_implemented','M2':'not_implemented'},'docker_runtime_validation':'not_executed_in_this_environment'}
+ check('controlled seed HTML resources and anchors resolve after navigation patch',html)
+ report={'purpose':'Repository contract validation only; NOT application acceptance','version':'3.0','checks':checks,'passed':sum(x['result']=='pass' for x in checks),'failed':sum(x['result']=='fail' for x in checks),'counts':{'requirements':len(req),'work_packages':len(tasks),'acceptance_scenarios':len(ats),'gates':len(gates)},'production_acceptance':'not_evaluated_by_this_tool','docker_runtime_validation':'not_evaluated_by_this_tool'}
  try:
   run_id=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid4().hex[:8]
   output=R/'.agent/tmp/validation/runs'/run_id/'package-validation.json'

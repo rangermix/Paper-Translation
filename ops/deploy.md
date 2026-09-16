@@ -1,14 +1,15 @@
 # Docker Compose deployment
 
-Production uses `deployment/compose.production.yaml`; the root Compose file is
-the historical prototype. Run these commands from the project root. Only Docker
-Engine and Compose are required on the deployment host.
+The root `compose.yaml` includes `deployment/compose.production.yaml`, so both
+entry points run the production application with the same project and volumes.
+Run commands from the project root. Only Docker Engine and Compose are required
+on the deployment host; the root include requires Compose 2.20 or newer.
 
 ## Single-file CPU / CUDA / MLX example
 
 `compose.example.yaml` contains the full stack with CPU enabled and commented
 CUDA and Apple MLX alternatives. Copy it to the repository root as `compose.yaml`
-(replacing the bundled prototype configuration in your local copy):
+(replacing the root include with a standalone configuration in your local copy):
 
 ```sh
 cp compose.example.yaml compose.yaml

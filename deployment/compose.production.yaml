@@ -1,5 +1,5 @@
 # Production source build; release digests are emitted after actual builds.
-# Root compose.yaml remains the historical prototype.
+# Root compose.yaml includes this production definition.
 name: bilingual-personal-pdf
 x-app: &app
   image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"

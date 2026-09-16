@@ -10,7 +10,7 @@
 
 2026-09-08 解析增强补充：Docling 默认 OCR、公式和代码识别在离线 CPU parser 内运行。公式/代码块的 raw_text/normalized_text 记录模型的解析输出，attributes.recognition 保存 model、revision 和增强前 original_text，原始 Docling JSON 与 PDF 裁图同时保留；这不是机械 normalization_edits。独立原生覆盖检查使用增强前文字。parser.config_hash 同时绑定模型锁、CPU 推理配置和请求 profile，重新解析产生新来源，不修改旧快照。
 
-适用于 M0–M2。产品边界以[基线](../00-product-baseline.md)为准。本章是待实施设计；不代表原型已经具有数据库或真实解析服务。
+适用于 M0–M2。产品边界以[基线](../00-product-baseline.md)为准。本章定义架构契约；实现状态与验收范围以当前代码和执行证据为准。
 
 ## 1. 架构与服务边界
 

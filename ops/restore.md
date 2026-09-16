@@ -1,8 +1,9 @@
 # Backup, recovery and safe external dispatch
 
-Run from the project root with Docker and Compose. The production entry is
-`deployment/compose.production.yaml`. The historical root Compose file is a
-prototype and does not implement this procedure.
+Run from the project root with Docker and Compose. The root `compose.yaml`
+includes `deployment/compose.production.yaml`; both entry points use the same
+production services and named volumes. Preserve any existing project name and
+deployment overrides when running maintenance commands.
 
 Create and verify a backup:
 

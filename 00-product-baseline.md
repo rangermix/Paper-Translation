@@ -18,7 +18,7 @@
 
 **版本 3.0 · 2026-09-06 · 决策已定，产品待实施**
 
-本版本取代此前 prototype / Spec / Plan 中与之冲突的要求。保留既有静态双语阅读体验与可靠翻译出版架构，按最新要求删除多格式导入、多人权限、身份登录和内置反代。本包包含可操作的前端演示、完整产品契约和实施计划，不是已经接通真实翻译的生产系统。
+本版本取代此前设计中与之冲突的要求。保留既有静态双语阅读体验与可靠翻译出版架构，按最新要求删除多格式导入、多人权限、身份登录和内置反代。仓库包含实际应用、产品契约和实施计划；完整 release 状态以当前执行证据为准。2026-09-16 已移除独立演示应用，受控种子论文移至 `reference/legacy/`，固定阅读样式不变。
 
 ## 1. 不可变更的产品边界
 
@@ -52,11 +52,11 @@ M0 保存通过有效性检查的未加密 PDF，提供原件阅读、目录管�
 | M1：真实PDF翻译 | 原文解析、结构预检、费用/外发确认、一个真实Provider、耐久任务、基础校对和发布 | OCR与高级编辑；不拿示例内容冒充上传文件结果 |
 | M2：校对与版本 | PDF来源高亮、术语修订、局部候选、多目标语言、人工确认、版本差异/回滚、全文检索、零模型重建 | 多人协同、知识库聊天、向量检索、更多输入类型 |
 
-M0 的 IR 输入只来自**内部测试夹具和受控种子任务** ，不是对用户开放的新文档入口。原型为展示最终体验可演示全部阶段；这不改变阶段验收顺序。
+M0 的 IR 输入只来自**内部测试夹具和受控种子任务** ，不是对用户开放的新文档入口。阶段完成情况按实际验收证据判断。
 
 ## 4. 采用的架构与技术
 
-管理前端：React + TypeScript + Vite；本次可点击原型为沿用既有设计的免构建 HTML/JS。服务：FastAPI 模块化单体与独立 Worker，共享领域模型。数据库：PostgreSQL，同时承载初期耐久任务队列，不添加 Redis。存储：Compose 命名卷，Storage 接口作为代码解耦，不另外承诺 S3 部署。PDF：Docling 适配器及受限原生检查器。渲染：固定 HTML 模板 + `reader-v1.css` + 小型阅读脚本；公式构建期处理或原式/原图回退。
+管理前端：React + TypeScript + Vite。服务：FastAPI 模块化单体与独立 Worker，共享领域模型。数据库：PostgreSQL，同时承载初期耐久任务队列，不添加 Redis。存储：Compose 命名卷，Storage 接口作为代码解耦，不另外承诺 S3 部署。PDF：Docling 适配器及受限原生检查器。渲染：固定 HTML 模板 + `reader-v1.css` + 小型阅读脚本；公式构建期处理或原式/原图回退。
 
 模型：保留官方 OpenAI Responses 适配器与 FakeProvider 测试替身。按2026-09-06用户新增要求，设置页支持 OpenAI 兼容 Responses / Chat Completions、原生 Gemini Interactions、原生 Claude Messages 的完整请求 endpoint、model ID、鉴权方式、API key、能力与费率。协议自动映射 `openai` / `gemini` / `anthropic`；OpenAI 兼容协议使用 Bearer，Gemini 使用 `x-goog-api-key`，Claude 使用 `x-api-key` 与 `anthropic-version`，均允许明确选择无鉴权。原生支持范围为普通 API key，不含 OAuth 或多 workspace 选择。Claude `api_version` 默认 `2023-06-01`，可在高级选项填写；其他协议不带该字段。
 
@@ -102,6 +102,6 @@ Document 是一篇逻辑文档；SourceAsset 是原PDF字节；SourceRevision �
 
 ## 8. 文档优先级
 
-最新五条用户约束 → 本基线 → 共享契约 → 阶段Spec → 阶段Plan → 原型。原型演示不定义正式后端行为；代码注释和演示按钮不扩大产品范围。
+最新五条用户约束 → 本基线 → 共享契约 → 阶段Spec → 阶段Plan。历史演示不定义正式后端行为；代码注释不扩大产品范围。
 
 需求 `M0/M1/M2-Rxx`、测试 `ATxxA/B`、工作包 `Pxx`、退出门 `Gxx` 延续旧编号以便追踪，但含义按v3重新审阅；不能因为编号相同就复用旧权限/多格式测试结论。所有产品验收状态仍为 planned / not_started / not_evaluated。

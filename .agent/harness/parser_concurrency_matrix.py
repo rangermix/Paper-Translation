@@ -156,7 +156,7 @@ def outside(current_source_overlay=False, allocator_arenas=None, research_paper=
         args += ['-e', 'MALLOC_ARENA_MAX=' + str(allocator_arenas)]
     mounts = [(root / 'fixtures', '/fixtures', True), (root / '.agent/harness', '/harness', True), (output, '/result', False)]
     if research_paper:
-        mounts.append((root / 'prototype/reader/source', '/papers', True))
+        mounts.append((root / 'reference/legacy/source', '/papers', True))
     overlays = {}
     if current_source_overlay:
         for relative in ('packages/parsers/pdf_docling.py', 'workers/parser/main.py'):

@@ -31,8 +31,8 @@ class FrozenContractTests(unittest.TestCase):
 
     def test_legacy_pages_are_exactly_two_and_include_pdf_sources(self):
         manifest = json.loads((ROOT / "reference/reference-files.sha256.json").read_text(encoding="utf-8-sig"))
-        self.assertEqual(len([key for key in manifest if key.startswith("prototype/reader/") and key.endswith(".html")]), 2)
-        self.assertEqual(len([key for key in manifest if key.startswith("prototype/reader/source/") and key.endswith(".pdf")]), 2)
+        self.assertEqual(len([key for key in manifest if key.startswith("reference/legacy/") and key.endswith(".html")]), 2)
+        self.assertEqual(len([key for key in manifest if key.startswith("reference/legacy/source/") and key.endswith(".pdf")]), 2)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ entry points. Do not run them against an existing user instance.
 
 Persistent local data is not disposable temporary output. Existing credential
 files and used authorization receipts must survive reorganization. No agent
-directory is copied into application or prototype Docker images.
+directory is copied into Docker images.
 
 ```powershell
 python .agent/harness/acceptance.py --help

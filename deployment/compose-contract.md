@@ -15,7 +15,7 @@ PaddleOCR native CPU 的 FP32 权重加载在 8 GiB 容器中触发换页，当�
 
 2026-09-08 CPU 解析增强：parser 默认开启 RapidOCR（ONNX Runtime CPU）、CodeFormulaV2 公式/代码识别和现有 TableFormer Accurate。所有模型固定版本及逐文件 SHA-256，构建时下载；CPU PyTorch、ONNX Runtime 与模型随镜像提供。运行仍为 network_mode:none、只读根目录、无 Provider 凭据；资源改为 4 CPU / 8 GiB / 256 PID，墙钟上限 15 分钟。扫描页先运行 OCR，再依据独立覆盖证据决定来源预检是否阻断，不能将 OCR 非空视作全文认证。
 
-**本章定义正式产品的部署验收。** 包根的`compose.yaml`只运行本次交互原型和设计文档；它不是生产翻译服务。`compose.production.yaml`是与Spec一致的目标部署模板，镜像/应用命令由M0/M1实施后提供，缺失镜像变量时应失败而非悄悄运行mock。
+**本章定义正式产品的部署验收。** 根目录 `compose.yaml` 使用 Compose 2.20+ 的 include 引用 `deployment/compose.production.yaml`，两种入口运行相同的应用、worker、parser、数据库和维护服务。`compose.example.yaml` 提供可独立修改的 CPU/CUDA/MLX 配置。实际 release 状态以当前源码与镜像的验收证据为准。
 
 ## 1. 唯一部署路径
 

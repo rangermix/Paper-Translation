@@ -2,7 +2,7 @@
 
 ## 1. 三种结果绝不混淆
 
-**本规格包检查** 验证JSON/文档链接、范围一致性、依赖图和样例；**原型检查** 验证浏览器交互/视觉与演示边界；**正式产品验收** 验证数据库/实际PDF解析/真实Provider/Compose/故障恢复。前两项不能替代第三项。本包中的130个AT均为planned，24个gate均为not_evaluated。
+**仓库契约检查** 验证 JSON、文档链接、范围一致性、依赖图和样例；**浏览器契约检查** 使用受控 API 夹具验证产品交互；**正式产品验收** 验证数据库、实际 PDF 解析、真实 Provider、Compose 和故障恢复。前两项不能替代第三项。原始契约中的 130 个 AT 与 24 个 gate 保留规划状态，当前执行状态由验收 harness 的证据生成。
 
 ## 2. 单元与契约测试
 
@@ -35,13 +35,13 @@ Provider：乱序返回按ID匹配、重复/未知/缺ID拒绝，输出截断/�
 
 ## 5. 浏览器验收
 
-桌面1440×1060与手机390×844；覆盖上传/错误、预检确认、任务恢复、校对阻断、阅读与导出、局部候选冲突、版本回滚、术语、设置。原型保留既有paper/teal界面，阅读页CSS hash不变。正文禁JS可读，离线导出不请求模型/API/外部资源；验证实际图片和原PDF链接。
+桌面1440×1060与手机390×844；覆盖上传/错误、预检确认、任务恢复、校对提示、阅读与导出、局部候选冲突、版本回滚、术语、设置。实际应用保留既有paper/teal界面，reader-v1 CSS hash不变。正文禁JS可读，离线导出不请求模型/API/外部资源；验证实际图片和原PDF链接。
 
 没有Browser/IAB时用Playwright+Chromium；若环境阻止file://或localhost，应记录，用受控本地文件响应/DOM装载做有限验证，不能伪称file://实测通过。截图比对检查五项以上：版式、颜色、文字层级、表格/侧栏、控件和移动折行；改动仅限用户要求的范围收敛。
 
 ## 6. Docker Compose验收
 
-干净宿主仅Docker+Compose；rootless/权限受限条件实际测试后再声明支持。运行正式release而非原型：镜像就绪后断开包管理/模型仓库网络，解析冷启动无需下载；db没有发布端口，parser network none，无Docker socket/Provider secret。无密钥仍能入库/阅读；重建容器数据仍在；备份与恢复命令在容器内执行。
+干净宿主仅Docker+Compose；rootless/权限受限条件实际测试后再声明支持。使用绑定源码与镜像的产品候选版本：镜像就绪后断开包管理/模型仓库网络，解析冷启动无需下载；db没有发布端口，CPU parser network none，无Docker socket/Provider secret。无密钥仍能入库/阅读；重建容器数据仍在；备份与恢复命令在容器内执行。
 
 YAML静态结构正确不等于`docker compose config`通过；后者也不等于镜像能够build/up。本轮环境无Docker CLI时这两项均标未执行。release gate拒绝空digest/未锁定运行依赖；不能自行填假hash以通过。
 

@@ -1,8 +1,6 @@
 import { test, expect, type Page } from '../../apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory, outputPath } from './paths';
-import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-const root = resolve(import.meta.dirname, '../..');
 const evidence = process.env.LIBRARY_UI_EVIDENCE ? outputPath(process.env.LIBRARY_UI_EVIDENCE) : outputDirectory('ui-contracts');
 const doc = { id: 'doc_contract', title: 'A study of reliable translation', tags: ['Systems'], starred: false, lifecycle: 'active', generation: 1, source_asset_id: 'asset_contract', source_revision_id: 'source_contract', page_count: 2, sha256: 'a'.repeat(64), byte_size: 3000, editions: [] };
 const provider = { configured: false, provider: 'OpenAI', model_id: 'configured-model', profile_revision: 'profile-contract-v1', profile_hash: 'f'.repeat(64), parser_profile_revision: 'docling-v1', privacy_revision: 'privacy-v1', price_revision: 'price-v1', currency: 'USD', locale_matrix: [{ source: 'en', target: 'zh-Hans', enabled: true, status: 'test-only' }] };
@@ -199,14 +197,6 @@ test('desktop, 390px and 320px layouts keep navigation and primary controls acce
     }
     await page.screenshot({ path: `${evidence}/upload-${width}.png`, fullPage: true });
   }
-});
-
-test('accepted prototype visual reference remains readable from its supplied file', async ({ page }) => {
-  const reference = await readFile(resolve(root, 'prototype/index.html'), 'utf8');
-  await page.route('**/visual-reference', route => route.fulfill({ contentType: 'text/html', body: reference }));
-  await page.goto('/visual-reference#/import');
-  await expect(page.getByRole('heading', { name: '上传 PDF', exact: true })).toBeVisible();
-  await page.screenshot({ path: `${evidence}/prototype-reference-desktop.png`, fullPage: true });
 });
 
 test('unknown source language permits automatic detection and a changed selection clears consent', async ({ page }) => {

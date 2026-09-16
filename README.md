@@ -1,10 +1,10 @@
 # 对照文库 · 个人 PDF 版
 
-**下一轮计划 · 2026-09-09（待实施）**：[非阻断翻译、任务记录与 DOI 元数据](milestones/nonblocking-workflow-plan.md)。已登记 12 个工作包，覆盖质量异常不阻断、自动恢复与原图对照、完整任务历史、UI 文案和 DOI 书目信息。以下介绍仍反映现有行为，不能据此判断新计划已落地。
+[非阻断翻译、任务记录与 DOI 元数据](milestones/nonblocking-workflow-plan.md)已实现；交付范围见[验收记录](.agent/notes/nonblocking-20260909-acceptance.md)。当前源码还包含[任务历史清理](shared/task-history.md)与[学术元数据保留原文](shared/original-only-content.md)，具体部署状态见各自记录。
 
-译文人工核对和逐段确认均为可选；通过完整性检查即可封存、发布和导出。语义/术语提示会保留。已有草稿若显示旧质量报告，重新运行一次质量检查即可，无需重新翻译。
+译文人工核对和逐段确认均为可选。内容质量异常不阻止翻译、封存、发布和导出；自动检查、确定性恢复与原图对照继续执行，问题集中展示。执行故障、外发确认、版本检查和秘密保护继续生效。
 
-**v3.0 · 产品实现与验收中 · 2026-09-07**
+**v3.0 · 产品实现与验收中 · 2026-09-16**
 
 仓库已加入 M0–M2 的应用、后台任务、隔离解析器、数据库迁移、前端及验收 harness。**全部退出门尚未通过，不能称为完整认证的 M2 release。** 当前证据与缺口分别见 [IMPLEMENTATION_STATUS.md](.agent/IMPLEMENTATION_STATUS.md) 和 [逐门审计](.agent/harness/GATE_GAPS.md)。
 
@@ -36,8 +36,8 @@ Gemini 请求显式 `store=false`；Claude Messages 没有该字段，也不主�
 启动实际产品候选版本：
 
 ```powershell
-docker compose -f deployment/compose.production.yaml build app parser db
-docker compose -f deployment/compose.production.yaml up -d --wait
+docker compose build app parser db
+docker compose up -d --wait
 ```
 
 打开 `http://127.0.0.1:8080`。部署宿主只需 Docker Engine 与 Compose，模型和依赖在镜像构建期取得并校验；运行期不下载。详见 [部署](ops/deploy.md)、[备份与恢复](ops/restore.md)、[保留与清理](ops/retention.md)。已有旧基础镜像的实例升级须遵照恢复文档，不能用新数据库镜像直接覆盖原卷。
@@ -48,7 +48,7 @@ docker compose -f deployment/compose.production.yaml up -d --wait
 
 ## 1. 从哪里开始
 
-打开[文档与原型总目录](index.html)。[交互原型](prototype/index.html)可直接离线打开；纸色、侧栏和阅读器沿用上一版。六份阶段文档与共享契约均提供Markdown和本地HTML。
+当前入口是上方 Compose 启动的实际应用。产品基线、六份阶段文档、共享契约与运维说明均以仓库中的 Markdown 为准。
 
 实现产品前按顺序读取：[基线](00-product-baseline.md) → [数据架构](shared/architecture-data.md) → [任务与质量](shared/workflow-quality-security.md) → [API](shared/api-contract.md) → [Compose交付](deployment/compose-contract.md) → 各阶段Spec/Plan。
 
@@ -58,31 +58,13 @@ docker compose -f deployment/compose.production.yaml up -d --wait
 | M1 真实PDF翻译 | [M1 Spec](milestones/M1-spec.md) | [M1 Plan](milestones/M1-plan.md) |
 | M2 个人校对与版本管理 | [M2 Spec](milestones/M2-spec.md) | [M2 Plan](milestones/M2-plan.md) |
 
-## 2. 运行本次交付的原型
+## 2. 使用应用
 
-在解压目录执行：
+在应用中上传 PDF，查看真实接收、解析与任务状态；未配置翻译模型时仍可保存和阅读原件。在设置页保存模型配置，确认本次内容处理后开始翻译。文档详情提供原 PDF、已发布阅读版本和离线导出；新任务不覆盖历史产物。
 
-```sh
-docker compose up --build -d
-```
+根目录 `compose.yaml` 通过 include 复用生产配置，需要 Compose 2.20+；显式的 `-f deployment/compose.production.yaml` 入口仍可使用。硬件与本地翻译覆盖文件沿用[部署说明](ops/deploy.md)。旧的独立演示应用、静态服务器与生成的设计 HTML 已移除。
 
-打开 `http://localhost:8080`。停止用 `docker compose down`。可从`.env.example`创建`.env`调整绑定地址与端口；默认仅回环地址。无需安装Python、Node、数据库或反代。镜像首次构建需要取得Python基础镜像；**运行阶段不下载依赖** 。
-
-根目录`compose.yaml`运行的是**设计原型静态服务器** ，不是正式产品API。不会往服务器上传PDF、调用模型或写入产品数据库。它也不会启动并伪装一组没有实现的worker/db服务。原型服务器没有登录，仅供本地可信环境体验。
-
-原型真正可用：PDF选择的扩展名/大小/文件头初检、浏览器内条目管理、收藏与搜索、已有两篇静态论文阅读/单文件导出、演示草稿修改、候选冲突、历史回滚、术语和偏好保存。原型文件头检查不是完整PDF合法性检查。
-
-原型明确模拟：PDF解析、段落数量、费用估计、翻译、质量检查与发布状态。手动推进的流程样例固定为三段，**与选择的PDF正文无关** ，产物醒目标识“流程样例”。原件条目不会被样例译文悄悄替换。
-
-原型的浏览器 localStorage 仅保存演示状态；选中文件的 Object URL 与文件字节不持久，刷新后需重新选择原件。不要输入任何模型密钥。上方生产 Compose 入口使用 PostgreSQL 与命名卷保存实际产品状态，两者的数据互不替代。
-
-## 3. 体验路径
-
-进入“PDF上传”，选择[人工合成测试PDF](fixtures/sample.pdf)或自己的PDF；非PDF被拒绝。加入原型文库后可查看原件。选择“演示翻译流程”进入任务，逐阶段推进，预检确认后继续；有质量异常的演示需要在校对中修正数字再发表样例。
-
-已发布流程样例可以编辑、产生重译候选、比较并接受、发布新版本、回滚、导出静态HTML。原有两篇论文始终独立保留，不会被演示改写。
-
-## 4. 正式产品的 Compose 契约
+## 3. Compose 契约
 
 [deployment/compose.production.yaml](deployment/compose.production.yaml)现在运行实际 `apps.api`、`workers.main` 和隔离 parser，包含 app/worker/parser/db 及 init/migrate/maintenance 服务。`images/` 提供源代码构建，`uv.lock`、前端 lock 和 parser model lock 固定依赖。真实镜像、离线新卷冷启动、原件完整性损坏检测和另一组新卷备份恢复已有执行记录；最终 release 仍须绑定稳定源码和实际镜像 digest 完成所有验收。
 
@@ -90,7 +72,7 @@ docker compose up --build -d
 
 不包含反代容器、TLS证书、用户管理、身份中间件或ACL服务。任何可达客户端都能操作实例；默认回环绑定不是登录替代品。
 
-## 5. 验证和状态
+## 4. 验证和状态
 
 [包检查报告](.agent/notes/package-review.md)保留原设计包的历史检查结果。65 条需求、42 个工作包、130 个场景、24 个退出门的原始契约位于 `contracts/`；实际实现执行状态由 [harness](.agent/harness/README.md) 的追加式证据生成，见 [IMPLEMENTATION_STATUS.md](.agent/IMPLEMENTATION_STATUS.md)。缺少当前源码绑定记录既不能算通过，也不表示已有实现不存在。
 
@@ -106,12 +88,12 @@ docker compose --profile tools run --build --rm verify
 
 本次环境若没有Docker daemon，检查报告会写明未执行镜像构建/Compose启动，不能以YAML静态解析替代这项验收。
 
-## 6. 目录和后续实施
+## 5. 目录和后续实施
 
 项目文件直接位于 Git 仓库根目录，不再需要进入 `bilingual-library-personal-pdf-v3/` 子目录。`apps/`、`packages/`、`workers/`、`tests/`、`contracts/` 与部署文件保持原相对结构。
 
 Agent 工作资料统一位于 [`.agent/`](.agent/README.md)：可复用验收代码在 `.agent/harness/`，工作记忆和笔记在 `.agent/memory/`、`.agent/notes/`，中间产物在 `.agent/tmp/`。持久本地环境与凭据相关状态在 `.agent/local-data/`。Git 忽略后两类本地数据，保留验收代码和长期文件记忆；Docker 镜像排除整个 `.agent/`。历史证据保留原字节，旧路径通过 `.agent/relocation.json` 映射。
 
-`prototype/`为可操作UI与原有静态阅读资料；`milestones/`为六份主文档；`shared/`为共享契约；`contracts/`为Schema与追踪数据；`fixtures/`为人工测试资料；`deployment/`为目标Compose与依赖边界；`tools/`为本包构建与检查工具；`reference/`固定阅读样式及字节校验记录。
+`apps/`、`packages/` 和 `workers/` 为产品代码；`milestones/` 为阶段文档；`shared/` 为共享契约；`contracts/` 为 Schema 与追踪数据；`fixtures/` 为人工测试资料；`deployment/` 为 Compose 与依赖定义；`tools/` 为契约检查与维护工具；`reference/` 保存固定阅读样式、两篇受控种子论文与字节校验记录。
 
-[AGENTS.md](AGENTS.md)给出编码Agent执行入口。不要把本次原型的localStorage、手动推进或固定段落当成正式API实现。旧包中冲突的多格式/身份/权限要求已被本版本取代，不与旧Spec叠加实施。
+[AGENTS.md](AGENTS.md)给出编码Agent执行入口。产品状态以实际 API、数据库和执行证据为准。旧包中冲突的多格式/身份/权限要求已被本版本取代，不与旧Spec叠加实施。

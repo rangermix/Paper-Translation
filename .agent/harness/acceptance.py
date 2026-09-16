@@ -45,7 +45,7 @@ def fingerprint(root=ROOT):
     rows = []
     root = Path(root).resolve()
     excluded = ('.agent/tmp/', '.agent/memory/', '.agent/notes/', '.agent/local-data/',
-                'harness/memory/', 'notes/', 'secrets/', '.local-data/')
+                'harness/memory/', 'notes/', 'secrets/', 'provider_config/', '.local-data/', '.vscode/')
     paths = []
     # Do not traverse archives, virtual disks or dependency caches just to skip
     # their contents later. The tracked .agent/harness code remains fingerprinted.
@@ -62,7 +62,9 @@ def fingerprint(root=ROOT):
             continue
         lowered=relative.as_posix().lower()
         if (lowered.startswith(excluded)
-                or relative.name == "IMPLEMENTATION_STATUS.md" or lowered == "apps/web/work_log.md"):
+                or relative.name == "IMPLEMENTATION_STATUS.md" or lowered in {"apps/web/work_log.md", "compose.yaml"}):
+            continue
+        if lowered.startswith('deployment/provider_key.') and lowered != 'deployment/provider_key.empty':
             continue
         if relative.name == '.env' or (relative.name.startswith('.env.') and relative.name != '.env.example'):
             continue

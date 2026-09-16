@@ -1,27 +1,18 @@
 # Docker Compose 交付与依赖打包契约
 
-**2026-09-13 用户补充：检测环境与可选设备。** 设置页显示解析容器实际可使用的系统、架构、CPU 配额、内存上限、GPU 与检测时间，并按当前模型提供可用设备选择；不可用选项解释原因。设置沿用 CAS，新任务冻结解析后的设备，已排队任务不随偏好变化。parser 心跳提供能力报告，API 只读挂载 parser_outputs；不暴露或接受模型服务地址及凭据。检测过期/刷新失败时撤销可用状态。2026-09-13 已以本地 Docker 后端镜像完成 MLX 图像与受控 PDF 实测；部署记录成功证明后开放 MLX，模型或后端变化须清除并重新验证证明，未验证时仍显示不可用（见加速部署文档）；CPU 运行时可用不等于任何模型都能装入当前内存。
+**当前源码契约 · 2026-09-16。** `deployment/compose.production.yaml` 是共享生产定义；`compose.example.yaml` 提供 CPU/CUDA/MLX 的单文件模板，复制出的根目录 `compose.yaml` 属于本地配置，不提交。仓库检查独立使用 `deployment/compose.verify.yaml`，不加载本地 MLX 设置或生产卷。实际 release 必须绑定源码、镜像和环境证据。
 
-**2026-09-09 用户补充：解析加速。** 新任务未保存解析偏好时默认 PaddleOCR-VL-1.6，保留明确偏好与旧任务。部署始终使用 Docker Compose，优先统一镜像：CPU / NVIDIA CUDA 共用解析代码，CUDA 镜像隔离 PyTorch 与 Paddle 的依赖；Apple MLX 通过 Docker Model Runner 的 vLLM Metal 及 Compose models 管理，不部署独立宿主 Python 服务。MLX 仅用于 Paddle 识别，版面与其他方案保持 CPU；运行记录保存实际后端。固定权重、秘密隔离、旧产物不变与非阻断质量规则继续适用。实现与未执行的硬件验收范围见 [加速部署](extraction-acceleration.md)。此补充覆盖下方 CPU-only 和无模型网络的旧限定，仅 MLX 部署允许访问 Docker 管理的本机推理服务。
+parser 支持 PaddleOCR-VL-1.6（新配置默认）、Docling 和 Granite。设置页依据新鲜 parser 心跳显示实际容器资源、模型和设备可用性，新任务冻结 profile/device/timeout。单 PDF、4 CPU、16 GiB、256 PID；解析默认 120 分钟，可保存 1–1440 分钟，旧请求缺字段及上传检查仍为 15 分钟。
 
-**2026-09-09 下一轮部署计划（待实施）。** NB 工作流保留离线 CPU parser；DOI/Crossref 请求由后端 metadata_lookup 任务执行，不给 parser 联网或挂载 Provider 密钥。新增任务日志与元数据需持久化、备份和增量迁移演练，完成后同步交付 app/worker/parser。参见 [执行计划](../milestones/nonblocking-workflow-plan.md)，当前 Compose 尚未因此更改。
+CPU/CUDA 模型固定并在构建期打包，运行期断网。CUDA 使用隔离的 PyTorch/Paddle 依赖环境；MLX 通过 Docker Model Runner 的已验证 Paddle 后端进行识别，其余版面步骤保持 CPU，不另启宿主 Python 服务。设备/模型变化需重新验证，详见[解析加速](extraction-acceleration.md)。OCR、公式/代码增强及表格模型都属于已启用资产，不可漏包；内容异常按 [NB 契约](../shared/nonblocking-contract.md)恢复或保留原图。
 
-**2026-09-08 可配置超时。** 新解析默认 120 分钟，设置页支持 1–1440 整数分钟，随任务冻结。worker deadline、等待循环、parser 墙钟和子进程 CPU 秒限制统一使用该任务值；上传检查及无超时字段的旧任务仍限 15 分钟。此补充覆盖下文固定 15 分钟解析限制。部署需同步更新 app / worker / parser；无需模型更新或数据库 schema 迁移，保留 4 CPU / 16 GiB / 256 PID 与 network_mode:none。
-
-**2026-09-08 解析方案扩展。** 同一 parser 镜像提供 Docling 标准、Granite Docling 258M 和官方 PaddleOCR-VL-1.6。新增权重及 PP-DocLayoutV3 按 `parser-models.lock.json` 的固定 HF commit 与逐文件 SHA-256 在构建期下载；PaddleOCR 3.7.0 / PaddleX 3.7.2 / PaddlePaddle CPU 3.3.1 由 uv.lock 固定。运行显式 CPU，Paddle 使用 native 后端、单页/区域 batch=1，关闭改变 PDF 坐标的旋转和展平预处理；无服务器地址或 API key。继续使用原 Compose 的网络隔离、只读根、资源和超时界限。
-
-PaddleOCR native CPU 的 FP32 权重加载在 8 GiB 容器中触发换页，当前共享 parser 上限提升至 16 GiB；保留 4 CPU / 15 分钟。OpenCV 使用官方套件要求的 opencv-contrib-python 4.10.0.84（单一 cv2 分发），镜像包含所需系统库，避免并存 headless 与 contrib。
-
-
-2026-09-08 CPU 解析增强：parser 默认开启 RapidOCR（ONNX Runtime CPU）、CodeFormulaV2 公式/代码识别和现有 TableFormer Accurate。所有模型固定版本及逐文件 SHA-256，构建时下载；CPU PyTorch、ONNX Runtime 与模型随镜像提供。运行仍为 network_mode:none、只读根目录、无 Provider 凭据；资源改为 4 CPU / 8 GiB / 256 PID，墙钟上限 15 分钟。扫描页先运行 OCR，再依据独立覆盖证据决定来源预检是否阻断，不能将 OCR 非空视作全文认证。
-
-**本章定义正式产品的部署验收。** 根目录 `compose.yaml` 使用 Compose 2.20+ 的 include 引用 `deployment/compose.production.yaml`，两种入口运行相同的应用、worker、parser、数据库和维护服务。`compose.example.yaml` 提供可独立修改的 CPU/CUDA/MLX 配置。实际 release 状态以当前源码与镜像的验收证据为准。
+DOI 元数据由后端 worker 获取，仅传 DOI，不给 parser Provider 凭据。schema 12 保存任务实际模型/时间/日志及书目信息；schema 13 添加任务历史清理状态。可选[本地翻译](local-translation.md)以 Compose 服务和 Docker Model Runner 管理，仅在明确使用时下载清单固定并校验的权重；设置读取和启动不下载。
 
 ## 1. 唯一部署路径
 
-正式发布只支持Docker Engine + Compose v2的Linux containers。宿主不安装Python、Node、qpdf、PostgreSQL、Docling、CUDA或OCR。本轮linux/amd64为必验平台，CPU即可；ARM64不承诺直到独立构建/验收。
+正式发布只支持Docker Engine + Compose v2的Linux containers。宿主不安装应用所需 Python、Node、qpdf、PostgreSQL、Docling 或 OCR；选择 CUDA 需兼容的宿主 NVIDIA 驱动与 Docker GPU 支持，选择 MLX 需 Apple Silicon 和 Docker Model Runner。本轮linux/amd64为必验平台，CPU即可；ARM64不承诺直到独立构建/验收。
 
-长期运行4个容器：app、worker、parser、db。一次性init/migrate使用相同应用镜像完成空卷初始化和schema迁移；这两个是运维步骤，不是新外部依赖。只有app的8080端口被映射到宿主，默认loopback。没有反代、登录服务、Redis、MinIO或外部数据库配置方案。
+默认长期运行4个容器：app、worker、parser、db；可选本地翻译增加 local-translator 管理服务。一次性init/migrate使用相同应用镜像完成空卷初始化和schema迁移；这两个是运维步骤，不是新外部依赖。只有app的8080端口被映射到宿主，默认loopback。没有反代、登录服务、Redis、MinIO或外部数据库配置方案。
 
 ## 2. 什么必须随镜像打包
 
@@ -41,9 +32,9 @@ Docling默认可能在首次使用下载模型，因此必须显式预取并设�
 
 ## 3. 构建期与运行期
 
-源码分发允许在`docker compose build`过程中联网获取锁定依赖/模型；所有动作在Dockerfile里完成，不要求手动装宿主工具。可部署release还应提供预构建镜像及digest；完全离线安装需预先`docker image save/load`对应镜像。本交接包不包含尚未实现应用的镜像tar，不承诺离线首次安装。
+源码分发允许在`docker compose build`过程中联网获取锁定依赖/模型；所有动作在Dockerfile里完成，不要求手动装宿主工具。可部署release还应提供预构建镜像及digest；完全离线安装需预先`docker image save/load`对应镜像。仓库不包含镜像 tar，离线首次安装须事先取得所选镜像与模型。
 
-**运行期禁止** pip/npm/apt安装、模型自动下载、拉取任意最新模型、下载网页资源。parser的`network_mode:none`通过Compose独立网络栈执行；worker经显式配置访问Provider。Compose网络本身不是按域名的出站防火墙，不在文档中虚构这种保证。
+**运行期禁止** pip/npm/apt安装、模型自动下载、拉取任意最新模型、下载网页资源。CPU/CUDA parser 的 `network_mode:none` 隔离外网；MLX parser 只使用 Docker 管理的推理网络。可选本地翻译允许在明确使用时按锁文件准备权重，这不允许启动自动下载或临时安装依赖。worker 经显式配置访问 Provider。Compose网络本身不是按域名的出站防火墙，不在文档中虚构这种保证。
 
 ## 4. 初始化、健康和启动顺序
 
@@ -51,14 +42,14 @@ init在data/uploads/internal/parser_inputs/parser_outputs/backups/provider_confi
 
 db使用健康检查；migrate等db healthy并成功执行迁移；app/worker等migrate successful；parser等init成功。Compose短depends_on只保证启动顺序、不保证服务就绪，因此使用长条件加健康检查。[S1] db重启后的重连、任务重领仍由应用实现，不能误以为Compose自动处理事务恢复。
 
-app `/health/live`只证明进程存活；`/health/ready`验证schema/卷可读，不把外部Provider可用性当阅读服务就绪条件。worker heartbeat/队列检查；parser heartbeat文件和本地模型清单检查；模型缺失必须readiness失败。
+app `/health/live`只证明进程存活；`/health/ready`验证 schema、卷、模板/前端资源和 worker/parser 新鲜心跳，不把外部Provider可用性当阅读服务就绪条件。worker heartbeat/队列检查；parser heartbeat文件和本地模型清单检查；模型缺失必须readiness失败。
 
 ## 5. 配置界面
 
 | 配置 | 位置 | 默认/语义 |
 |---|---|---|
 | BIND_ADDRESS / PORT | Compose .env | 127.0.0.1 / 8080 |
-| ALLOWED_HOSTS / APP_ORIGINS | app配置文件 | localhost/loopback；自行接入其他域名时修改允许列表 |
+| ALLOWED_HOSTS / APP_ORIGINS | Compose 环境配置 | localhost/loopback；自行接入其他域名时修改允许列表 |
 | DB connection | 内部生成连接配置/secret | 只有app/worker/migrate需要，parser不需要 |
 | Provider endpoint/协议/model/profile/价格 | 设置页写入版本化配置文件；旧部署profile文件作为fallback | 保存不调用模型；新派发绑定配置hash |
 | Provider API key | 设置页一次性输入，后端provider_config卷保存secret文件；旧worker-only secret作为fallback | app RW、worker RO，parser/db/maintenance零访问；不写镜像、不回显、不写浏览器存储 |
@@ -69,7 +60,7 @@ app `/health/live`只证明进程存活；`/health/ready`验证schema/卷可读�
 
 Compose secrets是向特定容器挂载文件的方式，不应宣传为宿主磁盘加密；文件来源的uid/gid/mode需要结合实际bind挂载和容器UID测试，不依靠被忽略的重映射字段。[S3] 初始化命令在容器内生成数据库连接秘密；Provider secret可为空，使无模型配置也能启动。
 
-设置页支持用户指定的四种完整请求 URL：OpenAI 兼容 Responses / Chat Completions（`provider=openai`、Bearer）、原生 Gemini Interactions（`provider=gemini`、`x-goog-api-key`）、原生 Claude Messages（`provider=anthropic`、`x-api-key`）。原生使用普通 API key，不包括 OAuth 或多 workspace；本地免鉴权服务必须显式选择 `none`。Claude 另发 `anthropic-version`，不可变 profile 中的 `api_version` 默认 `2023-06-01`，非 Claude 不携带该字段。Gemini 使用完整 Interactions URL，不转换成 generateContent；示例与官方字段依据见 [Gemini 核对](../.agent/tmp/evidence/gemini-claude/gemini-official-contract-review.md)与 [Claude 核对](../.agent/tmp/evidence/gemini-claude/independent-claude-review.md)。
+设置页支持用户指定的四种完整请求 URL：OpenAI 兼容 Responses / Chat Completions（`provider=openai`、Bearer）、原生 Gemini Interactions（`provider=gemini`、`x-goog-api-key`）、原生 Claude Messages（`provider=anthropic`、`x-api-key`）。原生使用普通 API key，不包括 OAuth 或多 workspace；本地免鉴权服务必须显式选择 `none`。Claude 另发 `anthropic-version`，不可变 profile 中的 `api_version` 默认 `2023-06-01`，非 Claude 不携带该字段。Gemini 使用完整 Interactions URL，不转换成 generateContent；示例与官方字段依据见 [Gemini 核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 核对](../.agent/notes/gemini-claude-20260906.md)。
 
 配置可未填完就保存；公开参数不完整或缺少必需密钥时派发等待配置，不影响原件保存与阅读。配置卷不属于标准备份，容器重建保留该命名卷；跨宿主恢复需重新配置。原 worker secret 不自动迁移到设置卷。更换目的地、协议或鉴权不能把旧 key 静默用于新配置；清除当前 key 不删除已绑定在途请求的历史版本。worker 使用固定 profile hash；Gemini 和 Claude 两个原生协议另校验响应模型匹配（仅 Gemini 正规化 `models/` 前缀）。不自动换模型、跟随重定向或回退协议。
 

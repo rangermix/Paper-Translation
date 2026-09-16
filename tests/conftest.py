@@ -5,6 +5,16 @@ from pathlib import Path
 import pytest
 
 
+def pytest_runtest_setup(item):
+    if item.get_closest_marker('parser_container'):
+        from packages.parsers.inspect import PDFError
+        from workers.parser.main import verify_memory_envelope
+        try:
+            verify_memory_envelope()
+        except PDFError:
+            pytest.skip('Requires the real parser in a Linux container with a finite memory limit <= 16 GiB; use deployment/compose.test.yaml --profile tests.')
+
+
 @pytest.fixture
 def database(tmp_path, monkeypatch):
     url = os.environ.get('TEST_DATABASE_URL')

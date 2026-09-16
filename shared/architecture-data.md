@@ -2,7 +2,7 @@
 
 **2026-09-13 解析设备。** Settings.preferences 增加可选 parser_accelerator。parser 通过当前解释器和隔离的 Paddle CUDA 解释器探测可用设备，将脱敏能力报告写入模型验证心跳；API 只读挂载 parser_outputs。新任务把解析后的 cpu/cuda/mlx 写入 Task.payload 与配置快照，worker 转发为 spool.accelerator，独立 parser 子进程才应用该枚举值，不修改父进程环境。CPU/CUDA 使用同一 CUDA 镜像配方；Apple 的 Docker MLX 图像后端未满足条件时明确不可用，不能把 Linux 容器推断为可访问宿主 Metal。
 
-**2026-09-09 下一轮数据设计（待实施）。** 增量扩展任务/尝试时间、实际模型快照与持久日志；统一页级质量异常和自动恢复证据；新增 DOI 发现、书目元数据、来源与标题优先级。内容质量失败不作为流水线许可条件，旧来源/发布快照保持不可变。详见 [NB Spec](../milestones/nonblocking-workflow-spec.md) 与 [NB-P01–12](../milestones/nonblocking-workflow-plan.md)。
+**2026-09-09 非阻断数据扩展（已实现，schema 12）。** 增量扩展任务/尝试时间、实际模型快照与持久日志；统一页级质量异常和自动恢复证据；新增 DOI 发现、书目元数据、来源与标题优先级。内容质量失败不作为流水线许可条件，旧来源/发布快照保持不可变。详见 [NB Spec](../milestones/nonblocking-workflow-spec.md) 与 [NB-P01–12](../milestones/nonblocking-workflow-plan.md)。
 
 **2026-09-08 解析时限。** Settings.preferences 持久化 `parser_timeout_seconds`，新任务缺省 7200 秒，Task.payload 冻结该值。worker 按快照创建 spool 的 `timeout_seconds` 和绝对 deadline，并只额外等待 10 秒结果落盘；parser 取绝对 deadline 剩余时间与请求时限的较小值，子进程 CPU 秒上限为时限 × 4。旧任务/请求无字段时保留 900 秒；检查任务仍为 900 秒。超时、取消和 fence 检查继续生效，不改变解析模型指纹或既有来源。
 
@@ -30,8 +30,8 @@ worker ──────┘  领取任务 → 验证结果 → 翻译 → QA �
   ├── parser_inputs卷：PDF副本 + 有限请求描述
   └── parser_outputs卷：返回IR/页图/状态
              ▲
-parser（network_mode:none；无DB和Provider凭据）
-  inspector（M0）/ Docling（M1），固定本地模型资产
+parser（CPU/CUDA network_mode:none；MLX 仅 Docker 推理网络；无DB和Provider凭据）
+  inspector / PaddleOCR-VL / Docling / Granite，固定模型资产
 
 migrate / init / maintenance：同一套Compose中的一次性运维命令
 ```
@@ -88,7 +88,7 @@ raw_text保留抽取字符，normalized_text只做有记录的机械转换。编
 
 ### 语义验证器的最小职责
 
-校验ID唯一、标题存在、parent树无环、owner合法、表格网格不重叠且结构完整、xref存在、每块恰好被渲染一次、locator指向原PDF、asset文件hash匹配、源hash匹配、必译结果双射、非空目标、保护原子次数一致。正文不能通过translatable=false/retained逃避翻译；保留策略只允许代码/公式/参考/原图或经明确规定的非正文。图表回退须出质量说明。
+校验ID唯一、标题存在、parent树无环、owner合法、表格网格不重叠且结构完整、xref存在、每块恰好被渲染一次、locator指向原PDF、asset文件hash匹配、源hash匹配、结果映射完整、非空译文及安全引用。nonblocking-v1 允许带明确原因的原文/页图 fallback，保护内容差异作为提示；旧 IR 仍按其版本验证。保留策略与学术元数据规则见 [original-only-content](original-only-content.md)，不能伪造已翻译或已核对。
 
 ## 5. 规范化与哈希
 
@@ -122,6 +122,6 @@ data/
 
 ## 8. 依赖和模块划分
 
-`apps/web`负责管理UI；`apps/api`负责短请求与直接文件响应；`packages/ir`负责模型外的结构事实；`packages/translation/providers`负责有限输入输出；`packages/jobs`负责持久调度；`packages/publisher`负责不可变发布；`workers/parser`不持秘密。所有模块由同一仓库构建，镜像可按依赖大小拆分，不意味着需要微服务治理。
+`apps/web`负责管理UI；`apps/api`负责短请求与直接文件响应；`packages/ir`负责模型外的结构事实；`packages/providers`负责有限输入输出；`packages/jobs`负责持久调度；`packages/publisher`负责不可变发布；`workers/parser`不持秘密。所有模块由同一仓库构建，镜像可按依赖大小拆分，不意味着需要微服务治理。
 
 Docling的本地资产配置与Compose的健康依赖行为已核对官方文档，见[技术依据](../sources.md)。它们支持实现选项，不代表本产品的解析准确率或容器部署已经被验证。

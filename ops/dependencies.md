@@ -9,9 +9,12 @@ the final image digest identifies their exact bytes.
 
 `deployment/parser-models.lock.json` is the parser model allowlist. Model downloads
 occur during image build through `ops/download_parser_models.py`. Enabled layout
-and table models must match every declared byte count and hash. OCR models are
-excluded because OCR is unsupported. The parser loads a fixed local artifact
-directory and runs without network access.
+table, OCR, formula/code and VLM models must match every declared byte count and
+hash. CPU/CUDA parsing uses fixed local assets without network access. Apple MLX
+recognition uses the separately packaged, verified Docker Model Runner backend.
+Optional translation weights have their own `packages/local_models/models.lock.json`
+and are downloaded only on explicit use; settings reads and startup do not prepare
+them. See [local translation](../deployment/local-translation.md).
 
 `images/database.Dockerfile` derives the nonroot PostgreSQL15 runtime from its
 fixed trixie base, applies OS updates during build and removes the root-only

@@ -1,7 +1,0 @@
-{
-    "java.jdt.ls.java.home": "/Volumes/External/Users/rangermix/.local/share/mise/installs/java/25.0.2",
-    "java.import.gradle.java.home": "/Volumes/External/Users/rangermix/.local/share/mise/installs/java/25.0.2",
-    "debug.javascript.defaultRuntimeExecutable": {
-        "pwa-node": "/Volumes/External/Users/rangermix/.local/share/mise/shims/node"
-    }
-}

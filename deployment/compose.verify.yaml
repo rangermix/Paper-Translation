@@ -1,13 +1,9 @@
-# Production services and paths are maintained in one definition.
-# Compose 2.20+ resolves included paths relative to deployment/.
-name: bilingual-personal-pdf
-include:
-  - deployment/compose.production.yaml
+# Repository checks are independent of local hardware and production volumes.
+name: bilingual-personal-pdf-verification
 services:
   verify:
-    profiles: [tools]
     build:
-      context: .
+      context: ..
       dockerfile: deployment/Dockerfile.verify
     command: ["python", "tools/check_package.py"]
     network_mode: none

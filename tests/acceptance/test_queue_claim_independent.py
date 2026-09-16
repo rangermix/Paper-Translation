@@ -72,10 +72,10 @@ def test_history_claim_query_measured_against_fifty_thousand_prior_attempts(data
     with db.engine.begin() as conn:
         plan = conn.exec_driver_sql('EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) '+queries[0][0], queries[0][1]).scalar()
     record = Path('.agent/tmp/evidence/reviews') / f'queue-history-query-{time.time_ns()}.json'
+    record.parent.mkdir(parents=True, exist_ok=True)
     result = {
         'scope': 'One current job and 50000 completed historical attempts in a fresh PostgreSQL schema; observed latency is not a cross-host performance guarantee.',
         'history_attempts': 50000, 'claim_duration_seconds': duration, 'query': queries[0][0], 'explain': plan,
         'record_path': record.as_posix(),
     }
     record.write_text(json.dumps(result, indent=2)+'\n', encoding='utf-8')
-    Path('.agent/tmp/evidence/reviews/queue-history-query-measurement.json').write_text(json.dumps(result, indent=2)+'\n', encoding='utf-8')

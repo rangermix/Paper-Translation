@@ -14,12 +14,15 @@ from packages.jobs.queue import claim
 from packages.storage import atomic_write, file_hash, write_snapshot
 from workers.main import execute
 
-pytestmark = pytest.mark.postgres
+pytestmark = [pytest.mark.postgres, pytest.mark.historical_evidence]
 
 
 def test_reviewed_negation_and_condition_resolution_allows_publication_without_changing_text(client, database):
     corpus = Path('.agent/tmp/evidence/live-provider-final-en')
     review_path = corpus / 'independent-manual-target-review.json'
+    if not corpus.exists():
+        pytest.skip('Archived independent source/target review corpus is not available; this test cannot manufacture review evidence.')
+    assert review_path.is_file(), 'Historical corpus is incomplete: missing independent source/target review.'
     review = json.loads(review_path.read_text(encoding='utf-8'))
     assert review['reviewer'] == '/root/web_ui' and review['actual_page_viewed']
     assert file_hash(corpus / 'result.json') == review['result_sha256']

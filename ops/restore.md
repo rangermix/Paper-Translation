@@ -1,9 +1,9 @@
 # Backup, recovery and safe external dispatch
 
-Run from the project root with Docker and Compose. The root `compose.yaml`
-includes `deployment/compose.production.yaml`; both entry points use the same
-production services and named volumes. Preserve any existing project name and
-deployment overrides when running maintenance commands.
+Run from the project root with Docker and Compose. The examples below use the
+shared `deployment/compose.production.yaml`. If you deploy with an ignored local
+`compose.yaml`, use that same configuration instead. Preserve the existing project
+name, image pins, and deployment overrides when running maintenance commands.
 
 Create and verify a backup:
 
@@ -70,10 +70,15 @@ Rollback uses the verified pre-upgrade database and content backup with its
 matching image. It does not run destructive reverse migrations on live history.
 
 `docker compose down` preserves named volumes; `down --volumes` deletes them and is
-not an upgrade or backup procedure. The acceptance harness uses
-`.agent/harness/backup_roundtrip.py` for an actual dump, mutation, restore and byte-level
-comparison of its own acceptance document. Its evidence does not imply that every
-crash point or storage failure has been tested.
+not an upgrade or backup procedure. The isolated acceptance harness
+`.agent/harness/offline_compose_roundtrip.py` uses prepared acceptance images to
+create fresh projects, dump PostgreSQL, restore into a second fresh project and
+compare document and export bytes. It requires available acceptance ports and
+must run alone because its ports and working output are shared. The former
+production-targeted `backup_roundtrip.py` is retained only as
+[historical source](../.agent/notes/historical-probes/README.md). Neither historical
+evidence nor this harness implies that every crash point or storage failure has
+been tested.
 
 ## Upgrade the older bookworm instance into a fresh trixie project
 

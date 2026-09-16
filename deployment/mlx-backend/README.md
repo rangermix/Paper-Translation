@@ -1,4 +1,10 @@
-# Docker-managed MLX backend for this Mac
+# Docker-managed MLX backend payload
+
+This document records the 2026-09-13 Paddle backend build and its installation
+on the test Mac. Later shared parser/translation backend work is documented in
+[local translation](../local-translation.md) and [the parser repair](../job-failure-repair-20260915.md).
+The recorded image and paths below are historical setup evidence; inspect the
+selected deployment before reusing them or replacing an installed backend.
 
 The 2026-09-13 repair uses the floating image tag
 `local/paper-translation-vllm-metal:latest`. It is a local, custom `darwin/arm64`
@@ -76,18 +82,19 @@ but its receipt is a setup attestation. Clear and refresh it after any model or
 backend replacement, restore, or Docker upgrade. Do not infer vision support
 from model metadata or status text alone.
 
-## Installed repair and rollback
+## Historical installation and rollback procedure
 
-The installed backend image ID is
+The backend image ID recorded on 2026-09-13 was
 `sha256:fa452affcb8fb570645938b0544b3150ce61628e0e9be5c4646478f804c135f4`.
 The exact OCI archive is
 `.agent/local-data/mlx-repair-20260913/backend-r4.oci.tar`;
 the original Docker runtime is preserved at
 `.agent/local-data/mlx-repair-20260913/docker-original`.
-The active Compose values are in
+That run's Compose values were stored in
 `.agent/local-data/mlx-docker-20260913/mlx.env`.
 
-Reapply this machine's deployment with:
+That run recreated its parser with the following command. Current deployments
+must preserve their own project, image pins and optional translation overrides:
 
 ```sh
 docker compose --env-file .agent/local-data/mlx-docker-20260913/mlx.env \

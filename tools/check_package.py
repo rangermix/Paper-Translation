@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 """Repository contract checks. Never marks application gates complete or calls a provider."""
 from __future__ import annotations
-import copy,hashlib,json,re,os
+import copy,hashlib,json,re,os,sys
 from datetime import datetime,timezone
 from uuid import uuid4
 from pathlib import Path
 from urllib.parse import unquote
 import jsonschema,yaml
 from bs4 import BeautifulSoup
-from validate_ir import semantic
 R=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(R))
+from packages.ir import canonical_bytes,validate_ir
 checks=[]
 
 def package_files(suffix=None):
  """Check distributable sources, not dependencies or archived agent runs."""
- excluded={'.git','.agent','.venv','venv','node_modules','__pycache__','.pytest_cache','.mypy_cache','.ruff_cache','dist','test-results','playwright-report'}
+ excluded={'.git','.agent','.local-data','.vscode','.venv','venv','node_modules','__pycache__','.pytest_cache','.mypy_cache','.ruff_cache','dist','test-results','playwright-report','secrets','provider_config'}
  for directory, dirs, names in os.walk(R):
   dirs[:]=[name for name in dirs if name not in excluded]
   for name in names:
    path=Path(directory)/name
+   if path.parent==R and (name=='compose.yaml' or (name.startswith('.env') and name!='.env.example')):continue
    if suffix is None or path.suffix==suffix:yield path
 
 def agent_reference(path):
@@ -55,10 +57,10 @@ def main():
   while todo:
    ready={i for i in todo if set(ts[i]['depends_on'])<=done};must(ready,'cycle');todo-=ready;done|=ready
  check('dependency graph acyclic',dag)
- for fn in ['document-ir-v3.schema.json','translation-response.schema.json','artifact-manifest.schema.json','import-request.schema.json']:
+ for fn in sorted(p.name for p in (R/'contracts').glob('*.schema.json')):
   check('JSON Schema syntax: '+fn,lambda fn=fn:jsonschema.Draft202012Validator.check_schema(load('contracts/'+fn)))
  sample=load('fixtures/sample-document-v3.json');isc=load('contracts/import-request.schema.json')
- check('PDF IR fixture passes syntax and semantic invariants',lambda:semantic(sample))
+ check('PDF IR fixture passes production syntax and semantic invariants',lambda:validate_ir(sample))
  check('all declared block kinds covered by fixture',lambda:must({b['kind'] for b in sample['source_revision']['blocks']}==set(load('contracts/document-ir-v3.schema.json')['$defs']['block']['properties']['kind']['enum']),'omitted kind'))
  def assets():
   for a in sample['source_revision']['assets']:
@@ -72,7 +74,7 @@ def main():
  for field,val in [('url','https://example.invalid'),('attachments',[]),('workspace_id','ws_1'),('user_id','u1')]:
   check('reject extra import '+field,lambda field=field,val=val:rejects(lambda:jsonschema.validate({**load('fixtures/import-pdf.json'),field:val},isc)))
  def invalid_mutation(fn):
-  v=copy.deepcopy(sample);fn(v);rejects(lambda:semantic(v))
+  v=copy.deepcopy(sample);fn(v);rejects(lambda:validate_ir(v))
  tests=[
  ('unknown document identity',lambda v:v['document'].update(workspace_id='x')),
  ('nonPDF original asset MIME',lambda v:v['source_revision']['assets'][0].update(media_type='text/html')),
@@ -89,10 +91,9 @@ def main():
  ('release with unresolved prose',lambda v:v['translation_revision']['results'][1].update(status='unresolved'))]
  for name,fn in tests:check('reject '+name,lambda fn=fn:invalid_mutation(fn))
  def reviewed_without_identity():
-  from validate_ir import canonical
   v=copy.deepcopy(sample);t=v['translation_revision']['results'][1]
-  t['review_state']='human_reviewed';t['review_record']={'origin':'manual_ui','reviewed_at':'2026-09-06T00:00:00Z','source_hash':t['source_hash'],'target_hash':digest(canonical(t['target_inline'])),'context_hash':t['context_hash'],'glossary_revision':t['generation']['glossary_revision'],'inherited_from':None}
-  semantic(v)
+  t['review_state']='human_reviewed';t['review_record']={'origin':'manual_ui','reviewed_at':'2026-09-06T00:00:00Z','source_hash':t['source_hash'],'target_hash':digest(canonical_bytes(t['target_inline'])),'context_hash':t['context_hash'],'glossary_revision':t['generation']['glossary_revision'],'inherited_from':None}
+  validate_ir(v)
  check('valid human review has no user or actor identity',reviewed_without_identity)
  def no_identity_schema():
   forbidden={'actor_id','user_id','workspace_id','tenant_id','account_id','role_id','reviewer_id'}
@@ -110,12 +111,11 @@ def main():
  check('controlled reader resources match manifest',reference)
  check('no font or actual credential files in package',lambda:must(not any(p.suffix.lower() in {'.ttf','.otf','.woff','.woff2','.eot','.pem','.key'} or p.name=='.env' for p in package_files()),'font/secret found'))
  def composed():
-  c=yaml.safe_load((R/'compose.yaml').read_text())
-  must(c['include']==['deployment/compose.production.yaml'],'root production include')
-  must(set(c['services'])=={'verify'} and c['services']['verify']['profiles']==['tools'],'unexpected root services')
+  c=yaml.safe_load((R/'deployment/compose.verify.yaml').read_text())
+  must(set(c['services'])=={'verify'},'unexpected verification services')
   must(c['services']['verify']['network_mode']=='none' and not c['services']['verify'].get('ports'),'verification isolation')
   p=yaml.safe_load((R/'deployment/compose.production.yaml').read_text());s=p['services']
-  must(c['name']==p['name'],'production project and volume identity')
+  must(c['name']!=p['name'] and not c.get('volumes'),'verification project must not share production volumes')
   must(set(s)=={'init','db','migrate','app','worker','parser','maintenance'},'target services')
   must('127.0.0.1' in s['app']['ports'][0],'bind')
   must([k for k,v in s.items() if 'ports' in v]==['app'],'unexpected published port')

@@ -2,13 +2,13 @@
 
 **2026-09-13 解析环境与设备选择。** `GET /api/v1/settings/parser-environment` 返回 parser 心跳中的当前环境（online、detected_at、system、architecture、cpu_count、memory_bytes、gpu_name、default、options）。每个选项以 id、可用 profile 列表和不可用原因描述；心跳超过 90 秒或检测超过 180 秒时返回 offline 和空选项。`GET/PATCH /settings/preferences` 支持 `parser_accelerator`：deployment（缺省）、cpu、cuda、mlx，沿用 If-Match；未知值返回 422，当前模型不可用的显式设备返回 409，不保存。新解析任务在入队时解析并冻结实际设备，任务配置记录和 spool 携带该值；执行期间不重新读取用户偏好。部署默认在有新心跳时同样校验；旧部署没有环境报告且没有显式选择时保留旧默认行为。新用户默认模型为 PaddleOCR-VL-1.6，已保存选择保持不变。当前 Docker MLX 图像后端不可用时不提供 MLX 选择；环境接口不接收 endpoint 或凭据。
 
-**2026-09-09 已规划、待实现的接口扩展。** NB 计划统一非阻断 issues、执行/质量状态分离、部分结果、任务实际模型与起止/耗时/持久化日志，以及 DOI/元数据状态和书目信息。`unresolved`、`can_translate` 和旧 QA 阻断字段需同步兼容迁移，不能只解禁前端。新契约详见 [NB Spec](../milestones/nonblocking-workflow-spec.md)；现有端点尚未因文档登记改变。
+**2026-09-09 非阻断接口扩展（已实现）。** NB 统一非阻断 issues、执行/质量状态分离、部分结果、任务实际模型与起止/耗时/持久化日志，以及 DOI/元数据状态和书目信息。`unresolved`、`can_translate` 和旧 QA 阻断字段需同步兼容迁移，不能只解禁前端。新契约详见 [NB 契约](nonblocking-contract.md)与 [NB Spec](../milestones/nonblocking-workflow-spec.md)；下文旧阶段接口表用于追踪，冲突的内容质量许可规则由 NB 契约覆盖。
 
 **2026-09-08 解析超时设置。** `GET/PATCH /settings/preferences` 增加 `parser_timeout_seconds`：严格 JSON 整数，60–86400 且为 60 的倍数；缺省读取为 7200，不通过 GET 改写已有偏好。PATCH 沿用 generation / If-Match，null 与其他可选偏好一样表示不修改。解析入队事务读取当前偏好并将时限写入 Task payload；执行时不重新读取。spool 根字段 `timeout_seconds` 与 UTC `deadline` 对应，旧任务/旧请求缺字段时按 900 秒处理。上传检查固定 900 秒，设置不影响 Provider HTTP timeout。
 
-**2026-09-08 解析选择扩展。** `GET /capabilities` 返回 `parser_profiles`。`GET/PATCH /settings/preferences` 支持 `parser_profile_revision`：`docling-v1`（默认）、`granite-docling-v1`、`paddleocr-vl-1.6-v1`；PATCH 沿用设置 generation 的 If-Match，保留其他偏好和 Provider 配置。`GET /settings/provider` 的同名便利字段来自偏好。`POST /documents/{id}/parse` 可显式选择，省略或 null 时在入队事务内读取默认值并写入任务 payload；未知 ID 返回 422。worker 按冻结 profile 设置解析器版本和 spool 描述符，不在执行时重新读取偏好，也不自动回退其他方案。
+**2026-09-08 解析选择扩展。** `GET /capabilities` 返回 `parser_profiles`。`GET/PATCH /settings/preferences` 支持 `parser_profile_revision`：`docling-v1`、`granite-docling-v1`、`paddleocr-vl-1.6-v1`（新配置默认）；PATCH 沿用设置 generation 的 If-Match，保留其他偏好和 Provider 配置。`GET /settings/provider` 的同名便利字段来自偏好。`POST /documents/{id}/parse` 可显式选择，省略或 null 时在入队事务内读取默认值并写入任务 payload；未知 ID 返回 422。worker 按冻结 profile 设置解析器版本和 spool 描述符，不在执行时重新读取偏好，也不自动回退其他方案。
 
-**2026-09-07 用户补充：取消译文强制人工核对/确认。** 段落确认、语义和术语问题核对均为可选；未确认或未处置的高风险提示不阻止封存、手动发布、自动发布或导出，提示及实际核对状态仍保留。缺段、数字/保护原子不一致、资源损坏等硬完整性问题和过期 QA 仍阻断。修改后只需重跑本地质量检查，不要求再次人工确认。此补充覆盖下文旧的强制核对表述；外发授权、未知请求风险处理及来源修正证据规则不变。
+**2026-09-07 用户补充：取消译文强制人工核对/确认。** 段落确认、语义和术语问题核对均为可选；未确认或未处置的高风险提示不阻止封存、手动发布、自动发布或导出，提示及实际核对状态仍保留。2026-09-09 起缺段、数字/保护原子差异同样非阻断，损坏内容应先安全降级；过期 QA 自动补查，版本冲突仍返回错误。此补充覆盖下文旧的强制核对表述；外发授权、未知请求风险处理及来源修正证据规则不变。
 
 API 由 `apps/api` 实现，具体实现与验收范围以当前代码和执行证据为准。所有端点位于同一个app origin，**没有身份令牌、登录Cookie或用户/工作区路径参数** 。资源检查指完整性、存在性与删除状态，不是权限系统。
 
@@ -129,7 +129,7 @@ Worker 使用同一四协议适配器及后端绑定的 secret，固定一条合
 
 ### 2026-09-07 补充：所有语言开放
 
-所有规范语言标签与组合均可直接使用；GET capabilities/provider 返回 `language_policy: all`，移除实验语言、语言能力矩阵和 `experimental_confirmed` 请求字段。旧 profile 的 enabled_pairs 不控制可用性；各入口继续校验完整 profile_hash、来源版本、外发确认与可选金额预算，自动发布继续执行全部质量门禁。界面以各语言自身名称显示，API保留规范代码、脚本和地区差异。详见[语言与配置确认](../ops/languages.md)。
+所有规范语言标签与组合均可直接使用；GET capabilities/provider 返回 `language_policy: all`，移除实验语言、语言能力矩阵和 `experimental_confirmed` 请求字段。旧 profile 的 enabled_pairs 不控制可用性；各入口继续校验完整 profile_hash、来源版本、外发确认与可选金额预算，自动发布继续执行版本、执行状态及授权检查，不以质量提示阻断。界面以各语言自身名称显示，API保留规范代码、脚本和地区差异。详见[语言与配置确认](../ops/languages.md)。
 
 ## 5. M1/M2：校对、候选和版本
 
@@ -159,7 +159,7 @@ Worker 使用同一四协议适配器及后端绑定的 secret，固定一条合
 
 `PdfInspector.inspect(local_pdf, limits)`返回真实页数、加密/有效性与hash；`PdfParser.parse(task_manifest)`只消费本地PDF，输出IR与coverage。`TranslateProvider.translate(units, context, profile, glossary)`只返回unit_id及受限目标节点、finish/refusal、usage/request_id；无HTML生成、无工具、无用户身份输入。
 
-原生协议仍使用同一目标 AST、单元 ID、保护引用与语义证据校验。Gemini 仅使用 Interactions，结构化结果从模型输出文本读取，思考内容不进入译文；显式 `store=false`，不发送历史 ID。Claude 使用 Messages 的原生结构化输出，不发送 `store`、工具或缓存控制，不覆盖模型默认思考设置。它们均不构成供应商不保留数据的承诺。官方字段依据见本轮 [Gemini 核对](../.agent/tmp/evidence/gemini-claude/gemini-official-contract-review.md)与 [Claude 核对](../.agent/tmp/evidence/gemini-claude/independent-claude-review.md)。
+原生协议仍使用同一目标 AST、单元 ID、保护引用与语义证据校验。Gemini 仅使用 Interactions，结构化结果从模型输出文本读取，思考内容不进入译文；显式 `store=false`，不发送历史 ID。Claude 使用 Messages 的原生结构化输出，不发送 `store`、工具或缓存控制，不覆盖模型默认思考设置。它们均不构成供应商不保留数据的承诺。官方字段依据见本轮 [Gemini 核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 核对](../.agent/notes/gemini-claude-20260906.md)。
 
 Gemini 和 Claude 两个原生协议的响应 model 必须与配置严格匹配；只有 Gemini 去除 `models/` 前缀后比较，不做别名推测。需要别名的服务应配置其实际返回的模型 ID，不一致结果不能写为成功译文。归一化输入/输出用量再进入原整数微货币账本：Gemini 缓存输入是总输入子集，输出为 `total_output_tokens + total_thought_tokens`，完整计数须一致；Claude 输入为未缓存输入、缓存读取、缓存写入之和，`output_tokens` 已含思考，不能再次加算。当前只配置输入、缓存读取、输出三种费率；未启用缓存控制也不能把意外 Claude 缓存写入当免费。开启金额控制时，必需计数缺失/矛盾、未定价维度或无法确认费用的响应（含 Claude 空内容拒绝）保留 `outcome_unknown` 并停止自动再派，等待证据核对与显式风险处理。关闭金额控制时，费用未知不阻止合法目标保存，金额保留 `null`；拒绝、模型不匹配和网络未知结果仍按各自安全规则处理。已知用量与可接受的翻译内容是两个独立判断。文档或本地契约测试不能证明远端 token 参数是已实测的硬计费上限。
 
@@ -173,12 +173,12 @@ Gemini 和 Claude 两个原生协议的响应 model 必须与配置严格匹配�
 | 415 UNSUPPORTED_FORMAT | 非PDF，包括改扩展名 | 否 |
 | 422 PDF_INVALID / PDF_ENCRYPTED | 解码失败或加密 | 否 |
 | 409 UPLOAD_INCOMPLETE / SOURCE_PARSE_REVIEW | 上传未完成或正文未解 | 否 |
-| OCR_REQUIRED | 当前无可靠文本层支持 | 否，保留原件 |
+| OCR_REQUIRED | 旧解析器/历史任务的扫描页提示 | 不伪造已翻译；新流程执行恢复或保留页图 |
 | 409 PREFLIGHT_STALE / QA_STALE | 确认/QA对应旧generation | 重新查看/确认 |
 | 428/412 PRECONDITION_* | 并发前提条件缺失/过期 | 刷新并合并 |
 | PROVIDER_CONFIG / PROVIDER_RATE_LIMIT | 配置错/可解释限流 | 只有后者按规则 |
 | OUTCOME_UNKNOWN / BUDGET_PAUSED | 可能已收费/额度不足 | 默认不重试 |
-| QUALITY_BLOCKED / ASSET_MISSING | 内容或资源不完整 | 修复后重验 |
+| QUALITY_BLOCKED / ASSET_MISSING | 历史质量错误或当前缺失资源 | 新内容流程安全降级；不可读取的历史资源仍报错 |
 | 410 DOCUMENT_DELETED | tombstone已提交 | 否，迟到结果不能复活 |
 
 ## 8. 验收前提

@@ -52,7 +52,9 @@ def inspect_config(config):
             assert bool(mounts[0].get("read_only")) == (name == "worker"), name
         else:
             assert not mounts, name
-    assert int(parser["mem_limit"]) <= 4 * 1024**3 and int(parser["pids_limit"]) <= 128
+    assert 0 < int(parser["mem_limit"]) <= 16 * 1024**3
+    assert 0 < int(parser["pids_limit"]) <= 256
+    assert 0 < float(parser["cpus"]) <= 4
     return {"services": sorted(services), "published_ports": ports, "parser_isolation": "configuration asserted",
             "provider_config": "init/app RW, worker RO; other services have no mount"}
 

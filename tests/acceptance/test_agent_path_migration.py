@@ -92,3 +92,27 @@ def test_fingerprint_tracks_harness_but_not_agent_state(tmp_path):
     assert acceptance.fingerprint(tmp_path) == baseline
     code.write_text('version = 2')
     assert acceptance.fingerprint(tmp_path) != baseline
+
+
+@pytest.mark.parametrize('local_file', [
+    'compose.yaml', '.vscode/settings.json', 'provider_config/profile.json',
+    'deployment/provider_key.private',
+])
+def test_fingerprint_never_reads_local_configuration(tmp_path, monkeypatch, local_file):
+    source = tmp_path / 'packages/example.py'
+    source.parent.mkdir()
+    source.write_text('version = 1')
+    baseline = acceptance.fingerprint(tmp_path)
+    local = tmp_path / local_file
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text('synthetic local configuration')
+    original_digest = acceptance.digest
+
+    def source_digest(path):
+        assert Path(path) != local, 'Source fingerprint must not read private local configuration'
+        return original_digest(path)
+
+    monkeypatch.setattr(acceptance, 'digest', source_digest)
+    assert acceptance.fingerprint(tmp_path) == baseline
+    source.write_text('version = 2')
+    assert acceptance.fingerprint(tmp_path) != baseline

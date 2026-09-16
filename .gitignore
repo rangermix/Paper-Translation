@@ -33,6 +33,7 @@ playwright-report/
 coverage/
 
 # Credentials and local deployment overrides; keep safe examples.
+/compose.yaml
 .env
 .env.*
 !.env.example
@@ -51,7 +52,6 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json

@@ -22,7 +22,7 @@
     "pdf_text"
   ],
   "out_of_scope": [
-    "ocr",
+    "full_scan_ocr_quality_certification",
     "non_pdf_upload",
     "bilingual_input",
     "ir_import",
@@ -38,5 +38,6 @@
     "M0": 18,
     "M1": 26,
     "M2": 21
-  }
+  },
+  "local_translation_model_preparation": "explicit_use_only"
 }

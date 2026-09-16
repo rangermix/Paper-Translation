@@ -1,15 +1,15 @@
 # Docker Compose deployment
 
-The root `compose.yaml` includes `deployment/compose.production.yaml`, so both
-entry points run the production application with the same project and volumes.
-Run commands from the project root. Only Docker Engine and Compose are required
-on the deployment host; the root include requires Compose 2.20 or newer.
+Run commands from the project root. `deployment/compose.production.yaml` is the
+shared production definition. The root `compose.yaml` is an ignored local copy of
+`compose.example.yaml`; preserve existing local settings when updating the repo.
+Only Docker Engine and Compose are required on the deployment host.
 
 ## Single-file CPU / CUDA / MLX example
 
 `compose.example.yaml` contains the full stack with CPU enabled and commented
 CUDA and Apple MLX alternatives. Copy it to the repository root as `compose.yaml`
-(replacing the root include with a standalone configuration in your local copy):
+only if that local file does not already exist:
 
 ```sh
 cp compose.example.yaml compose.yaml
@@ -82,18 +82,21 @@ separate `deployment/compose.test.yaml` exposes an isolated test database and mu
 never be merged into production.
 
 Builds fetch dependencies and the pinned Docling models inside Docker. Runtime
-containers never install packages or models. The parser has no network and no
-database or Provider secret. Missing model assets fail readiness. Use
+containers never install packages. CPU/CUDA parser models are prepackaged and
+the parser has no network, database, or Provider secret. MLX parsing uses only
+Docker-managed inference; optional local translation weights are prepared on
+explicit use as described in [local translation](../deployment/local-translation.md). Missing model assets fail readiness. Use
 `docker compose -f deployment/compose.production.yaml logs --tail 100` to inspect
 failures; do not paste credentials or document content into reports.
 
 The default Provider profile is `{}` and the mounted key file is empty. The app
-can save/read PDFs with no model configuration. Paid processing stays blocked
-until a fixed official OpenAI profile, prices and worker-only secret are provided,
-then confirmed with a budget for the specific content. Never put the key in the
+can save/read PDFs with no model configuration. Translation requires a saved model profile, any required credential, enabled
+external dispatch, and confirmation for the content and destination. The four
+supported protocols and optional local translation are described in the README.
+Prices and monetary budgets are required only when cost controls are enabled. Never put the key in the
 frontend, PDF parser, source IR, image, URL or command arguments. Versioned profile
-changes require renewed authorization. Extra M2 language pairs remain disabled
-until their controlled samples have evidence of verification.
+changes require renewed authorization. All languages are selectable; model quality certification and agent authorization
+for real paid test calls remain separate requirements.
 
 Source builds are development candidates until the acceptance report, image
 digests, dependency/model hashes, SBOM/licenses, vulnerability report and restore

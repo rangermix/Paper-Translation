@@ -1,5 +1,7 @@
 # M1 实施 Plan · 真实 PDF 解析、翻译与发布
 
+> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../00-product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
+
 **2026-09-08 超时配置补全。** 先建立 parser 时间推进和 PostgreSQL 入队/设置回归，再同步更新偏好 API、任务快照、spool、worker 等待和 parser 进程限制。浏览器验证分钟输入、保存持久化和过期版本草稿保留；最终 CPU Docker 镜像核验 Linux RLIMIT_CPU 与健康状态，记录生产配置保留证据。
 
 **2026-09-08 P04/P05 表格补全。** 先建立 tests/unit/test_paddle_tables.py 和 tests/integration/test_paddle_table_publication.py，补齐受限 HTML 解码、共享 IR 空白格语义、Paddle 原图对照及来源差异检查。使用保存的真实官方推理输出验证适配，并在最终断网 CPU 镜像中运行受控表格 PDF；隔离 PostgreSQL 验证单元格 QA、发布与导出。新增证据独立记录，不重新标记历史验收门。
@@ -202,7 +204,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 2. 禁用SDK隐式重试与工具；OpenAI兼容和Gemini Interactions显式`store=false`，Claude Messages无此字段，不主动启用缓存写入或覆盖默认思考。记录可用requestID和计量信息，不宣传供应商零保留。
 3. FakeProvider提供429/401/断流/迟到/已计费超时/截断/错ID脚本。
 4. 按2026-09-06用户补充实现四协议设置与不可变配置绑定：协议确定provider与Bearer/native API-key头，`none`须明确；Claude `api_version`默认`2023-06-01`且仅原生Claude携带。保存零请求，配置缺失仍可落盘但不可派发，密钥不回显、无浏览器存储，按2026-09-07用户要求，切换接口类型填入默认endpoint/model ID，仍可手动覆盖；加载保留已保存值，切换不自动保存或调用模型，并要求旧key明确重新绑定。
-5. 验证Gemini和Claude两个原生协议的响应model与配置严格一致（仅Gemini去除`models/`前缀），不猜模型别名。Gemini输出加思考、Claude输出已含思考；缓存写入等未定价用量及必需计数缺失/矛盾进入未知成本核对，不补零或自动重发。官方依据使用本轮[Gemini核对](../.agent/tmp/evidence/gemini-claude/gemini-official-contract-review.md)与[Claude独立核对](../.agent/tmp/evidence/gemini-claude/independent-claude-review.md)，适配器/本地HTTP/UI证据不能替代真实Provider认证。
+5. 验证Gemini和Claude两个原生协议的响应model与配置严格一致（仅Gemini去除`models/`前缀），不猜模型别名。Gemini输出加思考、Claude输出已含思考；缓存写入等未定价用量及必需计数缺失/矛盾进入未知成本核对，不补零或自动重发。官方依据使用本轮[Gemini核对](../.agent/notes/gemini-claude-20260906.md)与[Claude独立核对](../.agent/notes/gemini-claude-20260906.md)，适配器/本地HTTP/UI证据不能替代真实Provider认证。
 
 **完成检查：** 此工作包只做Fake/契约验证；真实付费验收延至M1-P15并经过预算/授权/恢复就绪门。Fake和真实输出走同一验证器。
 

@@ -3,6 +3,10 @@
 Project-local working memories under `.agent/memory/` and root `.agent/notes/` are
 excluded from source fingerprints. Root `secrets/`, `.agent/local-data/`, `.env` and
 private `.env.*` files are never fingerprinted; `.env.example` remains source.
+Local `compose.yaml`, `.vscode/`, `provider_config/`, and non-example
+`deployment/provider_key.*` files are also excluded without reading their bytes.
+Portable Compose definitions and the empty key fixture remain source; record the
+selected runtime configuration separately with redacted deployment evidence.
 Production files, tests, contracts, fixtures
 and harness implementation remain included. Reports and evidence are separately
 hashed by each evidence record. This permits agent progress notes without
@@ -70,3 +74,20 @@ never becomes a current gate pass merely by appearing in that map.
 
 Keep file-based memory in `.agent/memory/`: state, decisions, ownership, commands,
 findings and next actions. Never store secrets or claim unsupported completion.
+
+Release inventory requires three explicit immutable image IDs through repeated
+`--candidate ROLE sha256:... SCAN_PREFIX` arguments for `app`, `parser` and
+`database`. It reads matching historical scan/SBOM files without changing them
+and writes a fresh run directory; `--native-evidence` is optional and does not
+establish candidate binding. Run `release_inventory.py --help` for the full CLI.
+
+`parser_runtime_dependencies.py` runs inside the selected parser image with
+network access disabled by the caller and a fresh writable result directory. It
+records the installed OpenCV distribution and observed native linkage, verifies
+locked model assets and checks the heartbeat. Its output is runtime inventory,
+not a vulnerability assessment. Existing output files are never replaced.
+
+Four dated instance-specific probes were moved to
+[`../notes/historical-probes/`](../notes/historical-probes/README.md) as
+non-executable source records. Use the maintained, explicitly scoped harnesses
+described there instead of replaying their old production targets.

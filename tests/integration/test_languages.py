@@ -168,6 +168,7 @@ def test_all_languages_reuse_source_and_publish_without_language_consent(client,
     assert file_hash(old_path) == old_hash
 
 
+@pytest.mark.parser_container
 def test_renamed_duplicate_explicit_reuse_then_new_locale_preserves_old_publication(client, database, monkeypatch, tmp_path):
     test_all_languages_reuse_source_and_publish_without_language_consent(
         client, database, monkeypatch, tmp_path, 'ja', renamed_reuse=True)

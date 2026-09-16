@@ -1,5 +1,7 @@
 # M1 产品 Spec · 真实 PDF 解析、翻译与发布
 
+> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../00-product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
+
 **2026-09-08 解析超时验收补充。** 验证新默认 120 分钟、设置 1–1440 整数分钟的持久化和 CAS、任务冻结及旧任务 15 分钟兼容。模拟超过旧 900 秒界限仍完成的任务，并验证自定义时限、绝对 deadline、取消和 CPU 限额；设置页保存/刷新、非法输入和移动布局均需验证。时间模拟不宣称真实长文识别速度。
 
 **2026-09-08 Paddle 表格验收补充。** M1-R04/R05 验证官方 HTML 到结构化 IR 的普通表、行列合并、空白格、页码绑定与整表裁图；无效/超限 HTML 整表回退，文本缺失、增添、数字矛盾阻断预检。非空单元格进入翻译并受必译及数字门禁，空白格无需模型输出，验证封存/发布/离线导出完整闭环。
@@ -132,7 +134,7 @@ Given 未确认发送、语言不在 enabled matrix 或 profile 被更换，Then
 
 2026-09-06用户补充：设置页允许配置 OpenAI 兼容 Responses / Chat Completions、原生 Gemini Interactions、原生 Claude Messages 的完整 endpoint 与 model ID。协议自动匹配 provider；OpenAI 使用 Bearer，Gemini 使用 `x-goog-api-key`，Claude 使用 `x-api-key` 与 `anthropic-version`。原生限普通 API key，不含 OAuth/多 workspace；均允许明确无鉴权。Claude `api_version` 默认为 `2023-06-01`，高级选项可填 `YYYY-MM-DD`，其他协议不发送该字段。按2026-09-07用户要求，切换接口类型填入默认完整 URL 和模型 ID，随后可手动修改；加载保留已保存值，不自动保存或调用模型，不静默重绑旧 key；配置未填完整可先保存，缺少所需鉴权或开启金额控制却缺价时不得派发；请求上限采用下述应用默认值，未知价格不补零。保存不自动调用 Provider。
 
-用户输入的模型名称原样使用，Gemini 和 Claude 两个原生协议的响应 model 仍须严格匹配（仅 Gemini 正规化 `models/` 前缀）；别名应填写服务实际返回的 ID，不自动换模型。原生用量归一后采用相同账本：Gemini 输出加思考，Claude 输出已含思考且输入汇总未缓存/缓存读/缓存写。开启金额控制时，未定价维度、必需用量缺失/矛盾和费用未确认保留 `outcome_unknown` 等待核对。关闭金额控制时可保存已验证合法目标，未定金额保留 `null`，不能当免费成功；网络未知和模型不匹配仍阻止自动重发。具体配置、并发、密钥与响应规则见[共享 API 契约](../shared/api-contract.md)；本轮 [Gemini 官方核对](../.agent/tmp/evidence/gemini-claude/gemini-official-contract-review.md)与 [Claude 独立核对](../.agent/tmp/evidence/gemini-claude/independent-claude-review.md)不替代 M1-AT08A 的真实受控调用，真实模型/语言认证 blocked 边界不变。
+用户输入的模型名称原样使用，Gemini 和 Claude 两个原生协议的响应 model 仍须严格匹配（仅 Gemini 正规化 `models/` 前缀）；别名应填写服务实际返回的 ID，不自动换模型。原生用量归一后采用相同账本：Gemini 输出加思考，Claude 输出已含思考且输入汇总未缓存/缓存读/缓存写。开启金额控制时，未定价维度、必需用量缺失/矛盾和费用未确认保留 `outcome_unknown` 等待核对。关闭金额控制时可保存已验证合法目标，未定金额保留 `null`，不能当免费成功；网络未知和模型不匹配仍阻止自动重发。具体配置、并发、密钥与响应规则见[共享 API 契约](../shared/api-contract.md)；本轮 [Gemini 官方核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 独立核对](../.agent/notes/gemini-claude-20260906.md)不替代 M1-AT08A 的真实受控调用，真实模型/语言认证 blocked 边界不变。
 
 **M1-AT08A** （自动化＋人工/环境验证，planned）
 

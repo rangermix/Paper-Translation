@@ -135,4 +135,5 @@ def test_twenty_api_rebuilds_isolate_one_corrupt_resource(client, database):
         'corrupted_document': f'doc_{damaged}', 'provider_calls': 0, 'cache_writes': 0, 'artifacts': 39,
         'old_files_unchanged': len(old_files), 'documents': facts}
     path = ROOT / '.agent/tmp/evidence/reviews' / f'rebuild-batch-failure-{time.time_ns()}.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')

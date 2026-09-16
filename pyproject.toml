@@ -35,7 +35,12 @@ parser = [
 testpaths = ["tests"]
 pythonpath = [".", ".agent"]
 cache_dir = ".agent/tmp/cache/pytest"
-markers = ["postgres: requires a dedicated PostgreSQL test database", "live_provider: requires explicit budget and external processing authorization"]
+markers = [
+  "postgres: requires a dedicated PostgreSQL test database",
+  "live_provider: requires explicit budget and external processing authorization",
+  "parser_container: runs the native parser child and requires a memory-bounded Linux container",
+  "historical_evidence: replays archived independent evidence when the recorded corpus is available",
+]
 
 [tool.mypy]
 cache_dir = ".agent/tmp/cache/mypy"

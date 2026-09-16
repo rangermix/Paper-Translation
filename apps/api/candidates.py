@@ -7,6 +7,7 @@ from packages.domain.errors import match_generation, require
 from packages.domain.models import Candidate, Draft, Edition, SourceRevision, new_id
 from packages.editorial.drafts import context_hash, current_review, current_segments, edit_segment
 from packages.ir import digest
+from packages.ir.retention import original_only_blocks
 from packages.storage import read_snapshot
 from .common import StrictModel, command, page, response
 from .editorial import draft_view
@@ -47,7 +48,8 @@ def create_candidate(draft_id: str, body: CandidateRequest, request: Request, se
         from packages.glossaries import effective_glossary
         glossary = effective_glossary(session, draft.document_id, source['language'], edition.target_locale)
         require(glossary['revision'] == body.glossary_revision, 'GLOSSARY_STALE')
-        blocks = {b['id']: b for b in source['blocks'] if b['translatable']}
+        original_only = original_only_blocks(source)
+        blocks = {b['id']: b for b in source['blocks'] if b['translatable'] and b['id'] not in original_only}
         require(len(set(body.block_ids)) == len(body.block_ids) and set(body.block_ids) <= blocks.keys(), 'BLOCK_SELECTION_INVALID')
         segments = current_segments(session, draft.id)
         candidate = Candidate(id=new_id('candidate'), draft_id=draft.id, base={'source_revision_id': source_entity.id,
@@ -145,7 +147,8 @@ def semantic_review(draft_id: str, body: CandidateRequest, request: Request, ses
         budget = checked_budget(profile, body.budget_micro)
         require(profile.get('semantic_review_enabled') is True, 'SEMANTIC_REVIEW_DISABLED')
         require(body.glossary_revision == draft.glossary_revision, 'GLOSSARY_STALE')
-        selected = {b['id'] for b in source['blocks'] if b['translatable']}
+        original_only = original_only_blocks(source)
+        selected = {b['id'] for b in source['blocks'] if b['translatable'] and b['id'] not in original_only}
         require(set(body.block_ids) <= selected and len(body.block_ids) == len(set(body.block_ids)), 'BLOCK_SELECTION_INVALID')
         job = enqueue(session, 'semantic_review', {**body.model_dump(), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': draft.source_revision_id,
             'source_hash': digest(source), 'profile': profile, 'locale': edition.target_locale, 'glossary': [], 'publish_policy': 'manual_approval'}, draft.document_id)

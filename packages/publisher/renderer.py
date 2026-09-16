@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 ROOT = Path(__file__).resolve().parents[2]
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-3.1.0'
+RENDERER_VERSION = 'reader-python-3.2.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -90,6 +90,8 @@ def render_html(ir, asset_paths, *, include_source=False):
         if block['kind'] == 'table_cell' and not block['normalized_text'].strip(): return ''
         result = results[block['id']]
         src = inline(block['source_inline'],atoms)
+        if result['status'] == 'retained':
+            return f'<div class="para en original-only" data-original-only="{esc(result["reason"])}" lang="{esc(block["language"])}" style="grid-column:1 / -1"><span class="label">原文</span>{src}</div>'
         content = f'<div class="para en" data-language="source" lang="{esc(block["language"])}"><span class="label">原文</span>{src}</div>'
         if result['status'] == 'translated':
             content += f'<div class="para zh" data-language="target" lang="{esc(tr["target_language"])}"><span class="label">译文</span>{inline(result["target_inline"],atoms)}</div>'
@@ -112,6 +114,8 @@ def render_html(ir, asset_paths, *, include_source=False):
         if kind == 'heading':
             level = max(2,min(6,a['level']))
             result = results[bid]
+            if result['status'] == 'retained':
+                return f'<section class="section-heading" {attrs}><h{level}><span class="en-title" data-original-only="{esc(result["reason"])}" lang="{esc(block["language"])}">{inline(block["source_inline"],atoms)}</span></h{level}>{warnings(block)}</section>'
             target = inline(result['target_inline'],atoms) if result['status'] == 'translated' else ''
             if result['status'] == 'fallback':
                 target = inline(block['source_inline'],atoms) + '<small class="fallback-label">（原文，暂无译文）</small>'

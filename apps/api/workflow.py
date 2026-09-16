@@ -277,6 +277,8 @@ def events(job_id: str, last_event_id: str | None = Header(None), session=Sessio
 def preflight(import_id: str, session=Session):
     draft = get_entity(session, SourceDraft, import_id)
     source = draft.source
+    from packages.ir.retention import original_only_blocks
+    original_only = original_only_blocks(source)
     profile = provider_profile()
     coverage = draft.coverage
     unresolved = coverage.get('unresolved', [])
@@ -324,8 +326,8 @@ def preflight(import_id: str, session=Session):
         'actual_model': execution.actual_model if execution else None,
         'status': 'superseded' if superseded else 'sealed' if sealed_id else 'ready' if ready else 'unavailable', 'pages': pages,
         'translation_targets': targets,
-        'required_blocks': sum(bool(b.get('translatable')) for b in source.get('blocks', [])),
-        'retained_blocks': sum(not b.get('translatable') for b in source.get('blocks', [])),
+        'required_blocks': sum(bool(b.get('translatable')) and b['id'] not in original_only for b in source.get('blocks', [])),
+        'retained_blocks': sum(not b.get('translatable') or b['id'] in original_only for b in source.get('blocks', [])),
         'assets': [{'id': a['id'], 'kind': a.get('kind', a.get('media_type', 'asset')), 'status': 'available'} for a in source.get('assets', [])],
         'sha256': source.get('sha256'), 'profile': profile, 'profile_hash': digest(profile), **planning,
         'estimate_note': planning.get('estimate_note', 'Cost estimate is unavailable until the service configuration is complete.')})

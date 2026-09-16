@@ -9,12 +9,13 @@ from packages.domain.errors import require
 from packages.domain.models import (Draft, Edition, IssueResolution, Job, QA, ReviewRecord,
     SegmentVersion, SourceRevision, Task, TranslationRevision, new_id, now)
 from packages.ir import canonical_bytes, digest, flatten_inline, validate_ir
+from packages.ir.retention import original_only_blocks
 from packages.publisher.renderer import CSS_HASH, RENDERER_VERSION
 from packages.storage import read_snapshot, write_snapshot
 from packages.editorial.numbers import compare_numbers
 
 
-RULE_VERSION = 'quality-v4-nonblocking'
+RULE_VERSION = 'quality-v5-original-only'
 QUALITY_MESSAGES = {
     'MISSING_TRANSLATION': '此段暂无译文，保留原文供阅读。',
     'TARGET_UNAVAILABLE': '此段译文无法安全展示，已保留原文。',
@@ -102,7 +103,7 @@ def validate_target(nodes, source, block):
 def edit_segment(session, config, draft, block_id, nodes, base_version, reason, origin='manual_ui', provenance=None):
     source = read_snapshot(config.data, get_entity(session, SourceRevision, draft.source_revision_id))
     block = next((b for b in source['blocks'] if b['id'] == block_id), None)
-    require(block is not None and block['translatable'], 'NOT_FOUND', status=404)
+    require(block is not None and block['translatable'] and block_id not in original_only_blocks(source), 'NOT_FOUND', status=404)
     previous = current_segments(session, draft.id).get(block_id)
     require(base_version == (previous.sequence if previous else 0), 'SEGMENT_CONFLICT', status=412)
     validate_target(nodes, source, block)
@@ -122,6 +123,7 @@ def edit_segment(session, config, draft, block_id, nodes, base_version, reason, 
 
 def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode=False):
     source = read_snapshot(config.data, get_entity(session, SourceRevision, draft.source_revision_id))
+    original_only = original_only_blocks(source)
     segments = current_segments(session, draft.id)
     results = []
     profile = draft.profile
@@ -136,15 +138,18 @@ def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode
             note += ' 已记录核对说明：' + resolution.reason if resolution else ''
             quality_notes.setdefault(finding.get('block_id') or source['title_block_id'], []).append(note)
     for block in source['blocks']:
-        segment = segments.get(block['id'])
+        same_language = block.get('language', source['language']) == edition.target_locale
+        retained_reason = original_only.get(block['id'])
+        retained = not block['translatable'] or same_language or bool(retained_reason)
+        # Old segment/review records remain intact, but must not become a target
+        # or a human-review claim for intentionally retained source content.
+        segment = None if retained else segments.get(block['id'])
         if segment:
             try:
                 require(segment.source_hash == block['source_hash'], 'SOURCE_STALE')
                 validate_target(segment.target_inline, source, block)
             except (ValueError, DomainError, KeyError):
                 segment = None  # Keep bad history; publish a supported original-text fallback.
-        same_language = block.get('language', source['language']) == edition.target_locale
-        retained = not block['translatable'] or same_language
         origin = 'retained' if retained else ('model' if segment and segment.origin in ('model', 'candidate_accepted') else 'human')
         if segment and not retained and segment.origin == 'cache':
             origin = 'cache'
@@ -164,7 +169,7 @@ def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode
             'context_hash': context_hash(source, block['id']), 'status': 'retained' if retained else ('translated' if segment else 'unresolved'),
             'target_inline': segment.target_inline if segment and not retained else [], 'warnings': quality_notes.get(block['id'], []),
             'review_state': 'human_reviewed' if review else 'not_reviewed',
-            'reason': ('same_language' if same_language and block['translatable'] else {'code':'original_code', 'math':'original_math', 'figure':'original_figure', 'table':'structural_container', 'table_cell':'empty_table_cell', 'reference':'original_reference'}.get(block['kind'], '')) if retained else '',
+            'reason': (retained_reason or ('same_language' if same_language and block['translatable'] else {'code':'original_code', 'math':'original_math', 'figure':'original_figure', 'table':'structural_container', 'table_cell':'empty_table_cell', 'reference':'original_reference'}.get(block['kind'], ''))) if retained else '',
             'generation': generation, 'review_record': None})
         if not retained and segment is None:
             results[-1].update(status='fallback', reason='translation_unavailable',
@@ -241,6 +246,7 @@ def quality_fingerprint(draft, source, segments, semantic):
 
 def _run_quality(session, config, draft):
     source = read_snapshot(config.data, get_entity(session, SourceRevision, draft.source_revision_id))
+    original_only = original_only_blocks(source)
     segments = current_segments(session, draft.id)
     semantic = semantic_evidence(session, draft, source, segments)
     fingerprint = quality_fingerprint(draft, source, segments, semantic)
@@ -260,7 +266,7 @@ def _run_quality(session, config, draft):
         item['resolved'] = bool(resolved)
         issues.append(item)
     for block in source['blocks']:
-        if not block['translatable'] or block.get('language', source['language']) == edition.target_locale:
+        if not block['translatable'] or block['id'] in original_only or block.get('language', source['language']) == edition.target_locale:
             continue
         segment = segments.get(block['id'])
         if not segment:

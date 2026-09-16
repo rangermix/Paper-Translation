@@ -1,9 +1,10 @@
 from copy import deepcopy
 from packages.ir import canonical_bytes,digest,flatten_inline
+from packages.ir.retention import original_only_blocks
 from packages.billing.price import validate_profile
 from .languages import check_language_policy
 
-PLANNER_VERSION='protected-codepoints-v1'
+PLANNER_VERSION='protected-codepoints-original-only-v2'
 
 
 def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
@@ -11,6 +12,7 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
     check_language_policy(profile,source,target_locale)
     selected=set(block_ids) if block_ids else None
     all_blocks=source['blocks'];by={b['id']:b for b in all_blocks};atoms=source['protected_atoms'];units=[]
+    original_only=original_only_blocks(source)
     limit=profile.get('max_unit_characters',2000)
     if profile.get('api_protocol') == 'local_translation':
         from packages.local_models.catalog import get_model
@@ -21,10 +23,10 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
         return max(len(atom['value']), 32) if profile.get('api_protocol') == 'local_translation' else len(atom['value'])
     for index,block in enumerate(all_blocks):
         if selected is not None and block['id'] not in selected:continue
-        if not block['translatable'] or block['language']==target_locale:continue
-        context={'heading':by[block['parent_id']]['normalized_text'] if block['parent_id'] else '',
-            'previous':all_blocks[index-1]['normalized_text'][-500:] if index else '',
-            'next':all_blocks[index+1]['normalized_text'][:500] if index+1<len(all_blocks) else ''}
+        if not block['translatable'] or block['id'] in original_only or block['language']==target_locale:continue
+        context={'heading':by[block['parent_id']]['normalized_text'] if block['parent_id'] and block['parent_id'] not in original_only else '',
+            'previous':all_blocks[index-1]['normalized_text'][-500:] if index and all_blocks[index-1]['id'] not in original_only else '',
+            'next':all_blocks[index+1]['normalized_text'][:500] if index+1<len(all_blocks) and all_blocks[index+1]['id'] not in original_only else ''}
         context_hash=digest(context);normalized=[];local_atoms={};restore={}
         for node_index,node in enumerate(block['source_inline']):
             if node['type']=='text':normalized.append({'type':'text','text':node['text']})

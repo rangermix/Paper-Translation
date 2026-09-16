@@ -11,6 +11,7 @@ from packages.domain.models import (Candidate, Draft, Edition, IssueResolution, 
 from packages.editorial.drafts import (context_hash, create_draft, current_review, current_segments,
     edit_segment, quality_fingerprint, run_quality, seal, segment_fingerprint, semantic_evidence)
 from packages.ir import digest
+from packages.ir.retention import original_only_blocks
 from packages.storage import read_snapshot
 from .common import StrictModel, command, page, response
 from .library import Session, edition_view, source_url
@@ -29,6 +30,7 @@ def qa_view(qa, *, stale=False):
 
 def draft_view(session, config, draft):
     source = read_snapshot(config.data, get_entity(session, SourceRevision, draft.source_revision_id))
+    original_only = original_only_blocks(source)
     segments = current_segments(session, draft.id)
     qa = session.get(QA, draft.qa_id) if draft.qa_id else None
     edition = session.get(Edition, draft.edition_id)
@@ -43,9 +45,9 @@ def draft_view(session, config, draft):
         'glossary_revision': draft.glossary_revision, 'source': source,
         'semantic_review_status': semantic_status,
         'semantic_reviews': [{key: value for key, value in review.items() if key != 'findings'} for review in semantic],
-        'segments': [{'block_id': b['id'], 'kind': b['kind'], 'translatable': b['translatable'] and b.get('language', source['language']) != edition.target_locale,
+        'segments': [{'block_id': b['id'], 'kind': b['kind'], 'translatable': b['translatable'] and b['id'] not in original_only and b.get('language', source['language']) != edition.target_locale,
             'source_text': b['normalized_text'], 'raw_text': b['raw_text'], 'normalization_edits': b['normalization_edits'],
-            'source_inline': b['source_inline'], 'target_inline': segments[b['id']].target_inline if b['id'] in segments else [],
+            'source_inline': b['source_inline'], 'target_inline': segments[b['id']].target_inline if b['id'] in segments and b['id'] not in original_only else [],
             'version': segments[b['id']].sequence if b['id'] in segments else 0, 'source_hash': b['source_hash'],
             'context_hash': context_hash(source, b['id']), 'locators': [{**loc,
                 'page_image_url': source_url(draft.document_id, 'source_revision_id', draft.source_revision_id, loc['page'])} for loc in b['provenance']],

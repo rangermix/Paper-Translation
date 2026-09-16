@@ -10,6 +10,7 @@ from packages.domain.models import Document, Draft, Edition, Glossary, SourceRev
 from packages.editorial.drafts import current_review, current_segments
 from packages.glossaries import MATCHER_VERSION, effective_glossary, merge_entries, term_matches
 from packages.ir import digest
+from packages.ir.retention import original_only_blocks
 from packages.storage import read_snapshot
 from packages.translation.languages import canonical_locale
 from packages.translation_memory import get_memory, list_memories, memory_view, save_reviewed_memory
@@ -91,6 +92,7 @@ def impact(glossary_id: str, body: ImpactBody, request: Request, session=Session
         items = []
         for doc in session.scalars(query):
             source = read_snapshot(request.app.state.config.data, get_entity(session, SourceRevision, doc.current_source_id))
+            original_only = original_only_blocks(source)
             if source['language'] != glossary.source_language:
                 continue
             # The selected revision is the preview input. Current doc overrides apply to global previews.
@@ -108,7 +110,7 @@ def impact(glossary_id: str, body: ImpactBody, request: Request, session=Session
             segments = current_segments(session, draft.id) if draft and draft.source_revision_id == doc.current_source_id else {}
             for block in source['blocks']:
                 matched = [e['source'] for e in terms if term_matches(block['normalized_text'], e)]
-                if block['translatable'] and matched:
+                if block['translatable'] and block['id'] not in original_only and matched:
                     segment = segments.get(block['id'])
                     items.append({'document_id': doc.id, 'block_id': block['id'], 'source_text': block['normalized_text'],
                         'matched_terms': matched, 'locked': bool(segment and current_review(session, draft, segment))})

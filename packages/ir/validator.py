@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
 import jsonschema
+from .retention import original_only_blocks
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads((ROOT / 'contracts/document-ir-v3.schema.json').read_text('utf-8'))
@@ -243,6 +244,7 @@ def validate_ir(value, asset_root=None):
     require(len(results) == len(translation['results']) and set(results) == set(by), 'translation results are not bijective')
     atoms = source['protected_atoms']
     nonblocking = translation.get('content_policy') == 'nonblocking-v1'
+    original_only = original_only_blocks(source)
     for rid, result in results.items():
         block, path = by[rid], '$.results.' + rid
         require(result['source_hash'] == block['source_hash'], 'stale target source hash', path)
@@ -265,7 +267,10 @@ def validate_ir(value, asset_root=None):
                 require(a == b, f'{node_type} multiplicity mismatch', path)
         else:
             require(not result['target_inline'] and bool(result['reason'].strip()), 'invalid retained result', path)
-            require(block['kind'] in {'code','math','figure','reference','table'} or empty_table_cell(block) or (result['reason'] == 'same_language' and block['language'] == translation['target_language']), 'required prose cannot be retained', path)
+            require(block['kind'] in {'code','math','figure','reference','table'} or empty_table_cell(block)
+                or result['reason'] == original_only.get(rid)
+                or (result['reason'] == 'same_language' and block['language'] == translation['target_language']),
+                'required prose cannot be retained', path)
         review = result['review_record']
         if result['review_state'] == 'human_reviewed':
             require(review and review['origin'] == 'manual_ui', 'missing explicit manual review record', path)

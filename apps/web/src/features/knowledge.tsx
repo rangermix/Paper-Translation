@@ -30,16 +30,17 @@ export function Settings({ onTheme }: { onTheme: (theme: string) => void }) {
   const action = useAction();
   const [edits, setEdits] = useState<Partial<Preferences>>({});
   const prefs = { ...result.data, ...edits };
+  const theme = prefs.theme === 'paper' ? 'light' : prefs.theme ?? 'system';
   return <><PageHead title="设置">配置 AI 服务与阅读偏好，设置由当前实例共享。</PageHead>
     <ProviderSettings provider={provider.data} loading={provider.loading} error={provider.error} reload={provider.reload} onSaved={provider.setData} onDispatchSaved={result.reload}/>
     <ErrorNotice error={result.error} retry={result.reload}/><ActionFeedback {...action}/>
     <ParserSettings preferences={result.data} loading={result.loading} onSaved={result.setData} reload={result.reload}/>
     <section className="panel"><h2>个人偏好</h2>
       {result.loading && <Loading/>}
-      {result.data && <form onSubmit={e => { e.preventDefault(); void action.run(async () => { await api('/settings/preferences', { method: 'PATCH', etag: etagFor(result.data), body: { locale: prefs.locale, publish_policy: prefs.publish_policy, theme: prefs.theme ?? 'light' } }); onTheme(prefs.theme ?? 'light'); result.reload(); setEdits({}); }, '实例偏好已保存。'); }}>
+      {result.data && <form onSubmit={e => { e.preventDefault(); void action.run(async () => { await api('/settings/preferences', { method: 'PATCH', etag: etagFor(result.data), body: { locale: prefs.locale, publish_policy: prefs.publish_policy, theme } }); onTheme(theme); result.reload(); setEdits({}); }, '实例偏好已保存。'); }}>
         <div className="field"><label htmlFor="default-locale">默认目标语言</label><LanguageSelect id="default-locale" value={prefs.locale ?? "zh-Hans"} onChange={locale => setEdits(old => ({ ...old, locale }))}/></div>
         <div className="field"><label htmlFor="default-policy">默认发布方式</label><select id="default-policy" value={prefs.publish_policy} onChange={e => setEdits(old => ({ ...old, publish_policy: e.target.value as Preferences['publish_policy'] }))}><option value="manual_approval">手动发布</option><option value="auto_publish">完成后自动发布（内容提示不限制发布）</option></select></div>
-        <div className="field"><label htmlFor="theme">管理界面主题</label><select id="theme" value={prefs.theme ?? 'light'} onChange={e => setEdits(old => ({ ...old, theme: e.target.value as 'light' | 'dark' }))}><option value="light">浅色纸面</option><option value="dark">深色</option></select></div>
+        <div className="field"><label htmlFor="theme">管理界面主题</label><select id="theme" value={theme} onChange={e => setEdits(old => ({ ...old, theme: e.target.value as Preferences['theme'] }))}><option value="system">自动（跟随系统）</option><option value="light">浅色纸面</option><option value="dark">深色</option></select></div>
         <button className="btn primary" disabled={action.pending || !isLanguageTag(prefs.locale)}>保存偏好</button>
       </form>}
       <div className="separator"/><p className="field-note">所有语言均可选择，语言名称使用各自的语言显示。翻译效果取决于所选模型。</p>

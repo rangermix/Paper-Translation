@@ -48,7 +48,7 @@ def provider_view(session, profile):
 @router.get('/settings/preferences')
 def preferences(session=Session):
     settings = session.get(Settings, 'singleton')
-    return response({'generation': settings.generation, **settings.preferences,
+    return response({'generation': settings.generation, 'theme': 'system', **settings.preferences,
         'parser_profile_revision': selected_profile(settings.preferences),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)})
 
@@ -99,7 +99,7 @@ def patch_preferences(body: Preferences, request: Request, session=Session):
     match_generation(settings, request.headers.get('If-Match'))
     settings.preferences = {**settings.preferences, **body.model_dump(exclude_none=True)}
     settings.generation += 1
-    return response({'generation': settings.generation, **settings.preferences,
+    return response({'generation': settings.generation, 'theme': 'system', **settings.preferences,
         'parser_profile_revision': selected_profile(settings.preferences),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)})
 

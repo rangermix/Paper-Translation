@@ -14,7 +14,7 @@ const navigation = [{ page: 'library', label: '文档库', icon: 'book' }, { pag
 function App() {
   const route = useRoute(); const capabilities = useResource<Capability>('/capabilities'); const preferences = useResource<Preferences>('/settings/preferences'); const [menu, setMenu] = useState(false);
   useEffect(() => { setMenu(false); }, [route.page, route.id]);
-  useEffect(() => { if (preferences.data?.theme) document.documentElement.dataset.theme = preferences.data.theme; }, [preferences.data?.theme]);
+  useEffect(() => { document.documentElement.dataset.theme = preferences.data?.theme ?? 'system'; }, [preferences.data?.theme]);
   const label = navigation.find(n => n.page === route.page)?.label ?? ({ documents: '文档详情', preflight: '解析结果', drafts: '译文编辑', history: '版本历史' }[route.page] ?? '文档库');
   let content;
   switch (route.page) {

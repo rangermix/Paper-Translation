@@ -1,6 +1,7 @@
 """Static deployment contracts; these do not certify Docker or real inference."""
 import json
 from pathlib import Path
+import re
 import tomllib
 
 import pytest
@@ -12,6 +13,24 @@ class ComposeLoader(yaml.SafeLoader):
 
 
 ComposeLoader.add_constructor('!reset', lambda loader, node: None)
+
+
+def test_offline_acceptance_harness_mount_contains_the_restore_runner():
+    compose_path = Path('deployment/compose.acceptance-offline.yaml')
+    doc = yaml.safe_load(compose_path.read_text())
+    for service in ('app', 'maintenance'):
+        mounts = [entry.split(':') for entry in doc['services'][service]['volumes']]
+        source, _, mode = next(entry for entry in mounts if entry[1] == '/harness')
+        assert mode == 'ro'
+        assert (compose_path.parent / source / 'offline_compose_roundtrip.py').is_file()
+
+
+def test_release_environment_example_names_are_consumed_by_production_compose():
+    example = Path('deployment/production.env.example').read_text()
+    compose = Path('deployment/compose.production.yaml').read_text()
+    documented = set(re.findall(r'^\s*(?:#\s*)?([A-Z][A-Z0-9_]*)=', example, re.MULTILINE))
+    consumed = set(re.findall(r'\$\{([A-Z][A-Z0-9_]*)', compose))
+    assert documented <= consumed, f'Unused deployment settings: {sorted(documented - consumed)}'
 
 
 def test_cpu_and_cuda_keep_parser_isolation_and_one_unified_image_recipe():

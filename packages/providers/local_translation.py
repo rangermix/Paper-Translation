@@ -6,7 +6,7 @@ import httpx
 
 from packages.ir import canonical_bytes, digest, strict_loads
 from packages.local_models.catalog import ENDPOINT, get_model
-from .contract import ProviderFailure
+from .contract import ProviderFailure, normalize_request_id
 
 LANGUAGES = dict(zip(
     'ar az bg bn ca cs da de el en es fa fi fr he hi hr hu id it ja kk km ko lo ms my no nl pl pt ro ru sk sl sv ta th tl tr ur uz vi yue'.split(),
@@ -125,7 +125,7 @@ class LocalTranslation:
             raise ProviderFailure('OUTCOME_UNKNOWN', 'unknown')
         try:
             data = strict_loads(response.content)
-            result = {'response_model': data.get('model'), 'request_id': data.get('id'),
+            result = {'response_model': data.get('model'), 'request_id': normalize_request_id(data.get('id')),
                       'status': 'unsupported', 'refusal': False, 'output_text': '',
                       'usage': {'input_tokens': (data.get('usage') or {}).get('prompt_tokens'),
                                 'output_tokens': (data.get('usage') or {}).get('completion_tokens')}}

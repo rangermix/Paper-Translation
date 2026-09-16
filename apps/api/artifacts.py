@@ -221,7 +221,7 @@ def diff(document_id: str, before: str, after: str, axis: Literal['source', 'tar
     x, y = read_snapshot(request.app.state.config.data, a), read_snapshot(request.app.state.config.data, b)
     if axis == 'source':
         changes = _source_changes(x, y)
-        fields = ('sha256', 'language', 'parser', 'parser_version', 'normalizer_version')
+        fields = ('sha256', 'language', 'parser', 'normalization_version')
     else:
         require(a.edition_id == b.edition_id and x['target_language'] == y['target_language'], 'REVISION_LOCALE_MISMATCH',
             'Compare translation revisions from the same language edition.')

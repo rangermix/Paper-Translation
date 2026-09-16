@@ -133,6 +133,72 @@ def test_failures_never_retry_and_unknown_survives_reload(client, database, sett
             assert session.scalar(select(Permit)).state == 'unknown'
 
 
+@pytest.mark.parametrize('outcome', ['unknown', 'not_executed'])
+def test_connection_failure_accounting_does_not_deadlock_dispatch_settings(
+        client, database, settings_store, monkeypatch, outcome):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    import time
+    from sqlalchemy import text
+    from packages.billing.dispatch import update_dispatch
+    from packages.providers import connection
+    from packages.providers.contract import ProviderFailure
+
+    saved = configure(client)
+    result = start(client, saved).json()
+    db, cfg = database
+    lease = claim(db)
+
+    class FailedProvider:
+        def translate(self, *args):
+            raise ProviderFailure('OUTCOME_UNKNOWN' if outcome == 'unknown' else 'PROVIDER_CONFIG', outcome)
+
+    monkeypatch.setattr(connection, 'provider_for', lambda _: FailedProvider())
+    accounting_locked, release_accounting, settings_started = Event(), Event(), Event()
+    operation = 'mark_unknown' if outcome == 'unknown' else 'release_unsent'
+    original = getattr(connection, operation)
+
+    def held_accounting(session, *args):
+        original(session, *args)
+        accounting_locked.set()
+        assert release_accounting.wait(5), 'Concurrent settings request did not start'
+
+    monkeypatch.setattr(connection, operation, held_accounting)
+    settings_pid = []
+
+    def pause_dispatch():
+        with db.transaction() as session:
+            session.execute(text("SET LOCAL lock_timeout = '5s'"))
+            settings_pid.append(session.scalar(text('SELECT pg_backend_pid()')))
+            settings_started.set()
+            return update_dispatch(session, True)
+
+    with ThreadPoolExecutor(2) as executor:
+        failure = executor.submit(connection.execute_test, db, cfg, lease)
+        try:
+            assert accounting_locked.wait(5)
+            settings = executor.submit(pause_dispatch)
+            assert settings_started.wait(5)
+            deadline = time.monotonic() + 3
+            blocked = False
+            while time.monotonic() < deadline:
+                with db.engine.connect() as observer:
+                    blocked = observer.scalar(text('SELECT wait_event_type FROM pg_stat_activity WHERE pid=:pid'),
+                        {'pid': settings_pid[0]}) == 'Lock'
+                if blocked:
+                    break
+                time.sleep(.01)
+            assert blocked, 'Settings must contend with the in-flight accounting transaction'
+        finally:
+            release_accounting.set()
+        failure.result(timeout=8)
+        assert settings.result(timeout=8)['dispatch_disabled'] is True
+    with db.transaction() as session:
+        assert session.get(Job, result['id']).status == ('outcome_unknown' if outcome == 'unknown' else 'failed')
+        assert session.scalar(select(Permit)).state == ('unknown' if outcome == 'unknown' else 'released')
+    assert claim(db) is None
+
+
 def test_stale_before_worker_and_dispatch_disabled_never_send(client, database, settings_store, monkeypatch):
     from packages.providers import connection
     from workers.main import execute

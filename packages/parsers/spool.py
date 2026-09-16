@@ -18,6 +18,9 @@ def validate_request(request):
         raise ValueError('PARSER_REQUEST_INVALID: unknown fields')
     for field in ['task_id','fence','source_sha256','max_pages','deadline','parser_version']:
         if field not in request: raise ValueError('PARSER_REQUEST_INVALID: missing '+field)
+    for field in ('task_id', 'source_sha256', 'deadline', 'parser_version', 'operation', 'asset_id', 'accelerator'):
+        if field in request and not isinstance(request[field], str):
+            raise ValueError('PARSER_REQUEST_INVALID: '+field+' must be text')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,127}',request['task_id']): raise ValueError('PARSER_REQUEST_INVALID')
     if type(request['fence']) is not int or request['fence'] < 1: raise ValueError('PARSER_REQUEST_INVALID')
     if not re.fullmatch(r'[0-9a-f]{64}',request['source_sha256']): raise ValueError('PARSER_REQUEST_INVALID')

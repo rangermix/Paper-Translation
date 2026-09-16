@@ -6,7 +6,7 @@ import httpx
 import pytest
 from sqlalchemy import func, select
 
-from packages.domain.models import Job, Permit, SegmentVersion, Task, Settings
+from packages.domain.models import Attempt, Job, Permit, SegmentVersion, Task, Settings
 from packages.ir import digest
 from packages.jobs.queue import claim
 from packages.providers.openai_responses import OpenAIResponses
@@ -71,6 +71,27 @@ def test_real_worker_dispatches_frozen_endpoint_and_accounts_both_protocols(data
         assert session.get(Task, lease.task_id).status == 'succeeded'
         assert session.scalar(select(func.count()).select_from(SegmentVersion)) == 1
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize('protocol', ['responses', 'chat_completions'])
+@pytest.mark.parametrize('location', ['header', 'body'])
+def test_invalid_tracking_metadata_does_not_prevent_known_usage_settlement(
+        database, monkeypatch, tmp_path, protocol, location):
+    db, cfg, _ = prepare(database, monkeypatch, tmp_path, protocol)
+    def wire(request):
+        response = wire_response(request, protocol)
+        data = response.json()
+        headers = {'x-request-id': 'r' * 201} if location == 'header' else {}
+        if location == 'body':
+            data['id'] = {'unexpected': 'provider metadata'}
+        return httpx.Response(200, json=data, headers=headers)
+    intercept(monkeypatch, wire)
+    lease = claim(db); execute_translation(db, cfg, lease)
+    with db.transaction() as session:
+        assert session.get(Attempt, lease.attempt_id).request_id is None
+        assert session.get(Task, lease.task_id).status == 'succeeded'
+        assert session.scalar(select(Permit)).state == 'settled'
+        assert session.scalar(select(Permit)).actual_micro == 120
 
 
 def test_rotation_after_adapter_binding_cannot_mix_endpoint_A_and_key_B(database, monkeypatch, tmp_path):

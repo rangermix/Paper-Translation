@@ -1,9 +1,10 @@
 """Real PostgreSQL dispatch, protected output and no-send cancellation; synthetic wire."""
 import json
 import httpx
+import pytest
 from sqlalchemy import select
 
-from packages.domain.models import Job, Permit, Task, SegmentVersion
+from packages.domain.models import Attempt, Job, Permit, Task, SegmentVersion
 from packages.jobs.queue import claim
 from packages.providers.settings import save_configuration, managed_profile
 from packages.providers.local_translation import LocalTranslation
@@ -49,6 +50,34 @@ def test_local_prepare_precedes_permit_and_exact_model_is_recorded(database, mon
         assert identity['kind'] == 'local' and identity['model_id'] == profile()['model_id']
         assert identity['engine'] == 'mlx' and identity['revision']
     assert events == ['prepare', 'inference']
+
+
+@pytest.mark.parametrize('request_id,expected_id', [
+    ('r' * 201, None),
+    ({'unexpected': 'local metadata'}, None),
+    ('local-request-123', 'local-request-123'),
+])
+def test_local_tracking_metadata_does_not_prevent_known_usage_settlement(
+        database, monkeypatch, tmp_path, request_id, expected_id):
+    db, cfg = prepare(database, monkeypatch, tmp_path)
+    calls = []
+    def wire(request):
+        calls.append(request)
+        return httpx.Response(200, json={'id': request_id, 'model': profile()['model_id'],
+            'choices': [{'text': '本地译文', 'finish_reason': 'stop'}],
+            'usage': {'prompt_tokens': 20, 'completion_tokens': 5}})
+    monkeypatch.setattr(LocalTranslation, 'prepare', lambda self, saved, check_current: check_current())
+    original = LocalTranslation.__init__
+    monkeypatch.setattr(LocalTranslation, '__init__', lambda self: original(self, transport=httpx.MockTransport(wire)))
+    lease = claim(db); execute_translation(db, cfg, lease)
+    with db.transaction() as session:
+        attempt = session.get(Attempt, lease.attempt_id)
+        assert attempt.request_id == expected_id
+        assert attempt.usage == {'input_tokens': 20, 'output_tokens': 5}
+        assert session.scalar(select(Permit)).state == 'settled'
+        assert session.get(Task, lease.task_id).status == 'succeeded'
+        assert session.scalar(select(SegmentVersion)) is not None
+    assert len(calls) == 1
 
 
 def test_local_profile_rotation_during_prepare_never_dispatches(database, monkeypatch, tmp_path):

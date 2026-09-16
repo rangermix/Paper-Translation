@@ -6,10 +6,11 @@ from sqlalchemy import select
 from packages.billing.ledger import authorize, budget_totals, mark_unknown, release_unsent, settle
 from packages.billing.price import reserve_cost
 from packages.domain.config import provider_profile
+from packages.domain.db import lock_lifecycle
 from packages.domain.errors import DomainError
 from packages.domain.models import Job, now
 from packages.jobs.queue import assert_current, emit, finish
-from .contract import ProviderFailure, validate_output
+from .contract import ProviderFailure, normalize_request_id, validate_output
 from .native import NativeProvider
 from .openai_responses import OpenAIResponses
 from .registry import request_body
@@ -61,6 +62,9 @@ def execute_test(db, cfg, lease):
 
     def stop(code, outcome=None):
         with db.transaction() as session:
+            # Settings commands take lifecycle before the billing singleton.
+            # Late accounting uses the same order even after control changes.
+            lock_lifecycle(session, allow_maintenance=True)
             if outcome == 'unknown': mark_unknown(session, lease.attempt_id, code)
             elif outcome in ('not_sent', 'not_executed'): release_unsent(session, lease.attempt_id, code)
             try:
@@ -113,8 +117,7 @@ def execute_test(db, cfg, lease):
         stop('PROVIDER_MODEL_MISMATCH', 'unknown'); return
     try:
         # Do not retain provider-generated text, error bodies or arbitrary metadata.
-        tracking = result.get('request_id')
-        if not isinstance(tracking, str) or not 0 < len(tracking) <= 200 or any(not 33 <= ord(c) < 127 for c in tracking): tracking = None
+        tracking = normalize_request_id(result.get('request_id'))
         with db.transaction() as session:
             settle(session, lease.attempt_id, result.get('usage'), tracking)
     except ValueError:

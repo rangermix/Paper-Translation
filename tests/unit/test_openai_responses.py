@@ -32,3 +32,13 @@ def test_401_stops_configuration(tmp_path):
     key=tmp_path/'key';key.write_text('test-only-key')
     with pytest.raises(ProviderFailure) as exc:OpenAIResponses(key,httpx.MockTransport(lambda r:httpx.Response(401))).translate([UNIT],PROFILE,[])
     assert exc.value.code=='PROVIDER_CONFIG' and exc.value.outcome=='not_executed'
+
+
+@pytest.mark.parametrize('tracking,expected', [(None,None), ('',None), ('r'*201,None),
+    ('\x00',None), ('\n',None), ({},None), (5,None), (True,None), ('valid-request-id','valid-request-id'), ('r'*200,'r'*200)])
+def test_tracking_id_is_optional_bounded_evidence(tracking,expected):
+    value={'id':tracking,'status':'completed','output':[],
+        'usage':{'input_tokens':1,'output_tokens':2}}
+    provider=OpenAIResponses(transport=httpx.MockTransport(lambda request:httpx.Response(200,json=value)),auth_mode='none')
+    result=provider.translate([UNIT],PROFILE|{'auth_mode':'none'},[])
+    assert result['request_id']==expected and result['usage']==value['usage']

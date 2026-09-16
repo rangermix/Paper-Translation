@@ -9,6 +9,11 @@ class ProviderFailure(ValueError):
         super().__init__(code)
 
 
+def normalize_request_id(value):
+    """Optional provider metadata must fit the ledger without blocking usage."""
+    return value if isinstance(value,str) and 0<len(value)<=200 and all(33<=ord(c)<127 for c in value) else None
+
+
 OUTPUT_SCHEMA={'type':'object','additionalProperties':False,'required':['results'],'properties':{'results':{'type':'array','items':{'type':'object','additionalProperties':False,'required':['unit_id','target_inline'],'properties':{'unit_id':{'type':'string'},'target_inline':{'type':'array','items':{'anyOf':[{'type':'object','additionalProperties':False,'required':['type','text'],'properties':{'type':{'type':'string','enum':['text']},'text':{'type':'string'}}},{'type':'object','additionalProperties':False,'required':['type','ref'],'properties':{'type':{'type':'string','enum':['protected_ref']},'ref':{'type':'string'}}}]}}}}}}}
 
 REVIEW_SCHEMA={'type':'object','additionalProperties':False,'required':['issues'],'properties':{'issues':{'type':'array','items':{'type':'object','additionalProperties':False,'required':['unit_id','rule','severity','source_quote','target_quote','explanation'],'properties':{'unit_id':{'type':'string'},'rule':{'type':'string','enum':['omission','negation','quantity','condition','comparison','terminology']},'severity':{'type':'string','enum':['high','warning']},'source_quote':{'type':'string'},'target_quote':{'type':'string'},'explanation':{'type':'string'}}}}}}

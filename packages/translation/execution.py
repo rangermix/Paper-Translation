@@ -76,6 +76,19 @@ def finalize_translation(session,cfg,job,draft,source,kind):
         job.progress=job.progress|{'publication_job_id':child.id,'translation_revision_id':revision.id}
 
 
+def finalize_semantic_review(session,job):
+    """Finish only after every review unit settles, preserving incomplete scope."""
+    units=[task for task in session.scalars(select(Task).where(Task.job_id==job.id))
+        if 'unit' in task.payload]
+    if not units or any(task.status in {'pending','leased','outcome_unknown'} for task in units):return
+    completed=all(task.status=='succeeded' for task in units)
+    job.progress=job.progress|{'review_completed':completed,'accuracy_certified':False}
+    if completed:
+        job.status='completed_with_warnings' if job.progress.get('semantic_issues') else 'succeeded'
+    else:
+        job.status='partially_completed' if any(task.status=='succeeded' for task in units) else 'failed'
+
+
 def plan_tasks(db,cfg,lease):
     with db.transaction() as session:
         job,task,draft,source=snapshot(session,cfg,lease)
@@ -148,6 +161,9 @@ def retry_or_stop(db,lease,failure,cfg=None):
             draft=get_entity(session,Draft,job.payload['draft_id'],lock=True)
             source=read_snapshot(cfg.data,get_entity(session,SourceRevision,draft.source_revision_id))
             finalize_translation(session,cfg,job,draft,source,lease.kind)
+        elif task.status=='failed' and job.status=='pending' and lease.kind=='semantic_review':
+            session.flush()
+            finalize_semantic_review(session,job)
         job.error={'code':failure.code,'retryable':task.status=='pending'};emit(session,job)
 
 
@@ -309,9 +325,7 @@ def execute_translation(db,cfg,lease,provider=None):
                     # A completed current review changes the QA evidence baseline,
                     # while target text and human review records remain untouched.
                     draft.qa_id=None
-                if job.status=='needs_review':
-                    job.progress=job.progress|{'review_completed':True,'accuracy_certified':False}
-                    job.status='completed_with_warnings' if job.progress.get('semantic_issues') else 'succeeded'
+                finalize_semantic_review(session,job)
                 emit(session,job)
             return
         nodes=validate_output(response['output_text'],[unit],nonblocking=True)[unit['unit_id']]

@@ -53,6 +53,17 @@ def test_original_locator_change_is_provenance_and_never_a_move_or_text_edit(cli
 
 
 @pytest.mark.postgres
+def test_source_normalization_version_change_is_reported_without_a_text_edit(client,database):
+    x=sample()['source_revision'];y=changed_source(x)
+    y['normalization_version']='normalizer-next'
+    validate_source(y)
+    seed(database,x,y);reply=compare(client,x['id'],y['id']);assert reply.status_code==200
+    assert reply.json()['changes']==[]
+    assert reply.json()['revision_changes']=={'normalization_version':{
+        'before':x['normalization_version'],'after':'normalizer-next'}}
+
+
+@pytest.mark.postgres
 def test_source_all_block_ids_drift_matches_content_instead_of_add_delete(client,database):
     x=sample()['source_revision'];y=changed_source(x);rename={b['id']:'shift-'+b['id'] for b in y['blocks']}
     def remap(value):

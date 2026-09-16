@@ -70,6 +70,15 @@ def test_url_annotation_only_joins_wrapping_and_hyphen_loss():
     assert annotation_url_span(wrapped,0,'https://github.com/bytedance/effective_transformer')==len(wrapped)-1
 
 
+@pytest.mark.parametrize('url', ['http://[IPv6-address]/path', 'https://[broken', 'https://exam／ple.com'])
+def test_malformed_url_text_survives_without_discarding_valid_links(url):
+    from packages.parsers.pdf_docling import _source_nodes
+    text = f'Example {url} and https://example.org/path.'
+    nodes = _source_nodes(text, 'paragraph', {}, 'paragraph')
+    assert ''.join(node['text'] for node in nodes) == text
+    assert [node['href'] for node in nodes if node['type'] == 'link'] == ['https://example.org/path']
+
+
 def test_source_url_stays_link_and_heading_parent_follows_level(tmp_path):
     from packages.parsers.pdf_docling import _source_nodes
     assert _source_nodes('See https://example.com/a-1.', 'b', {}, 'paragraph')==[

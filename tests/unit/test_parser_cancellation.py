@@ -5,12 +5,35 @@ import threading
 import time
 import sys
 
+import pytest
+
 from packages.ir import digest
 from packages.parsers.spool import write_request
 from workers.parser.main import run_once
 from workers.parser.process import ParserProcess
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.parametrize('field,value', [
+    ('task_id', 42), ('source_sha256', {}), ('deadline', 42),
+    ('parser_version', None), ('operation', []), ('asset_id', 42), ('accelerator', []),
+])
+def test_malformed_descriptor_does_not_starve_later_work(tmp_path, field, value):
+    inputs, outputs = tmp_path / 'inputs', tmp_path / 'outputs'
+    valid = {'task_id': 'z-valid', 'fence': 1, 'source_sha256': 'a' * 64,
+             'max_pages': 1, 'deadline': '2000-01-01T00:00:00+00:00',
+             'operation': 'inspect', 'parser_version': 'inspector-v1'}
+    invalid = valid | {'task_id': 'a-invalid', field: value}
+    for task_id, descriptor in [('a-invalid', invalid), ('z-valid', valid)]:
+        path = inputs / task_id / '1' / 'request.json'
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(descriptor))
+
+    assert run_once(inputs, outputs)
+    assert not (outputs / 'a-invalid').exists()
+    result = json.loads((outputs / 'z-valid/1/result.json').read_text())
+    assert result['error']['code'] == 'PARSER_TIMEOUT'
 
 
 def test_active_child_is_killed_and_content_removed_on_tombstone(tmp_path, monkeypatch):

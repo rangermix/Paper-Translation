@@ -4,7 +4,7 @@ from pathlib import Path
 import httpx
 
 from packages.ir import strict_loads
-from .contract import ProviderFailure
+from .contract import ProviderFailure, normalize_request_id
 from .registry import CLAUDE_API_VERSION, request_body, validate_protocol_profile
 from .settings import validate_endpoint
 
@@ -85,12 +85,10 @@ class NativeProvider:
         else:
             from .claude_messages import normalize_response
         result = normalize_response(value, response)
-        tracking = result.get('request_id')
         # Tracking IDs are optional evidence, not a prerequisite to settle
         # known usage. Match the ledger's 200-character column and reject
         # malformed provider metadata without truncating or inventing an ID.
-        if not isinstance(tracking, str) or not 0 < len(tracking) <= 200 or any(not 33 <= ord(c) < 127 for c in tracking):
-            result['request_id'] = None
+        result['request_id'] = normalize_request_id(result.get('request_id'))
         reported = result.get('response_model')
         # Gemini resource names may include the documented models/ prefix. Do
         # not guess dated aliases or settle another model using this price.

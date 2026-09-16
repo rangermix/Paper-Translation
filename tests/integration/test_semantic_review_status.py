@@ -5,7 +5,7 @@ import json
 import pytest
 from sqlalchemy import select
 
-from packages.domain.models import Job, Permit, ReviewRecord, SegmentVersion, Settings
+from packages.domain.models import Job, Permit, ReviewRecord, SegmentVersion, Settings, Task
 from packages.ir import digest
 from packages.jobs.queue import claim
 from packages.providers.fake import FakeProvider
@@ -16,7 +16,7 @@ from tests.support import seed_editor
 pytestmark = pytest.mark.postgres
 
 
-def begin_review(client, db, cfg, monkeypatch, tmp_path, budget=True):
+def begin_review(client, db, cfg, monkeypatch, tmp_path, budget=True, block_ids=None):
     seed_editor(db, cfg)
     profile = configure(monkeypatch, tmp_path) | {'semantic_review_enabled': True}
     (tmp_path / 'profile.json').write_text(json.dumps(profile), encoding='utf-8')
@@ -24,13 +24,45 @@ def begin_review(client, db, cfg, monkeypatch, tmp_path, budget=True):
         settings = session.get(Settings, 'singleton')
         settings.dispatch_disabled, settings.instance_budget_micro = False, (1_000_000 if budget else 0)
         before = {s.id: digest(s.target_inline) for s in session.scalars(select(SegmentVersion))}
-    started = client.post('/api/v1/drafts/draft_fixture/semantic-review', json={'block_ids': ['p1'],
+    started = client.post('/api/v1/drafts/draft_fixture/semantic-review', json={'block_ids': block_ids or ['p1'],
         'profile_revision': profile['profile_revision'], 'profile_hash': digest(profile),
         'glossary_revision': 'empty-v1', 'budget_micro': 1_000_000, 'external_processing_confirmed': True},
         headers={'If-Match': '"1"', 'Idempotency-Key': 'semantic-status'})
     assert started.status_code == 202, started.text
     execute_translation(db, cfg, claim(db), FakeProvider())
     return started.json()['job_id'], before
+
+
+@pytest.mark.parametrize('failure_last', [False, True])
+@pytest.mark.parametrize('mixed', [False, True])
+def test_refused_semantic_review_finishes_without_claiming_full_completion(
+        client, database, monkeypatch, tmp_path, mixed, failure_last):
+    db, cfg = database
+    blocks = ['p1', 'title'] if mixed else ['p1']
+    job_id, before = begin_review(client, db, cfg, monkeypatch, tmp_path, block_ids=blocks)
+
+    class RefusingReview(FakeProvider):
+        def review(self, units, profile, glossary):
+            result = super().review(units, profile, glossary)
+            result['refusal'] = len(self.calls) == (len(blocks) if failure_last else 1)
+            return result
+
+    provider = RefusingReview()
+    while lease := claim(db):
+        execute_translation(db, cfg, lease, provider)
+    assert len(provider.calls) == len(blocks)
+    with db.transaction() as session:
+        job = session.get(Job, job_id)
+        assert job.status == ('partially_completed' if mixed else 'failed')
+        assert job.finished_at is not None
+        assert job.progress.get('review_completed') is False
+        assert not session.scalar(select(Task.id).where(Task.job_id == job_id,
+            Task.status.in_(['pending', 'leased', 'outcome_unknown'])))
+        assert all(p.state == 'settled' for p in session.scalars(select(Permit)))
+        assert before == {s.id: digest(s.target_inline) for s in session.scalars(select(SegmentVersion))}
+    review = client.get('/api/v1/drafts/draft_fixture').json()['semantic_reviews'][-1]
+    assert review['status'] == ('partially_completed' if mixed else 'failed')
+    assert review['completed'] is False
 
 
 @pytest.mark.parametrize('failure', ['missing_key', 'budget'])

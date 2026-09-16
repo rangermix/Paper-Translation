@@ -1,5 +1,9 @@
 """Recognition must reach the IR without erasing independent PDF evidence."""
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+import sys
+
+import pytest
 
 from packages.ir import validate_source
 from packages.parsers import inspect_pdf
@@ -7,6 +11,52 @@ from packages.parsers.pdf_docling import DoclingParser, coverage_report
 
 ROOT = Path(__file__).resolve().parents[2]
 MODEL = {'model': 'docling-project/CodeFormulaV2', 'revision': 'a' * 40}
+
+
+@pytest.mark.parametrize('failure', ['exception', 'missing_document'])
+def test_failed_model_conversion_keeps_native_source_and_progress(tmp_path, monkeypatch, failure):
+    """A failed model stage must still produce source IR from the original PDF."""
+    import json
+    from packages.parsers.progress import configure_progress, read_progress, reset_progress
+
+    class FailedConverter:
+        def __init__(self, **kwargs):
+            pass
+
+        def convert(self, *args, **kwargs):
+            if failure == 'exception':
+                raise RuntimeError('Model conversion failed')
+            return SimpleNamespace(document=None, status=SimpleNamespace(value='failure'))
+
+    modules = {name: ModuleType(name) for name in (
+        'docling', 'docling.datamodel', 'docling.document_converter', 'docling.datamodel.base_models')}
+    modules['docling.document_converter'].DocumentConverter = FailedConverter
+    modules['docling.document_converter'].PdfFormatOption = lambda **kwargs: kwargs
+    modules['docling.datamodel.base_models'].InputFormat = SimpleNamespace(PDF='pdf')
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    lock = json.loads((ROOT / 'deployment/parser-models.lock.json').read_text())
+    monkeypatch.setenv('PARSER_ACCELERATOR', 'cpu')
+    monkeypatch.setenv('HF_HUB_OFFLINE', '1')
+    monkeypatch.setenv('TRANSFORMERS_OFFLINE', '1')
+    monkeypatch.setattr('importlib.metadata.version', lambda _: lock['docling_version'])
+    monkeypatch.setattr('packages.parsers.pdf_docling.verify_models', lambda _: lock)
+    monkeypatch.setattr('packages.parsers.pdf_docling.pipeline_options', lambda *args: {})
+    request = {'task_id': 'task_fallback', 'fence': 1, 'source_sha256': 'a' * 64,
+               'max_pages': 1, 'deadline': '2099-01-01T00:00:00+00:00'}
+    token = configure_progress(tmp_path, request)
+    pdf = ROOT / 'fixtures/sample.pdf'
+    try:
+        result = DoclingParser().parse(pdf, 'original', tmp_path)
+    finally:
+        reset_progress(token)
+
+    assert result['source_revision']['title_block_id']
+    assert any('Publication' in block['raw_text'] for block in result['source_revision']['blocks'])
+    validate_source(result['source_revision'], asset_root=tmp_path)
+    assert (tmp_path / 'original.pdf').read_bytes() == pdf.read_bytes()
+    assert {'code': 'PARSER_PARTIAL_RESULT'} in result['inspection']['warnings']
+    assert any(event['operation'] == 'check_failed' for event in read_progress(tmp_path, request))
 
 
 def item(ref, label, original, text, box):

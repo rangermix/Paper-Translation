@@ -234,7 +234,11 @@ def _source_nodes(text, block_id, atoms, kind):
         if match.group().startswith(('https://','http://')):
             url=match.group().rstrip('.,;')
             from urllib.parse import urlsplit
-            if len(url)<=2048 and urlsplit(url).hostname:
+            try:
+                valid_url = len(url)<=2048 and bool(urlsplit(url).hostname)
+            except ValueError:
+                valid_url = False  # Malformed/example URLs remain literal source text.
+            if valid_url:
                 nodes.append({'type':'link','href':url,'text':url});end=match.start()+len(url);continue
             nodes.append({'type':'text','text':match.group()});end=match.end();continue
         atom_id = f'{block_id}-n{index}'
@@ -284,7 +288,7 @@ class DoclingParser:
         if converted is not None and getattr(converted, 'document', None) is not None:
             report_progress('model_loaded', model=local_identity(selection, lock))
         else:
-            report_progress('check_failed', code='PARSER_PARTIAL_RESULT')
+            report_progress('check_failed', phase='model_conversion')
         if converted is None or str(converted.status.value) != 'success':
             inspection.setdefault('warnings', []).append({'code': 'PARSER_PARTIAL_RESULT'})
         for page in inspection['pages']:page['ocr_attempted']=converted is not None

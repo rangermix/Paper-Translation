@@ -80,7 +80,7 @@ export function JobList({ selectedId }: { selectedId?: string }) {
     const timer = setTimeout(() => setBrowse(previous => previous.q === search.trim() ? previous : { ...previous, q: search.trim(), cursors: [] }), 250);
     return () => clearTimeout(timer);
   }, [search]);
-  const params = new URLSearchParams({ limit: '30' });
+  const params = new URLSearchParams({ limit: '30', top_level_only: 'true' });
   if (showCleared) params.set('include_cleared', 'true');
   if (stage) params.set('stage', stage);
   if (model.trim()) params.set('model', model.trim());

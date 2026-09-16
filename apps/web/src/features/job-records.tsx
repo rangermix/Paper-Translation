@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ErrorNotice, Status } from '../components';
+import { ErrorNotice } from '../components';
 import { resourceId } from '../domain';
 import { useResource } from '../hooks';
 import type { ExecutionTimes, Job, ModelIdentity, TaskLog } from '../types';
 import { jobOperation } from './job-presentation';
+import { JobChildren } from './job-children';
 
 const terminal = new Set(['completed', 'succeeded', 'completed_with_warnings', 'partially_completed', 'cancelled', 'failed']);
 export function modelLabel(model?: ModelIdentity | null, historical = false) {
@@ -67,9 +68,7 @@ export function JobRecords({ job }: { job: Job }) {
     {job.title_snapshot && <p className="small muted">运行时文档名：{job.title_snapshot}</p>}
     {job.config_snapshot && <details><summary>创建时的配置</summary><pre className="job-config">{JSON.stringify(job.config_snapshot, null, 2)}</pre></details>}
     {job.parent_job_id && <a className="btn sm" href={`#/jobs/${job.parent_job_id}`}>查看上级任务</a>}
-    {!!job.child_jobs?.length && <div className="job-children"><h4>后续与子任务</h4>{job.child_jobs.map(child => <p key={child.id}>
-      <a href={`#/jobs/${child.id}`}>{jobOperation(child.stage)}</a> <Status value={child.status}/>
-    </p>)}</div>}
+    {(!!job.child_jobs?.length || job.content_deleted || job.stage === 'cleanup') && <JobChildren key={job.id} jobId={job.id}/>}
     <h4>任务日志</h4><div className="job-log-controls">
       <label>等级 <select value={filter.level} onChange={e => setFilter(old => ({ ...old, level: e.target.value, cursors: [] }))}>
         <option value="">全部</option><option value="info">信息</option><option value="warning">提示</option><option value="error">错误</option>

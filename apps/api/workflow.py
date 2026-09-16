@@ -118,13 +118,15 @@ def list_jobs(status: str | None = None, document_id: str | None = None, cursor:
               q: str = Query('', max_length=255), group: Literal['all', 'active', 'attention', 'completed', 'cancelled'] = 'all',
               stage: str | None = Query(None, max_length=40), parent_job_id: str | None = None,
               model: str | None = Query(None, max_length=256),
-              include_cleared: bool = False,
+              include_cleared: bool = False, top_level_only: bool = False,
               limit: int = Query(30, ge=1, le=100), session=Session):
     query = select(Job).outerjoin(Document).outerjoin(Upload,
         and_(Job.stage == 'inspect', Upload.id == Job.payload['upload_id'].astext)
     )
     if not include_cleared:
         query = query.where(visible_history())
+    if top_level_only:
+        query = query.where(Job.parent_job_id.is_(None))
     if stage:
         query = query.where(Job.stage == stage)
     if parent_job_id:

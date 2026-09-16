@@ -9,10 +9,13 @@ const jobs = [
   { id: 'job_inspect', title: 'The Illustrated Transformer.pdf', stage: 'inspect', status: 'succeeded', checked_pages: 12, total_pages: 12, created_at: '2026-09-07T04:46:00Z' },
   { id: 'job_queued', title: '论文中的公式、图表与跨页段落：一份较长的文档标题测试.pdf', stage: 'inspect', status: 'pending', created_at: '2026-09-07T04:32:00Z' },
 ].map(j => ({ ...j, control_epoch: 1, generation: 1 }));
+const childJob = { ...jobs[0], id: 'job_child', title: 'Attention Is All You Need', stage: 'quality_check', parent_job_id: 'job_translation' };
+const childJobs = [childJob, ...Array.from({ length: 104 }, (_, i) => ({ ...childJob, id: `job_child_${i + 2}` }))];
 
-async function setup(page: Page, theme = 'dark') {
+async function setup(page: Page, theme = 'dark', contentDeleted = false) {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (['error', 'warning'].includes(message.type())) errors.push(message.text()); });
   const queries: URLSearchParams[] = [];
   await page.route('**/api/v1/**', route => {
     const url = new URL(route.request().url()); const path = url.pathname.slice(7);
@@ -22,17 +25,79 @@ async function setup(page: Page, theme = 'dark') {
     if (path === '/settings/preferences') json = { theme, locale: 'zh-Hans', publish_policy: 'manual_approval' };
     if (path === '/jobs') {
       queries.push(url.searchParams);
+      if (url.searchParams.get('parent_job_id') === 'job_translation') {
+        const start = url.searchParams.has('cursor') ? childJobs.findIndex(job => job.id === url.searchParams.get('cursor')) + 1 : 0;
+        const limit = Number(url.searchParams.get('limit') ?? 30), items = childJobs.slice(start, start + limit);
+        return route.fulfill({ json: { items, next_cursor: start + limit < childJobs.length ? items.at(-1)!.id : null } });
+      }
       const q = url.searchParams.get('q')?.toLowerCase(); const group = url.searchParams.get('group');
       let items = url.searchParams.has('cursor') ? [{ ...jobs[4], id: 'job_older', title: 'An older PDF.pdf' }] : jobs;
+      if (url.searchParams.get('top_level_only') !== 'true') items = [childJob, ...items];
       if (q) items = items.filter(j => j.title.toLowerCase().includes(q));
       if (group === 'attention') items = items.filter(j => ['failed', 'outcome_unknown'].includes(j.status));
       json = { items, next_cursor: !url.searchParams.has('cursor') && !q && !group ? jobs.at(-1)!.id : null };
     }
-    if (path.startsWith('/jobs/')) json = jobs.find(j => path.endsWith('/' + j.id)) ?? { items: [] };
+    if (path.startsWith('/jobs/')) json = childJobs.find(job => path === `/jobs/${job.id}`)
+      ?? (path === '/jobs/job_translation' ? { ...jobs[0], ...(contentDeleted
+        ? { content_deleted: true, title: '已删除文档' }
+        : { child_jobs: childJobs.slice(0, 100) }) }
+      : jobs.find(j => path.endsWith('/' + j.id)) ?? { items: [] });
     return route.fulfill({ json, headers: { ETag: '"1"' } });
   });
   return { errors, queries };
 }
+
+test('task list shows top-level tasks while child details stay accessible from the parent', async ({ page }) => {
+  const { errors, queries } = await setup(page);
+  await page.goto('/#/jobs');
+  await expect(page).toHaveTitle(/对照文库/);
+  await expect(page.locator('.job-entry')).toHaveCount(6);
+  await expect(page.locator('.job-entry[href="#/jobs/job_child"]')).toHaveCount(0);
+  await page.locator('.job-entry[href="#/jobs/job_translation"]').click();
+  await page.locator('.job-children a[href="#/jobs/job_child"]').click();
+  await expect(page).toHaveURL(/#\/jobs\/job_child$/);
+  await expect(page.locator('.task-layout > .panel h2').first()).toContainText('Attention Is All You Need');
+  await expect(page.locator('.job-entry[href="#/jobs/job_child"]')).toHaveCount(0);
+  await page.getByRole('link', { name: '查看上级任务' }).click();
+  await expect(page).toHaveURL(/#\/jobs\/job_translation$/);
+  await expect(page.getByRole('heading', { name: '后续与子任务' })).toBeVisible();
+  expect(queries.filter(query => !query.has('parent_job_id')).every(query => query.get('top_level_only') === 'true')).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('parent details paginate child tasks beyond the first 100', async ({ page }) => {
+  const { errors, queries } = await setup(page);
+  await page.goto('/#/jobs/job_translation');
+  const children = page.locator('.job-children');
+  await expect(children.locator('a')).toHaveCount(30);
+  await expect(children.getByRole('button', { name: '上一页子任务' })).toBeDisabled();
+  for (const first of [31, 61, 91]) {
+    await children.getByRole('button', { name: '下一页子任务' }).click();
+    await expect(children.locator('a').first()).toHaveAttribute('href', `#/jobs/job_child_${first}`);
+  }
+  await expect(children.locator('a')).toHaveCount(15);
+  await expect(children.getByRole('button', { name: '下一页子任务' })).toBeDisabled();
+  await children.locator('a[href="#/jobs/job_child_105"]').click();
+  await expect(page).toHaveURL(/#\/jobs\/job_child_105$/);
+  await expect(page.getByRole('link', { name: '查看上级任务' })).toBeVisible();
+  await expect(page.locator('.job-entry[href="#/jobs/job_child_105"]')).toHaveCount(0);
+  const requests = queries.filter(query => query.has('parent_job_id'));
+  expect(requests.length).toBeGreaterThanOrEqual(4);
+  expect(requests.every(query => query.get('include_cleared') === 'true' && !query.has('top_level_only'))).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('deleted-document receipts retain child navigation without a child snapshot', async ({ page }) => {
+  const { errors } = await setup(page, 'light', true);
+  await page.goto('/#/jobs/job_translation');
+  await expect(page.locator('.task-layout > .panel h2').first()).toContainText('已删除文档');
+  const children = page.locator('.job-children');
+  await expect(children.locator('a')).toHaveCount(30);
+  await children.locator('a').first().click();
+  await expect(page).toHaveURL(/#\/jobs\/job_child$/);
+  await expect(page.getByRole('link', { name: '查看上级任务' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
 
 for (const theme of ['dark', 'light']) {
   test(`task center ${theme}: readable names, verified progress and responsive layout`, async ({ page }) => {

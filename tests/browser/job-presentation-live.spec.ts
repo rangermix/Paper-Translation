@@ -7,7 +7,7 @@ test('existing runtime jobs resolve names and remain searchable without mutation
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('request', request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push(request.url()); });
-  const response = await page.request.get('/api/v1/jobs?limit=30');
+  const response = await page.request.get('/api/v1/jobs?limit=30&top_level_only=true');
   expect(response.ok()).toBe(true);
   const { items } = await response.json();
   expect(items.length).toBeGreaterThan(0);
@@ -32,7 +32,7 @@ test('existing runtime jobs resolve names and remain searchable without mutation
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: outputDirectory('jobs-live-mobile.png'), fullPage: true });
   await page.getByRole('button', { name: '需要处理', exact: true }).click();
-  const attention = await page.request.get('/api/v1/jobs?limit=30&group=attention').then(r => r.json());
+  const attention = await page.request.get('/api/v1/jobs?limit=30&group=attention&top_level_only=true').then(r => r.json());
   await expect(page.locator('.job-entry')).toHaveCount(attention.items.length);
   await page.getByRole('button', { name: '全部任务', exact: true }).click();
   await page.getByRole('searchbox', { name: '搜索任务' }).fill(items[0].title.slice(0, 255));

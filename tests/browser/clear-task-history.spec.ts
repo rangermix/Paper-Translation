@@ -42,7 +42,7 @@ async function setup(page: Page, options: { count?: number; fail?: boolean; dela
 
 for (const width of [1440, 390]) {
   test(`clear finished history, retain running jobs and show cleared records at ${width}px`, async ({ page }) => {
-    const { writes, errors, releaseClear } = await setup(page, { delay: true });
+    const { writes, errors, releaseClear, queries } = await setup(page, { delay: true });
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1060 });
     await page.goto('/#/jobs');
     await expect(page.getByRole('heading', { name: '任务中心', exact: true })).toBeVisible();
@@ -74,6 +74,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator('.job-entry')).toHaveCount(1);
     await page.getByRole('checkbox', { name: '显示已清除历史' }).check();
     await expect(page.locator('.job-entry')).toHaveCount(2);
+    expect(queries.at(-1)?.get('top_level_only')).toBe('true');
     await page.getByRole('checkbox', { name: '显示已清除历史' }).uncheck();
     await expect(page.locator('.job-entry')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -121,7 +122,7 @@ test('clearing a filtered list resets search, status, type and model filters', a
   await expect(page.getByRole('combobox', { name: '任务类型' })).toHaveValue('');
   await expect(page.getByRole('textbox', { name: '实际模型' })).toHaveValue('');
   await expect(page.getByRole('button', { name: '全部任务', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  expect([...queries.at(-1)!.keys()]).toEqual(['limit']);
+  expect([...queries.at(-1)!.keys()]).toEqual(['limit', 'top_level_only']);
 });
 
 test('failed clear keeps the dialog and lets the user refresh its preview', async ({ page }) => {

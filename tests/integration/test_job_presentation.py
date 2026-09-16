@@ -83,3 +83,49 @@ def test_cleanup_does_not_expose_or_search_deleted_titles(client, database):
     assert 'Private deleted paper' not in str(items)
     assert items[0]['title'] == '已删除文档'
     assert client.get('/api/v1/jobs/job_hidden').status_code == 200
+
+
+@pytest.mark.parametrize('include_cleared', [False, True])
+def test_top_level_tasks_filter_before_pagination_and_keep_children_readable(client, database, include_cleared):
+    db, _ = database
+    timestamp = now()
+    with db.transaction() as session:
+        session.add(Document(id='doc_family', title='Nested task paper'))
+        session.flush()
+        session.add_all([
+            Job(id='root_new', document_id='doc_family', stage='parse', status='failed', created_at=timestamp),
+            Job(id='root_old', document_id='doc_family', stage='parse', status='failed', created_at=timestamp - timedelta(days=1)),
+            Job(id='root_cleared', document_id='doc_family', stage='parse', status='failed', generation=1,
+                history_cleared_generation=1, created_at=timestamp - timedelta(days=2)),
+        ])
+        session.flush()
+        session.add_all(Job(id=f'child_{i:03}', parent_job_id='root_new', document_id='doc_family',
+            stage='parse', status='failed', created_at=timestamp + timedelta(seconds=i + 1)) for i in range(105))
+        session.flush()
+        session.add(Job(id='grandchild', parent_job_id='child_000', document_id='doc_family', stage='parse', status='failed'))
+    params = {'top_level_only': True, 'include_cleared': include_cleared, 'limit': 1,
+              'group': 'attention', 'stage': 'parse', 'q': 'Nested task paper', 'document_id': 'doc_family'}
+    found = []
+    while True:
+        response = client.get('/api/v1/jobs', params=params)
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert all(item['parent_job_id'] is None for item in data['items'])
+        found.extend(item['id'] for item in data['items'])
+        if data['next_cursor'] is None:
+            break
+        params['cursor'] = data['next_cursor']
+    assert found == ['root_new', 'root_old'] + (['root_cleared'] if include_cleared else [])
+    parent = client.get('/api/v1/jobs/root_new').json()
+    assert len(parent['child_jobs']) == 100
+    child = client.get('/api/v1/jobs/child_000').json()
+    assert child['parent_job_id'] == 'root_new'
+    assert child['child_jobs'][0]['id'] == 'grandchild'
+    assert client.get('/api/v1/jobs/child_000/logs').status_code == 200
+    # The opt-in UI filter does not change existing API consumers or child queries.
+    children = client.get('/api/v1/jobs', params={'parent_job_id': 'root_new', 'limit': 100}).json()
+    assert len(children['items']) == 100
+    remaining = client.get('/api/v1/jobs', params={'parent_job_id': 'root_new', 'limit': 100, 'cursor': children['next_cursor']}).json()
+    assert len(remaining['items']) == 5 and remaining['next_cursor'] is None
+    assert len({item['id'] for item in children['items'] + remaining['items']}) == 105
+    assert any(item['parent_job_id'] for item in client.get('/api/v1/jobs').json()['items'])

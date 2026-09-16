@@ -8,6 +8,8 @@
 
 **Tech stack:** Python, existing IR/SQLAlchemy/PostgreSQL pipeline, static HTML reader, pytest and Playwright. No model or new runtime dependency.
 
+**Status:** Implementation and targeted verification complete in `27d6848`, pushed to the configured `main` branch. 188 Python tests and three offline desktop/mobile/browser checks passed. An independent code review identified and verified fixes for long-text matching, ambiguous name lists and paragraph section boundaries. Production deployment and live model calls were not part of this run. See [behavior contract](../../shared/original-only-content.md).
+
 ## Boundaries and alternatives
 
 Use heading/reading-order evidence for reference sections and tightly bounded front matter patterns for author/affiliation lists. Recognize pure email/ORCID/DOI lines, retaining inline links. Exact numbered and multilingual reference headings are supported; a subsequent section ends the range. Titles, abstracts, acknowledgments, body prose, normal lists, captions and substantive footnotes still translate. Ambiguous text defaults to translation.

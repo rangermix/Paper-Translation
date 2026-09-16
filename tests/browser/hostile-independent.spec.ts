@@ -4,7 +4,9 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-const dir=inputPath(process.env.LIBRARY_HOSTILE_EVIDENCE ?? 'evidence/hostile-reader/329a893c8476487cafbd3992c38e5730');
+const supplied = process.env.LIBRARY_HOSTILE_EVIDENCE;
+const dir = supplied ? inputPath(supplied) : '';
+test.beforeEach(() => { test.skip(!supplied, 'Set LIBRARY_HOSTILE_EVIDENCE to the independently generated evidence directory.'); });
 for(const format of ['single.html','bundle/index.html'])test(`independent offline hostile text stays literal in ${format}`,async ({page}, testInfo) =>{
  const verification=JSON.parse(await readFile(resolve(dir,'verification.json'),'utf8'));
  const requests:string[]=[];const errors:string[]=[];

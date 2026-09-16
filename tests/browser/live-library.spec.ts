@@ -1,17 +1,22 @@
 import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
+
+test.beforeEach(() => {
+  test.skip(process.env.LIBRARY_LIVE_BROWSER !== '1', 'Set LIBRARY_LIVE_BROWSER=1 only for the designated acceptance instance.');
+  expect(process.env.LIBRARY_BROWSER_URL, 'Live browser tests require an explicit LIBRARY_BROWSER_URL').toBeTruthy();
+});
 import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '../..');
 test('real Compose PDF upload persists across browser reload and metadata changes', async ({ page }) => {
-  test.skip(process.env.LIBRARY_LIVE_E2E !== '1', 'Enable only against the designated local acceptance instance. No provider calls.');
   test.setTimeout(90000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('http://127.0.0.1:8080/#/upload');
+  await page.goto('/#/upload');
+  await page.getByLabel('生成内容', { exact: true }).selectOption('source');
   await page.locator('input[type=file]').setInputFiles(resolve(root, 'fixtures/sample.pdf'));
-  await page.getByRole('button', { name: '保存 PDF 原件', exact: true }).click();
+  await page.getByRole('button', { name: '上传并开始处理', exact: true }).click();
   const duplicate = page.getByRole('button', { name: '建立独立文档' });
-  const saved = page.getByRole('link', { name: '原件已保存 · 管理文档' });
+  const saved = page.getByRole('link', { name: '已入库，后台处理中 · 查看文档' });
   await expect(duplicate.or(saved)).toBeVisible({ timeout: 60000 });
   if (await duplicate.isVisible()) await duplicate.click();
   await saved.click();
@@ -41,5 +46,5 @@ test('real Compose PDF upload persists across browser reload and metadata change
   await page.reload();
   await expect(page.getByRole('button', { name: '取消归档', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
-  // Keep the clearly marked, archived acceptance record for evidence; no deletion or model call.
+  // Keep the clearly marked, archived acceptance record for evidence; no deletion or translation-provider call.
 });

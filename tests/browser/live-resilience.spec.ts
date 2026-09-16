@@ -1,20 +1,25 @@
 import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
+
+test.beforeEach(() => {
+  test.skip(process.env.LIBRARY_LIVE_BROWSER !== '1', 'Set LIBRARY_LIVE_BROWSER=1 only for the designated acceptance instance.');
+  expect(process.env.LIBRARY_BROWSER_URL, 'Live browser tests require an explicit LIBRARY_BROWSER_URL').toBeTruthy();
+});
 import { resolve } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 const root = resolve(import.meta.dirname, '../..');
 test('real inspector rejects one selected PDF while the following PDF is saved independently', async ({page}) => {
-  test.skip(process.env.LIBRARY_LIVE_E2E !== '1', 'Requires designated local acceptance instance; no provider calls.');
   test.setTimeout(90000);
   const posts: {path:string;status:number}[]=[];
   page.on('response', r => {if(r.request().method()!=='GET') posts.push({path:new URL(r.url()).pathname,status:r.status()});});
   await page.goto('/#/upload');
+  await page.getByLabel('生成内容', { exact: true }).selectOption('source');
   await page.locator('input[type=file]').setInputFiles([resolve(root,'fixtures/security/malformed.pdf'),resolve(root,'fixtures/sample.pdf')]);
-  await page.getByRole('button',{name:'保存 PDF 原件',exact:true}).click();
+  await page.getByRole('button',{name:'上传并开始处理',exact:true}).click();
   const failed=page.locator('.file-result').filter({has:page.getByText('malformed.pdf',{exact:true})});
   const valid=page.locator('.file-result').filter({has:page.getByText('sample.pdf',{exact:true})});
   await expect(failed.getByRole('alert')).toContainText('PDF 检查失败',{timeout:60000});
-  const saved=valid.getByRole('link',{name:'原件已保存 · 管理文档'});
+  const saved=valid.getByRole('link',{name:'已入库，后台处理中 · 查看文档'});
   const duplicate=valid.getByRole('button',{name:'建立独立文档'});
   await expect(saved.or(duplicate)).toBeVisible({timeout:60000});
   if(await duplicate.isVisible()) await duplicate.click();
@@ -39,7 +44,6 @@ test('real inspector rejects one selected PDF while the following PDF is saved i
 });
 
 test('real EventSource reconnect carries its server cursor and reloads authoritative generation after offline recovery',async({page,context})=>{
-  test.skip(process.env.LIBRARY_LIVE_E2E !== '1','Read-only real job snapshot/events check.');
   test.setTimeout(60000);
   const jobs=await page.request.get('/api/v1/jobs?limit=100').then(r=>r.json());
   let chosen:any;let cursor='';

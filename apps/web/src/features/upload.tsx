@@ -1,3 +1,4 @@
+import { useWorkflowPreferences } from './workflow-preferences';
 import { ParserSelect } from './parser-select';
 import { ProviderDestination } from './provider-destination';
 import { CostControlNotice, costControlEnabled, budgetValid } from './cost-control';
@@ -7,17 +8,16 @@ import { isLanguageTag } from '../languages';
 import { useRef, useState } from 'react';
 import { api, uploadPdf, validatePdfSelection, type UploadProgress } from '../api';
 import { ErrorNotice, Icon, PageHead } from '../components';
-import type { Capability, Document, Upload, Provider, Preferences, ParserProfileRevision } from '../types';
+import type { Capability, Document, Upload, Provider, ParserProfileRevision } from '../types';
 type Row = { id: string; file: File; error?: string; progress?: UploadProgress; upload?: Upload; document?: Document; busy?: boolean };
 export function UploadPage({ capability }: { capability?: Capability }) {
-  const [rows, setRows] = useState<Row[]>([]); const [error, setError] = useState<Error>(); const [busy, setBusy] = useState(false); const input = useRef<HTMLInputElement>(null); const [language, setLanguage] = useState('zh-Hans');
+  const [rows, setRows] = useState<Row[]>([]); const [error, setError] = useState<Error>(); const [busy, setBusy] = useState(false); const input = useRef<HTMLInputElement>(null);
   const provider = useResource<Provider>('/settings/provider');
-  const preferences = useResource<Preferences>('/settings/preferences');
+  const { preferences, ready, locale: language, setLocale: setLanguage, policy, setPolicy } = useWorkflowPreferences();
   const [parser, setParser] = useState<ParserProfileRevision>();
   const [translate, setTranslate] = useState(true);
   const [consentHash, setConsentHash] = useState('');
   const [budget, setBudget] = useState('');
-  const [policy, setPolicy] = useState('auto_publish');
   const profile = provider.data;
   const costControlled = costControlEnabled(profile);
   const consent = Boolean(profile?.profile_hash && consentHash === profile.profile_hash);
@@ -26,11 +26,13 @@ export function UploadPage({ capability }: { capability?: Capability }) {
   const update = (id: string, changes: Partial<Row>) => setRows(old => old.map(row => row.id === id ? { ...row, ...changes } : row));
   function select(files: File[]) { try { setRows(validatePdfSelection(files, maxBytes, maxBatch).map(x => ({ ...x, id: crypto.randomUUID() }))); setConsentHash(''); setError(undefined); } catch (reason) { setError(reason as Error); } }
   async function importRow(row: Row, upload: Upload) {
+    if (!ready) return;
     update(row.id, { busy: true });
     try { const doc = await api<Document>('/imports', { method: 'POST', body: { source: { kind: 'pdf_upload', upload_id: upload.upload_id }, source_language: 'auto', target_language: language, parser_profile_revision: selectedParser, workflow: { translate, target_locale: language, publish_policy: policy, external_processing_confirmed: translate && consent, profile_hash: profile?.profile_hash, ...(costControlled && budgetValid(budget) ? { budget_micro: Math.round(Number(budget) * 1_000_000) } : {}) } } }); update(row.id, { document: doc, busy: false }); }
     catch (reason) { update(row.id, { busy: false, error: (reason as Error).message }); }
   }
   async function uploadAll() {
+    if (!ready) return;
     setBusy(true);
     for (const row of rows.filter(r => !r.error && !r.upload && !r.document)) {
       try { update(row.id, { busy: true }); const upload = await uploadPdf(row.file, progress => update(row.id, { progress })); update(row.id, { upload, busy: false }); if (!upload.duplicate_documents?.length) await importRow(row, upload); }
@@ -38,13 +40,14 @@ export function UploadPage({ capability }: { capability?: Capability }) {
     }
     setBusy(false);
   }
-  return <><PageHead title="上传 PDF">保存原件后自动解析、恢复缺失内容并生成阅读结果。内容异常会集中提示。</PageHead><ErrorNotice error={error}/><div className="split"><section className="panel"><h2>选择原件</h2><input ref={input} id="pdf-files" className="visually-hidden" type="file" accept="application/pdf,.pdf" multiple disabled={busy} onChange={e => select(Array.from(e.target.files ?? []))}/><button className="dropzone" type="button" disabled={busy} onClick={() => input.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (!busy) select(Array.from(e.dataTransfer.files)); }}><Icon name="upload" big/><strong>拖放 PDF，或点击选择文件</strong><small>最多 {maxBatch} 份 · 每份 {(maxBytes / 1024 / 1024).toFixed(0)} MiB · 最多 {capability?.limits?.max_pages ?? 200} 页</small></button><div className="field"><label htmlFor="upload-language">默认目标语言</label><LanguageSelect id="upload-language" value={language} disabled={busy} onChange={setLanguage}/><small>原文语言自动识别；目标语言可自由选择。</small></div>{rows.map(row => <div className="file-result" key={row.id}><strong className="filename">{row.file.name}</strong><small className="muted">{(row.file.size / 1024).toFixed(1)} KiB</small>{row.error && <p role="alert" className="error">{row.error}</p>}{row.progress && !row.document && <><progress max={row.progress.totalBytes} value={row.progress.receivedBytes}/><small>{row.progress.receivedBytes.toLocaleString()} / {row.progress.totalBytes.toLocaleString()} 字节 · {row.error ? 'PDF 检查未通过' : row.upload ? 'PDF 检查通过' : row.progress.status === 'inspecting' ? '检查原件，尚未入库' : '接收中'}</small></>}{row.document && <p role="status"><a href={`#/documents/${row.document.id}`}>已入库，后台处理中 · 查看文档</a></p>}{row.upload?.duplicate_documents?.length && !row.document ? <div className="notice"><strong>发现相同 PDF 内容</strong><p>可继续使用已有文档，或建立独立目录条目；不会按文件名覆盖旧版本。</p>{row.upload.duplicate_documents.map(doc => <a className="btn sm" key={doc.id} href={`#/documents/${doc.id}`}>使用已有文档：{doc.title}</a>)}<button className="btn sm" disabled={row.busy || !isLanguageTag(language)} onClick={() => void importRow(row, row.upload!)}>建立独立文档</button></div> : null}</div>)}<div className="form-actions"><span className="muted small">有效性、加密状态和页数以服务端检查为准。</span><button className="btn primary" disabled={busy || !isLanguageTag(language) || !rows.some(r => !r.error && !r.upload && !r.document)} onClick={() => void uploadAll()}>{busy ? '正在接收与检查…' : '上传并开始处理'}</button></div></section><aside className="panel"><h2>处理方式</h2>
+  return <><PageHead title="上传 PDF">保存原件后自动解析、恢复缺失内容并生成阅读结果。内容异常会集中提示。</PageHead><ErrorNotice error={error}/><div className="split"><section className="panel"><h2>选择原件</h2><input ref={input} id="pdf-files" className="visually-hidden" type="file" accept="application/pdf,.pdf" multiple disabled={busy} onChange={e => select(Array.from(e.target.files ?? []))}/><button className="dropzone" type="button" disabled={busy} onClick={() => input.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (!busy) select(Array.from(e.dataTransfer.files)); }}><Icon name="upload" big/><strong>拖放 PDF，或点击选择文件</strong><small>最多 {maxBatch} 份 · 每份 {(maxBytes / 1024 / 1024).toFixed(0)} MiB · 最多 {capability?.limits?.max_pages ?? 200} 页</small></button><div className="field"><label htmlFor="upload-language">默认目标语言</label><LanguageSelect id="upload-language" value={language} disabled={busy} onChange={setLanguage}/><small>原文语言自动识别；目标语言可自由选择。</small></div>{rows.map(row => <div className="file-result" key={row.id}><strong className="filename">{row.file.name}</strong><small className="muted">{(row.file.size / 1024).toFixed(1)} KiB</small>{row.error && <p role="alert" className="error">{row.error}</p>}{row.progress && !row.document && <><progress max={row.progress.totalBytes} value={row.progress.receivedBytes}/><small>{row.progress.receivedBytes.toLocaleString()} / {row.progress.totalBytes.toLocaleString()} 字节 · {row.error ? 'PDF 检查未通过' : row.upload ? 'PDF 检查通过' : row.progress.status === 'inspecting' ? '检查原件，尚未入库' : '接收中'}</small></>}{row.document && <p role="status"><a href={`#/documents/${row.document.id}`}>已入库，后台处理中 · 查看文档</a></p>}{row.upload?.duplicate_documents?.length && !row.document ? <div className="notice"><strong>发现相同 PDF 内容</strong><p>可继续使用已有文档，或建立独立目录条目；不会按文件名覆盖旧版本。</p>{row.upload.duplicate_documents.map(doc => <a className="btn sm" key={doc.id} href={`#/documents/${doc.id}`}>使用已有文档：{doc.title}</a>)}<button className="btn sm" disabled={!ready || row.busy || !isLanguageTag(language)} onClick={() => void importRow(row, row.upload!)}>建立独立文档</button></div> : null}</div>)}<div className="form-actions"><span className="muted small">有效性、加密状态和页数以服务端检查为准。</span><button className="btn primary" disabled={!ready || busy || !isLanguageTag(language) || !rows.some(r => !r.error && !r.upload && !r.document)} onClick={() => void uploadAll()}>{busy ? '正在接收与检查…' : '上传并开始处理'}</button></div></section><aside className="panel"><h2>处理方式</h2>
+      <ErrorNotice error={preferences.error} retry={preferences.reload}/>
       <ParserSelect id="upload-parser" label="本地解析方案" value={selectedParser} onChange={setParser} disabled={busy}/>
       <p className="field-note">解析时限：{(preferences.data?.parser_timeout_seconds ?? 7200) / 60} 分钟。模型在本机运行。</p>
       <div className="field"><label htmlFor="upload-mode">生成内容</label><select id="upload-mode" value={translate ? 'translate' : 'source'} disabled={busy} onChange={e => setTranslate(e.target.value === 'translate')}>
         <option value="translate">解析并翻译</option><option value="source">仅解析阅读</option>
       </select></div>
-      <div className="field"><label htmlFor="upload-publish">阅读结果</label><select id="upload-publish" value={policy} disabled={busy} onChange={e => setPolicy(e.target.value)}>
+      <div className="field"><label htmlFor="upload-publish">阅读结果</label><select id="upload-publish" value={policy} disabled={busy} onChange={e => setPolicy(e.target.value as typeof policy)}>
         <option value="auto_publish">完成后自动发布</option><option value="manual_approval">由我选择发布时间</option>
       </select></div>
       {translate && <><ErrorNotice error={provider.error} retry={provider.reload}/><ProviderDestination profile={profile}/>

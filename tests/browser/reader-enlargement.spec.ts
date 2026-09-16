@@ -4,7 +4,9 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writeFile,readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-const folder=inputPath(process.env.LIBRARY_ENLARGEMENT_EVIDENCE ?? 'evidence/complex-reader-reviewed');
+const supplied = process.env.LIBRARY_ENLARGEMENT_EVIDENCE;
+const folder = supplied ? inputPath(supplied) : '';
+test.beforeEach(() => { test.skip(!supplied, 'Set LIBRARY_ENLARGEMENT_EVIDENCE to the independently generated evidence directory.'); });
 for(const template of ['reader-v1','reader-v2'])test(`literal font enlargement keyboard and long code remain accessible in ${template}`,async ({page,context}, testInfo) =>{
   const file=resolve(folder,`${template}.html`);await context.setOffline(true);
   await page.setViewportSize({width:320,height:900});await page.goto(pathToFileURL(file).href);

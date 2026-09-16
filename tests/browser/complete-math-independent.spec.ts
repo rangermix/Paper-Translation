@@ -4,7 +4,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-const dir=inputPath(process.env.LIBRARY_COMPLETE_MATH_EVIDENCE ?? 'evidence/math-annotation-api-all-1788658908884891000');
+const supplied = process.env.LIBRARY_COMPLETE_MATH_EVIDENCE;
+const dir = supplied ? inputPath(supplied) : '';
+test.beforeEach(() => { test.skip(!supplied, 'Set LIBRARY_COMPLETE_MATH_EVIDENCE to the independently generated evidence directory.'); });
 for(const format of ['single.html','bundle/index.html'])test(`all 86 reviewed mathematical source references are individually reachable in ${format}`,async ({page}, testInfo) =>{
  test.setTimeout(180000);
  const response=JSON.parse(await readFile(resolve(dir,'response.json'),'utf8'));const source=response.source;

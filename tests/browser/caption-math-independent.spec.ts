@@ -4,7 +4,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-const dir=inputPath(process.env.LIBRARY_CAPTION_EVIDENCE ?? 'evidence/math-annotation-api-caption-1788658498333052000');
+const supplied = process.env.LIBRARY_CAPTION_EVIDENCE;
+const dir = supplied ? inputPath(supplied) : '';
+test.beforeEach(() => { test.skip(!supplied, 'Set LIBRARY_CAPTION_EVIDENCE to the independently generated evidence directory.'); });
 for(const format of ['single.html','bundle/index.html'])test(`independent caption math links reach exact original image roots in ${format}`,async ({page}, testInfo) =>{
  const response=JSON.parse(await readFile(resolve(dir,'response.json'),'utf8'));const source=response.source;const caption=source.blocks.find((b:any)=>b.id==='b63');const refs=caption.source_inline.filter((n:any)=>n.type==='xref'&&n.target_block_id.startsWith('math-annotation-'));
  expect(refs.map((r:any)=>r.label)).toEqual(['d model','d ff']);const outbound:string[]=[];const errors:string[]=[];page.on('request',r=>{if(/^https?:/.test(r.url()))outbound.push(r.url());});page.on('pageerror',e=>errors.push(e.message));

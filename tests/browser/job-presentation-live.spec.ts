@@ -1,8 +1,12 @@
 import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
+test.beforeEach(() => {
+  test.skip(process.env.LIBRARY_LIVE_BROWSER !== '1', 'Set LIBRARY_LIVE_BROWSER=1 only for the designated acceptance instance.');
+  expect(process.env.LIBRARY_BROWSER_URL, 'Live browser tests require an explicit LIBRARY_BROWSER_URL').toBeTruthy();
+});
+
 test('existing runtime jobs resolve names and remain searchable without mutations', async ({ page }) => {
-  test.skip(process.env.LIBRARY_JOBS_LIVE !== '1', 'Read-only check of existing local jobs; enable explicitly.');
   const errors: string[] = []; const writes: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });

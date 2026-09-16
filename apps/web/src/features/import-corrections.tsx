@@ -117,6 +117,6 @@ export function ImportCorrections({ preflight, onClose }: { preflight: Preflight
       <label className="field">原件核对记录与理由<textarea required value={reason} onChange={e => setReason(e.target.value)}/></label>
       <label className="check"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}/>{mechanicalMode ? '我已核对选中片段与原生字形证据，确认所选机械规则和续接位置；不新增或润色原文。' : mode === 'continuation' ? '我已对照原页，确认这两个相邻块是同一段落或同一项目，连接方式有原文证明。' : mode === 'footnote' ? '我已对照原页，确认所选标记指向同页这条脚注，原文不会改写。' : mathMode ? '我已逐字核对公式前后正文，并确认裁图完整包含原公式，没有裁入无关正文。' : '我已对照高亮的原 PDF，确认恢复内容与阅读位置。'}</label>
       <button className="btn primary section-title" disabled={action.pending || !checked || !reason.trim() || (mechanicalMode ? !mechanicalOperation : mode === 'continuation' ? !continuationReady : mode === 'footnote' ? !footnoteReady : mathMode ? !mathReady : !block && !insertion)}>创建新来源草稿并重检覆盖</button>
-    </form> : !native.loading && <p className="notice">没有可按原生文字证据直接恢复的区域。扫描页、未映射图形或复杂结构仍需对应的解析修复，不能跳过覆盖门禁。</p>}
+    </form> : !native.loading && <p className="notice">没有可按原生文字证据直接恢复的区域。无法可靠识别的内容保留原页图像，内容提示不阻止翻译、阅读或导出。</p>}
   </Modal>;
 }

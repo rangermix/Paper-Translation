@@ -1,10 +1,11 @@
 import {test,expect} from '../../apps/web/node_modules/@playwright/test/index.mjs';
 import { inputPath } from './paths';
 import {readFile,writeFile} from 'node:fs/promises';
-import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-const base=inputPath(process.env.LIBRARY_ANCHOR_EVIDENCE ?? readFileSync(inputPath('apps/web/evidence/latest-anchor-review.txt'),'utf8').trim());
+const supplied = process.env.LIBRARY_ANCHOR_EVIDENCE;
+const base = supplied ? inputPath(supplied) : '';
+test.beforeEach(() => { test.skip(!supplied, 'Set LIBRARY_ANCHOR_EVIDENCE to the independently generated evidence directory.'); });
 for(const template of ['reader-v1','reader-v2'])for(const format of ['single.html','bundle/index.html'])test(`${template} ${format} preserves visible anchors through initial hash, resize, zoom and storage denial`,async ({page}, testInfo) =>{
  const dir=resolve(base,template);const response=JSON.parse(await readFile(resolve(dir,'response.json'),'utf8'));const errors:string[]=[];const outbound:string[]=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});page.on('request',r=>{if(/^https?:/.test(r.url()))outbound.push(r.url())});

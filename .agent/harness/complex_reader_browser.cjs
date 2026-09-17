@@ -3,7 +3,7 @@ const {createRequire}=require('node:module');
 const path=require('node:path'),fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
 const {repoRoot:root,inputPath,outputDirectory}=require('./browser_paths.cjs');
-const {chromium,expect}=createRequire(path.join(root,'apps/web/package.json'))('@playwright/test');
+const {chromium,expect}=createRequire(path.join(root,'src/apps/web/package.json'))('@playwright/test');
 const directory=inputPath(process.env.COMPLEX_READER_INPUT||process.env.COMPLEX_READER_OUTPUT||'evidence/complex-reader-reviewed');
 const output=outputDirectory('complex_reader_browser');
 fs.mkdirSync(output,{recursive:true});

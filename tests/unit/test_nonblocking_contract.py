@@ -46,7 +46,7 @@ def test_quality_failure_is_independent_of_execution_permission():
 
 
 def test_nb_acceptance_registry_is_complete_and_acyclic():
-    backlog = json.loads(Path('contracts/nonblocking-workflow-backlog.json').read_text('utf-8'))
+    backlog = json.loads(Path('docs/contracts/nonblocking-workflow-backlog.json').read_text('utf-8'))
     seen = set()
     for task in backlog['tasks']:
         assert set(task['depends_on']) <= seen

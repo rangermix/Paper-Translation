@@ -77,7 +77,7 @@ docker compose up -d --wait
 
 ## 4. 验证和状态
 
-[包检查报告](.agent/notes/package-review.md)保留原设计包的历史检查结果。65 条需求、42 个工作包、130 个场景、24 个退出门的原始契约位于 `contracts/`；实际实现执行状态由 [harness](.agent/harness/README.md) 的追加式证据生成，历史汇总见 [IMPLEMENTATION_STATUS.md](.agent/IMPLEMENTATION_STATUS.md)，当前交接见 [.agent/memory/current.md](.agent/memory/current.md)。缺少当前源码绑定记录既不能算通过，也不表示已有实现不存在。
+[包检查报告](.agent/notes/package-review.md)保留原设计包的历史检查结果。65 条需求、42 个工作包、130 个场景、24 个退出门的原始契约位于 `docs/contracts/`；实际实现执行状态由 [harness](.agent/harness/README.md) 的追加式证据生成，历史汇总见 [IMPLEMENTATION_STATUS.md](.agent/IMPLEMENTATION_STATUS.md)，当前交接见 [.agent/memory/current.md](.agent/memory/current.md)。缺少当前源码绑定记录既不能算通过，也不表示已有实现不存在。
 
 harness 默认将独立子任务与来源/视觉/语义复核分配给 agent，以项目文件保存所有权、发现、失败、命令和下一步。标为人工或混合验证的场景必须有独立 agent 的实际复核，不能用同一实现者的自述、模拟数据或静态文件计数代替。
 
@@ -95,10 +95,28 @@ docker compose -f deployment/compose.verify.yaml run --build --rm verify
 
 ## 5. 目录和后续实施
 
-项目文件直接位于 Git 仓库根目录，不再需要进入 `bilingual-library-personal-pdf-v3/` 子目录。`apps/`、`packages/`、`workers/`、`tests/`、`contracts/` 与部署文件保持原相对结构。
+从 Git 仓库根目录执行命令；源码、文档、资源和部署定义分别归档：
 
-Agent 工作资料统一位于 [`.agent/`](.agent/README.md)：可复用验收代码在 `.agent/harness/`，工作记忆和笔记在 `.agent/memory/`、`.agent/notes/`，中间产物在 `.agent/tmp/`。持久本地环境与凭据相关状态在 `.agent/local-data/`。Git 忽略后两类本地数据，保留验收代码和长期文件记忆；Docker 镜像排除整个 `.agent/`。历史证据保留原字节，旧路径通过 `.agent/relocation.json` 映射。
+| 目录 | 内容 |
+|---|---|
+| `src/apps/` | API 与 React 管理前端 |
+| `src/packages/` | 共享 Python 领域代码、迁移与阅读模板 |
+| `src/workers/` | 任务 worker 与隔离 parser |
+| `src/tools/` | 仓库检查、模型打包及维护工具 |
+| `res/schemas/` | 运行时 JSON Schema |
+| `res/reference/` | 字节冻结的阅读 CSS、受控种子论文及清单 |
+| [docs/](docs/README.md) | 产品基线、共享契约、里程碑、追踪数据和运维文档 |
+| [deployment/](docs/deployment/README.md) | Compose、Docker 构建文件及依赖/模型锁 |
+| `tests/`、`fixtures/` | 自动化测试与人工测试资料 |
 
-`apps/`、`packages/` 和 `workers/` 为产品代码；`docs/milestones/` 为阶段文档；`docs/shared/` 为共享契约；`contracts/` 为 Schema 与追踪数据；`fixtures/` 为人工测试资料；`deployment/` 为 Compose 与依赖定义；`tools/` 为契约检查与维护工具；`reference/` 保存固定阅读样式、两篇受控种子论文与字节校验记录。
+Python 模块名称仍为 `apps`、`packages`、`workers` 和 `tools`。容器设置
+`PYTHONPATH=/app/src`，pytest 自动使用 `src/`；在宿主直接执行 Python 模块时设置
+`PYTHONPATH=src`。前端命令使用 `npm --prefix src/apps/web ...`。
+
+Agent 工作资料位于 [`.agent/`](.agent/README.md)：验收代码在 `.agent/harness/`，
+工作记忆和长期笔记在 `.agent/memory/`、`.agent/notes/`；临时运行产物在
+`.agent/tmp/`，持久本地环境与授权状态在 `.agent/local-data/`。后两者不提交，
+整个 `.agent/` 不进入产品镜像。历史记录保留原字节，旧路径由
+`.agent/relocation.json` 解析；冻结资源清单中的 `reference/` 路径相对于 `res/`。
 
 [AGENTS.md](AGENTS.md)给出编码Agent执行入口。产品状态以实际 API、数据库和执行证据为准。旧包中冲突的多格式/身份/权限要求已被本版本取代，不与旧Spec叠加实施。

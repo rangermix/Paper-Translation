@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import {test,expect,type Page} from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory, outputPath } from './paths';
 import {resolve} from 'node:path';
 const profile={endpoint:'http://local-ai:11434/v1/chat/completions',api_protocol:'chat_completions',auth_mode:'none',configured:true,provider:'openai',model_id:'fixed-test-model',profile_revision:'profile1',profile_hash:'f'.repeat(64),currency:'USD',semantic_review_enabled:true,enabled_pairs:[['en','zh-Hans']],locale_matrix:[{source:'en',target:'zh-Hans',enabled:true}],experimental_locales:['en','zh-Hans','zh-Hant','ja','de','ar','unknown']};

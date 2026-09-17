@@ -33,7 +33,7 @@ parser = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", ".agent"]
+pythonpath = ["src", ".agent"]
 cache_dir = ".agent/tmp/cache/pytest"
 markers = [
   "postgres: requires a dedicated PostgreSQL test database",

@@ -1,8 +1,9 @@
 # Contract ownership and status
 
-The JSON Schemas define current serialized boundaries, including legacy records
-that must remain readable. `scope.json` and `workflow-states.json` describe current
-scope and state compatibility. `nonblocking-contract.schema.json` and the NB
+Runtime [JSON Schemas](../../res/schemas/) define serialized boundaries, including
+legacy records that must remain readable. This directory contains planning and
+acceptance tracking data, not runtime resources. `scope.json` and `workflow-states.json` describe current
+scope and state compatibility. `res/schemas/nonblocking-contract.schema.json` and the NB
 backlog describe the later content-quality workflow; the original-only and history
 contracts are maintained under `docs/shared/`.
 
@@ -14,7 +15,7 @@ conflicting quality gates, experimental-language restrictions, mandatory monetar
 budgets, and CPU-only assumptions. Do not rewrite old evidence to claim that a
 new policy passed an earlier source-bound test.
 
-`tools/check_package.py` checks all schema syntax and uses the production
+`src/tools/check_package.py` checks all schema syntax and uses the production
 `packages.ir` validator for fixture semantics. It also checks the planning graph,
 portable Compose definitions and frozen seed resources. It does not run models or
 certify an application release. Current execution evidence is described by

@@ -15,7 +15,7 @@
 ## Tasks and verification
 
 1. Add regression tests for new defaults, saved preferences and legacy spool behavior in tests/unit/test_parser_profiles.py and tests/integration/test_parser_profile_settings.py. Implement separate new-preference and historical selection functions; update UI fallbacks.
-2. Add tests/unit/test_parser_acceleration.py for explicit accelerator validation, device availability, pipeline options/fingerprints and runtime identity. Add packages/parsers/runtime.py and wire both parsers and progress reporting.
+2. Add tests/unit/test_parser_acceleration.py for explicit accelerator validation, device availability, pipeline options/fingerprints and runtime identity. Add src/packages/parsers/runtime.py and wire both parsers and progress reporting.
 3. Add Compose-managed MLX through Docker Model Runner with fixed vLLM endpoint and content-addressed model selection. Validate local model metadata before inference. Provide a Compose build helper for exporting verified weights for OCI packaging.
 4. Add CUDA dependency lock/image build target and CUDA/MLX Compose overrides. Keep standard CPU deployment network-isolated. Model download remains build/setup-only.
 5. Update deployment docs and the baseline with the Compose-only hardware configuration. Run relevant parser tests, frontend tests/build and available Compose/DMR checks. Report unavailable CUDA/Docker integration honestly; do not use previous delivery evidence as verification.

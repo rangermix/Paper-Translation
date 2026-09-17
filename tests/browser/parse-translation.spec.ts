@@ -1,4 +1,4 @@
-import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
 test('saved parse result starts real translation after current-destination confirmation', async ({ page }) => {

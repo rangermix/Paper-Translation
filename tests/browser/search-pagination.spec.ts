@@ -1,4 +1,4 @@
-import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 
 for (const filter of ['side', 'locale']) test(`changing search ${filter} restarts at the first matching result`, async ({ page }) => {
   const queries: URLSearchParams[] = [];

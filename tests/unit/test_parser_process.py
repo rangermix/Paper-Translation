@@ -22,7 +22,7 @@ def test_child_imports_its_own_environment(tmp_path):
         f'import environment_marker, json; from pathlib import Path; Path({str(output)!r}).write_text(json.dumps(environment_marker.VALUE))']
     parent_script = f'''
 import sys
-sys.path.insert(0, {str(root)!r})
+sys.path.insert(0, {str(root / 'src')!r})
 import environment_marker
 assert environment_marker.VALUE == 'parent'
 from workers.parser.process import ParserProcess

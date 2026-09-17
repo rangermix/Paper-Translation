@@ -24,7 +24,7 @@
 ## 2. Frontend checkpoint
 
 1. Add Playwright scenarios covering confirmation/cancel, success count, empty history, errors, filters/pagination reset, refresh persistence, and the include-cleared toggle.
-2. Add the clear control and confirmation to `apps/web/src/features/job-list.tsx`, using existing Modal, API, error feedback, and request deduplication patterns.
+2. Add the clear control and confirmation to `src/apps/web/src/features/job-list.tsx`, using existing Modal, API, error feedback, and request deduplication patterns.
 3. Run frontend unit tests, TypeScript/build, and desktop/mobile browser checks. Inspect screenshots and check console errors.
 4. Review the final diff, record current verification evidence under `.agent/tmp/clear-task-history-20260915/`, and commit/push only this feature.
 

@@ -1,4 +1,4 @@
-import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
 test('recovery task shows paginated before and after text safely on desktop and mobile', async ({ page }) => {

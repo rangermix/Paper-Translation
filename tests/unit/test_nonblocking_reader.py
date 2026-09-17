@@ -39,7 +39,7 @@ def test_fallback_and_original_comparisons_survive_offline_exports(tmp_path):
     assert '此段尚无译文，以下保留原文' in html
     assert 'data-issue-filter="page"' in html and 'data-issue-filter="category"' in html
     assert '显示整页' in html and '识别文字（仅供辅助对照）' in html
-    assert (directory/'reader.css').read_bytes() != Path('reference/reader-v1.css').read_bytes()
+    assert (directory/'reader.css').read_bytes() != Path('res/reference/reader-v1.css').read_bytes()
     single = export_single_html(directory, tmp_path/'reading.html', include_source=True).read_text('utf-8')
     assert 'data:image/png;base64,' in single and 'data:application/pdf;base64,' in single
     assert '此段尚无译文' in single

@@ -24,7 +24,7 @@ def test_known_legacy_seed_is_idempotent_and_not_fake_ir(database,tmp_path):
         artifacts=session.scalars(select(Artifact)).all()
     for artifact in artifacts:
         root=cfg.data/artifact.storage_key;manifest=verify_artifact(root)
-        frozen=(ROOT/manifest['legacy_source_path']).read_bytes()
+        frozen=(ROOT/'res'/manifest['legacy_source_path']).read_bytes()
         assert (root/'legacy-original.html').read_bytes()==frozen
         expected=frozen.replace(b'<a href="../index.html">',b'<a href="/">',1)
         assert (root/'index.html').read_bytes()==expected

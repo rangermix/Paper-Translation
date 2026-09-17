@@ -63,7 +63,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/features/source-review/`
+- `src/apps/web/features/source-review/`
 - `packages/source_revisions/`
 - `tests/browser/pdf-locator.spec.ts`
 
@@ -83,8 +83,8 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/features/editor/`
-- `packages/editorial/drafts.py`
+- `src/apps/web/features/editor/`
+- `src/packages/editorial/drafts.py`
 - `tests/concurrency/test_edit_conflicts.py`
 
 **步骤：**
@@ -104,7 +104,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/glossaries/`
-- `apps/web/features/glossary/`
+- `src/apps/web/features/glossary/`
 - `tests/unit/test_term_matching.py`
 
 **步骤：**
@@ -124,7 +124,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/editorial/candidates.py`
-- `apps/web/features/retranslation/`
+- `src/apps/web/features/retranslation/`
 - `tests/concurrency/test_candidate_merge.py`
 
 **步骤：**
@@ -143,9 +143,9 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/quality/issues.py`
+- `src/packages/quality/issues.py`
 - `packages/review_provider/`
-- `apps/web/features/quality/`
+- `src/apps/web/features/quality/`
 
 **步骤：**
 
@@ -163,7 +163,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/features/editions/`
+- `src/apps/web/features/editions/`
 - `packages/locales/`
 - `.agent/tmp/reports/M2-language-matrix.md`
 
@@ -183,8 +183,8 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/publisher/history.py`
-- `apps/web/features/history/`
+- `src/packages/publisher/history.py`
+- `src/apps/web/features/history/`
 - `tests/concurrency/test_publish_rollback.py`
 
 **步骤：**
@@ -203,7 +203,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/templates/registry.py`
+- `src/packages/templates/registry.py`
 - `packages/publisher/rebuild.py`
 - `tests/integration/test_zero_model_rebuild.py`
 
@@ -224,7 +224,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/translation_memory/`
-- `apps/web/features/memory/`
+- `src/apps/web/features/memory/`
 - `tests/integration/test_memory_lifecycle.py`
 
 **步骤：**
@@ -244,7 +244,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/search/`
-- `apps/web/features/search/`
+- `src/apps/web/features/search/`
 - `tests/security/test_search_generations.py`
 
 **步骤：**
@@ -333,7 +333,7 @@ M2先在上阶段快照上演练升级：保留原件/封存IR/产物hash，增�
 
 ```text
 实施对照文库 v3 的 M2。先完整读取 docs/product-baseline.md、docs/shared/*、docs/deployment/compose-contract.md、docs/milestones/M2-spec.md 和本Plan；以最新五条用户约束为最高优先级。
-检查实际代码和上阶段证据，先为 M2 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
+检查实际代码和上阶段证据，先为 M2 的退出规格写自动化测试。按 docs/contracts/implementation-backlog.json 的依赖领取工作包。
 只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
 保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。
 原型功能不等于生产实现。所有报告区分已运行、未运行和环境阻塞；禁止将mock测试当真实模型/Compose验收。

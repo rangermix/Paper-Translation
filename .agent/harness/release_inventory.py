@@ -88,7 +88,7 @@ def main():
         entries.append(row)
     report={'format':'local-image-evidence-v1','recorded_at':datetime.now(timezone.utc).isoformat(),
             'release_approved':False,'reason':'Source candidates; dependency findings and full milestone acceptance remain under review.',
-            'lock_hashes':{name:sha(ROOT/name) for name in ('pyproject.toml','uv.lock','apps/web/package-lock.json','deployment/parser-models.lock.json')},
+            'lock_hashes':{name:sha(ROOT/name) for name in ('pyproject.toml','uv.lock','src/apps/web/package-lock.json','deployment/parser-models.lock.json')},
             'images':entries,
             'native_linkage_evidence':native,
             'source_scope':args.source_scope}

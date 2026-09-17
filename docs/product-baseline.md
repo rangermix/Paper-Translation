@@ -10,7 +10,7 @@ M0–M2 产品代码与后续增量已实现；实现、局部测试和正式 re
 
 翻译支持四种远端协议和可选 [Docker 管理的本地模型](deployment/local-translation.md)。本地模型仅在明确选择使用时准备；读取设置或启动不下载。所有语言可选，成本控制新配置默认关闭，人工核对可选。实际模型/时间/脱敏日志、DOI 元数据、[任务历史清理](shared/task-history.md)及[学术元数据保留原文](shared/original-only-content.md)使用各自契约，不改写旧内容。
 
-仓库以实际应用为入口，受控种子论文在 `reference/legacy/`，`reader-v1.css` 字节不变。历史决策可从 Git 与原阶段 Spec/Plan 追踪；与本页及后续专项契约冲突的旧质量、语言、预算或部署限定不再适用。
+仓库以实际应用为入口，受控种子论文在 `res/reference/legacy/`，`reader-v1.css` 字节不变。历史决策可从 Git 与原阶段 Spec/Plan 追踪；与本页及后续专项契约冲突的旧质量、语言、预算或部署限定不再适用。
 
 ## 1. 不可变更的产品边界
 

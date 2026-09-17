@@ -12,14 +12,14 @@ from packages.ir import canonical_bytes,digest,strict_loads
 from packages.publisher import verify_artifact
 from packages.storage import atomic_write,safe_path
 
-ROOT=Path(__file__).resolve().parents[2]
+from packages.paths import ROOT, RESOURCE_ROOT
 RELEASE_MANIFEST_HASH='b7320b3615c304ce45de8bce2ebfffc9fc552642d53a8fd661ea14a2b12875f3'
 
 
 def checked_release():
-    release=strict_loads((ROOT/'reference/legacy-manifest.json').read_bytes())
+    release=strict_loads((ROOT/'res/reference/legacy-manifest.json').read_bytes())
     require(digest(release)==RELEASE_MANIFEST_HASH,'LEGACY_MANIFEST_INVALID')
-    reference=strict_loads((ROOT/'reference/reference-files.sha256.json').read_bytes())
+    reference=strict_loads((ROOT/'res/reference/reference-files.sha256.json').read_bytes())
     require(len(release['documents'])==2 and {d['id'] for d in release['documents']}=={'legacy-efficient','legacy-pathways'},'LEGACY_MANIFEST_INVALID')
     for item in release['documents']:
         outputs={entry['output']:entry for entry in item['files']}
@@ -27,9 +27,9 @@ def checked_release():
             and outputs.get(item['source_output'],{}).get('path')==item['source_path'],'LEGACY_MANIFEST_INVALID')
         for entry in item['files']:
             require(reference.get(entry['path'])==entry['sha256'],'LEGACY_HASH_NOT_ALLOWED')
-            file=safe_path(ROOT,entry['path'],must_exist=True)
+            file=safe_path(RESOURCE_ROOT,entry['path'],must_exist=True)
             require(digest(file.read_bytes())==entry['sha256'],'LEGACY_HASH_MISMATCH')
-    css=(ROOT/'reference/reader-v1.css').read_bytes()
+    css=(ROOT/'res/reference/reader-v1.css').read_bytes()
     require(digest(css)==release['reader_css_sha256']==reference['reference/reader-v1.css'],'TEMPLATE_HASH_MISMATCH')
     return release
 
@@ -45,14 +45,14 @@ def seed_legacy(db,cfg):
                 continue
             files={}
             for entry in item['files']:
-                content=safe_path(ROOT,entry['path'],must_exist=True).read_bytes()
+                content=safe_path(RESOURCE_ROOT,entry['path'],must_exist=True).read_bytes()
                 require(digest(content)==entry['sha256'],'LEGACY_HASH_MISMATCH')
                 files[entry['output']]=content
             original=files['legacy-original.html']
             before,after=release['navigation_patch']['from'].encode(),release['navigation_patch']['to'].encode()
             require(original.count(before)==1,'LEGACY_NAVIGATION_MISMATCH')
             page=original.replace(before,after,1)
-            files['index.html']=page;files['reader.css']=(ROOT/'reference/reader-v1.css').read_bytes()
+            files['index.html']=page;files['reader.css']=(ROOT/'res/reference/reader-v1.css').read_bytes()
             script_hashes=[base64.b64encode(hashlib.sha256(script).digest()).decode() for script in re.findall(rb'<script[^>]*>(.*?)</script>',page,re.S)]
             csp="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src "+' '.join("'sha256-"+h+"'" for h in script_hashes)+"; connect-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'"
             manifest={'schema_version':'1.0','legacy':True,'mode':'release','document_id':item['id'],'target_locale':'zh-Hans',

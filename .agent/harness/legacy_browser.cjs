@@ -3,14 +3,14 @@ const path=require('node:path');
 const fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
 const {repoRoot:root,inputPath,outputDirectory}=require('./browser_paths.cjs');
-const {chromium,expect}=createRequire(path.join(root,'apps/web/package.json'))('@playwright/test');
+const {chromium,expect}=createRequire(path.join(root,'src/apps/web/package.json'))('@playwright/test');
 
 async function run(){
  const browser=await chromium.launch({headless:true});
  const directory=inputPath(process.env.LEGACY_BROWSER_INPUT||'evidence/legacy-review');
 const output=outputDirectory('legacy_browser');
 fs.mkdirSync(output,{recursive:true});
- const manifest=JSON.parse(fs.readFileSync(path.join(root,'reference/legacy-manifest.json')));
+ const manifest=JSON.parse(fs.readFileSync(path.join(root,'res/reference/legacy-manifest.json')));
  const results=[];
  try{
   for(const document of manifest.documents){
@@ -22,7 +22,7 @@ fs.mkdirSync(output,{recursive:true});
      const errors=[],external=[];
      page.on('pageerror',e=>errors.push(String(e)));
      page.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith('http://127.0.0.1:8080/'))external.push(r.url());});
-     const url=variant==='reference'?pathToFileURL(path.join(root,document.html_path)).href:
+     const url=variant==='reference'?pathToFileURL(path.join(root,'res',document.html_path)).href:
        variant==='production'?'http://127.0.0.1:8080/read/'+document.id+'/zh-Hans':
        pathToFileURL(path.join(directory,document.id+'.html')).href;
      await page.goto(url);

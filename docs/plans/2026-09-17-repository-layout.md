@@ -18,7 +18,7 @@
 
 ## 2. Source and runtime-resource checkpoint
 
-- Move `apps/`, `packages/`, `workers/`, `tools/` into `src/`; move the two executable operations scripts to `src/tools/`.
+- Move the former root application, package, worker and tooling directories under `src/`; move the two executable operations scripts to `src/tools/`.
 - Move machine-readable schemas and frozen reference inputs to `res/`; move acceptance planning/tracking contracts to `docs/contracts/` and reference prose to `docs/reference/`.
 - Update Python import paths, root/resource resolution, frontend test paths and all Docker COPY/commands consistently. Keep module entrypoint names unchanged.
 - Preserve immutable seed manifests and hashes. Resolve their old logical `reference/` paths relative to the new resource root.

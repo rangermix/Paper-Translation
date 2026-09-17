@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
 async function setup(page: Page, options: { count?: number; fail?: boolean; delay?: boolean } = {}) {

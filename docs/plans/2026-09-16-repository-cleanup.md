@@ -4,7 +4,7 @@
 
 **Goal:** Commit the existing workspace, then remove the retired prototype without breaking the actual application or its controlled reference inputs.
 
-**Architecture:** Keep the production application, immutable reader templates, and the two allowlisted seed documents. Move the seed files into `reference/legacy/`, remove the separate demo UI/server and redundant exports, and use the production Compose definition from the root entry point. Markdown remains the documentation source; remove the stale generated design portal and its generators.
+**Architecture:** Keep the production application, immutable reader templates, and the two allowlisted seed documents. Move the seed files into `res/reference/legacy/`, remove the separate demo UI/server and redundant exports, and use the production Compose definition from the root entry point. Markdown remains the documentation source; remove the stale generated design portal and its generators.
 
 **Tech Stack:** Python, React/TypeScript, PostgreSQL, Docker Compose, pytest, Playwright.
 
@@ -16,7 +16,7 @@
 
 ## 2. Retire the demo and relocate runtime references
 
-- Move `prototype/reader/` to `reference/legacy/` without changing document, PDF, image, or CSS bytes.
+- Move `prototype/reader/` to `res/reference/legacy/` without changing document, PDF, image, or CSS bytes.
 - Update both reference manifests, the seed manifest digest, parser tests, and the parser concurrency harness.
 - Remove `prototype/`, root `Dockerfile`, `tools/build_prototype.py`, and `tools/serve_prototype.py`.
 - Remove prototype-only image COPY instructions and the obsolete browser visual-reference test. Keep production UI tests and seed/export tests.

@@ -7,7 +7,7 @@ it cannot infer a browser rendering, real model result or Docker cold start from
 source alone. Use existing source PDFs to check extraction gold, not legacy English
 HTML or the old translation. Preserve uncertainties as findings.
 
-1. Read the literal scenario and related gate in `contracts/`.
+1. Read the literal scenario and related gate in `docs/contracts/`.
 2. Read `.agent/memory/current.md` and the implementation's command/evidence.
 3. Independently run the scenario or inspect the genuine artifact/output.
 4. Record exactly what was observed. For visual checks cover layout, colors,

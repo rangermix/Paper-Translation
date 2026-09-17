@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 
 const preferences = { generation: 1, locale: 'ja', publish_policy: 'manual_approval', theme: 'light' };
 const provider = { generation: 1, configured: true, dispatch_configuration_ready: true, provider: 'openai',

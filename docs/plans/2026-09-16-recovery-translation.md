@@ -9,9 +9,9 @@
 ## Checkpoint 1: Recovery and evidence
 
 1. Add failing cases to tests/unit/test_native_page_recovery.py for small omissions, split/hyphenated native regions, missing multiline paragraphs, columns, and retained complex content.
-2. Fix packages/parsers/recovery.py without losing source evidence or duplicating prose. Replay the saved Paddle output from job_9968a100a2e54ce188169136099b1a06 offline; do not invoke the model.
-3. Add API integration tests for recovery comparisons, missing historical evidence, document ownership and deletion. Expose paginated before/after blocks through an endpoint in apps/api/workflow.py backed by SourceDraft evidence.
-4. Add a recovery comparison component in apps/web/src/features/ and embed it in task details. Verify desktop/mobile interaction and content escaping.
+2. Fix src/packages/parsers/recovery.py without losing source evidence or duplicating prose. Replay the saved Paddle output from job_9968a100a2e54ce188169136099b1a06 offline; do not invoke the model.
+3. Add API integration tests for recovery comparisons, missing historical evidence, document ownership and deletion. Expose paginated before/after blocks through an endpoint in src/apps/api/workflow.py backed by SourceDraft evidence.
+4. Add a recovery comparison component in src/apps/web/src/features/ and embed it in task details. Verify desktop/mobile interaction and content escaping.
 5. Commit and push only verified recovery/evidence changes.
 
 ## Checkpoint 2: Parse result translation action

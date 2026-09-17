@@ -125,7 +125,7 @@ def main():
     if empty.read_bytes():raise RuntimeError('Only empty Provider key permitted')
     env={**os.environ,'APP_IMAGE':APP,'PARSER_IMAGE':PARSER,'DATABASE_IMAGE':DATABASE,'PORT':'18092','PROVIDER_KEY_FILE':str(empty)}
     override=out/'override.json'
-    override.write_text(json.dumps({'services':{'app':{'volumes':[str(ROOT/'.agent/harness')+':/harness:ro',str(out)+':/action-evidence'],'environment':{'PYTHONPATH':'/app:/harness'}},
+    override.write_text(json.dumps({'services':{'app':{'volumes':[str(ROOT/'.agent/harness')+':/harness:ro',str(out)+':/action-evidence'],'environment':{'PYTHONPATH':'/app/src:/app:/harness'}},
         'probe':{'image':APP,'command':['python','/probe-evidence/probe_server.py'],'user':'10001:10001','read_only':True,
             'cap_drop':['ALL'],'security_opt':['no-new-privileges:true'],'volumes':[str(out)+':/probe-evidence'],'networks':['backend'],
             'healthcheck':{'test':['CMD','python','-c',"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/counts').read()"],'interval':'2s','timeout':'2s','retries':10}}},

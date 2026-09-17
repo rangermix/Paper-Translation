@@ -72,7 +72,7 @@ Edition当前指针更新采用单调generation的CAS。回滚A→B→A也继续
 
 ## 4. IR v3
 
-[Schema](../../contracts/document-ir-v3.schema.json)是内部RenderInput语法；普通用户没有上传它的入口。主字段为document、source_revision、translation_revision、render。document不含用户或工作区。source.kind恒为`pdf_upload`，原件media_type恒为PDF；资产列表允许从PDF提取的PNG/JPEG/WebP等产物，这不等于允许用户上传它们。
+[Schema](../../res/schemas/document-ir-v3.schema.json)是内部RenderInput语法；普通用户没有上传它的入口。主字段为document、source_revision、translation_revision、render。document不含用户或工作区。source.kind恒为`pdf_upload`，原件media_type恒为PDF；资产列表允许从PDF提取的PNG/JPEG/WebP等产物，这不等于允许用户上传它们。
 
 ### 结构与单次渲染
 
@@ -122,6 +122,6 @@ data/
 
 ## 8. 依赖和模块划分
 
-`apps/web`负责管理UI；`apps/api`负责短请求与直接文件响应；`packages/ir`负责模型外的结构事实；`packages/providers`负责有限输入输出；`packages/jobs`负责持久调度；`packages/publisher`负责不可变发布；`workers/parser`不持秘密。所有模块由同一仓库构建，镜像可按依赖大小拆分，不意味着需要微服务治理。
+`src/apps/web`负责管理UI；`apps/api`负责短请求与直接文件响应；`packages/ir`负责模型外的结构事实；`packages/providers`负责有限输入输出；`packages/jobs`负责持久调度；`packages/publisher`负责不可变发布；`workers/parser`不持秘密。所有模块由同一仓库构建，镜像可按依赖大小拆分，不意味着需要微服务治理。
 
 Docling的本地资产配置与Compose的健康依赖行为已核对官方文档，见[技术依据](../../sources.md)。它们支持实现选项，不代表本产品的解析准确率或容器部署已经被验证。

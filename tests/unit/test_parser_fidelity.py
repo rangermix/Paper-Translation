@@ -54,7 +54,7 @@ def test_native_punctuation_restore_requires_identical_letter_digit_order():
 
 
 def test_native_form_bbox_clips_invisible_content_and_records_url():
-    result=inspect_pdf(ROOT/'reference/legacy/source/Efficiently-Scaling-Transformer-Inference.pdf')
+    result=inspect_pdf(ROOT/'res/reference/legacy/source/Efficiently-Scaling-Transformer-Inference.pdf')
     assert all(region['bbox'][3]<350 for region in result['pages'][4]['graphic_regions'])
     assert any(link['uri']=='https://github.com/google-research/t5x' for link in result['pages'][11]['links'])
 
@@ -97,7 +97,7 @@ def test_source_url_stays_link_and_heading_parent_follows_level(tmp_path):
 
 
 def test_small_caps_native_regions_do_not_repeat_neighbors():
-    result=inspect_pdf(ROOT/'reference/legacy/source/Pathways.pdf')
+    result=inspect_pdf(ROOT/'res/reference/legacy/source/Pathways.pdf')
     # PDFium bounded-word extraction returned PA + PATHWAYS for two adjacent
     # font-size rectangles; native character centers must return P + ATHWAYS.
     regions=result['pages'][1]['text_regions']
@@ -192,7 +192,7 @@ def test_composite_arrow_is_protected_without_rewriting_native_operator():
 
 def test_actual_pdf_native_accents_are_not_duplicated_or_detached():
     from packages.parsers.glyphs import region_text
-    inspection=inspect_pdf(ROOT/'reference/legacy/source/Pathways.pdf')
+    inspection=inspect_pdf(ROOT/'res/reference/legacy/source/Pathways.pdf')
     page=inspection['pages'][11]
     text=region_text([r for r in page['text_regions'] if 87<r['bbox'][1]<98 and r['bbox'][0]<300])
     assert 'Martín Abadi' in text

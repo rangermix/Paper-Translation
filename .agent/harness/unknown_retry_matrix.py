@@ -78,7 +78,7 @@ def main():
             'images': {k: os.environ.get('ACCEPTANCE_' + k, v) for k, v in DEFAULTS.items()},
             'status': 'preparing', 'provider_kind': 'explicit CountingFake', 'external_provider_requests': 0}
         override = {'services': {
-            'app': {'environment': {'PYTHONPATH': '/app:/harness'}, 'volumes': [
+            'app': {'environment': {'PYTHONPATH': '/app/src:/app:/harness'}, 'volumes': [
                 (ROOT / '.agent/harness').as_posix() + ':/harness:ro',
                 (ROOT / 'tests/support.py').as_posix() + ':/tests/support.py:ro', out.as_posix() + ':/evidence']},
             'worker': {'command': ['python', '/harness/unknown_retry_worker.py'], 'restart': 'no',

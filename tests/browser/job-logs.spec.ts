@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
 const job = { id: 'job_logs', title: 'Attention Is All You Need', stage: 'parse', status: 'succeeded', generation: 1, control_epoch: 1,

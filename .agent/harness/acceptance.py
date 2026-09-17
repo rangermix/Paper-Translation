@@ -62,7 +62,7 @@ def fingerprint(root=ROOT):
             continue
         lowered=relative.as_posix().lower()
         if (lowered.startswith(excluded)
-                or relative.name == "IMPLEMENTATION_STATUS.md" or lowered in {"apps/web/work_log.md", "compose.yaml"}):
+                or relative.name == "IMPLEMENTATION_STATUS.md" or lowered in {"apps/web/work_log.md", "src/apps/web/work_log.md", "compose.yaml"}):
             continue
         if lowered.startswith('deployment/provider_key.') and lowered != 'deployment/provider_key.empty':
             continue
@@ -74,9 +74,9 @@ def fingerprint(root=ROOT):
 
 
 def catalog(root=ROOT):
-    requirements = read_json(root / "contracts/requirements.json")
-    gates = read_json(root / "contracts/exit-gates.json")
-    packages = read_json(root / "contracts/implementation-backlog.json")
+    requirements = read_json(root / "docs/contracts/requirements.json")
+    gates = read_json(root / "docs/contracts/exit-gates.json")
+    packages = read_json(root / "docs/contracts/implementation-backlog.json")
     tests = {test["id"]: {**test, "milestone": req["milestone"]} for req in requirements for test in req["tests"]}
     req_ids = {req["id"] for req in requirements}
     package_ids = {package["id"] for package in packages}

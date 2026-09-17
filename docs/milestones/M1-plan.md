@@ -112,7 +112,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/parsers/pdf_docling.py`
+- `src/packages/parsers/pdf_docling.py`
 - `packages/ir/coverage.py`
 - `tests/corpus/pdf/`
 
@@ -152,7 +152,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/features/preflight/`
+- `src/apps/web/features/preflight/`
 - `apps/api/imports/confirm.py`
 - `tests/browser/preflight.spec.ts`
 
@@ -172,7 +172,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/translation/planner.py`
+- `src/packages/translation/planner.py`
 - `packages/translation/cache.py`
 - `tests/unit/test_alignment.py`
 
@@ -192,9 +192,9 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/providers/openai_responses.py`
-- `packages/providers/gemini_interactions.py`
-- `packages/providers/claude_messages.py`
+- `src/packages/providers/openai_responses.py`
+- `src/packages/providers/gemini_interactions.py`
+- `src/packages/providers/claude_messages.py`
 - `tests/fakes/provider_server.py`
 - `tests/contracts/test_provider.py`
 
@@ -263,7 +263,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/quality/`
-- `apps/web/features/review-basic/`
+- `src/apps/web/features/review-basic/`
 - `tests/corpus/translation/`
 
 **步骤：**
@@ -282,8 +282,8 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/features/tasks/`
-- `apps/web/features/library/`
+- `src/apps/web/features/tasks/`
+- `src/apps/web/features/library/`
 - `tests/browser/workflow.spec.ts`
 
 **步骤：**
@@ -393,7 +393,7 @@ M1先在上阶段快照上演练升级：保留原件/封存IR/产物hash，增�
 
 ```text
 实施对照文库 v3 的 M1。先完整读取 docs/product-baseline.md、docs/shared/*、docs/deployment/compose-contract.md、docs/milestones/M1-spec.md 和本Plan；以最新五条用户约束为最高优先级。
-检查实际代码和上阶段证据，先为 M1 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
+检查实际代码和上阶段证据，先为 M1 的退出规格写自动化测试。按 docs/contracts/implementation-backlog.json 的依赖领取工作包。
 只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
 保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。
 原型功能不等于生产实现。所有报告区分已运行、未运行和环境阻塞；禁止将mock测试当真实模型/Compose验收。

@@ -2,6 +2,6 @@
 *.pdf binary
 # These frozen artifacts were registered with CRLF byte checksums. Preserve
 # their exact bytes on every platform; do not normalize or regenerate hashes.
-packages/domain/migrations/012.json -text whitespace=cr-at-eol
-packages/templates/reader-v3.css -text whitespace=cr-at-eol
-packages/templates/reader-v3.js -text whitespace=cr-at-eol
+src/packages/domain/migrations/012.json -text whitespace=cr-at-eol
+src/packages/templates/reader-v3.css -text whitespace=cr-at-eol
+src/packages/templates/reader-v3.js -text whitespace=cr-at-eol

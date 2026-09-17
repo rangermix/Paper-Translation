@@ -118,7 +118,7 @@ def main():
             'job_id':'resume_job','project':project,'verified_blocks':3,'total_blocks':10,
             'requires':'Actual disposable browser view of job progress followed by browser.close.'},indent=2),encoding='utf8')
         browser_script=OUT/'browser-close.mjs';browser_script.write_text(BROWSER_SCRIPT,encoding='utf8')
-        env.update(RESUME_PLAYWRIGHT_MODULE=str(ROOT/'apps/web/node_modules/@playwright/test/index.mjs'),
+        env.update(RESUME_PLAYWRIGHT_MODULE=str(ROOT/'src/apps/web/node_modules/@playwright/test/index.mjs'),
             RESUME_BROWSER_BASE=f'http://127.0.0.1:{port}',RESUME_EVIDENCE_DIR=str(OUT))
         command([os.environ.get('ACCEPTANCE_NODE','node'),str(browser_script)],timeout=60)
         assert (OUT/'browser-closed.json').exists(), 'Independent browser-close evidence was not supplied; do not claim this scenario.'

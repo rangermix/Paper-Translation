@@ -1,4 +1,4 @@
-import {test,expect} from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import {test,expect} from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { inputPath } from './paths';
 import {readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';

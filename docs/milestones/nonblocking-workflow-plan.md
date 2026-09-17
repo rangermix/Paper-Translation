@@ -2,7 +2,7 @@
 
 日期：2026-09-09。状态：**NB-P01–P12 已完成并交付正式 8080 实例**。独立 Compose、受控 Provider、三种真实本地 CPU、公开 DOI、生产备份升级与整栈冷重启均有本轮证据；真实付费 Provider 未获预算/外发授权，按本计划单独标注 NOT RUN。详见[交付验收](../../.agent/notes/nonblocking-20260909-acceptance.md)。
 
-需求以 [Spec](nonblocking-workflow-spec.md) 为准；任务状态与依赖登记在 [nonblocking-workflow-backlog.json](../../contracts/nonblocking-workflow-backlog.json)。完成项均附本轮独立验收证据，不沿用旧镜像报告。
+需求以 [Spec](nonblocking-workflow-spec.md) 为准；任务状态与依赖登记在 [nonblocking-workflow-backlog.json](../contracts/nonblocking-workflow-backlog.json)。完成项均附本轮独立验收证据，不沿用旧镜像报告。
 
 ## 1. 交付顺序
 
@@ -48,7 +48,7 @@ flowchart TD
 - 扩展 Job/Task/Attempt 或新增阶段表、日志记录和文档元数据结构；持久化原始文件名、标题来源与用户改名标志。使用增量 PostgreSQL migration，新增字段先允许空值。
 - 同步状态枚举、API 类型及序列化、契约 schema，定义旧字段兼容策略，禁止只改前端或放宽 validator 后留下无法渲染的数据。
 
-**主要模块：** `packages/domain/models.py`、`packages/domain/db.py`、`packages/domain/migrations/`、`contracts/workflow-states.json`、`contracts/document-ir-v3.schema.json`、`docs/shared/`、`apps/web/src/types.ts`。
+**主要模块：** `src/packages/domain/models.py`、`src/packages/domain/db.py`、`packages/domain/migrations/`、`docs/contracts/workflow-states.json`、`res/schemas/document-ir-v3.schema.json`、`docs/shared/`、`src/apps/web/src/types.ts`。
 
 **验收 NB-AT01–02：** 迁移前后旧对象和不可变历史可读取；内容质量状态与执行许可解耦，接口契约能表达部分结果与未执行检查；错误 AST/路径仍不能进入渲染器。
 
@@ -61,7 +61,7 @@ flowchart TD
 - parser 加入有界进度/事件 spool，worker 持久接收并去重；常规日志不依赖容器 stdout。长任务可看到“正在加载模型 / 正在解析第 N 页”等阶段。
 - 增加分页/过滤日志 API、稳定事件游标及下载脱敏日志；接入备份和持久化留存，不被 spool 清理删除。
 
-**主要模块：** `packages/jobs/queue.py`、`workers/main.py`、`workers/parser/main.py`、`packages/parsers/spool.py`、`packages/translation/execution.py`、`apps/api/workflow.py`、`packages/maintenance/`。
+**主要模块：** `src/packages/jobs/queue.py`、`src/workers/main.py`、`src/workers/parser/main.py`、`src/packages/parsers/spool.py`、`src/packages/translation/execution.py`、`src/apps/api/workflow.py`、`packages/maintenance/`。
 
 **验收 NB-AT03–04：** 每类任务成功/失败/取消/重试有正确起止时间和实际模型；重启和 spool 清理后历史仍可查；设置变更不改历史模型；无模型与历史未知字段正确显示；日志无 key/鉴权头/全文。
 
@@ -74,7 +74,7 @@ flowchart TD
 - 修复 preflight API `unresolved` 与前端 `p.issues` 不一致；纠正页级 ready 显示为“待发布”和任务错误原因缺失。
 - 评估 PDF 字体映射、软连字符、公式上标/下标与比较算法产生的误报，归一化只用于比较，不能为了消除差异改写真实数值。
 
-**主要模块：** `packages/parsers/pdf_docling.py`、`packages/parsers/fidelity.py`、`packages/editorial/drafts.py`、`apps/api/workflow.py`、`apps/web/src/components.tsx`、`apps/web/src/features/editor-quality.tsx`。
+**主要模块：** `src/packages/parsers/pdf_docling.py`、`src/packages/parsers/fidelity.py`、`src/packages/editorial/drafts.py`、`src/apps/api/workflow.py`、`src/apps/web/src/components.tsx`、`src/apps/web/src/features/editor-quality.tsx`。
 
 **验收 NB-AT05–06：** 一个空页引出的上百区域问题聚合成一项；展示数量与口径一致；没有问题、尚未检查、检查失败分别显示；仅脚注/断词差异不能阻止任何后续阶段。
 
@@ -87,7 +87,7 @@ flowchart TD
 - 每次恢复保留前后内容、规则/实际模型、页码、耗时和结果；遵守已冻结总 timeout，避免恢复无限延长任务。
 - 无法恢复时生成带页码的原页/区域替代单元并继续；公式/代码默认图像保留，表格在结构化和原图之间明确表示，相关数字提供对照定位。
 
-**主要模块：** `packages/parsers/inspect.py`、`packages/parsers/pdf_docling.py`、`packages/parsers/pdf_paddleocr.py`、`packages/parsers/fidelity.py`、`packages/source_revisions/`、IR schema 与 validator。
+**主要模块：** `src/packages/parsers/inspect.py`、`src/packages/parsers/pdf_docling.py`、`src/packages/parsers/pdf_paddleocr.py`、`src/packages/parsers/fidelity.py`、`packages/source_revisions/`、IR schema 与 validator。
 
 **验收 NB-AT07–08：** 复现并覆盖 PipeDream 第 5 页缺栏、第 14 页缺页、第 11 页表格配置错字这些类型；恢复有界、模型记录真实、失败保留原图且继续；原始 PDF/旧来源不被覆盖。
 
@@ -101,7 +101,7 @@ flowchart TD
 - 自动运行/刷新检查；报告过期或检查器故障本身不阻止阅读/发布。后台与前端使用同一语义，API 直调和 UI 不产生不同结果。
 - 旧 `needs_review` 结果提供继续生成的入口，不要求手工清空告警，也不因升级自动触发历史付费任务。
 
-**主要模块：** `apps/api/library.py`、`apps/api/workflow.py`、`apps/api/sources.py`、`apps/api/editorial.py`、`packages/translation/`、`packages/editorial/drafts.py`、`packages/ir/`、`packages/publisher/`、worker。
+**主要模块：** `src/apps/api/library.py`、`src/apps/api/workflow.py`、`src/apps/api/sources.py`、`src/apps/api/editorial.py`、`packages/translation/`、`src/packages/editorial/drafts.py`、`packages/ir/`、`packages/publisher/`、worker。
 
 **验收 NB-AT09–10：** 缺段/数字/公式/表格差异、未确认或检查失败均可继续生成、封存、发布、导出；失败单元可见且其他单元正常完成；无安全渲染绕过或重复未知付费请求。
 
@@ -114,7 +114,7 @@ flowchart TD
 - 手动调整解析、来源修订及局部重译继续提供，但不放在主流程中作为必经步骤；保留未保存编辑状态。
 - 同步阅读模板、图片资源和单文件/打包导出，让离线阅读也能看到对照与未完成标记；不修改已发布快照和旧 reader-v1 CSS。
 
-**主要模块：** `apps/web/src/features/workflow.tsx`、`import-corrections.tsx`、`editor.tsx`、`editor-quality.tsx`、`apps/web/src/components.tsx`、`packages/templates/`、`packages/publisher/`。
+**主要模块：** `src/apps/web/src/features/workflow.tsx`、`import-corrections.tsx`、`editor.tsx`、`editor-quality.tsx`、`src/apps/web/src/components.tsx`、`packages/templates/`、`packages/publisher/`。
 
 **验收 NB-AT11–12：** 桌面/手机可直接读译文，异常点击定位、原图加载、返回阅读均正常；无需勾选校对；部分结果、错误标记和图像对照在导出中保留。
 
@@ -127,7 +127,7 @@ flowchart TD
 - 在解析结果页同时显示实际解析方案，直接区分 Docling / Granite / Paddle；不可根据当前设置猜测旧任务模型。
 - 迁移前历史显示可证实字段，对未知信息使用明确文案；删除文档后保留技术任务回执。
 
-**主要模块：** `apps/api/workflow.py`、`apps/web/src/features/job-list.tsx`、`job-presentation.ts`、`workflow.tsx`、`apps/web/src/types.ts`。
+**主要模块：** `src/apps/api/workflow.py`、`src/apps/web/src/features/job-list.tsx`、`job-presentation.ts`、`workflow.tsx`、`src/apps/web/src/types.ts`。
 
 **验收 NB-AT13–14：** 所有任务类型和终态可查，跨刷新/重启历史信息不变；取消/重试/长任务时间正确，Granite 不再被误认为 Paddle；日志浏览无卡顿、无秘密信息。
 
@@ -139,7 +139,7 @@ flowchart TD
 - 区分本篇 DOI 与参考文献 DOI；对多候选、尾随标点、括号、换行、编码和前缀建立测试。
 - 将候选绑定 Upload / SourceAsset；上传前后异步生命周期一致，导入重试幂等。没有明确 DOI 不推断另一篇文献。
 
-**主要模块：** `packages/parsers/inspect.py`、拟新增 `packages/metadata/doi.py`、上传/导入 API、worker。
+**主要模块：** `src/packages/parsers/inspect.py`、拟新增 `packages/metadata/doi.py`、上传/导入 API、worker。
 
 **验收 NB-AT15–16：** 单 DOI、多 DOI、只有引用 DOI、无 DOI、扫描件、跨行 DOI 均有明确结果；误判不替换标题，解析/上传不因发现失败而阻断。
 
@@ -152,7 +152,7 @@ flowchart TD
 - 成功且匹配时显示元数据标题与作者/年份/刊物；查询未完成/失败/歧义保持当前文件名逻辑。保留原文件名和用户改名优先级。
 - 增加元数据详情/可选刷新；处理查询在 import 前完成、用户改名、换源 PDF、删除和重复上传时的并发。
 
-**主要模块：** 拟新增 `packages/metadata/`、`packages/domain/models.py`、`apps/api/library.py`、`workers/main.py`、文档库/文档详情/任务列表组件、检索索引。
+**主要模块：** 拟新增 `packages/metadata/`、`src/packages/domain/models.py`、`src/apps/api/library.py`、`src/workers/main.py`、文档库/文档详情/任务列表组件、检索索引。
 
 **验收 NB-AT17–18：** 真实公开 DOI 返回正确标题/作者，失败/404/429/超时均不影响主流程；错误文献不会套用；异步更新不覆盖用户标题或更换后的文档；不把 PDF/正文发给元数据服务。
 

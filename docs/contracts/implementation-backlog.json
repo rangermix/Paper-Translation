@@ -16,7 +16,7 @@
     ],
     "outputs": [
       "docs/decision-records.md",
-      "reference/reader-v1.css",
+      "res/reference/reader-v1.css",
       "tests/contracts/test_scope.py"
     ],
     "steps": [
@@ -43,7 +43,7 @@
       3
     ],
     "outputs": [
-      "apps/web/",
+      "src/apps/web/",
       "apps/api/",
       "workers/",
       "compose.yaml",
@@ -78,7 +78,7 @@
     ],
     "outputs": [
       "packages/contracts/",
-      "packages/ir/validator.py",
+      "src/packages/ir/validator.py",
       "tests/unit/test_ir_semantics.py"
     ],
     "steps": [
@@ -205,7 +205,7 @@
       4
     ],
     "outputs": [
-      "apps/web/features/upload-pdf/",
+      "src/apps/web/features/upload-pdf/",
       "apps/api/uploads/",
       "packages/ingestion/pdf_intake.py",
       "workers/parser/inspect.py"
@@ -235,8 +235,8 @@
       2
     ],
     "outputs": [
-      "packages/seed/legacy.py",
-      "reference/legacy-manifest.json",
+      "src/packages/seed/legacy.py",
+      "res/reference/legacy-manifest.json",
       "tests/integration/test_legacy_seed.py"
     ],
     "steps": [
@@ -499,7 +499,7 @@
       6
     ],
     "outputs": [
-      "packages/parsers/pdf_docling.py",
+      "src/packages/parsers/pdf_docling.py",
       "packages/ir/coverage.py",
       "tests/corpus/pdf/"
     ],
@@ -562,7 +562,7 @@
       4
     ],
     "outputs": [
-      "apps/web/features/preflight/",
+      "src/apps/web/features/preflight/",
       "apps/api/imports/confirm.py",
       "tests/browser/preflight.spec.ts"
     ],
@@ -593,7 +593,7 @@
       5
     ],
     "outputs": [
-      "packages/translation/planner.py",
+      "src/packages/translation/planner.py",
       "packages/translation/cache.py",
       "tests/unit/test_alignment.py"
     ],
@@ -626,7 +626,7 @@
       4
     ],
     "outputs": [
-      "packages/providers/openai_responses.py",
+      "src/packages/providers/openai_responses.py",
       "tests/fakes/provider_server.py",
       "tests/contracts/test_provider.py"
     ],
@@ -724,7 +724,7 @@
     ],
     "outputs": [
       "packages/quality/",
-      "apps/web/features/review-basic/",
+      "src/apps/web/features/review-basic/",
       "tests/corpus/translation/"
     ],
     "steps": [
@@ -756,8 +756,8 @@
       4
     ],
     "outputs": [
-      "apps/web/features/tasks/",
-      "apps/web/features/library/",
+      "src/apps/web/features/tasks/",
+      "src/apps/web/features/library/",
       "tests/browser/workflow.spec.ts"
     ],
     "steps": [
@@ -969,7 +969,7 @@
       6
     ],
     "outputs": [
-      "apps/web/features/source-review/",
+      "src/apps/web/features/source-review/",
       "packages/source_revisions/",
       "tests/browser/pdf-locator.spec.ts"
     ],
@@ -1000,8 +1000,8 @@
       5
     ],
     "outputs": [
-      "apps/web/features/editor/",
-      "packages/editorial/drafts.py",
+      "src/apps/web/features/editor/",
+      "src/packages/editorial/drafts.py",
       "tests/concurrency/test_edit_conflicts.py"
     ],
     "steps": [
@@ -1030,7 +1030,7 @@
     ],
     "outputs": [
       "packages/glossaries/",
-      "apps/web/features/glossary/",
+      "src/apps/web/features/glossary/",
       "tests/unit/test_term_matching.py"
     ],
     "steps": [
@@ -1063,7 +1063,7 @@
     ],
     "outputs": [
       "packages/editorial/candidates.py",
-      "apps/web/features/retranslation/",
+      "src/apps/web/features/retranslation/",
       "tests/concurrency/test_candidate_merge.py"
     ],
     "steps": [
@@ -1092,9 +1092,9 @@
       5
     ],
     "outputs": [
-      "packages/quality/issues.py",
+      "src/packages/quality/issues.py",
       "packages/review_provider/",
-      "apps/web/features/quality/"
+      "src/apps/web/features/quality/"
     ],
     "steps": [
       "issues绑定QA指纹和证据，硬阻断无ignore，warnings有理由接受。",
@@ -1123,7 +1123,7 @@
       5
     ],
     "outputs": [
-      "apps/web/features/editions/",
+      "src/apps/web/features/editions/",
       "packages/locales/",
       "reports/M2-language-matrix.md"
     ],
@@ -1154,8 +1154,8 @@
       4
     ],
     "outputs": [
-      "packages/publisher/history.py",
-      "apps/web/features/history/",
+      "src/packages/publisher/history.py",
+      "src/apps/web/features/history/",
       "tests/concurrency/test_publish_rollback.py"
     ],
     "steps": [
@@ -1182,7 +1182,7 @@
       3
     ],
     "outputs": [
-      "packages/templates/registry.py",
+      "src/packages/templates/registry.py",
       "packages/publisher/rebuild.py",
       "tests/integration/test_zero_model_rebuild.py"
     ],
@@ -1213,7 +1213,7 @@
     ],
     "outputs": [
       "packages/translation_memory/",
-      "apps/web/features/memory/",
+      "src/apps/web/features/memory/",
       "tests/integration/test_memory_lifecycle.py"
     ],
     "steps": [
@@ -1241,7 +1241,7 @@
     ],
     "outputs": [
       "packages/search/",
-      "apps/web/features/search/",
+      "src/apps/web/features/search/",
       "tests/security/test_search_generations.py"
     ],
     "steps": [

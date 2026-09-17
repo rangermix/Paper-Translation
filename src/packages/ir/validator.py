@@ -12,8 +12,8 @@ from urllib.parse import urlsplit
 import jsonschema
 from .retention import original_only_blocks
 
-ROOT = Path(__file__).resolve().parents[2]
-SCHEMA = json.loads((ROOT / 'contracts/document-ir-v3.schema.json').read_text('utf-8'))
+from packages.paths import ROOT
+SCHEMA = json.loads((ROOT / 'res/schemas/document-ir-v3.schema.json').read_text('utf-8'))
 RASTER_TYPES = {'image/png', 'image/jpeg', 'image/webp'}
 PROSE = {'heading', 'paragraph', 'list_item', 'caption', 'table_cell', 'footnote'}
 

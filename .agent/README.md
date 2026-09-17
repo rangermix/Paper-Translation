@@ -1,7 +1,8 @@
 # Agent workspace
 
-Run maintained commands from the repository root. The application, tests,
-fixtures and deployment sources live directly at that root.
+Run maintained commands from the repository root. Executable sources live under `src/`, runtime resources under root `res/`, and
+prose/plans under `docs/`. Tests, fixtures and deployment definitions keep their
+root directories. Python harness helpers add `src/` to their import path.
 
 | Directory | Contents | Git |
 | --- | --- | --- |

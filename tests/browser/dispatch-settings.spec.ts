@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
 const initial = { generation: 3, dispatch_disabled: true, maintenance: false, unknown_attempts: 0, unknown_micro: 0, inflight_requests: 0 };

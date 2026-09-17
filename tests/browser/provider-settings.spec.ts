@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect, type Page, type Route } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 
 const profile = {
   generation: 7, configured: true, config_source: 'managed', has_api_key: true,

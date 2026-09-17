@@ -14,7 +14,7 @@ from pathlib import Path
 from packages.ir import canonical_bytes, digest, safe_path, strict_loads, validate_ir
 from packages.translation.languages import language_name
 
-ROOT = Path(__file__).resolve().parents[2]
+from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
 RENDERER_VERSION = 'reader-python-3.2.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}

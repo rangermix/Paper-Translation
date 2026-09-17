@@ -1,4 +1,4 @@
-from pathlib import Path
+from packages.paths import ROOT
 from packages.domain.errors import require
 from packages.ir import digest
 from packages.publisher.renderer import CSS_HASH, RENDERER_VERSION
@@ -11,19 +11,19 @@ V3_JS_HASH = 'eaf086e189cf7133a63ea5b8c9666072f97f7617c55bcaa93c9b21a838dfa426'
 
 
 def list_templates():
-    root = Path(__file__).resolve().parents[2]
-    require(digest((root / 'reference/reader-v1.css').read_bytes()) == CSS_HASH, 'TEMPLATE_HASH_MISMATCH')
+    root = ROOT
+    require(digest((root / 'res/reference/reader-v1.css').read_bytes()) == CSS_HASH, 'TEMPLATE_HASH_MISMATCH')
     kinds = ['heading', 'paragraph', 'list_item', 'code', 'math', 'figure', 'caption', 'table', 'table_cell', 'footnote', 'reference']
     v1 = {'id': 'reader-v1', 'version': '1', 'css_sha256': CSS_HASH,
-        'js_sha256': digest((root / 'packages/publisher/reader.js').read_bytes()),
-        'renderer_version': RENDERER_VERSION, 'renderer_sha256': digest((root / 'packages/publisher/renderer.py').read_bytes()),
-        'css_path': 'reference/reader-v1.css', 'js_path': 'packages/publisher/reader.js', 'kinds': kinds,
+        'js_sha256': digest((root / 'src/packages/publisher/reader.js').read_bytes()),
+        'renderer_version': RENDERER_VERSION, 'renderer_sha256': digest((root / 'src/packages/publisher/renderer.py').read_bytes()),
+        'css_path': 'res/reference/reader-v1.css', 'js_path': 'src/packages/publisher/reader.js', 'kinds': kinds,
         'safety_review': 'frozen-reference-v1'}
-    v2 = {**v1, 'id': 'reader-v2', 'version': '2', 'css_path': 'packages/templates/reader-v2.css',
-        'js_path': 'packages/templates/reader-v2.js', 'css_sha256': V2_CSS_HASH, 'js_sha256': V2_JS_HASH,
+    v2 = {**v1, 'id': 'reader-v2', 'version': '2', 'css_path': 'src/packages/templates/reader-v2.css',
+        'js_path': 'src/packages/templates/reader-v2.js', 'css_sha256': V2_CSS_HASH, 'js_sha256': V2_JS_HASH,
         'safety_review': '.agent/tmp/reports/core-evidence/reader-v2-review.md'}
-    v3 = {**v2, 'id': 'reader-v3', 'version': '3', 'css_path': 'packages/templates/reader-v3.css',
-        'js_path': 'packages/templates/reader-v3.js', 'css_sha256': V3_CSS_HASH, 'js_sha256': V3_JS_HASH,
+    v3 = {**v2, 'id': 'reader-v3', 'version': '3', 'css_path': 'src/packages/templates/reader-v3.css',
+        'js_path': 'src/packages/templates/reader-v3.js', 'css_sha256': V3_CSS_HASH, 'js_sha256': V3_JS_HASH,
         'safety_review': 'docs/shared/nonblocking-contract.md'}
     for entry in (v1, v2, v3):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')

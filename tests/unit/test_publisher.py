@@ -28,7 +28,7 @@ class Publishing(unittest.TestCase):
         html = (path / 'index.html').read_text('utf-8')
         for block in self.ir['source_revision']['blocks']:
             self.assertEqual(html.count('id="b-'+block['id']+'"'), 1, block['id'])
-        self.assertEqual((path/'reader.css').read_bytes(), (ROOT/'reference/reader-v1.css').read_bytes())
+        self.assertEqual((path/'reader.css').read_bytes(), (ROOT/'res/reference/reader-v1.css').read_bytes())
         self.assertIn('href="#b-p2"', html)
         self.assertNotIn('original.pdf', html)
 
@@ -36,7 +36,7 @@ class Publishing(unittest.TestCase):
         path=self.build()
         html=(path/'index.html').read_text('utf8')
         self.assertIn('<body style="overflow-wrap:anywhere">',html)
-        self.assertEqual((path/'reader.css').read_bytes(),(ROOT/'reference/reader-v1.css').read_bytes())
+        self.assertEqual((path/'reader.css').read_bytes(),(ROOT/'res/reference/reader-v1.css').read_bytes())
 
     def test_deterministic_builds_and_zip(self):
         a,b = self.build('a'),self.build('b')
@@ -109,7 +109,7 @@ class Publishing(unittest.TestCase):
         self.assertEqual(manifest['template_sha256'], template['css_sha256'])
         self.assertEqual((path/'reader.css').read_bytes(), (ROOT/template['css_path']).read_bytes())
         self.assertEqual((path/'reader.js').read_bytes(), (ROOT/template['js_path']).read_bytes())
-        self.assertNotEqual((path/'reader.css').read_bytes(), (ROOT/'reference/reader-v1.css').read_bytes())
+        self.assertNotEqual((path/'reader.css').read_bytes(), (ROOT/'res/reference/reader-v1.css').read_bytes())
 
     def test_v2_rejects_v1_hash(self):
         self.ir['render']['template_id'] = 'reader-v2'
@@ -135,7 +135,7 @@ class Publishing(unittest.TestCase):
         self.assertIn(expected, html)
         self.assertIn('Optional review &lt;incomplete&gt;', html)
         self.assertIn('chapter &lt;risk&gt;', html)
-        self.assertEqual((path/'reader.css').read_bytes(), (ROOT/'reference/reader-v1.css').read_bytes())
+        self.assertEqual((path/'reader.css').read_bytes(), (ROOT/'res/reference/reader-v1.css').read_bytes())
 
 
 if __name__ == '__main__':

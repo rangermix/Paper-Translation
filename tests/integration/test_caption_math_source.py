@@ -43,7 +43,7 @@ def test_caption_math_xref_preserves_owner_and_renders_independent_root_once(tmp
     html=(tmp_path/'artifact/index.html').read_text(encoding='utf8')
     assert html.count('id="b-'+math['id']+'"')==1 and f'href="#b-{math["id"]}"' in html
     assert html.index('id="b-fig"')<html.index('id="b-figcap"')<html.index('id="b-'+math['id']+'"')
-    assert (tmp_path/'artifact/reader.css').read_bytes()==(ROOT/'reference/reader-v1.css').read_bytes()
+    assert (tmp_path/'artifact/reader.css').read_bytes()==(ROOT/'res/reference/reader-v1.css').read_bytes()
 
 
 @pytest.mark.parametrize('change',[{'bbox':[0,0,612,792]},{'start':0,'end':50},{'visual_review_confirmed':False}])
@@ -123,6 +123,6 @@ def test_actual_efficient_math_annotation_plan_api_and_reader(client,database):
     report={'directory':str(out.relative_to(ROOT)),'source_before':original_hash,'source_after':digest(current['source']),'scope':scope,'api_201_count':len(audit),
         'every_prior_snapshot_and_original_file_unchanged':True,'every_base_raw_and_owner_unchanged':True,'every_crop_exact_original_pixels':True,
         'every_operation_idempotent_and_stale_etag_rejected':True,'each_math_independent_root_rendered_once_and_reachable':True,
-        'reader_v1_css_unchanged':file_hash(out/'artifact/reader.css')==file_hash(ROOT/'reference/reader-v1.css'),
+        'reader_v1_css_unchanged':file_hash(out/'artifact/reader.css')==file_hash(ROOT/'res/reference/reader-v1.css'),
         'reader_mode':'DRAFT; source review only, no translated target generated','independent_browser_review':'pending'}
     (out/'verification.json').write_text(json.dumps(report,indent=2));(ROOT/f'.agent/tmp/reports/core-evidence/latest-math-annotation-{scope}.json').write_text(json.dumps(report,indent=2))

@@ -4,7 +4,7 @@ const path=require('node:path');
 const fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
 const {repoRoot:root,inputPath,outputDirectory}=require('./browser_paths.cjs');
-const appRequire=createRequire(path.join(root,'apps/web/package.json'));
+const appRequire=createRequire(path.join(root,'src/apps/web/package.json'));
 const {chromium,expect}=appRequire('@playwright/test');
 
 async function run(){

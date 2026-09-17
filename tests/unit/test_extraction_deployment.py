@@ -55,7 +55,7 @@ def test_mlx_is_compose_managed_and_does_not_mount_host_credentials():
     assert not set(parser) & {'ports', 'volumes', 'secrets', 'command'}
     assert 'PADDLE_MLX_MODEL_ID' in parser['environment']
     assert doc['models']['paddle_extraction']['context_size'] == 8192
-    assert not Path('workers/mlx_server.py').exists()
+    assert not Path('src/workers/mlx_server.py').exists()
 
 
 def test_cuda_dependency_graphs_are_separate_and_frozen():
@@ -71,13 +71,13 @@ def test_cuda_dependency_graphs_are_separate_and_frozen():
 
 
 def test_export_refuses_overwrite_and_verifies_before_copy(tmp_path, monkeypatch):
-    from ops.export_parser_model import export_model
+    from tools.export_parser_model import export_model
     root = tmp_path / 'weights'; root.mkdir()
     (root / 'paddle').mkdir(); (root / 'paddle' / 'weight').write_bytes(b'locked')
     model = {'repo_id': 'PaddlePaddle/PaddleOCR-VL-1.6', 'local_directory': 'paddle',
         'revision': 'fixed', 'files': [{'path': 'weight'}]}
     calls = []
-    monkeypatch.setattr('ops.export_parser_model.verify_models', lambda path: calls.append(path) or {'repositories': [model]})
+    monkeypatch.setattr('tools.export_parser_model.verify_models', lambda path: calls.append(path) or {'repositories': [model]})
     target = tmp_path / 'export'
     assert export_model(root, target) == 'fixed'
     assert calls == [root]

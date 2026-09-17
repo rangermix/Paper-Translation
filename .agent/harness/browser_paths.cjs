@@ -17,8 +17,14 @@ function inputPath(value) {
   if (input.split('/').includes('..')) throw new Error('Browser input traversal is not allowed');
   for (const [before, after] of [
     ['apps/web/evidence/', '.agent/tmp/frontend/evidence/'],
+    ['src/apps/web/evidence/', '.agent/tmp/frontend/evidence/'],
     ['evidence/', '.agent/tmp/evidence/'],
     ['reports/', '.agent/tmp/reports/'],
+    ['reference/', 'res/reference/'],
+    ['apps/', 'src/apps/'],
+    ['packages/', 'src/packages/'],
+    ['workers/', 'src/workers/'],
+    ['tools/', 'src/tools/'],
   ]) {
     if (input.startsWith(before)) { input = after + input.slice(before.length); break; }
   }

@@ -8,12 +8,17 @@ import sys
 
 
 def repository_root():
+    def has_source(candidate):
+        # Historical schema-upgrade images retain the pre-src package layout.
+        return (candidate / 'pyproject.toml').is_file() and any(
+            (candidate / directory).is_dir() for directory in ('src/packages', 'packages'))
+
     for candidate in Path(__file__).resolve().parents:
-        if (candidate / 'pyproject.toml').is_file() and (candidate / 'packages').is_dir():
+        if has_source(candidate):
             return candidate
     # Reviewed helpers are also mounted at /harness in product test containers.
     candidate = Path('/app')
-    if (candidate / 'pyproject.toml').is_file() and (candidate / 'packages').is_dir():
+    if has_source(candidate):
         return candidate.resolve()
     raise RuntimeError('Cannot locate the product repository or container /app')
 
@@ -21,7 +26,7 @@ def repository_root():
 ROOT = repository_root()
 AGENT = ROOT / '.agent'
 TMP = AGENT / 'tmp'
-for directory in (ROOT, AGENT, Path(__file__).resolve().parent.parent, Path(__file__).resolve().parent):
+for directory in (ROOT / 'src', ROOT, AGENT, Path(__file__).resolve().parent.parent, Path(__file__).resolve().parent):
     if str(directory) not in sys.path:
         sys.path.insert(0, str(directory))
 
@@ -29,15 +34,45 @@ for directory in (ROOT, AGENT, Path(__file__).resolve().parent.parent, Path(__fi
 LEGACY_PREFIXES = (
     ('harness/memory', '.agent/memory'),
     ('apps/web/evidence', '.agent/tmp/frontend/evidence'),
+    ('src/apps/web/evidence', '.agent/tmp/frontend/evidence'),
     ('harness', '.agent/harness'),
     ('notes', '.agent/notes'),
     ('evidence', '.agent/tmp/evidence'),
     ('reports', '.agent/tmp/reports'),
     ('.local-data', '.agent/local-data'),
+    ('apps', 'src/apps'),
+    ('packages', 'src/packages'),
+    ('workers', 'src/workers'),
+    ('tools', 'src/tools'),
+    ('reference', 'res/reference'),
+    ('contracts', 'docs/contracts'),
+    ('milestones', 'docs/milestones'),
+    ('shared', 'docs/shared'),
+    ('ops', 'docs/ops'),
+    ('images', 'deployment/images'),
 )
 LEGACY_FILES = {
-    'IMPLEMENTATION_STATUS.md': '.agent/IMPLEMENTATION_STATUS.md',
     'apps/web/WORK_LOG.md': '.agent/notes/frontend-work-log.md',
+    'reference/README.md': 'docs/reference/README.md',
+    '00-product-baseline.md': 'docs/product-baseline.md',
+    'deployment/compose-contract.md': 'docs/deployment/compose-contract.md',
+    'deployment/extraction-acceleration.md': 'docs/deployment/extraction-acceleration.md',
+    'deployment/job-failure-repair-20260915.md': 'docs/deployment/job-failure-repair-20260915.md',
+    'deployment/local-translation-validation.md': 'docs/deployment/local-translation-validation.md',
+    'deployment/local-translation.md': 'docs/deployment/local-translation.md',
+    'deployment/mlx-backend/README.md': 'docs/deployment/mlx-backend.md',
+    'deployment/Dockerfile.test': 'deployment/images/test.Dockerfile',
+    'deployment/Dockerfile.verify': 'deployment/images/verify.Dockerfile',
+    'deployment/production.env.example': '.env.example',
+    'contracts/artifact-manifest.schema.json': 'res/schemas/artifact-manifest.schema.json',
+    'contracts/document-ir-v3.schema.json': 'res/schemas/document-ir-v3.schema.json',
+    'contracts/import-request.schema.json': 'res/schemas/import-request.schema.json',
+    'contracts/nonblocking-contract.schema.json': 'res/schemas/nonblocking-contract.schema.json',
+    'contracts/translation-response.schema.json': 'res/schemas/translation-response.schema.json',
+    'ops/download_parser_models.py': 'src/tools/download_parser_models.py',
+    'ops/export_parser_model.py': 'src/tools/export_parser_model.py',
+    'IMPLEMENTATION_STATUS.md': '.agent/IMPLEMENTATION_STATUS.md',
+    'src/apps/web/WORK_LOG.md': '.agent/notes/frontend-work-log.md',
     'package-review.md': '.agent/notes/package-review.md',
     'html/package-review.html': '.agent/tmp/validation/package-review.html',
     **{name: '.agent/tmp/validation/' + name for name in (

@@ -25,4 +25,4 @@ Document 的 original_filename 保留原始名称，title_user_edited/null 区�
 | UI 勾选来源核对、qa.valid 禁用按钮 | 移除质量许可，保留外发与运行条件；阅读优先 | NB-P06/P10 |
 | job needs_review / ready 与错误原因 | 旧状态明确解释，新任务完成带提示；模型快照和日志真实显示 | NB-P02/P07 |
 
-API 和 TypeScript 使用上述契约；UI 不以问题数量计算操作权限。规范 schema 位于 contracts/nonblocking-contract.schema.json。旧 M0–M2 验收记录不变，NB-AT01–24 独立登记。
+API 和 TypeScript 使用上述契约；UI 不以问题数量计算操作权限。规范 schema 位于 res/schemas/nonblocking-contract.schema.json。旧 M0–M2 验收记录不变，NB-AT01–24 独立登记。

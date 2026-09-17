@@ -33,14 +33,16 @@ On a supported Linux/Windows Python environment, install locked development
 dependencies with `uv sync --frozen`. Start only the dedicated database, then set
 `TEST_DATABASE_URL` to
 `postgresql+psycopg://library_test:library_test_only@127.0.0.1:55439/library_test`
-and run `uv run pytest -q -rs`. Without this variable PostgreSQL cases skip.
+and run `uv run pytest -q -rs`. Pytest adds `src/` to the import path. For other
+host Python module commands, set `PYTHONPATH=src`. Without the database variable
+PostgreSQL cases skip.
 On macOS, use the Linux test container for the locked environment and real child
 resource-limit test. Frontend unit/build checks are:
 
 ```sh
-npm --prefix apps/web ci
-npm --prefix apps/web test
-npm --prefix apps/web run build
+npm --prefix src/apps/web ci
+npm --prefix src/apps/web test
+npm --prefix src/apps/web run build
 ```
 
 See [browser tests](browser/README.md) for the local preview, evidence-dependent

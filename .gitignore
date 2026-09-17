@@ -22,7 +22,7 @@ htmlcov/
 
 # Frontend dependencies, build output and test caches.
 node_modules/
-/apps/web/dist/
+/src/apps/web/dist/
 *.tsbuildinfo
 .vite/
 .npm/

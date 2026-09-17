@@ -156,23 +156,23 @@ def outside(current_source_overlay=False, allocator_arenas=None, research_paper=
         args += ['-e', 'MALLOC_ARENA_MAX=' + str(allocator_arenas)]
     mounts = [(root / 'fixtures', '/fixtures', True), (root / '.agent/harness', '/harness', True), (output, '/result', False)]
     if research_paper:
-        mounts.append((root / 'reference/legacy/source', '/papers', True))
+        mounts.append((root / 'res/reference/legacy/source', '/papers', True))
     overlays = {}
     if current_source_overlay:
-        for relative in ('packages/parsers/pdf_docling.py', 'workers/parser/main.py'):
+        for relative in ('src/packages/parsers/pdf_docling.py', 'src/workers/parser/main.py'):
             path = root / relative
             mounts.append((path, '/app/' + relative, True))
             overlays[relative] = digest(path.read_bytes())
     if virtual_limit_gib is not None:
         assert 8 < virtual_limit_gib <= 64, 'Diagnostic virtual ceiling must remain finite; actual cgroup stays4GiB'
-        original = (root / 'workers/parser/main.py').read_text()
+        original = (root / 'src/workers/parser/main.py').read_text()
         needle = 'verify_memory_envelope()'
         assert original.count(needle) == 1
         probe = output / 'worker-limit-probe.py'
         probe.write_text(original.replace(needle, needle + f'\n            resource.setrlimit(resource.RLIMIT_AS,({virtual_limit_gib}*1024**3,{virtual_limit_gib}*1024**3))'))
-        mounts = [mount for mount in mounts if mount[1] != '/app/workers/parser/main.py']
-        mounts.append((probe, '/app/workers/parser/main.py', True))
-        overlays['workers/parser/main.py'] = digest(probe.read_bytes())
+        mounts = [mount for mount in mounts if mount[1] != '/app/src/workers/parser/main.py']
+        mounts.append((probe, '/app/src/workers/parser/main.py', True))
+        overlays['src/workers/parser/main.py'] = digest(probe.read_bytes())
     for host, target, readonly in mounts:
         args += ['--mount', f'type=bind,source={host},target={target}' + (',readonly' if readonly else '')]
     args += [image, 'python', '/harness/parser_concurrency_matrix.py', '--inside']

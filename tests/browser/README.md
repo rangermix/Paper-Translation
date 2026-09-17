@@ -1,10 +1,10 @@
 # Browser checks
 
 Run from the repository root. Install the locked frontend dependencies with
-`npm --prefix apps/web ci`, then start a local frontend in a separate terminal:
+`npm --prefix src/apps/web ci`, then start a local frontend in a separate terminal:
 
 ```sh
-npm --prefix apps/web run dev -- --port 5181 --strictPort
+npm --prefix src/apps/web run dev -- --port 5181 --strictPort
 ```
 
 Run the default suite against that frontend. Its application tests mock API
@@ -14,10 +14,10 @@ Use a new output directory for every run:
 ```sh
 LIBRARY_BROWSER_URL=http://127.0.0.1:5181 \
 LIBRARY_BROWSER_OUTPUT=.agent/tmp/browser-<unique-run> \
-npm --prefix apps/web run test:browser
+npm --prefix src/apps/web run test:browser
 ```
 
-`npm --prefix apps/web run test:browser -- --list` collects the suite without
+`npm --prefix src/apps/web run test:browser -- --list` collects the suite without
 requiring a local evidence archive.
 
 ## Live acceptance instance

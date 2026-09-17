@@ -15,7 +15,7 @@ Detection is deliberately conservative. Ambiguous name-shaped or title-cased tex
 
 ## Translation and editing
 
-`packages/ir/retention.py` owns the read-only `academic-original-only-v1` policy. It uses source structure, reading order and extracted text; it does not call a model, fetch metadata, change source text/AST/hash/provenance, or mutate the source `translatable` field. The same policy is used for unit planning, preflight counts, draft editability, candidate/review selections, glossary impact, QA and sealed-result validation. Detected content is also omitted from adjacent request context.
+`src/packages/ir/retention.py` owns the read-only `academic-original-only-v1` policy. It uses source structure, reading order and extracted text; it does not call a model, fetch metadata, change source text/AST/hash/provenance, or mutate the source `translatable` field. The same policy is used for unit planning, preflight counts, draft editability, candidate/review selections, glossary impact, QA and sealed-result validation. Detected content is also omitted from adjacent request context.
 
 New sealed results use `status=retained`, an empty `target_inline`, and one of `original_author_list`, `original_affiliation`, `original_contact`, `original_identifier`, `original_bibliography_heading` or `original_reference`. These are intentional skips, not missing translations or fallback failures. They do not create translation tasks, translation permits, missing-translation findings or human-review claims. Existing code, formula and image retention continues.
 

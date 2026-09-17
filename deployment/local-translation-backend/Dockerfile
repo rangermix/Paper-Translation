@@ -5,7 +5,7 @@ FROM --platform=$BUILDPLATFORM python:3.12-slim-trixie@sha256:78387bc3881b827312
 COPY --from=existing /vllm-metal /vllm-metal
 COPY deployment/local-translation-backend/patch.py /patch.py
 COPY deployment/local-translation-backend/translation_startup.py /vllm-metal/lib/python3.12/site-packages/translation_startup.py
-COPY packages/local_models/ /catalog/
+COPY src/packages/local_models/ /catalog/
 RUN python /patch.py
 FROM scratch
 LABEL org.opencontainers.image.title="Paper Translation Docker-managed MLX translation and Paddle backend" io.paper-translation.runtime-platform="darwin/arm64"

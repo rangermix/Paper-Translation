@@ -1,7 +1,7 @@
 # Deployment file inventory
 
-Deployment inputs live in [`deployment/`](../../deployment/) and Docker recipes
-in [`deployment/images/`](../../deployment/images/). The root `compose.yaml` is
+Deployment inputs live in [`deployment/`](../../deployment) and Docker recipes
+in [`deployment/images/`](../../deployment/images). The root `compose.yaml` is
 local and ignored; `compose.example.yaml` is the portable standalone template.
 
 The repository layout review retained these distinct build/runtime/test inputs:

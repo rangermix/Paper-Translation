@@ -25,13 +25,13 @@ FROM dependencies-${PARSER_FLAVOR} AS dependencies
 FROM python:3.12-slim-trixie@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea AS models
 WORKDIR /app
 COPY deployment/parser-models.lock.json /app/deployment/parser-models.lock.json
-COPY ops/download_parser_models.py /app/ops/download_parser_models.py
-RUN python /app/ops/download_parser_models.py --destination /opt/docling/models
+COPY src/tools/download_parser_models.py /app/src/tools/download_parser_models.py
+RUN python /app/src/tools/download_parser_models.py --destination /opt/docling/models
 
 FROM python:3.12-slim-trixie@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea AS runtime
 ARG SOURCE_COMMIT=uncommitted
 LABEL org.opencontainers.image.title="Offline PDF parser" org.opencontainers.image.revision=$SOURCE_COMMIT
-ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app HOME=/tmp \
+ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app/src HOME=/tmp \
     DOCLING_ARTIFACTS_PATH=/opt/docling/models HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
     PARSER_INPUTS=/inputs PARSER_OUTPUTS=/outputs OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 TOKENIZERS_PARALLELISM=false \
     PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True PADDLE_PDX_DISABLE_DEVICE_FALLBACK=True \
@@ -44,14 +44,15 @@ COPY --from=dependencies /app/.venv /app/.venv
 COPY --from=dependencies /app/.venv-paddle /app/.venv-paddle
 RUN /usr/local/bin/python -m pip uninstall --yes pip && /usr/local/bin/python -c "import shutil; shutil.rmtree('/usr/local/lib/python3.12/ensurepip')"
 COPY --from=models /opt/docling/models /opt/docling/models
-COPY packages/ir/ /app/packages/ir/
-COPY packages/parsers/ /app/packages/parsers/
-COPY packages/metadata/discovery.py /app/packages/metadata/discovery.py
-COPY packages/quality/ /app/packages/quality/
-COPY packages/domain/workflow.py /app/packages/domain/workflow.py
-COPY workers/parser/ /app/workers/parser/
-COPY ops/export_parser_model.py /app/ops/export_parser_model.py
-COPY contracts/ /app/contracts/
+COPY src/packages/paths.py /app/src/packages/paths.py
+COPY src/packages/ir/ /app/src/packages/ir/
+COPY src/packages/parsers/ /app/src/packages/parsers/
+COPY src/packages/metadata/discovery.py /app/src/packages/metadata/discovery.py
+COPY src/packages/quality/ /app/src/packages/quality/
+COPY src/packages/domain/workflow.py /app/src/packages/domain/workflow.py
+COPY src/workers/parser/ /app/src/workers/parser/
+COPY src/tools/export_parser_model.py /app/src/tools/export_parser_model.py
+COPY res/schemas/ /app/res/schemas/
 COPY deployment/parser-models.lock.json /app/deployment/parser-models.lock.json
 COPY pyproject.toml uv.lock /app/
 COPY deployment/cuda/ /app/deployment/cuda/

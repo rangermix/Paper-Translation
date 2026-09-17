@@ -3,8 +3,9 @@ from pathlib import Path
 import hashlib
 from packages.ir import safe_path, strict_loads
 from .inspect import PDFError
+from packages.paths import ROOT
 
-LOCK_PATH = Path(__file__).resolve().parents[2]/'deployment/parser-models.lock.json'
+LOCK_PATH = ROOT/'deployment/parser-models.lock.json'
 
 
 def parser_version(profile='docling-v1'):

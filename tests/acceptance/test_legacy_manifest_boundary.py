@@ -15,7 +15,7 @@ import packages.seed.legacy as legacy
 ])
 def test_legacy_entry_paths_cannot_bypass_the_hashed_file_list(monkeypatch, field, value):
     # Synthetic in-memory release metadata: never change the reference package.
-    frozen = (legacy.ROOT / 'reference/legacy-manifest.json').read_bytes()
+    frozen = (legacy.ROOT / 'res/reference/legacy-manifest.json').read_bytes()
     changed = copy.deepcopy(json.loads(frozen))
     changed['documents'][0][field] = value
     original = legacy.strict_loads
@@ -26,9 +26,9 @@ def test_legacy_entry_paths_cannot_bypass_the_hashed_file_list(monkeypatch, fiel
 
 
 def test_changed_legacy_html_bytes_are_rejected_without_touching_the_reference(tmp_path, monkeypatch):
-    release = json.loads((legacy.ROOT / 'reference/legacy-manifest.json').read_bytes())
+    release = json.loads((legacy.ROOT / 'res/reference/legacy-manifest.json').read_bytes())
     entry = release['documents'][0]['files'][0]
-    original_bytes = (legacy.ROOT / entry['path']).read_bytes()
+    original_bytes = (legacy.RESOURCE_ROOT / entry['path']).read_bytes()
     changed = tmp_path / 'changed-legacy.html'
     changed.write_bytes(original_bytes + b'\nChanged unreviewed bytes')
     original_safe_path = legacy.safe_path
@@ -37,4 +37,4 @@ def test_changed_legacy_html_bytes_are_rejected_without_touching_the_reference(t
     with pytest.raises(DomainError) as caught:
         legacy.checked_release()
     assert caught.value.code == 'LEGACY_HASH_MISMATCH'
-    assert (legacy.ROOT / entry['path']).read_bytes() == original_bytes
+    assert (legacy.RESOURCE_ROOT / entry['path']).read_bytes() == original_bytes

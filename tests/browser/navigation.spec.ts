@@ -1,4 +1,4 @@
-import { test, expect } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 
 test('keyboard skip link focuses current content without changing the route', async ({ page }) => {
   await page.route('**/api/v1/**', route => route.fulfill({ json:

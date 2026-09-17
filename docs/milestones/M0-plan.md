@@ -38,7 +38,7 @@
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `docs/decision-records.md`
-- `reference/reader-v1.css`
+- `res/reference/reader-v1.css`
 - `tests/contracts/test_scope.py`
 
 **步骤：**
@@ -57,9 +57,9 @@
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/`
+- `src/apps/web/`
 - `apps/api/`
-- `workers/`
+- `src/workers/`
 - `compose.yaml`
 - `deployment/images/`
 - `tests/compose/`
@@ -81,7 +81,7 @@
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/contracts/`
-- `packages/ir/validator.py`
+- `src/packages/ir/validator.py`
 - `tests/unit/test_ir_semantics.py`
 
 **步骤：**
@@ -162,7 +162,7 @@
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `apps/web/features/upload-pdf/`
+- `src/apps/web/features/upload-pdf/`
 - `apps/api/uploads/`
 - `packages/ingestion/pdf_intake.py`
 - `workers/parser/inspect.py`
@@ -183,8 +183,8 @@
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `packages/seed/legacy.py`
-- `reference/legacy-manifest.json`
+- `src/packages/seed/legacy.py`
+- `res/reference/legacy-manifest.json`
 - `tests/integration/test_legacy_seed.py`
 
 **步骤：**
@@ -294,7 +294,7 @@ M0从空库初始化，不创建Users或Workspace；受控旧资料只seed一次
 
 ```text
 实施对照文库 v3 的 M0。先完整读取 docs/product-baseline.md、docs/shared/*、docs/deployment/compose-contract.md、docs/milestones/M0-spec.md 和本Plan；以最新五条用户约束为最高优先级。
-检查实际代码和上阶段证据，先为 M0 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
+检查实际代码和上阶段证据，先为 M0 的退出规格写自动化测试。按 docs/contracts/implementation-backlog.json 的依赖领取工作包。
 只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
 保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。
 原型功能不等于生产实现。所有报告区分已运行、未运行和环境阻塞；禁止将mock测试当真实模型/Compose验收。

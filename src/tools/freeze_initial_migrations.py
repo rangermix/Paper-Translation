@@ -9,8 +9,9 @@ from sqlalchemy.schema import CreateIndex, CreateTable
 from packages.domain.models import Base
 from packages.ir import canonical_bytes, digest
 
-ROOT = Path(__file__).resolve().parents[1]
-destination = ROOT / 'packages/domain/migrations'
+from packages.paths import SOURCE_ROOT
+
+destination = SOURCE_ROOT / 'packages/domain/migrations'
 if destination.exists():
     raise SystemExit('Frozen migrations already exist; append a new migration instead.')
 metadata = MetaData()

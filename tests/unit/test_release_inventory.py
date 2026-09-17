@@ -13,7 +13,7 @@ def inventory(tmp_path, monkeypatch):
     scans = tmp_path / '.agent/tmp/evidence/release'
     scans.mkdir(parents=True)
     monkeypatch.setattr(release_inventory, 'DIRECTORY', scans)
-    for name in ('pyproject.toml', 'uv.lock', 'apps/web/package-lock.json', 'deployment/parser-models.lock.json'):
+    for name in ('pyproject.toml', 'uv.lock', 'src/apps/web/package-lock.json', 'deployment/parser-models.lock.json'):
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('synthetic locked input')

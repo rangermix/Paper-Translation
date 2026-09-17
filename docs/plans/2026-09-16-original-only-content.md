@@ -20,7 +20,7 @@ The current configured branch is `main`; preserve all unrelated dirty files and 
 
 ## Task 1: Detection and translation policy
 
-Files: create `packages/ir/retention.py`, `tests/unit/test_original_only.py`; modify `packages/translation/planner.py`, `packages/editorial/drafts.py`, `packages/ir/validator.py`.
+Files: create `src/packages/ir/retention.py`, `tests/unit/test_original_only.py`; modify `src/packages/translation/planner.py`, `src/packages/editorial/drafts.py`, `src/packages/ir/validator.py`.
 
 1. Add failing cases for bylines/affiliations, contact lines, bibliography headings and entries, reference-section boundaries, and false-positive prose. Assert planning does not mutate the input.
 2. Run focused pytest and record the expected missing-policy failures in the run directory.
@@ -29,7 +29,7 @@ Files: create `packages/ir/retention.py`, `tests/unit/test_original_only.py`; mo
 
 ## Task 2: Reader and editing consistency
 
-Files: modify `packages/publisher/renderer.py`, `apps/api/editorial.py`, `apps/api/candidates.py`, `apps/api/workflow.py`, `apps/api/knowledge.py`; add reader assertions and `tests/browser/original-only.spec.ts`.
+Files: modify `src/packages/publisher/renderer.py`, `src/apps/api/editorial.py`, `src/apps/api/candidates.py`, `src/apps/api/workflow.py`, `src/apps/api/knowledge.py`; add reader assertions and `tests/browser/original-only.spec.ts`.
 
 1. Add failing assertions that retained content occurs once, has no target/fallback placeholder, and remains visible in source/target/bilingual views.
 2. Render retained text/headings without language-toggle hiding and with full available width. Keep the frozen reader-v1 CSS untouched; do not edit existing artifacts.

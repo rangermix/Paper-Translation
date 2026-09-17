@@ -46,7 +46,7 @@ API 由 `apps/api` 实现，具体实现与验收范围以当前代码和执行�
 }
 ```
 
-严格契约：[import-request.schema.json](../../contracts/import-request.schema.json)。`document_id`可用于为已有文档提交新PDF来源，但必须显式指定且遵守generation；同名不自动覆盖。重复hash返回候选文档，用户选择复用来源或独立文档；唯一键确保资产不会重复写入。
+严格契约：[import-request.schema.json](../../res/schemas/import-request.schema.json)。`document_id`可用于为已有文档提交新PDF来源，但必须显式指定且遵守generation；同名不自动覆盖。重复hash返回候选文档，用户选择复用来源或独立文档；唯一键确保资产不会重复写入。
 
 **不存在** `/login`、`/users`、`/workspaces`、`/roles`、`/imports/url`、`/imports/text`、`/imports/bilingual`、`/imports/ir`或附件上传路由。上传schema之外的任意JSON不作为文档来源。原文中普通https链接不是导入API。
 

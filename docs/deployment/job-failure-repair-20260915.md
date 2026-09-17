@@ -13,7 +13,7 @@ blocks and 26 output files. Source validation, sealing and quality checks ran
 inside a transaction that held the job/task locks for longer than the
 60-second lease. Those same locks prevented the heartbeat from renewing it.
 
-`packages/jobs/queue.py` now retains proof of a successful, unexpired fence check
+`src/packages/jobs/queue.py` now retains proof of a successful, unexpired fence check
 only for that exact SQLAlchemy transaction and lease identity. Repeated checks
 under continuously held locks still validate status, fence, control epoch and
 document lifecycle. Releasing the transaction or rolling back a savepoint

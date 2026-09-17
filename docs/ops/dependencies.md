@@ -2,17 +2,17 @@
 
 The application and parser use separate images. Their base images are pinned by
 registry digest. `uv.lock` pins the Python dependency closure and hashes; the
-frontend uses `apps/web/package-lock.json`. Runtime images include the built web
+frontend uses `src/apps/web/package-lock.json`. Runtime images include the built web
 bundle, native libraries and per-image Python/system package inventories under
 `/app/release/`. A runtime manifest records installed system-package versions;
 the final image digest identifies their exact bytes.
 
 `deployment/parser-models.lock.json` is the parser model allowlist. Model downloads
-occur during image build through `ops/download_parser_models.py`. Enabled layout
+occur during image build through `src/tools/download_parser_models.py`. Enabled layout
 table, OCR, formula/code and VLM models must match every declared byte count and
 hash. CPU/CUDA parsing uses fixed local assets without network access. Apple MLX
 recognition uses the separately packaged, verified Docker Model Runner backend.
-Optional translation weights have their own `packages/local_models/models.lock.json`
+Optional translation weights have their own `src/packages/local_models/models.lock.json`
 and are downloaded only on explicit use; settings reads and startup do not prepare
 them. See [local translation](../deployment/local-translation.md).
 

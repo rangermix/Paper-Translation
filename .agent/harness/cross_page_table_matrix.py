@@ -57,7 +57,7 @@ def main():
     mounts=[(ROOT/'fixtures/cross-page-resources','/source',True),(ROOT/'.agent/harness','/harness',True),(output/'actual','/result',False)]
     overlays={}
     if args.current_source_overlay:
-        for relative in ['packages/parsers/pdf_docling.py','packages/parsers/fidelity.py']:
+        for relative in ['src/packages/parsers/pdf_docling.py','src/packages/parsers/fidelity.py']:
             mounts.append((ROOT/relative,'/app/'+relative,True));overlays[relative]=digest((ROOT/relative).read_bytes())
     for host,target,readonly in mounts:argv+=['--mount',f'type=bind,source={host},target={target}'+(',readonly' if readonly else '')]
     argv += [image,'python','/harness/parser_corpus.py','--pdf','/source/cross-page-resources.pdf','--output','/result']

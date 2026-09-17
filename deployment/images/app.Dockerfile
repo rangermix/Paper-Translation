@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 FROM node:22-trixie-slim@sha256:7b8a0c89c54499bee567618f96578e1a12a800f062fbdbfd1fb6a443fa6f6284 AS frontend
 WORKDIR /web
-COPY apps/web/package.json apps/web/package-lock.json ./
+COPY src/apps/web/package.json src/apps/web/package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY apps/web/ ./
+COPY src/apps/web/ ./
 RUN npm run build
 
 FROM ghcr.io/astral-sh/uv:0.10.7@sha256:edd1fd89f3e5b005814cc8f777610445d7b7e3ed05361f9ddfae67bebfe8456a AS uv
@@ -18,7 +18,7 @@ FROM postgres:15-trixie@sha256:9b1d34adbce1dd07ee6e94b4a2cf698884b89bd44a6c9c12f
 FROM python:3.12-slim-trixie@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea AS runtime
 ARG SOURCE_COMMIT=uncommitted
 LABEL org.opencontainers.image.title="Bilingual personal PDF library" org.opencontainers.image.revision=$SOURCE_COMMIT
-ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app HOME=/tmp
+ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app/src HOME=/tmp
 WORKDIR /app
 # PostgreSQL 15 server and client share a major version. Exact dpkg versions are
 # included in the built image inventory and release evidence.
@@ -31,15 +31,15 @@ COPY --from=postgres_client /usr/lib/postgresql/15/bin/pg_dump /usr/local/bin/pg
 COPY --from=postgres_client /usr/lib/postgresql/15/bin/pg_restore /usr/local/bin/pg_restore
 COPY --from=postgres_client /usr/lib/postgresql/15/bin/psql /usr/local/bin/psql
 RUN pg_dump --version && pg_restore --version && psql --version
-COPY apps/api/ /app/apps/api/
-COPY packages/ /app/packages/
-COPY workers/ /app/workers/
-COPY contracts/ /app/contracts/
+COPY src/apps/api/ /app/src/apps/api/
+COPY src/packages/ /app/src/packages/
+COPY src/workers/ /app/src/workers/
+COPY res/schemas/ /app/res/schemas/
 COPY deployment/parser-models.lock.json /app/deployment/parser-models.lock.json
-COPY reference/ /app/reference/
+COPY res/reference/ /app/res/reference/
 COPY fixtures/ /app/fixtures/
 COPY pyproject.toml uv.lock /app/
-COPY --from=frontend /web/dist/ /app/apps/web/dist/
+COPY --from=frontend /web/dist/ /app/src/apps/web/dist/
 RUN python -c "from importlib.metadata import distributions; import json; from pathlib import Path; Path('/app/release/python-packages.json').write_text(json.dumps(sorted([{'name': d.metadata['Name'], 'version': d.version, 'license': d.metadata.get('License-Expression') or d.metadata.get('License', 'UNKNOWN')} for d in distributions()], key=lambda x:x['name']), indent=2))"
 RUN python -c "from packages.parsers.models import parser_version; print(parser_version())"
 ARG SOURCE_TREE_SHA256=unrecorded

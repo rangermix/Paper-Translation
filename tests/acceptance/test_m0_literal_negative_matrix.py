@@ -35,7 +35,7 @@ def test_literal_ir_attack_is_rejected_before_publication(attack):
 @pytest.mark.parametrize('attack',['one-color','css-import'])
 def test_real_template_validation_rejects_changed_frozen_css_without_accepting_snapshot(monkeypatch,attack):
     original=Path.read_bytes
-    css=ROOT/'reference/reader-v1.css';before=original(css)
+    css=ROOT/'res/reference/reader-v1.css';before=original(css)
     def changed(path):
         value=original(path)
         if path==css:

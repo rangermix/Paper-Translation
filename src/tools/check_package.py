@@ -8,8 +8,8 @@ from pathlib import Path
 from urllib.parse import unquote
 import jsonschema,yaml
 from bs4 import BeautifulSoup
-R=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(R))
+R=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(R/'src'))
 from packages.ir import canonical_bytes,validate_ir
 checks=[]
 
@@ -38,7 +38,7 @@ def rejects(fn):
  raise AssertionError('Invalid input was not rejected')
 def digest(b):return hashlib.sha256(b).hexdigest()
 def main():
- req=load('contracts/requirements.json');tasks=load('contracts/implementation-backlog.json');gates=load('contracts/exit-gates.json')
+ req=load('docs/contracts/requirements.json');tasks=load('docs/contracts/implementation-backlog.json');gates=load('docs/contracts/exit-gates.json')
  rs={x['id']:x for x in req};ts={x['id']:x for x in tasks};gs={x['id']:x for x in gates};ats=[a for x in req for a in x['tests']]
  check('65 unique requirements',lambda:must(len(rs)==len(req)==65,'count'))
  check('42 unique implementation work packages',lambda:must(len(ts)==len(tasks)==42,'count'))
@@ -57,18 +57,18 @@ def main():
   while todo:
    ready={i for i in todo if set(ts[i]['depends_on'])<=done};must(ready,'cycle');todo-=ready;done|=ready
  check('dependency graph acyclic',dag)
- for fn in sorted(p.name for p in (R/'contracts').glob('*.schema.json')):
-  check('JSON Schema syntax: '+fn,lambda fn=fn:jsonschema.Draft202012Validator.check_schema(load('contracts/'+fn)))
- sample=load('fixtures/sample-document-v3.json');isc=load('contracts/import-request.schema.json')
+ for fn in sorted(p.name for p in (R/'res/schemas').glob('*.schema.json')):
+  check('JSON Schema syntax: '+fn,lambda fn=fn:jsonschema.Draft202012Validator.check_schema(load('res/schemas/'+fn)))
+ sample=load('fixtures/sample-document-v3.json');isc=load('res/schemas/import-request.schema.json')
  check('PDF IR fixture passes production syntax and semantic invariants',lambda:validate_ir(sample))
- check('all declared block kinds covered by fixture',lambda:must({b['kind'] for b in sample['source_revision']['blocks']}==set(load('contracts/document-ir-v3.schema.json')['$defs']['block']['properties']['kind']['enum']),'omitted kind'))
+ check('all declared block kinds covered by fixture',lambda:must({b['kind'] for b in sample['source_revision']['blocks']}==set(load('res/schemas/document-ir-v3.schema.json')['$defs']['block']['properties']['kind']['enum']),'omitted kind'))
  def assets():
   for a in sample['source_revision']['assets']:
    p=R/a['storage_key'];must(p.is_file() and digest(p.read_bytes())==a['sha256'] and p.stat().st_size==a['byte_size'],'asset mismatch')
   must((R/'fixtures/sample.pdf').read_bytes().startswith(b'%PDF-'),'not PDF')
  check('fixture asset bytes and PDF signature match',assets)
  check('PDF upload request positive',lambda:jsonschema.validate(load('fixtures/import-pdf.json'),isc))
- check('provider output fixture positive',lambda:jsonschema.validate(load('fixtures/provider-output.json'),load('contracts/translation-response.schema.json')))
+ check('provider output fixture positive',lambda:jsonschema.validate(load('fixtures/provider-output.json'),load('res/schemas/translation-response.schema.json')))
  for kind in ['url','upload','local_html','bilingual','text','markdown','docx','zip']:
   check('reject source kind '+kind,lambda kind=kind:rejects(lambda:jsonschema.validate({'source':{'kind':kind,'upload_id':'upl_fixture'}},isc)))
  for field,val in [('url','https://example.invalid'),('attachments',[]),('workspace_id','ws_1'),('user_id','u1')]:
@@ -103,11 +103,11 @@ def main():
     for v in x.values():scan(v)
    elif isinstance(x,list):
     for v in x:scan(v)
-  for fn in ['document-ir-v3.schema.json','artifact-manifest.schema.json','import-request.schema.json']:scan(load('contracts/'+fn))
+  for fn in ['document-ir-v3.schema.json','artifact-manifest.schema.json','import-request.schema.json']:scan(load('res/schemas/'+fn))
  check('public and IR schemas omit identity fields',no_identity_schema)
- check('frozen reader-v1 CSS equals supplied version',lambda:must(digest((R/'reference/reader-v1.css').read_bytes())=='51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8','style drift'))
+ check('frozen reader-v1 CSS equals supplied version',lambda:must(digest((R/'res/reference/reader-v1.css').read_bytes())=='51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8','style drift'))
  def reference():
-  for p,h in load('reference/reference-files.sha256.json').items():must(digest((R/p).read_bytes())==h,'changed reference '+p)
+  for p,h in load('res/reference/reference-files.sha256.json').items():must(digest((R/'res'/p).read_bytes())==h,'changed reference '+p)
  check('controlled reader resources match manifest',reference)
  check('no font or actual credential files in package',lambda:must(not any(p.suffix.lower() in {'.ttf','.otf','.woff','.woff2','.eot','.pem','.key'} or p.name=='.env' for p in package_files()),'font/secret found'))
  def composed():
@@ -125,7 +125,7 @@ def main():
   must('backups:/backups' in s['init']['volumes'],'backup volume not initialized')
  check('Compose target graph, loopback, isolation and single port (static only)',composed)
  def scope():
-  s=load('contracts/scope.json');must(s['supported_upload_mime_types']==['application/pdf'],'PDF only')
+  s=load('docs/contracts/scope.json');must(s['supported_upload_mime_types']==['application/pdf'],'PDF only')
   for k in ['url_import_enabled','automatic_remote_assets','identity_system','login_enabled','teams_enabled','acl_enabled','reverse_proxy_included']:must(s[k] is False,'scope '+k)
  check('scope reflects all five user changes',scope)
  def docs():
@@ -138,11 +138,11 @@ def main():
     must(target.exists(),f'{p.relative_to(R)} -> {h}')
  check('all Markdown links resolve',docs)
  def html():
-  release=load('reference/legacy-manifest.json')
+  release=load('res/reference/legacy-manifest.json')
   # Seed navigation is patched to the app root at import; reference bytes stay frozen.
   patch=release['navigation_patch']
-  parsers={(R/item['html_path']).resolve():BeautifulSoup(
-   (R/item['html_path']).read_text().replace(patch['from'],patch['to'],1),'html.parser')
+  parsers={(R/'res'/item['html_path']).resolve():BeautifulSoup(
+   (R/'res'/item['html_path']).read_text().replace(patch['from'],patch['to'],1),'html.parser')
    for item in release['documents']}
   for p,soup in parsers.items():
    for n in soup.select('a[href],img[src],script[src],link[href],iframe[src]'):

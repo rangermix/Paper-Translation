@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '../../apps/web/node_modules/@playwright/test/index.mjs';
+import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
 const profile = { generation: 2, profile_hash: 'a'.repeat(64), configured: true, dispatch_configuration_ready: true,

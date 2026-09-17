@@ -21,7 +21,7 @@ request. The first translation/test prepares the selected model automatically.
 **立即准备模型** downloads it explicitly. All other models remain untouched.
 Files are cached in the `local_translation_models` Docker volume. Each file is
 checked against its fixed revision, byte size and SHA-256 in
-`packages/local_models/models.lock.json`. Interrupted or corrupt files are not
+`src/packages/local_models/models.lock.json`. Interrupted or corrupt files are not
 published; retry retains previously verified files. DMR also keeps its imported
 model artifact. Allow disk space for both copies.
 

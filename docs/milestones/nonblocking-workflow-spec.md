@@ -2,7 +2,7 @@
 
 日期：2026-09-09。状态：**NB-P01–P12 已实现并交付**。本文件定义 NB 产品行为；正式 8080/schema 12 的实际验收、已执行范围和真实付费 Provider NOT RUN 边界见[本轮交付记录](../../.agent/notes/nonblocking-20260909-acceptance.md)及 backlog。
 
-实施计划见 [Plan](nonblocking-workflow-plan.md)，可执行任务登记见 [backlog](../../contracts/nonblocking-workflow-backlog.json)。本轮采用独立 NB 编号，不改写 M0–M2 的历史验收结果。
+实施计划见 [Plan](nonblocking-workflow-plan.md)，可执行任务登记见 [backlog](../contracts/nonblocking-workflow-backlog.json)。本轮采用独立 NB 编号，不改写 M0–M2 的历史验收结果。
 
 ## 1. 用户要求与优先级
 
@@ -26,8 +26,8 @@ NB-R01 明确覆盖旧文档中“来源覆盖失败、数字/保护原子差异
 
 本节保留 2026-09-09 实施前观察，不代表下述问题在交付版本中仍然存在。
 
-- 当前来源预检和确认在 `apps/api/workflow.py` 依据 `coverage.can_translate` / `unresolved` 阻止后续执行；来源封存也有同样条件。
-- 译文执行与封存在 `packages/translation/execution.py`、`packages/editorial/drafts.py` 等处仍依据 QA 有效性暂停或拒绝操作。需要覆盖完整后端调用链、前端按钮和导出路径。
+- 当前来源预检和确认在 `src/apps/api/workflow.py` 依据 `coverage.can_translate` / `unresolved` 阻止后续执行；来源封存也有同样条件。
+- 译文执行与封存在 `src/packages/translation/execution.py`、`src/packages/editorial/drafts.py` 等处仍依据 QA 有效性暂停或拒绝操作。需要覆盖完整后端调用链、前端按钮和导出路径。
 - 当前预检前端将 `p.issues` 传给问题列表，实际接口返回 `unresolved`，会同时出现“297 条未解”和“当前未返回问题”。预检页也未清楚标出所用解析方案。
 - 实际抽查草稿 `srcdraft_dbc15303d3dc4ab29ce100e85e973eac` 是 **Granite Docling 258M**，不是 Paddle。14 页 / 257 块 / 297 条提示；第 14 页无解析块贡献 174 条提示，第 5 页左栏正文遗漏，第 11 页表格 `9-5-1-1` 被提取为 `9.5-1-1`。这些是回归场景，不把此样本当作 Paddle 性能证据。
 - Job / Task / Attempt / Event 已存在，但任务接口主要展示创建时间和状态快照，缺少完整实际模型身份、阶段时间、结束时间和可用日志。任务标题目前从实时文档信息派生，不能据此证明历史任务用了什么配置。

@@ -1,6 +1,8 @@
 """Relocated harness paths preserve historical bytes without granting host access."""
 import hashlib
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -8,8 +10,22 @@ from harness._project import ROOT, artifact_path, output_path
 from harness import acceptance
 
 
+@pytest.mark.parametrize('source_directory', ['packages', 'src/packages'])
+def test_harness_imports_in_legacy_and_current_image_layouts(tmp_path, source_directory):
+    product = tmp_path / 'app'
+    (product / source_directory).mkdir(parents=True)
+    (product / 'pyproject.toml').write_text('[project]\nname = "isolated-image"\n')
+    helper = product / 'harness/_project.py'
+    helper.parent.mkdir()
+    helper.write_bytes((ROOT / '.agent/harness/_project.py').read_bytes())
+    command = 'import runpy,sys; print(runpy.run_path(sys.argv[1])["ROOT"])'
+    result = subprocess.run([sys.executable, '-c', command, str(helper)],
+        cwd=tmp_path, text=True, capture_output=True, check=True)
+    assert Path(result.stdout.strip()) == product
+
+
 def test_root_is_product_root_and_legacy_record_hash_remains_valid(tmp_path):
-    assert (ROOT / 'pyproject.toml').is_file() and (ROOT / 'packages').is_dir()
+    assert (ROOT / 'pyproject.toml').is_file() and (ROOT / 'src/packages').is_dir()
     target = tmp_path / '.agent/tmp/evidence/run/result.json'
     target.parent.mkdir(parents=True)
     target.write_bytes(b'{"original":true}\n')
@@ -26,7 +42,7 @@ def test_root_is_product_root_and_legacy_record_hash_remains_valid(tmp_path):
     ('harness/gate-policy.json', '.agent/harness/gate-policy.json'),
     ('notes/handoff.md', '.agent/notes/handoff.md'),
     ('reports/check.xml', '.agent/tmp/reports/check.xml'),
-    ('apps/web/evidence/review.json', '.agent/tmp/frontend/evidence/review.json'),
+    ('src/apps/web/evidence/review.json', '.agent/tmp/frontend/evidence/review.json'),
     ('.local-data/live-provider/used.json', '.agent/local-data/live-provider/used.json'),
     ('package-validation.json', '.agent/tmp/validation/package-validation.json'),
     ('html/package-review.html', '.agent/tmp/validation/package-review.html'),

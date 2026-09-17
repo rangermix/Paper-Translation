@@ -16,4 +16,4 @@ services:
       DOCLING_ARTIFACTS_PATH: /opt/docling/models
     volumes:
       - "${MODEL_EXPORT_DIR:?Set an empty export directory}:/export"
-    command: [python, /app/ops/export_parser_model.py, --destination, /export/paddleocr-vl-1.6]
+    command: [python, /app/src/tools/export_parser_model.py, --destination, /export/paddleocr-vl-1.6]

@@ -24,7 +24,7 @@ def list_templates():
         'safety_review': '.agent/tmp/reports/core-evidence/reader-v2-review.md'}
     v3 = {**v2, 'id': 'reader-v3', 'version': '3', 'css_path': 'packages/templates/reader-v3.css',
         'js_path': 'packages/templates/reader-v3.js', 'css_sha256': V3_CSS_HASH, 'js_sha256': V3_JS_HASH,
-        'safety_review': 'shared/nonblocking-contract.md'}
+        'safety_review': 'docs/shared/nonblocking-contract.md'}
     for entry in (v1, v2, v3):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')

@@ -4,7 +4,7 @@ services:
   verify:
     build:
       context: ..
-      dockerfile: deployment/Dockerfile.verify
+      dockerfile: deployment/images/verify.Dockerfile
     command: ["python", "tools/check_package.py"]
     network_mode: none
     user: "10001:10001"

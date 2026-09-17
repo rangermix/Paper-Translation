@@ -76,7 +76,7 @@ create fresh projects, dump PostgreSQL, restore into a second fresh project and
 compare document and export bytes. It requires available acceptance ports and
 must run alone because its ports and working output are shared. The former
 production-targeted `backup_roundtrip.py` is retained only as
-[historical source](../.agent/notes/historical-probes/README.md). Neither historical
+[historical source](../../.agent/notes/historical-probes/README.md). Neither historical
 evidence nor this harness implies that every crash point or storage failure has
 been tested.
 

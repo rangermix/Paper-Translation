@@ -1,8 +1,8 @@
 # 非阻断翻译、任务记录与 DOI 元数据 · 执行计划
 
-日期：2026-09-09。状态：**NB-P01–P12 已完成并交付正式 8080 实例**。独立 Compose、受控 Provider、三种真实本地 CPU、公开 DOI、生产备份升级与整栈冷重启均有本轮证据；真实付费 Provider 未获预算/外发授权，按本计划单独标注 NOT RUN。详见[交付验收](../.agent/notes/nonblocking-20260909-acceptance.md)。
+日期：2026-09-09。状态：**NB-P01–P12 已完成并交付正式 8080 实例**。独立 Compose、受控 Provider、三种真实本地 CPU、公开 DOI、生产备份升级与整栈冷重启均有本轮证据；真实付费 Provider 未获预算/外发授权，按本计划单独标注 NOT RUN。详见[交付验收](../../.agent/notes/nonblocking-20260909-acceptance.md)。
 
-需求以 [Spec](nonblocking-workflow-spec.md) 为准；任务状态与依赖登记在 [nonblocking-workflow-backlog.json](../contracts/nonblocking-workflow-backlog.json)。完成项均附本轮独立验收证据，不沿用旧镜像报告。
+需求以 [Spec](nonblocking-workflow-spec.md) 为准；任务状态与依赖登记在 [nonblocking-workflow-backlog.json](../../contracts/nonblocking-workflow-backlog.json)。完成项均附本轮独立验收证据，不沿用旧镜像报告。
 
 ## 1. 交付顺序
 
@@ -48,7 +48,7 @@ flowchart TD
 - 扩展 Job/Task/Attempt 或新增阶段表、日志记录和文档元数据结构；持久化原始文件名、标题来源与用户改名标志。使用增量 PostgreSQL migration，新增字段先允许空值。
 - 同步状态枚举、API 类型及序列化、契约 schema，定义旧字段兼容策略，禁止只改前端或放宽 validator 后留下无法渲染的数据。
 
-**主要模块：** `packages/domain/models.py`、`packages/domain/db.py`、`packages/domain/migrations/`、`contracts/workflow-states.json`、`contracts/document-ir-v3.schema.json`、`shared/`、`apps/web/src/types.ts`。
+**主要模块：** `packages/domain/models.py`、`packages/domain/db.py`、`packages/domain/migrations/`、`contracts/workflow-states.json`、`contracts/document-ir-v3.schema.json`、`docs/shared/`、`apps/web/src/types.ts`。
 
 **验收 NB-AT01–02：** 迁移前后旧对象和不可变历史可读取；内容质量状态与执行许可解耦，接口契约能表达部分结果与未执行检查；错误 AST/路径仍不能进入渲染器。
 

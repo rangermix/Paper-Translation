@@ -60,7 +60,7 @@ app `/health/live`只证明进程存活；`/health/ready`验证 schema、卷、�
 
 Compose secrets是向特定容器挂载文件的方式，不应宣传为宿主磁盘加密；文件来源的uid/gid/mode需要结合实际bind挂载和容器UID测试，不依靠被忽略的重映射字段。[S3] 初始化命令在容器内生成数据库连接秘密；Provider secret可为空，使无模型配置也能启动。
 
-设置页支持用户指定的四种完整请求 URL：OpenAI 兼容 Responses / Chat Completions（`provider=openai`、Bearer）、原生 Gemini Interactions（`provider=gemini`、`x-goog-api-key`）、原生 Claude Messages（`provider=anthropic`、`x-api-key`）。原生使用普通 API key，不包括 OAuth 或多 workspace；本地免鉴权服务必须显式选择 `none`。Claude 另发 `anthropic-version`，不可变 profile 中的 `api_version` 默认 `2023-06-01`，非 Claude 不携带该字段。Gemini 使用完整 Interactions URL，不转换成 generateContent；示例与官方字段依据见 [Gemini 核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 核对](../.agent/notes/gemini-claude-20260906.md)。
+设置页支持用户指定的四种完整请求 URL：OpenAI 兼容 Responses / Chat Completions（`provider=openai`、Bearer）、原生 Gemini Interactions（`provider=gemini`、`x-goog-api-key`）、原生 Claude Messages（`provider=anthropic`、`x-api-key`）。原生使用普通 API key，不包括 OAuth 或多 workspace；本地免鉴权服务必须显式选择 `none`。Claude 另发 `anthropic-version`，不可变 profile 中的 `api_version` 默认 `2023-06-01`，非 Claude 不携带该字段。Gemini 使用完整 Interactions URL，不转换成 generateContent；示例与官方字段依据见 [Gemini 核对](../../.agent/notes/gemini-claude-20260906.md)与 [Claude 核对](../../.agent/notes/gemini-claude-20260906.md)。
 
 配置可未填完就保存；公开参数不完整或缺少必需密钥时派发等待配置，不影响原件保存与阅读。配置卷不属于标准备份，容器重建保留该命名卷；跨宿主恢复需重新配置。原 worker secret 不自动迁移到设置卷。更换目的地、协议或鉴权不能把旧 key 静默用于新配置；清除当前 key 不删除已绑定在途请求的历史版本。worker 使用固定 profile hash；Gemini 和 Claude 两个原生协议另校验响应模型匹配（仅 Gemini 正规化 `models/` 前缀）。不自动换模型、跟随重定向或回退协议。
 
@@ -84,6 +84,6 @@ Gemini 请求显式 `store=false`；Claude 无此字段且不主动启用缓存�
 
 M0/M1必须在只有Docker+Compose的干净主机上启动、上传受控PDF、读取/导出，重建容器验证数据仍在。M1进一步清空runtime缓存、阻断模型仓库网络，再解析冻结语料；任何运行时下载失败都不能被mock结果掩盖。
 
-记录每镜像架构、digest、构建源码commit、锁文件hash、模型文件清单、SBOM、许可证、漏洞检查和验收结果。`dependency-inventory.json`目前为实现前的责任清单，version/digest为空代表待填，**不能作为已完成release锁文件** 。正式release校验必须拒绝待填值。
+记录每镜像架构、digest、构建源码commit、锁文件hash、模型文件清单、SBOM、许可证、漏洞检查和验收结果。实现前的依赖责任清单已移除；源码锁文件与实际镜像 inventory 分别记录预期依赖和实际安装结果，正式 release 校验必须拒绝待填值。
 
-本包的Compose配置语法结构与边界可静态检查；当前环境没有Docker引擎，不能宣称镜像构建、Compose冷启或生产备份已实测。
+Compose 配置语法和边界可静态检查；镜像构建、冷启动与备份恢复必须分别有对应源码和环境的执行证据。

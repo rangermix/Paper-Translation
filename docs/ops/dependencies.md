@@ -16,7 +16,7 @@ Optional translation weights have their own `packages/local_models/models.lock.j
 and are downloaded only on explicit use; settings reads and startup do not prepare
 them. See [local translation](../deployment/local-translation.md).
 
-`images/database.Dockerfile` derives the nonroot PostgreSQL15 runtime from its
+`deployment/images/database.Dockerfile` derives the nonroot PostgreSQL15 runtime from its
 fixed trixie base, applies OS updates during build and removes the root-only
 privilege-switch helper. Build all three images with `build app parser db`.
 Do not substitute a successful vulnerability scan for a complete review:
@@ -30,6 +30,6 @@ source commit plus source-tree hash, architecture, all dependency locks, model
 manifest, license notices and vulnerability scan results. Unknown or missing
 license fields require review; generating an inventory is not legal clearance.
 
-The original `dependency-inventory.json` remains a historical responsibility
-checklist. Null versions/hashes in that file never count as a release lock. The
-harness refuses to mark missing runtime/Compose/provider proof as passed.
+The obsolete design-only dependency checklist was removed. Use the maintained
+lockfiles and actual image inventories described above. The harness refuses to
+mark missing runtime/Compose/provider proof as passed.

@@ -4,8 +4,8 @@
   "title": "非阻断翻译、任务记录与 DOI 元数据",
   "created_at": "2026-09-09",
   "status": "completed",
-  "spec": "milestones/nonblocking-workflow-spec.md",
-  "plan": "milestones/nonblocking-workflow-plan.md",
+  "spec": "docs/milestones/nonblocking-workflow-spec.md",
+  "plan": "docs/milestones/nonblocking-workflow-plan.md",
   "execution_mode": "sequential_by_dependency",
   "requirements": [
     {

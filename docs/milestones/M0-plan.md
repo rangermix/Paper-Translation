@@ -1,6 +1,6 @@
 # M0 实施 Plan · PDF 原件库与静态出版底座
 
-> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../00-product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
+> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
 
 **版本3.0 · 对应[M0 Spec](M0-spec.md) · 所有工作包not_started**
 
@@ -61,7 +61,7 @@
 - `apps/api/`
 - `workers/`
 - `compose.yaml`
-- `images/`
+- `deployment/images/`
 - `tests/compose/`
 
 **步骤：**
@@ -243,8 +243,8 @@
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `ops/restore.md`
-- `ops/dependencies.md`
+- `docs/ops/restore.md`
+- `docs/ops/dependencies.md`
 - `tests/security/`
 - `tests/compose/test_clean_host.py`
 
@@ -293,7 +293,7 @@ M0从空库初始化，不创建Users或Workspace；受控旧资料只seed一次
 ## 6. 编码 Agent 开始提示
 
 ```text
-实施对照文库 v3 的 M0。先完整读取 00-product-baseline.md、shared/*、deployment/compose-contract.md、milestones/M0-spec.md 和本Plan；以最新五条用户约束为最高优先级。
+实施对照文库 v3 的 M0。先完整读取 docs/product-baseline.md、docs/shared/*、docs/deployment/compose-contract.md、docs/milestones/M0-spec.md 和本Plan；以最新五条用户约束为最高优先级。
 检查实际代码和上阶段证据，先为 M0 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
 只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
 保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。

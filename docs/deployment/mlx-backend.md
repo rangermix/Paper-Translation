@@ -2,7 +2,7 @@
 
 This document records the 2026-09-13 Paddle backend build and its installation
 on the test Mac. Later shared parser/translation backend work is documented in
-[local translation](../local-translation.md) and [the parser repair](../job-failure-repair-20260915.md).
+[local translation](local-translation.md) and [the parser repair](job-failure-repair-20260915.md).
 The recorded image and paths below are historical setup evidence; inspect the
 selected deployment before reusing them or replacing an installed backend.
 

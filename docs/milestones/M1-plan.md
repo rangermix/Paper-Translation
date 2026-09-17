@@ -1,6 +1,6 @@
 # M1 实施 Plan · 真实 PDF 解析、翻译与发布
 
-> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../00-product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
+> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
 
 **2026-09-08 超时配置补全。** 先建立 parser 时间推进和 PostgreSQL 入队/设置回归，再同步更新偏好 API、任务快照、spool、worker 等待和 parser 进程限制。浏览器验证分钟输入、保存持久化和过期版本草稿保留；最终 CPU Docker 镜像核验 Linux RLIMIT_CPU 与健康状态，记录生产配置保留证据。
 
@@ -92,7 +92,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `workers/parser/`
-- `images/parser.Dockerfile`
+- `deployment/images/parser.Dockerfile`
 - `ops/egress-policy.md`
 - `tests/security/test_parser_isolation.py`
 
@@ -204,7 +204,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 2. 禁用SDK隐式重试与工具；OpenAI兼容和Gemini Interactions显式`store=false`，Claude Messages无此字段，不主动启用缓存写入或覆盖默认思考。记录可用requestID和计量信息，不宣传供应商零保留。
 3. FakeProvider提供429/401/断流/迟到/已计费超时/截断/错ID脚本。
 4. 按2026-09-06用户补充实现四协议设置与不可变配置绑定：协议确定provider与Bearer/native API-key头，`none`须明确；Claude `api_version`默认`2023-06-01`且仅原生Claude携带。保存零请求，配置缺失仍可落盘但不可派发，密钥不回显、无浏览器存储，按2026-09-07用户要求，切换接口类型填入默认endpoint/model ID，仍可手动覆盖；加载保留已保存值，切换不自动保存或调用模型，并要求旧key明确重新绑定。
-5. 验证Gemini和Claude两个原生协议的响应model与配置严格一致（仅Gemini去除`models/`前缀），不猜模型别名。Gemini输出加思考、Claude输出已含思考；缓存写入等未定价用量及必需计数缺失/矛盾进入未知成本核对，不补零或自动重发。官方依据使用本轮[Gemini核对](../.agent/notes/gemini-claude-20260906.md)与[Claude独立核对](../.agent/notes/gemini-claude-20260906.md)，适配器/本地HTTP/UI证据不能替代真实Provider认证。
+5. 验证Gemini和Claude两个原生协议的响应model与配置严格一致（仅Gemini去除`models/`前缀），不猜模型别名。Gemini输出加思考、Claude输出已含思考；缓存写入等未定价用量及必需计数缺失/矛盾进入未知成本核对，不补零或自动重发。官方依据使用本轮[Gemini核对](../../.agent/notes/gemini-claude-20260906.md)与[Claude独立核对](../../.agent/notes/gemini-claude-20260906.md)，适配器/本地HTTP/UI证据不能替代真实Provider认证。
 
 **完成检查：** 此工作包只做Fake/契约验证；真实付费验收延至M1-P15并经过预算/授权/恢复就绪门。Fake和真实输出走同一验证器。
 
@@ -303,7 +303,7 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/privacy/`
-- `ops/retention.md`
+- `docs/ops/retention.md`
 - `tests/security/test_delete_races.py`
 
 **步骤：**
@@ -322,8 +322,8 @@ M0全部退出门完成，库/IR/Publisher/Compose迁移可复用；准备可控
 
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
-- `ops/deploy.md`
-- `ops/restore.md`
+- `docs/ops/deploy.md`
+- `docs/ops/restore.md`
 - `tests/faults/`
 - `.agent/tmp/reports/M1-recovery.md`
 
@@ -392,7 +392,7 @@ M1先在上阶段快照上演练升级：保留原件/封存IR/产物hash，增�
 ## 6. 编码 Agent 开始提示
 
 ```text
-实施对照文库 v3 的 M1。先完整读取 00-product-baseline.md、shared/*、deployment/compose-contract.md、milestones/M1-spec.md 和本Plan；以最新五条用户约束为最高优先级。
+实施对照文库 v3 的 M1。先完整读取 docs/product-baseline.md、docs/shared/*、docs/deployment/compose-contract.md、docs/milestones/M1-spec.md 和本Plan；以最新五条用户约束为最高优先级。
 检查实际代码和上阶段证据，先为 M1 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
 只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
 保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。

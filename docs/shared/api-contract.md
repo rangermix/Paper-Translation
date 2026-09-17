@@ -46,7 +46,7 @@ API 由 `apps/api` 实现，具体实现与验收范围以当前代码和执行�
 }
 ```
 
-严格契约：[import-request.schema.json](../contracts/import-request.schema.json)。`document_id`可用于为已有文档提交新PDF来源，但必须显式指定且遵守generation；同名不自动覆盖。重复hash返回候选文档，用户选择复用来源或独立文档；唯一键确保资产不会重复写入。
+严格契约：[import-request.schema.json](../../contracts/import-request.schema.json)。`document_id`可用于为已有文档提交新PDF来源，但必须显式指定且遵守generation；同名不自动覆盖。重复hash返回候选文档，用户选择复用来源或独立文档；唯一键确保资产不会重复写入。
 
 **不存在** `/login`、`/users`、`/workspaces`、`/roles`、`/imports/url`、`/imports/text`、`/imports/bilingual`、`/imports/ir`或附件上传路由。上传schema之外的任意JSON不作为文档来源。原文中普通https链接不是导入API。
 
@@ -159,7 +159,7 @@ Worker 使用同一四协议适配器及后端绑定的 secret，固定一条合
 
 `PdfInspector.inspect(local_pdf, limits)`返回真实页数、加密/有效性与hash；`PdfParser.parse(task_manifest)`只消费本地PDF，输出IR与coverage。`TranslateProvider.translate(units, context, profile, glossary)`只返回unit_id及受限目标节点、finish/refusal、usage/request_id；无HTML生成、无工具、无用户身份输入。
 
-原生协议仍使用同一目标 AST、单元 ID、保护引用与语义证据校验。Gemini 仅使用 Interactions，结构化结果从模型输出文本读取，思考内容不进入译文；显式 `store=false`，不发送历史 ID。Claude 使用 Messages 的原生结构化输出，不发送 `store`、工具或缓存控制，不覆盖模型默认思考设置。它们均不构成供应商不保留数据的承诺。官方字段依据见本轮 [Gemini 核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 核对](../.agent/notes/gemini-claude-20260906.md)。
+原生协议仍使用同一目标 AST、单元 ID、保护引用与语义证据校验。Gemini 仅使用 Interactions，结构化结果从模型输出文本读取，思考内容不进入译文；显式 `store=false`，不发送历史 ID。Claude 使用 Messages 的原生结构化输出，不发送 `store`、工具或缓存控制，不覆盖模型默认思考设置。它们均不构成供应商不保留数据的承诺。官方字段依据见本轮 [Gemini 核对](../../.agent/notes/gemini-claude-20260906.md)与 [Claude 核对](../../.agent/notes/gemini-claude-20260906.md)。
 
 Gemini 和 Claude 两个原生协议的响应 model 必须与配置严格匹配；只有 Gemini 去除 `models/` 前缀后比较，不做别名推测。需要别名的服务应配置其实际返回的模型 ID，不一致结果不能写为成功译文。归一化输入/输出用量再进入原整数微货币账本：Gemini 缓存输入是总输入子集，输出为 `total_output_tokens + total_thought_tokens`，完整计数须一致；Claude 输入为未缓存输入、缓存读取、缓存写入之和，`output_tokens` 已含思考，不能再次加算。当前只配置输入、缓存读取、输出三种费率；未启用缓存控制也不能把意外 Claude 缓存写入当免费。开启金额控制时，必需计数缺失/矛盾、未定价维度或无法确认费用的响应（含 Claude 空内容拒绝）保留 `outcome_unknown` 并停止自动再派，等待证据核对与显式风险处理。关闭金额控制时，费用未知不阻止合法目标保存，金额保留 `null`；拒绝、模型不匹配和网络未知结果仍按各自安全规则处理。已知用量与可接受的翻译内容是两个独立判断。文档或本地契约测试不能证明远端 token 参数是已实测的硬计费上限。
 

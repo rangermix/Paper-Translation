@@ -2,9 +2,9 @@
 
 **v3 · 当前源码契约 · 2026-09-16**
 
-M0–M2 产品代码与后续增量已实现；实现、局部测试和正式 release 认证分别记录。最新源码交接见 [.agent/memory/current.md](.agent/memory/current.md)，原阶段报告属于历史证据，不认证后来提交或当前运行实例。
+M0–M2 产品代码与后续增量已实现；实现、局部测试和正式 release 认证分别记录。最新源码交接见 [.agent/memory/current.md](../.agent/memory/current.md)，原阶段报告属于历史证据，不认证后来提交或当前运行实例。
 
-内容质量统一采用 [nonblocking-v1](shared/nonblocking-contract.md)：自动解析、检查和确定性恢复后生成结果，缺段、数字/公式/表格差异和未人工核对均不阻止翻译、封存、发布或导出。不能恢复的内容以有标签的原文/页图呈现，执行故障、秘密保护、外发授权、fence/CAS 和不可变历史继续生效。NB 实施范围见[验收记录](.agent/notes/nonblocking-20260909-acceptance.md)。
+内容质量统一采用 [nonblocking-v1](shared/nonblocking-contract.md)：自动解析、检查和确定性恢复后生成结果，缺段、数字/公式/表格差异和未人工核对均不阻止翻译、封存、发布或导出。不能恢复的内容以有标签的原文/页图呈现，执行故障、秘密保护、外发授权、fence/CAS 和不可变历史继续生效。NB 实施范围见[验收记录](../.agent/notes/nonblocking-20260909-acceptance.md)。
 
 新解析默认 PaddleOCR-VL-1.6；保留已保存方案，另支持 Docling 标准和 Granite Docling 258M。模型、设备及超时在入队时冻结；新任务默认 120 分钟，可保存 1–1440 整数分钟，旧任务无字段及上传检查仍为 15 分钟。parser 为单 PDF、4 CPU、16 GiB；模型和 OCR/公式/代码依赖在构建期固定并打包。CPU/CUDA 断网解析，Apple MLX 仅通过 Docker 管理的本机推理服务进行 Paddle 识别；设备可用性由新鲜心跳与实际验证记录决定。详见[解析部署](deployment/extraction-acceleration.md)。
 
@@ -58,7 +58,7 @@ M0 的 IR 输入只来自**内部测试夹具和受控种子任务** ，不是�
 
 输入/输出 token 和正文单元上限的新配置默认值分别为 `32768`、`8192`、`2000`，是应用限制。设置显示当前值和 `token_limits_defaults`；重置只更改三项上限，使用原 CAS 保存，不改 endpoint/key。旧不可变 profile/hash 不由读取操作改写，保存新 revision 才固化默认值。
 
-原生请求不提供工具、历史对话续接或协议回退。Gemini 显式关闭存储；Claude 无 `store` 字段，不主动启用缓存写入，也不覆盖模型默认思考策略。数据保留以服务商政策为准。用量按协议归一：Gemini 输出加思考；Claude 输出已含思考，输入汇总未缓存、缓存读取与缓存写入。必需计数缺失/不一致或未定价用量进入未知成本核对，不当作免费成功。[Gemini 官方协议核对](.agent/notes/gemini-claude-20260906.md)与 [Claude 独立协议核对](.agent/notes/gemini-claude-20260906.md)只支持实现范围；正式真实 Provider 认证仍需固定可追溯模型、价格与实际受控调用，既有 blocked 退出门不因此解除。LLM 外部服务和用户凭据不作为容器依赖打包；可选本地翻译通过 Compose / Docker Model Runner 提供，CPU/远端翻译部署无需启用；不另设宿主 Python 推理服务。
+原生请求不提供工具、历史对话续接或协议回退。Gemini 显式关闭存储；Claude 无 `store` 字段，不主动启用缓存写入，也不覆盖模型默认思考策略。数据保留以服务商政策为准。用量按协议归一：Gemini 输出加思考；Claude 输出已含思考，输入汇总未缓存、缓存读取与缓存写入。必需计数缺失/不一致或未定价用量进入未知成本核对，不当作免费成功。[Gemini 官方协议核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 独立协议核对](../.agent/notes/gemini-claude-20260906.md)只支持实现范围；正式真实 Provider 认证仍需固定可追溯模型、价格与实际受控调用，既有 blocked 退出门不因此解除。LLM 外部服务和用户凭据不作为容器依赖打包；可选本地翻译通过 Compose / Docker Model Runner 提供，CPU/远端翻译部署无需启用；不另设宿主 Python 推理服务。
 
 生产镜像打包**全部本地运行依赖** ，不等于无需联网取得镜像，也不等于能离线调用外部翻译API。正式版本必须提供镜像摘要、软件锁文件、所用解析模型文件hash和许可证清单；源码仓库不附带发布镜像，实际构建与认证范围以对应记录为准。
 

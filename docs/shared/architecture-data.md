@@ -10,7 +10,7 @@
 
 2026-09-08 解析增强补充：Docling 默认 OCR、公式和代码识别在离线 CPU parser 内运行。公式/代码块的 raw_text/normalized_text 记录模型的解析输出，attributes.recognition 保存 model、revision 和增强前 original_text，原始 Docling JSON 与 PDF 裁图同时保留；这不是机械 normalization_edits。独立原生覆盖检查使用增强前文字。parser.config_hash 同时绑定模型锁、CPU 推理配置和请求 profile，重新解析产生新来源，不修改旧快照。
 
-适用于 M0–M2。产品边界以[基线](../00-product-baseline.md)为准。本章定义架构契约；实现状态与验收范围以当前代码和执行证据为准。
+适用于 M0–M2。产品边界以[基线](../product-baseline.md)为准。本章定义架构契约；实现状态与验收范围以当前代码和执行证据为准。
 
 ## 1. 架构与服务边界
 
@@ -72,7 +72,7 @@ Edition当前指针更新采用单调generation的CAS。回滚A→B→A也继续
 
 ## 4. IR v3
 
-[Schema](../contracts/document-ir-v3.schema.json)是内部RenderInput语法；普通用户没有上传它的入口。主字段为document、source_revision、translation_revision、render。document不含用户或工作区。source.kind恒为`pdf_upload`，原件media_type恒为PDF；资产列表允许从PDF提取的PNG/JPEG/WebP等产物，这不等于允许用户上传它们。
+[Schema](../../contracts/document-ir-v3.schema.json)是内部RenderInput语法；普通用户没有上传它的入口。主字段为document、source_revision、translation_revision、render。document不含用户或工作区。source.kind恒为`pdf_upload`，原件media_type恒为PDF；资产列表允许从PDF提取的PNG/JPEG/WebP等产物，这不等于允许用户上传它们。
 
 ### 结构与单次渲染
 
@@ -124,4 +124,4 @@ data/
 
 `apps/web`负责管理UI；`apps/api`负责短请求与直接文件响应；`packages/ir`负责模型外的结构事实；`packages/providers`负责有限输入输出；`packages/jobs`负责持久调度；`packages/publisher`负责不可变发布；`workers/parser`不持秘密。所有模块由同一仓库构建，镜像可按依赖大小拆分，不意味着需要微服务治理。
 
-Docling的本地资产配置与Compose的健康依赖行为已核对官方文档，见[技术依据](../sources.md)。它们支持实现选项，不代表本产品的解析准确率或容器部署已经被验证。
+Docling的本地资产配置与Compose的健康依赖行为已核对官方文档，见[技术依据](../../sources.md)。它们支持实现选项，不代表本产品的解析准确率或容器部署已经被验证。

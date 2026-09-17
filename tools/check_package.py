@@ -124,7 +124,6 @@ def main():
   must('docker.sock' not in str(s),'Docker socket')
   must('backups:/backups' in s['init']['volumes'],'backup volume not initialized')
  check('Compose target graph, loopback, isolation and single port (static only)',composed)
- check('dependency inventory honestly remains design-only',lambda:must(load('deployment/dependency-inventory.json')['status']=='design_inventory_not_release_lock' and load('deployment/dependency-inventory.json')['runtime_installs_allowed'] is False,'false lock'))
  def scope():
   s=load('contracts/scope.json');must(s['supported_upload_mime_types']==['application/pdf'],'PDF only')
   for k in ['url_import_enabled','automatic_remote_assets','identity_system','login_enabled','teams_enabled','acl_enabled','reverse_proxy_included']:must(s[k] is False,'scope '+k)

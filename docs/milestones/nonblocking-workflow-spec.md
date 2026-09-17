@@ -1,8 +1,8 @@
 # 非阻断翻译、任务记录与 DOI 元数据 · Spec
 
-日期：2026-09-09。状态：**NB-P01–P12 已实现并交付**。本文件定义 NB 产品行为；正式 8080/schema 12 的实际验收、已执行范围和真实付费 Provider NOT RUN 边界见[本轮交付记录](../.agent/notes/nonblocking-20260909-acceptance.md)及 backlog。
+日期：2026-09-09。状态：**NB-P01–P12 已实现并交付**。本文件定义 NB 产品行为；正式 8080/schema 12 的实际验收、已执行范围和真实付费 Provider NOT RUN 边界见[本轮交付记录](../../.agent/notes/nonblocking-20260909-acceptance.md)及 backlog。
 
-实施计划见 [Plan](nonblocking-workflow-plan.md)，可执行任务登记见 [backlog](../contracts/nonblocking-workflow-backlog.json)。本轮采用独立 NB 编号，不改写 M0–M2 的历史验收结果。
+实施计划见 [Plan](nonblocking-workflow-plan.md)，可执行任务登记见 [backlog](../../contracts/nonblocking-workflow-backlog.json)。本轮采用独立 NB 编号，不改写 M0–M2 的历史验收结果。
 
 ## 1. 用户要求与优先级
 

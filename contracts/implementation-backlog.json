@@ -330,8 +330,8 @@
       3
     ],
     "outputs": [
-      "ops/restore.md",
-      "ops/dependencies.md",
+      "docs/ops/restore.md",
+      "docs/ops/dependencies.md",
       "tests/security/",
       "tests/compose/test_clean_host.py"
     ],
@@ -469,7 +469,7 @@
     ],
     "outputs": [
       "workers/parser/",
-      "images/parser.Dockerfile",
+      "deployment/images/parser.Dockerfile",
       "ops/egress-policy.md",
       "tests/security/test_parser_isolation.py"
     ],
@@ -787,7 +787,7 @@
     ],
     "outputs": [
       "packages/privacy/",
-      "ops/retention.md",
+      "docs/ops/retention.md",
       "tests/security/test_delete_races.py"
     ],
     "steps": [
@@ -820,8 +820,8 @@
       4
     ],
     "outputs": [
-      "ops/deploy.md",
-      "ops/restore.md",
+      "docs/ops/deploy.md",
+      "docs/ops/restore.md",
       "tests/faults/",
       "reports/M1-recovery.md"
     ],
@@ -1272,7 +1272,7 @@
     ],
     "outputs": [
       "packages/exporter/project_backup.py",
-      "ops/M2-retention.md",
+      "docs/ops/M2-retention.md",
       "tests/integration/test_m2_restore.py"
     ],
     "steps": [

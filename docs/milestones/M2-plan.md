@@ -1,6 +1,6 @@
 # M2 实施 Plan · 个人校对、多语言和版本管理
 
-> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../00-product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
+> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
 
 **2026-09-08 用户补充：质量问题与段落定位。** 校对工作台将阻断与风险提示分组，并提供全部/仅阻断/仅风险筛选及对应段落跳转。阻断段落明确标为必须处理，不能显示可选核对；人工确认不能代替修正和重验。段落可独立折叠，非阻断段落默认折叠，跳转自动展开，折叠和筛选必须保留未保存文字与修改理由。数字检查仅作机械等价比较，不改写原文或已保存译文：统一千分位、PDF提取的小数间隔、数位宽度和明确的中英文数量单位（如 11 billion = 110 亿、3 billion = 30 亿）；仍检查精确数值、正负号、百分号和出现次数，并展示差异证据。规则版本改变使旧 QA 过期，重验后才可封存。
 
@@ -264,7 +264,7 @@ M0/M1全部退出证据有效；使用带未完成任务、旧artifact和费用�
 **产出代码/文件位置（待实现，不是本包已提供模块）：**
 
 - `packages/exporter/project_backup.py`
-- `ops/M2-retention.md`
+- `docs/ops/M2-retention.md`
 - `tests/integration/test_m2_restore.py`
 
 **步骤：**
@@ -332,7 +332,7 @@ M2先在上阶段快照上演练升级：保留原件/封存IR/产物hash，增�
 ## 6. 编码 Agent 开始提示
 
 ```text
-实施对照文库 v3 的 M2。先完整读取 00-product-baseline.md、shared/*、deployment/compose-contract.md、milestones/M2-spec.md 和本Plan；以最新五条用户约束为最高优先级。
+实施对照文库 v3 的 M2。先完整读取 docs/product-baseline.md、docs/shared/*、docs/deployment/compose-contract.md、docs/milestones/M2-spec.md 和本Plan；以最新五条用户约束为最高优先级。
 检查实际代码和上阶段证据，先为 M2 的退出规格写自动化测试。按 contracts/implementation-backlog.json 的依赖领取工作包。
 只允许PDF来源；不要增加双语/IR/HTML导入，不创建用户/工作区/角色/登录，不交付反代。只支持Docker Compose且运行依赖随镜像提供。
 保留reader-v1样式和确定性出版；模型只能返回受限译文数据。失败/缺块不能假成功，外部付费调用先通过预算与外发确认。

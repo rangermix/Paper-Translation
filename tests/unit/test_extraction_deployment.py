@@ -26,7 +26,7 @@ def test_offline_acceptance_harness_mount_contains_the_restore_runner():
 
 
 def test_release_environment_example_names_are_consumed_by_production_compose():
-    example = Path('deployment/production.env.example').read_text()
+    example = Path('.env.example').read_text()
     compose = Path('deployment/compose.production.yaml').read_text()
     documented = set(re.findall(r'^\s*(?:#\s*)?([A-Z][A-Z0-9_]*)=', example, re.MULTILINE))
     consumed = set(re.findall(r'\$\{([A-Z][A-Z0-9_]*)', compose))
@@ -41,7 +41,7 @@ def test_cpu_and_cuda_keep_parser_isolation_and_one_unified_image_recipe():
     assert gpu['build']['args']['PARSER_FLAVOR'] == 'cuda'
     assert gpu['deploy']['resources']['reservations']['devices'] == [
         {'driver': 'nvidia', 'count': 1, 'capabilities': ['gpu']}]
-    recipe = Path('images/parser.Dockerfile').read_text()
+    recipe = Path('deployment/images/parser.Dockerfile').read_text()
     assert 'FROM dependencies-${PARSER_FLAVOR} AS dependencies' in recipe
     assert '/app/.venv-paddle' in recipe
 

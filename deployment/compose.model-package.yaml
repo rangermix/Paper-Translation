@@ -5,7 +5,7 @@ services:
     image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
     build:
       context: ..
-      dockerfile: images/parser.Dockerfile
+      dockerfile: deployment/images/parser.Dockerfile
     platform: linux/amd64
     user: "10001:10001"
     network_mode: none

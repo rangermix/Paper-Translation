@@ -6,7 +6,7 @@ This is a source handoff, not a statement about a live instance. Check the actua
 
 - Product code is in `apps/`, `packages/`, and `workers/`. Schema migrations currently end at 13; old migration checksums and published artifacts remain immutable.
 - The retired demonstration app, prototype server and generated design pages were removed in `fdf8a61`. The two controlled seed papers are under `reference/legacy/`; `reference/reader-v1.css` remains frozen.
-- Nonblocking content quality, automatic recovery, DOI metadata, optional costs, all languages, task history clearing, original-only scholarly metadata and optional local translation are implemented. The current contract is `00-product-baseline.md` plus the relevant `shared/` and deployment documents.
+- Nonblocking content quality, automatic recovery, DOI metadata, optional costs, all languages, task history clearing, original-only scholarly metadata and optional local translation are implemented. The current contract is `docs/product-baseline.md` plus the relevant `docs/shared/` and deployment documents.
 - PaddleOCR-VL-1.6 is the new parsing default; Docling and Granite remain available. CPU/CUDA assets are packaged. MLX uses Docker Model Runner and requires deployment-specific proof. Local translation models are prepared only on explicit use, never by startup or settings reads.
 - `compose.example.yaml` is the shared standalone template; root `compose.yaml` is local and ignored. `deployment/compose.production.yaml` remains the maintained composable entry point. Keep the active project's name, overrides and image bindings when doing maintenance. Machine-specific `.vscode/settings.json` is also local.
 

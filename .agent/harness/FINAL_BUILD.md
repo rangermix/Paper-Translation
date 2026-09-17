@@ -15,11 +15,11 @@ $sourceCommit = git rev-parse HEAD
 $appTag = 'bilingual-personal-pdf-app:' + $releaseLabel
 $parserTag = 'bilingual-personal-pdf-parser:' + $releaseLabel
 $dbTag = 'bilingual-personal-pdf-db:' + $releaseLabel
-.venv/Scripts/python.exe .agent/harness/acceptance.py run --id ($releaseLabel + '-app-build') --kind compose --timeout 1800 -- docker build --file images/app.Dockerfile --tag $appTag --build-arg "SOURCE_COMMIT=$sourceCommit" --build-arg "SOURCE_TREE_SHA256=$sourceTree" .
+.venv/Scripts/python.exe .agent/harness/acceptance.py run --id ($releaseLabel + '-app-build') --kind compose --timeout 1800 -- docker build --file deployment/images/app.Dockerfile --tag $appTag --build-arg "SOURCE_COMMIT=$sourceCommit" --build-arg "SOURCE_TREE_SHA256=$sourceTree" .
 if ($LASTEXITCODE -ne 0) { throw 'App candidate build or source stability failed' }
-.venv/Scripts/python.exe .agent/harness/acceptance.py run --id ($releaseLabel + '-parser-build') --kind compose --timeout 1800 -- docker build --file images/parser.Dockerfile --tag $parserTag --build-arg "SOURCE_COMMIT=$sourceCommit" --build-arg "SOURCE_TREE_SHA256=$sourceTree" .
+.venv/Scripts/python.exe .agent/harness/acceptance.py run --id ($releaseLabel + '-parser-build') --kind compose --timeout 1800 -- docker build --file deployment/images/parser.Dockerfile --tag $parserTag --build-arg "SOURCE_COMMIT=$sourceCommit" --build-arg "SOURCE_TREE_SHA256=$sourceTree" .
 if ($LASTEXITCODE -ne 0) { throw 'Parser candidate build or source stability failed' }
-.venv/Scripts/python.exe .agent/harness/acceptance.py run --id ($releaseLabel + '-db-build') --kind compose --timeout 1800 -- docker build --file images/database.Dockerfile --tag $dbTag --build-arg "SOURCE_COMMIT=$sourceCommit" --build-arg "SOURCE_TREE_SHA256=$sourceTree" .
+.venv/Scripts/python.exe .agent/harness/acceptance.py run --id ($releaseLabel + '-db-build') --kind compose --timeout 1800 -- docker build --file deployment/images/database.Dockerfile --tag $dbTag --build-arg "SOURCE_COMMIT=$sourceCommit" --build-arg "SOURCE_TREE_SHA256=$sourceTree" .
 if ($LASTEXITCODE -ne 0) { throw 'Database candidate build or source stability failed' }
 if ((.venv/Scripts/python.exe .agent/harness/acceptance.py fingerprint) -ne $sourceTree) { throw 'Source changed during the candidate set' }
 docker image inspect $appTag $parserTag $dbTag

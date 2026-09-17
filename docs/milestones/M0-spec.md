@@ -1,6 +1,6 @@
 # M0 产品 Spec · PDF 原件库与静态出版底座
 
-> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../00-product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
+> 原 M0–M2 阶段设计与验收追踪。当前行为以[产品基线](../product-baseline.md)及后续专项契约为准；旧质量阻断、实验语言、强制预算、CPU-only 等被覆盖的条款不再作为当前产品要求。保留场景编号和历史证据，不据此宣称当前 release 通过。
 
 **版本3.0 · 个人PDF版 · 待实现**
 
@@ -10,7 +10,7 @@
 
 **进入条件：** 本v3约束和参考样式已经确认；能够在Docker+Compose干净环境运行测试；不得从旧原型的配对文本入口开始实现。
 
-本阶段只有一个使用者，不引入用户实体。规格依赖[产品基线](../00-product-baseline.md)、[共享数据契约](../shared/architecture-data.md)、[工作流和质量](../shared/workflow-quality-security.md)、[API](../shared/api-contract.md)、[Compose契约](../deployment/compose-contract.md)。
+本阶段只有一个使用者，不引入用户实体。规格依赖[产品基线](../product-baseline.md)、[共享数据契约](../shared/architecture-data.md)、[工作流和质量](../shared/workflow-quality-security.md)、[API](../shared/api-contract.md)、[Compose契约](../deployment/compose-contract.md)。
 
 ## 2. 核心流程与明确排除
 

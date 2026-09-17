@@ -8,7 +8,7 @@
 
 **Tech stack:** Python, existing IR/SQLAlchemy/PostgreSQL pipeline, static HTML reader, pytest and Playwright. No model or new runtime dependency.
 
-**Status:** Implementation and targeted verification complete in `27d6848`, pushed to the configured `main` branch. 188 Python tests and three offline desktop/mobile/browser checks passed. An independent code review identified and verified fixes for long-text matching, ambiguous name lists and paragraph section boundaries. Production deployment and live model calls were not part of this run. See [behavior contract](../../shared/original-only-content.md).
+**Status:** Implementation and targeted verification complete in `27d6848`, pushed to the configured `main` branch. 188 Python tests and three offline desktop/mobile/browser checks passed. An independent code review identified and verified fixes for long-text matching, ambiguous name lists and paragraph section boundaries. Production deployment and live model calls were not part of this run. See [behavior contract](../shared/original-only-content.md).
 
 ## Boundaries and alternatives
 
@@ -38,7 +38,7 @@ Files: modify `packages/publisher/renderer.py`, `apps/api/editorial.py`, `apps/a
 
 ## Task 3: Durable workflow and final checkpoint
 
-Files: create `tests/integration/test_original_only_execution.py`, add contract documentation in `shared/original-only-content.md`.
+Files: create `tests/integration/test_original_only_execution.py`, add contract documentation in `docs/shared/original-only-content.md`.
 
 1. Use a dedicated Compose PostgreSQL test service and synthetic source fixture with the production queue/planner/QA/seal/publisher. Inspect FakeProvider calls to prove excluded blocks are never translation units. FakeProvider does not certify real translation quality.
 2. Check empty targets, retention reasons, no false missing warnings, source snapshot immutability, candidate rejection and retained old review handling.

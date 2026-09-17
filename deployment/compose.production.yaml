@@ -5,7 +5,7 @@ x-app: &app
   image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
   build:
     context: ..
-    dockerfile: images/app.Dockerfile
+    dockerfile: deployment/images/app.Dockerfile
     args:
       SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
       SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"
@@ -58,7 +58,7 @@ services:
     image: "${DATABASE_IMAGE:-bilingual-personal-pdf-db:local}"
     build:
       context: ..
-      dockerfile: images/database.Dockerfile
+      dockerfile: deployment/images/database.Dockerfile
       args:
         SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
         SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"
@@ -145,7 +145,7 @@ services:
     image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
     build:
       context: ..
-      dockerfile: images/parser.Dockerfile
+      dockerfile: deployment/images/parser.Dockerfile
       args:
         SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
         SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"

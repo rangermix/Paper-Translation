@@ -1,6 +1,6 @@
 # Docker Desktop / Apple Silicon + Docker Model Runner with vLLM Metal.
 # Compose >= 2.38. Package the locked Paddle weights before deployment;
-# see deployment/extraction-acceleration.md. No native app-managed server.
+# see docs/deployment/extraction-acceleration.md. No native app-managed server.
 services:
   parser:
     # The shared CPU image performs PDF inspection and Paddle layout detection.

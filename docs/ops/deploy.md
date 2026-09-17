@@ -22,7 +22,7 @@ the top-level `models` section for MLX. The shared services need no edits.
 CUDA needs a compatible NVIDIA GPU, driver, and Docker GPU access. MLX needs
 Apple Silicon, Compose 2.38+, Docker Model Runner with a working vLLM Metal
 backend, and the packaged Paddle model. Follow
-[`deployment/extraction-acceleration.md`](../deployment/extraction-acceleration.md)
+[`docs/deployment/extraction-acceleration.md`](../deployment/extraction-acceleration.md)
 to package and verify it, then fill the model ID fields in the copied file or
 provide their values in a root `.env` file. Uncommenting MLX does not install or
 verify its backend. Hardware modes do not automatically fall back to CPU.
@@ -58,7 +58,7 @@ options to keep optional services and configuration, for example:
 The script stops if a command fails and preserves existing volumes.
 
 An existing pre-release instance using PostgreSQL15-bookworm must first follow
-the fresh-project backup/restore upgrade in `ops/restore.md`. Do not run these
+the fresh-project backup/restore upgrade in `docs/ops/restore.md`. Do not run these
 new default startup commands against its original PostgreSQL volume: the base
 distribution and libc/collation version changed. The final default is the pinned
 PostgreSQL15-trixie base verified with fresh-volume restore. The database image

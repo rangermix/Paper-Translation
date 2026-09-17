@@ -46,6 +46,10 @@ Real API keys require explicit test budget and content-egress authorization.
 Existing dated notes describe only their recorded commit/environment. No cleanup
 operation here is production deployment or new inference proof.
 
+The [2026-09-17 cleanup verification](../notes/repository-current-cleanup-20260917.md)
+records commit `331a642`, the full regression results, app-image checks and deliberate
+compatibility exceptions. It is a dated source record, not a live-instance status.
+
 Use unique `.agent/tmp/` run directories. `.agent/local-data/` is persistent private
 state and never disposable scratch. Both are ignored; `.agent/` is excluded from
 product images. Keep archived evidence unchanged; known path moves resolve through

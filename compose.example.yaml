@@ -1,11 +1,11 @@
 # Copy this file to compose.yaml in the repository root, then run:
 #   docker compose up --build -d
 # The copied compose.yaml is local and ignored by Git; keep this template portable.
-# Existing instances: check the backup/upgrade instructions in docs/ops/deploy.md first.
+# Existing instances: check the backup/upgrade instructions in docs/ops/restore.md first.
 # Keep exactly ONE mode block active: CPU (default), CUDA, or MLX.
 # To switch, comment the active block and uncomment the chosen block.
 # The shared services and persistent volumes below stay the same.
-# See docs/ops/deploy.md for upgrades and docs/deployment/extraction-acceleration.md
+# See docs/ops/restore.md for upgrades and docs/deployment/extraction-acceleration.md
 # for GPU prerequisites and MLX model packaging/verification.
 name: bilingual-personal-pdf
 

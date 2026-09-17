@@ -13,7 +13,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 
-DESTINATION=ROOT/'fixtures/live-provider'
+DESTINATION=ROOT/'tests/fixtures/live-provider'
 CASES=[
     {'id':'controlled-en','source_language':'en','target_language':'zh-Hans','font':'Helvetica',
      'source_text':[

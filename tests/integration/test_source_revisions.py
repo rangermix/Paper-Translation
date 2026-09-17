@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def fixture_source():
-    return json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))['source_revision']
+    return json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))['source_revision']
 
 
 def evidence(source, block_id='p1'):
@@ -90,7 +90,7 @@ def test_confirm_uses_cas_and_preserves_old_source_file(client, database):
     from packages.storage import atomic_write, write_snapshot
     db, config = database
     source = fixture_source()
-    atomic_write(config.data, 'sources/source_test.pdf', (ROOT / 'fixtures/sample.pdf').read_bytes())
+    atomic_write(config.data, 'sources/source_test.pdf', (ROOT / 'tests/fixtures/sample.pdf').read_bytes())
     with db.transaction() as session:
         asset = SourceAsset(id='asset_test_source', sha256=source['sha256'], byte_size=3822, page_count=2, storage_key='sources/source_test.pdf')
         session.add(asset)
@@ -164,7 +164,7 @@ def test_preflight_correction_creates_new_draft_keeps_parser_evidence_and_uses_c
     source, inspection, proof = native_fixture()
     from packages.storage import atomic_write
     for asset in source['assets']:
-        atomic_write(cfg.data,asset['storage_key'],(ROOT/asset['storage_key']).read_bytes())
+        atomic_write(cfg.data,asset['storage_key'],(ROOT/'tests'/asset['storage_key']).read_bytes())
     with db.transaction() as session:
         session.add(SourceAsset(id='asset_native', sha256=source['sha256'], byte_size=3822, page_count=1, storage_key='sources/native.pdf'))
         session.flush()

@@ -13,14 +13,14 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class Publishing(unittest.TestCase):
     def setUp(self):
-        self.ir = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))
+        self.ir = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name)
 
     def build(self, name='artifact', include_source=False):
         path = self.path / name
-        Publisher().build(self.ir, ROOT, path, include_source=include_source)
+        Publisher().build(self.ir, ROOT / 'tests', path, include_source=include_source)
         return path
 
     def test_all_blocks_once_and_css_frozen(self):
@@ -90,7 +90,7 @@ class Publishing(unittest.TestCase):
         path = self.build()
         original = (path/'index.html').read_bytes()
         with self.assertRaises(FileExistsError):
-            Publisher().build(self.ir,ROOT,path)
+            Publisher().build(self.ir,ROOT / 'tests',path)
         self.assertEqual(original,(path/'index.html').read_bytes())
 
     def test_unsupported_template_rejected(self):

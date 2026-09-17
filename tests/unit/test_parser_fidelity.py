@@ -83,7 +83,7 @@ def test_source_url_stays_link_and_heading_parent_follows_level(tmp_path):
     from packages.parsers.pdf_docling import _source_nodes
     assert _source_nodes('See https://example.com/a-1.', 'b', {}, 'paragraph')==[
         {'type':'text','text':'See '},{'type':'link','href':'https://example.com/a-1','text':'https://example.com/a-1'},{'type':'text','text':'.'}]
-    pdf=ROOT/'fixtures/sample.pdf';inspection=inspect_pdf(pdf)
+    pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     items=[item('title','title','Paper',[20,20,200,40]),item('h','section_header','3. Section',[20,50,200,60]),
            item('hh','section_header','3.2.1 Deeper section',[20,70,200,80]),item('p','text','Body',[20,90,100,100])]
     # This is a heading/URL adapter fixture, not a deliberately incomplete
@@ -119,7 +119,7 @@ def test_empty_native_marker_and_joint_table_cells_coverage():
 
 
 def test_formula_always_retains_pdf_image(tmp_path):
-    pdf=ROOT/'fixtures/sample.pdf';inspection=inspect_pdf(pdf)
+    pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     result=DoclingParser().adapt([item('title','title','Publication',[20,20,200,40]),
         item('m','formula','a b',[20,80,100,110])],inspection,pdf,'original',tmp_path)
     formula=next(b for b in result['source_revision']['blocks'] if b['kind']=='math')
@@ -143,7 +143,7 @@ def test_coverage_requires_complete_ordered_text_even_for_short_omissions():
 
 
 def test_appendix_heading_ancestry(tmp_path):
-    pdf=ROOT/'fixtures/sample.pdf';inspection=inspect_pdf(pdf)
+    pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     items=[item('t','title','Paper',[20,20,200,40]),item('a','section_header','A Appendix',[20,50,200,60]),
         item('aa','section_header','A.2 Details',[20,70,200,80]),item('aaa','section_header','A.2.1 Nested',[20,90,200,100])]
     blocks=DoclingParser().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']['blocks']
@@ -173,7 +173,7 @@ def test_bibliography_misclassified_table_uses_native_columns_and_hanging_entrie
 
 @pytest.mark.parametrize('caption_label',['caption','text'])
 def test_code_in_numbered_figure_retains_original_image_and_caption(tmp_path,caption_label):
-    pdf=ROOT/'fixtures/sample.pdf';inspection=inspect_pdf(pdf)
+    pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     items=[item('title','title','Paper',[20,20,200,40]),item('code','code','def f(): return 1',[20,80,200,110]),
         item('caption',caption_label,'Figure 2. Code example.',[20,115,200,125])]
     source=DoclingParser().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']
@@ -235,7 +235,7 @@ def test_reference_url_page_continuation_needs_exact_annotation_evidence():
 
 
 def test_standalone_code_retains_original_layout_without_invented_line_breaks(tmp_path):
-    pdf=ROOT/'fixtures/sample.pdf';inspection=inspect_pdf(pdf)
+    pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     source=DoclingParser().adapt([item('t','title','Paper',[20,20,200,40]),item('c','code','def f(): return 1',[20,80,200,110])],inspection,pdf,'original',tmp_path)['source_revision']
     code=next(b for b in source['blocks'] if b['kind']=='code')
     assert code['attributes']['representation']=='image' and code['attributes']['asset_id']

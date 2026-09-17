@@ -36,7 +36,7 @@ def authored_source(folder, prefix, sentences, *, id_prefix=None, atom_kind='num
     positions = [extracted.find(sentence) for sentence in dict.fromkeys(sentences)]
     assert min(positions) >= 0 and positions == sorted(positions)
 
-    source = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text())['source_revision']
+    source = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text())['source_revision']
     heading = copy.deepcopy(source['blocks'][0])
     paragraph = copy.deepcopy(next(b for b in source['blocks'] if b['id'] == 'p2'))
     prefix_id = id_prefix or prefix

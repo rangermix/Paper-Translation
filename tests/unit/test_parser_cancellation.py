@@ -38,10 +38,10 @@ def test_malformed_descriptor_does_not_starve_later_work(tmp_path, field, value)
 
 def test_active_child_is_killed_and_content_removed_on_tombstone(tmp_path, monkeypatch):
     inputs, outputs = tmp_path/'inputs', tmp_path/'outputs'
-    request = {'task_id': 'task-private', 'fence': 1, 'source_sha256': digest((ROOT/'fixtures/sample.pdf').read_bytes()),
+    request = {'task_id': 'task-private', 'fence': 1, 'source_sha256': digest((ROOT/'tests/fixtures/sample.pdf').read_bytes()),
         'max_pages': 20, 'deadline': (datetime.now(timezone.utc)+timedelta(seconds=30)).isoformat(),
         'operation': 'inspect', 'parser_version': 'inspector-v1'}
-    write_request(inputs, request, ROOT/'fixtures/sample.pdf')
+    write_request(inputs, request, ROOT/'tests/fixtures/sample.pdf')
     # Exercise real subprocess termination, with a deterministic slow child.
     script = "from pathlib import Path; import sys, time; (Path(sys.argv[1])/'private-text.txt').write_text('Synthetic private output'); time.sleep(20)"
     monkeypatch.setattr('workers.parser.main.ParserProcess',

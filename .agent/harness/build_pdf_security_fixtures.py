@@ -15,12 +15,12 @@ from pypdf.generic import (ArrayObject, DecodedStreamObject, DictionaryObject,
 from reportlab.pdfgen.canvas import Canvas
 
 
-OUTPUT = ROOT / 'fixtures/security'
+OUTPUT = ROOT / 'tests/fixtures/security'
 
 
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    source = ROOT / 'fixtures/sample.pdf'
+    source = ROOT / 'tests/fixtures/sample.pdf'
     writer = PdfWriter()
     writer.append(source)
     writer.encrypt('controlled-test-password')
@@ -49,14 +49,14 @@ def main():
     draw.text((45, 70), 'Controlled scanned body. OCR is required.', fill='black')
     for row in range(8):
         draw.text((45, 130 + row * 42), 'This body is pixels, without a native text layer.', fill='black')
-    raster.save(OUTPUT / 'scan-body.png')
+    from reportlab.lib.utils import ImageReader
     for name, mixed in [('scan-only.pdf', False), ('mixed-scan.pdf', True)]:
         canvas = Canvas(str(OUTPUT / name), pagesize=(595, 842), invariant=1)
         if mixed:
             canvas.drawString(45, 770, 'Controlled native first page')
             canvas.drawString(45, 720, 'The next scanned body must block full-document translation.')
             canvas.showPage()
-        canvas.drawImage(str(OUTPUT / 'scan-body.png'), 0, 0, width=595, height=842)
+        canvas.drawImage(ImageReader(raster), 0, 0, width=595, height=842)
         canvas.showPage()
         canvas.save()
     writer = PdfWriter()

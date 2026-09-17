@@ -19,7 +19,7 @@ def main():
     output = ROOT / '.agent/tmp/evidence/pdf-security-matrix' / suffix
     output.mkdir(parents=True)
     override = output / 'override.yaml'
-    override.write_text('services:\n  app:\n    volumes:\n      - ' + json.dumps(str(ROOT / 'fixtures/security').replace('\\', '/') + ':/security-fixtures:ro') + '\n      - ' + json.dumps(str(output).replace('\\', '/') + ':/security-evidence') + '\n')
+    override.write_text('services:\n  app:\n    volumes:\n      - ' + json.dumps(str(ROOT / 'tests/fixtures/security').replace('\\', '/') + ':/security-fixtures:ro') + '\n      - ' + json.dumps(str(output).replace('\\', '/') + ':/security-evidence') + '\n')
     env = {**os.environ, 'PORT': '18086', 'APP_IMAGE': os.environ.get('ACCEPTANCE_APP_IMAGE', 'bilingual-personal-pdf-app:acceptance-candidate'),
         'PARSER_IMAGE': os.environ.get('ACCEPTANCE_PARSER_IMAGE', 'bilingual-personal-pdf-parser:acceptance-candidate')}
     commands = []
@@ -30,7 +30,7 @@ def main():
         assert completed.returncode == 0, completed.stderr[-2000:] + completed.stdout[-2000:]
         return completed.stdout
     def compose(*arguments):
-        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', 'deployment/compose.acceptance-offline.yaml',
+        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', 'tests/compose.offline.yaml',
             '-f', str(override), '-p', project, *arguments])
     try:
         call(['docker', 'image', 'inspect', env['APP_IMAGE'], env['PARSER_IMAGE']])

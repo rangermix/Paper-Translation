@@ -20,6 +20,9 @@ def main():
     suffix=uuid.uuid4().hex[:8]
     archive=OUTPUT/'runs'/suffix
     archive.mkdir(parents=True)
+    fixture_override=archive/'fixtures.json'
+    fixture_override.write_text(json.dumps({'services': {'app': {'volumes': [
+        (ROOT/'tests/fixtures').as_posix()+':/app/fixtures:ro']}}}, indent=2))
     original='bilingual-offline-'+suffix
     restored='bilingual-restore-'+suffix
     env={**os.environ,'APP_IMAGE':os.environ.get('ACCEPTANCE_APP_IMAGE','bilingual-personal-pdf-app:acceptance-candidate'),
@@ -34,7 +37,7 @@ def main():
         assert run.returncode==0,run.stderr[-3000:]
         return run.stdout
     def compose(project,*args,restore_override=False):
-        files=['-f','deployment/compose.production.yaml','-f','deployment/compose.acceptance-offline.yaml']
+        files=['-f','deployment/compose.production.yaml','-f','tests/compose.offline.yaml','-f',str(fixture_override)]
         if restore_override:files+=['-f',str(OUTPUT/'restore-volume.yaml')]
         return call(['docker','compose',*files,'-p',project,*args])
     def maintenance(project,*args,restore_override=False):

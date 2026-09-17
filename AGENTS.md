@@ -1,25 +1,30 @@
-# 编码 Agent 交接规则 · v3
+# 编码 Agent 指南
 
-本仓库已包含M0–M2实现；完整认证与release仍以最新验收证据为准。先读.agent/memory/current.md，不能把历史设计文本或旧镜像报告当作当前完成状态。
+先读 [当前交接](.agent/memory/current.md)、[产品范围](docs/product-baseline.md)及本次修改涉及的代码和测试。当前系统已实现上传、解析、翻译、编辑、发布、导出和维护；不要从已完成的里程碑重新开始。源码能力、已执行测试和某台机器的运行状态分别记录。
 
-项目命令从 Git 仓库根目录执行。代码在 `src/`，运行时 Schema 和冻结资料在根目录 `res/`，文档/计划在 `docs/`，Docker 构建文件在 `deployment/images/`；Python 模块入口名不变，宿主直接调用时设置 `PYTHONPATH=src`。可复用 agent 验收工具在 `.agent/harness/`，工作记忆在 `.agent/memory/`、长期笔记在 `.agent/notes/`；日志、截图、临时脚本和运行报告只写 `.agent/tmp/`，每次运行使用独立目录，不覆盖历史证据。持久本地环境、授权记录和磁盘放 `.agent/local-data/`，不能按临时文件清理。这两个本地目录不提交 Git，整个 `.agent/` 不进入 Docker 镜像。路径映射见 `.agent/relocation.json`。
+## 工作方式
 
-1. 完整读取 `docs/product-baseline.md`、`docs/shared/`、`docs/deployment/compose-contract.md`及所执行阶段的Spec/Plan。最新五条用户约束优先，不恢复旧版本的输入、身份、权限或反代模块。
-2. 从M0-P01开始，先盘点实际代码及测试，再建立退出门对应测试。内部IR夹具不是对外入口；原有两篇论文只能受控内置seed。
-3. 只处理PDF。扫描/OCR仍在当前认证范围之外。原文由解析器和人工来源校对产生，翻译模型不能改写源文或生成网页。
-4. 单实例无身份系统：不建users/workspaces/tenants/roles/sessions表，不设默认owner。多标签页/worker竞争仍需版本、generation、fence与幂等。
-5. 部署只有Docker Compose，app直接提供HTTP，后端依赖全容器化，解析模型构建期下载固定版本并入镜像；无运行时pip/npm或模型自动下载，无内置反代。
-6. 所有API密钥持久化到后端secret文件。按2026-09-06用户新增要求，设置页允许一次性输入API endpoint、key、model ID等，支持OpenAI Responses/Chat Completions、Gemini Interactions和Claude Messages；保存后不回显密钥，不写浏览器存储、PDF解析器、日志或导出。协议、供应商、鉴权和Claude API版本须一致，禁止失败后自动切换；原生响应模型必须与固定model ID匹配，Gemini仅允许models/前缀等价，不能猜测别名。真实模型调用必须先有测试预算与外发确认，不擅自切换供应商。
-7. 旧reader-v1 CSS不可变。新模板单独注册，不重译既有内容。发布先完成不可变产物再切换指针；未知付费结果不能当作未发送直接重试。
-8. `docs/contracts/implementation-backlog.json`定义依赖，`requirements.json`和`exit-gates.json`定义验收。保存环境、命令、commit、输出和失败；FakeProvider不替代真实Provider测试，YAML解析不替代Compose冷启动。
-9. 按2026-09-07用户要求，产品预算/成本控制为可选项；新配置默认关闭，旧完整配置保留已启用行为。关闭允许无价格/无金额预算派发，未知金额用null显示未计算，网络未知结果仍禁止自动重发。应用默认input/output token上限为32768/8192、单元字符2000，显示有效值并提供仅限额重置；保留用户endpoint/key/model与已有自定义值。此产品配置变更不等于授权agent自行读取真实key或执行真实模型验收。
+- 从 Git 仓库根目录执行命令。代码在 `src/`，运行资源在 `res/`，测试及测试资料在 `tests/`，部署输入在 `deployment/`，当前说明在 `docs/`。宿主 Python 模块调用使用 `PYTHONPATH=src`。
+- 完成并验证一个工作检查点就提交、推送到已配置分支和远端。保留无关或未完成修改，不强制推送。
+- 根目录 `compose.yaml` 是忽略的本地配置。保留用户的项目名、镜像绑定、MLX 设置和覆盖文件；维护现有实例前检查实际目标。
+- 日志、截图、临时脚本和运行报告写入独立的 `.agent/tmp/` 运行目录。`.agent/local-data/` 是持久环境、授权记录和私有状态，不能作为临时文件清理。两者均不提交，整个 `.agent/` 不进入产品镜像。
+- 保持文档描述当前代码。删除被替代的计划和重复说明；历史证据不证明当前源码通过验收。旧证据路径由 `.agent/relocation.json` 解析。
 
-10. 按2026-09-07用户要求，所有语言均可使用，移除实验语言、额外语言确认、语言能力矩阵限制和强制手动发布。语言名称以各自语言显示，规范locale保留脚本/地区差异；现有来源确认、外发确认、质量检查和不可变历史规则继续适用。
+## 产品边界
 
-11. 按2026-09-09用户要求，全部内容质量异常 non-blocking：自动解析、自动检查和确定性恢复后生成译文，异常集中提示，不以缺段、数字/公式/表格/代码差异或未人工校对阻止翻译、封存、发布、导出。缺页/大段遗漏按页恢复，复杂内容提供原图对照；所有任务留存实际模型、时间、时长与脱敏日志；优化全站 UI 文案；上传发现 DOI 并异步取得元数据，成功后文档库显示书目信息，失败保留文件名。NB-P01–P12 已于本轮实现并交付8080/schema12，实际范围及真实付费Provider NOT RUN边界见[交付验收](.agent/notes/nonblocking-20260909-acceptance.md)。执行以 [Spec](docs/milestones/nonblocking-workflow-spec.md)、[Plan](docs/milestones/nonblocking-workflow-plan.md) 和 [NB backlog](docs/contracts/nonblocking-workflow-backlog.json) 为准，覆盖旧内容质量阻断和强制来源全文确认要求；实际执行故障、外发授权、秘密保护、fence/CAS 和不可变历史按真实情况处理。
+- 只接收 PDF。内部 IR、测试夹具及两篇受控种子论文不构成其他导入入口。原文来自解析器或有 PDF 证据的机械修正，翻译模型不得改写源文或生成网页。
+- 单实例，无账号、用户、工作区、角色或 ACL。并发标签页与 worker 仍须使用 generation、CAS、fence、租约和幂等保护。
+- 仅 Docker Compose 部署，app 直接提供 HTTP，无内置反代。运行时不安装 pip/npm 依赖。解析权重在构建时锁定、校验并打包；可选本地翻译权重仅在明确准备或使用时下载，启动和读取设置不下载。
+- CPU/CUDA parser 无网络、数据库或 Provider 密钥。MLX 通过 Docker Model Runner 使用已准备的本地后端；保留实际模型 ID 校验，不替换为独立宿主服务。
+- 内容质量异常均为非阻断提示。自动检查、确定性恢复及原图对照继续执行，不以缺段、数字/公式/表格差异或缺少人工核对阻止翻译、封存、发布、导出。执行故障、非法路径、损坏资源、外发授权和版本冲突仍按实际情况处理。
+- 所有语言均可选择，保留规范 locale 的脚本/地区差异。人工核对可选，不生成虚假确认。仅有明确元数据证据的作者、机构、标识符和参考文献保留原文；模糊正文保持可翻译。
 
-首次执行提示：
+## 配置、秘密与不可变历史
 
-```text
-开始实施对照文库个人PDF版v3的M0。先阅读产品基线、共享架构/API/工作流、Compose契约与M0 Spec/Plan，检查当前仓库实际完成状态。按工作包依赖先创建退出测试，再实现生产代码；不要把演示原型标成产品完成。仅PDF、单实例、无身份/权限、仅Compose、无反代。遇到不可用的Docker或真实凭据等环境条件，记录精确阻塞并继续完成不依赖它的工作，但不得跳过相应退出门。
-```
+- API key 只持久化到后端 secret 文件，不回显，不写浏览器存储、解析器、日志或导出。保存设置不自动测试。目的地、协议、鉴权、model ID 与已确认配置必须一致，不自动切换供应商或模型。
+- 金额控制可选，新配置默认关闭，已有配置保留选择。未知金额用 `null`，未知网络结果不得自动重发。默认请求上限为输入 32768 tokens、输出 8192 tokens、单元正文 2000 字符；重置仅改变这些上限。
+- 真实模型测试须先有明确的测试预算与内容外发授权；产品允许保存 key 不等于授权 agent 读取真实凭据。测试替身不证明真实服务或硬件可用。
+- 已安装数据库迁移、封存源/译快照和已发布资源不可原地改写。阅读模板 ID、Schema 版本及第三方模型版本是兼容性标识，不是项目发行版。新模板单独注册，换模板不重译。
+- 发布先完成并校验不可变文件，再以 CAS 切换当前指针。备份、恢复和清理使用生产维护锁；不能用测试清库或 `down --volumes` 操作用户实例。
+
+验证入口见 [tests/README.md](tests/README.md)。记录命令、源码、环境、结果和限制；静态 Compose 检查不替代冷启动，局部测试不替代真实解析、模型调用或恢复验证。

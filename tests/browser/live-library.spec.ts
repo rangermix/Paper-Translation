@@ -13,7 +13,7 @@ test('real Compose PDF upload persists across browser reload and metadata change
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/#/upload');
   await page.getByLabel('生成内容', { exact: true }).selectOption('source');
-  await page.locator('input[type=file]').setInputFiles(resolve(root, 'fixtures/sample.pdf'));
+  await page.locator('input[type=file]').setInputFiles(resolve(root, 'tests/fixtures/sample.pdf'));
   await page.getByRole('button', { name: '上传并开始处理', exact: true }).click();
   const duplicate = page.getByRole('button', { name: '建立独立文档' });
   const saved = page.getByRole('link', { name: '已入库，后台处理中 · 查看文档' });
@@ -35,7 +35,7 @@ test('real Compose PDF upload persists across browser reload and metadata change
   await expect(page.getByText('agent-acceptance · PDF')).toBeVisible();
   const pdf = await page.request.get(await page.getByRole('link', { name: '打开原 PDF', exact: true }).getAttribute('href')!);
   expect(pdf.status()).toBe(200);
-  const source = await import('node:fs/promises').then(fs => fs.readFile(resolve(root, 'fixtures/sample.pdf')));
+  const source = await import('node:fs/promises').then(fs => fs.readFile(resolve(root, 'tests/fixtures/sample.pdf')));
   expect(await pdf.body()).toEqual(source);
   await page.screenshot({ path: resolve(outputDirectory('live'), 'live-document-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

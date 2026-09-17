@@ -23,7 +23,7 @@ pytestmark = pytest.mark.postgres
 def test_candidate_api_worker_accept_preserves_98_locked_blocks(client, database, monkeypatch, tmp_path):
     db, cfg = database
     profile = configure(monkeypatch, tmp_path)
-    fixture = json.loads(Path('fixtures/sample-document-v3.json').read_text('utf-8'))
+    fixture = json.loads(Path('tests/fixtures/sample-document.json').read_text('utf-8'))
     source = fixture['source_revision']
     paragraph = next(b for b in source['blocks'] if b['id'] == 'p1')
     blocks = [source['blocks'][0]]
@@ -36,7 +36,7 @@ def test_candidate_api_worker_accept_preserves_98_locked_blocks(client, database
     for asset in source['assets']:
         target = cfg.data / asset['storage_key']
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(asset['storage_key'], target)
+        shutil.copyfile(Path('tests') / asset['storage_key'], target)
     validate_source(source, asset_root=cfg.data)
     key = 'hundred-source.json'
     sha = write_snapshot(cfg.data, key, source)

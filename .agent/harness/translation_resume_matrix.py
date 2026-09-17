@@ -68,7 +68,8 @@ def main():
     profile=OUT/'empty-public-profile.json';profile.write_text('{}',encoding='utf8')
     common=[OUT.as_posix()+':/evidence', (ROOT/'.agent/harness').as_posix()+':/harness:ro',profile.as_posix()+':/config/provider-profile.json:ro']
     override=OUT/'override.json'
-    override.write_text(json.dumps({'services':{'app':{'volumes':common},'worker':{'volumes':common,
+    override.write_text(json.dumps({'services':{'app':{'volumes':common + [
+        (ROOT/'tests/fixtures').as_posix()+':/app/tests/fixtures:ro']},'worker':{'volumes':common,
         'command':['python','/harness/translation_resume_worker.py'],'restart':'no'}},'networks':{'backend':{'internal':True},
         'http':{'internal':False},'provider_egress':{'internal':True}}},indent=2),encoding='utf8')
     images={key:os.environ.get('ACCEPTANCE_'+key,default) for key,default in [('APP_IMAGE',APP),('PARSER_IMAGE',PARSER),('DATABASE_IMAGE',DATABASE)]}

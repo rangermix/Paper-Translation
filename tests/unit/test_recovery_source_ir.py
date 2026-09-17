@@ -25,7 +25,7 @@ def test_image_only_source_has_page_fallback_and_does_not_invent_text(tmp_path):
 
 
 def test_native_recovery_retains_original_and_all_numeric_comparison_assets(tmp_path):
-    path = Path('fixtures/sample.pdf')
+    path = Path('tests/fixtures/sample.pdf')
     before = path.read_bytes()
     output = tmp_path / 'output'
     result = DoclingParser().adapt([], inspect_pdf(path), path, 'original', output)

@@ -21,6 +21,7 @@ function inputPath(value) {
     ['evidence/', '.agent/tmp/evidence/'],
     ['reports/', '.agent/tmp/reports/'],
     ['reference/', 'res/reference/'],
+    ['fixtures/', 'tests/fixtures/'],
     ['apps/', 'src/apps/'],
     ['packages/', 'src/packages/'],
     ['workers/', 'src/workers/'],
@@ -28,6 +29,7 @@ function inputPath(value) {
   ]) {
     if (input.startsWith(before)) { input = after + input.slice(before.length); break; }
   }
+  if (input === 'tests/fixtures/sample-document-v3.json') input = 'tests/fixtures/sample-document.json';
   const resolved = path.resolve(repoRoot, input);
   const relative = path.relative(repoRoot, resolved);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {

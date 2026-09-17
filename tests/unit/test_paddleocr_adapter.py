@@ -43,7 +43,7 @@ def test_formula_contradictions_are_reported_without_rewriting_model_output():
 
 @pytest.mark.parametrize('model', [PADDLE_MODEL, GRANITE_MODEL])
 def test_full_page_vlm_code_uses_native_evidence_and_remains_protected(tmp_path, model):
-    pdf = Path('fixtures/sample.pdf')
+    pdf = Path('tests/fixtures/sample.pdf')
     inspection = inspect_pdf(pdf)
     page = inspection['pages'][0]
     title, code = page['text_regions'][:2]

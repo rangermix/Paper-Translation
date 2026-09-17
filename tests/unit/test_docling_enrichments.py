@@ -45,7 +45,7 @@ def test_failed_model_conversion_keeps_native_source_and_progress(tmp_path, monk
     request = {'task_id': 'task_fallback', 'fence': 1, 'source_sha256': 'a' * 64,
                'max_pages': 1, 'deadline': '2099-01-01T00:00:00+00:00'}
     token = configure_progress(tmp_path, request)
-    pdf = ROOT / 'fixtures/sample.pdf'
+    pdf = ROOT / 'tests/fixtures/sample.pdf'
     try:
         result = DoclingParser().parse(pdf, 'original', tmp_path)
     finally:
@@ -65,7 +65,7 @@ def item(ref, label, original, text, box):
 
 
 def adapt(tmp_path, label, original, recognized):
-    pdf = ROOT / 'fixtures/sample.pdf'
+    pdf = ROOT / 'tests/fixtures/sample.pdf'
     items = [item('title', 'title', 'Publication', 'Publication', [20, 20, 200, 40]),
              item('content', label, original, recognized, [20, 80, 300, 140])]
     return DoclingParser().adapt(items, inspect_pdf(pdf), pdf, 'original', tmp_path,
@@ -136,7 +136,7 @@ def test_recognition_html_is_escaped_and_original_crop_is_accessible(tmp_path):
     from packages.ir import block_hash
     from packages.parsers.pdf_docling import _source_nodes
     from packages.publisher.renderer import render_html
-    ir = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))
+    ir = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))
     source = ir['source_revision']
     block = next(b for b in source['blocks'] if b['kind'] == 'code')
     block['attributes'].update(representation='plain', recognition=MODEL | {'original_text': block['raw_text']},

@@ -33,7 +33,7 @@ def main():
     override = output / 'override.json'
     override.write_text(json.dumps({'services': {
         'app': {'volumes': [str(ROOT / '.agent/harness') + ':/harness:ro',
-            str(ROOT / 'fixtures/live-provider') + ':/no-provider-fixtures:ro',
+            str(ROOT / 'tests/fixtures/live-provider') + ':/no-provider-fixtures:ro',
             str(output) + ':/no-provider-evidence', str(profile_file) + ':/config/provider-profile.json:ro']},
         'worker': {'volumes': [str(profile_file) + ':/config/provider-profile.json:ro']}
     }, 'networks': {'http': {'internal': True}, 'provider_egress': {'internal': True}}}, indent=2), encoding='utf-8')

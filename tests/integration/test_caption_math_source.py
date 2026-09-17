@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 def scenario():
-    ir=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text(encoding='utf8'));source=ir['source_revision']
+    ir=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text(encoding='utf8'));source=ir['source_revision']
     block=next(b for b in source['blocks'] if b['id']=='figcap')
     text='Caption before d model after the source expression.'
     block.update(raw_text=text,normalized_text=text,normalization_edits=[],source_inline=[{'type':'text','text':text}])
@@ -38,8 +38,8 @@ def test_caption_math_xref_preserves_owner_and_renders_independent_root_once(tmp
     translation.update(title='DRAFT',results=[{**copy.deepcopy(example),'block_id':b['id'],'source_hash':b['source_hash'],'status':'unresolved','target_inline':[],
         'review_state':'not_reviewed','review_record':None} for b in changed['source']['blocks']])
     translation['results'][0]['target_inline']=[{'type':'text','text':'DRAFT'}]
-    rendered=render_input('doc-caption-proof',changed['source'],translation,mode='draft');validate_ir(rendered,asset_root=ROOT)
-    Publisher().build(rendered,ROOT,tmp_path/'artifact')
+    rendered=render_input('doc-caption-proof',changed['source'],translation,mode='draft');validate_ir(rendered,asset_root=ROOT / 'tests')
+    Publisher().build(rendered,ROOT / 'tests',tmp_path/'artifact')
     html=(tmp_path/'artifact/index.html').read_text(encoding='utf8')
     assert html.count('id="b-'+math['id']+'"')==1 and f'href="#b-{math["id"]}"' in html
     assert html.index('id="b-fig"')<html.index('id="b-figcap"')<html.index('id="b-'+math['id']+'"')
@@ -107,7 +107,7 @@ def test_actual_efficient_math_annotation_plan_api_and_reader(client,database):
     assert all(by[b['id']]['raw_text']==b['raw_text'] and by[b['id']]['owner_id']==b['owner_id'] for b in source['blocks'])
     assert all(file_hash(cfg.data/key)==sha for key,sha in original_files.items())
     with db.transaction() as session:assert all(digest(session.get(SourceDraft,key).source)==sha for key,sha in snapshots.items())
-    template=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text(encoding='utf8'));translation=copy.deepcopy(template['translation_revision']);example=translation['results'][1]
+    template=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text(encoding='utf8'));translation=copy.deepcopy(template['translation_revision']);example=translation['results'][1]
     translation.update(source_revision_id=current['source']['id'],title='DRAFT',results=[{**copy.deepcopy(example),'block_id':b['id'],'source_hash':b['source_hash'],
         'status':'unresolved','target_inline':[],'review_state':'not_reviewed','review_record':None} for b in current['source']['blocks']])
     translation['results'][0]['target_inline']=[{'type':'text','text':'DRAFT'}]

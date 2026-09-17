@@ -14,7 +14,7 @@ def profile():
     return {'configured':True,'provider':'openai','model_id':'fixture-model-2026-01-01','profile_revision':'test-v1','prompt_version':'translate-v1','privacy_revision':'test-v1','enabled_pairs':[['en','zh-Hans']],'max_input_tokens':16384,'max_output_tokens':4096,'max_unit_characters':80,'price':{'revision':'test','currency':'USD','input_micro_per_million':1000000,'cached_input_micro_per_million':500000,'output_micro_per_million':2000000,'output_includes_reasoning':True,'input_bound_rule':'utf8-byte-ceiling-v1'}}
 
 
-def source():return json.loads((ROOT/'fixtures/sample-document-v3.json').read_text('utf-8'))['source_revision']
+def source():return json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))['source_revision']
 
 
 def test_planner_never_splits_protected_atom():

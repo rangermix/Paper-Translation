@@ -25,7 +25,7 @@ def test_double_column_reorder_new_sealed_source_diff_and_old_publication_immuta
     if not (corpus/'payload.json').is_file():pytest.skip('Requires actual production-spool two-column PDF inference.')
     actual=json.loads((corpus/'payload.json').read_text(encoding='utf8'));correct=actual['source_revision']
     assert actual['coverage']['can_translate']
-    assert file_hash(corpus/'original.pdf')==correct['sha256']==file_hash(ROOT/'fixtures/two-column-source/two-column-source.pdf')
+    assert file_hash(corpus/'original.pdf')==correct['sha256']==file_hash(ROOT/'tests/fixtures/two-column-source/two-column-source.pdf')
     validate_source(correct,asset_root=corpus)
     wrong=copy.deepcopy(correct);wrong['id']='src_two_column_wrong'
     wrong_order=list(wrong['reading_order']);wrong_order[2],wrong_order[3]=wrong_order[3],wrong_order[2]

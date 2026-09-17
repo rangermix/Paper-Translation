@@ -1,0 +1,76 @@
+# Current workflows
+
+## From PDF to publication
+
+Upload inspection verifies the PDF before library import. Parsing freezes the
+selected profile, accelerator and timeout. Newly saved preferences use
+PaddleOCR-VL-1.6; older explicit preferences and queued jobs are preserved.
+
+Source extraction is followed by page coverage checks and bounded recovery using
+the original PDF. Missing regions that cannot be safely recovered remain visible
+as source text or page images. Recovery tasks expose before/after comparisons.
+Source-only results provide an explicit continuation action; translation uses the
+saved source rather than implying parsing already produced a translation.
+
+Translation requires a complete saved profile, content/destination confirmation,
+enabled dispatch and a budget when cost control is enabled. Confirmations bind the
+source, profile revision/hash and current generation. Changing them requires a new
+confirmation. Waiting for model/configuration startup is represented separately
+from an unknown provider outcome.
+
+Content checks produce hints and comparison evidence. They do not require manual
+approval to seal, publish or export. Invalid executable content is rejected or
+safely represented before rendering; nonblocking quality does not relax file,
+version or secret boundaries. Successfully sealed revisions are immutable.
+
+## Original-only academic content
+
+[ir/retention.py](../src/packages/ir/retention.py) recognizes supported author bylines,
+affiliations, contact lines, DOI/ORCID identifiers and bibliography ranges. It uses
+structure and positive metadata evidence; ambiguous prose remains translatable.
+Bibliography retention stops at the next prose section.
+
+Detected blocks create no translation units and are excluded from request context.
+They are retained once, with their original links and formatting, in bilingual,
+source-only and target-only readers and exports. The detector does not rewrite
+source text or retroactively change existing sealed translations/publications.
+Retained content is neither a translation failure nor a human-review claim.
+
+## Editing, languages and history
+
+Segment edits, selected translation candidates, source corrections and optional
+semantic review retain version checks and provenance. Manual review is optional
+and becomes stale when its bound text changes. Semantic review produces findings,
+not replacement translations; local translation-only models do not provide it.
+
+All valid supported language tags may be selected, including custom tags. Names
+are shown in their own language where available. Locale normalization preserves
+script/region differences such as `zh-Hans`, `zh-Hant`, `pt` and `pt-BR`.
+Language availability does not certify a model's translation quality.
+
+The task center lists parent tasks, with paginated child tasks and logs in details.
+Clearing finished history applies across pages and filters, while retaining the
+documents, task records, logs, attempts and costs. Active/waiting tasks and those
+with active or unknown permits are ineligible. Changed jobs become visible again;
+“显示已清除历史” includes hidden records. Clearing requires generation and idempotency
+checks and is not data deletion.
+
+## Provider settings and uncertain requests
+
+Saving endpoint, protocol, model and optional key does not test them. An empty key
+preserves the current secret; clearing is explicit. Destination/protocol/auth changes
+cannot silently reuse an old key. Native response identities must match the selected
+model; Gemini permits only the supported `models/` prefix equivalence. No protocol,
+model or provider is silently substituted.
+
+The external-request switch is durable database state. It gates translation,
+semantic review and connection tests, independently of saved credentials and
+per-operation confirmation. It does not disable DOI metadata lookup or explicit
+local model downloads. Disabling it stops new permits; in-flight requests still
+settle. Restoring a backup does not enable it.
+
+New profiles default to cost control off. Known usage may still be recorded and
+unknown amounts remain `null`. Enabled cost control uses reserved, actual and
+unresolved-risk amounts without double counting. A timeout after dispatch remains
+`outcome_unknown`; explicit risk acceptance is needed before retrying. An unknown
+result is never treated as an unsent request or free work.

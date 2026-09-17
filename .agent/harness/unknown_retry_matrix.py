@@ -80,7 +80,8 @@ def main():
         override = {'services': {
             'app': {'environment': {'PYTHONPATH': '/app/src:/app:/harness'}, 'volumes': [
                 (ROOT / '.agent/harness').as_posix() + ':/harness:ro',
-                (ROOT / 'tests/support.py').as_posix() + ':/tests/support.py:ro', out.as_posix() + ':/evidence']},
+                (ROOT / 'tests/support.py').as_posix() + ':/tests/support.py:ro',
+                (ROOT / 'tests/fixtures').as_posix() + ':/app/tests/fixtures:ro', out.as_posix() + ':/evidence']},
             'worker': {'command': ['python', '/harness/unknown_retry_worker.py'], 'restart': 'no',
                 'volumes': [(ROOT / '.agent/harness').as_posix() + ':/harness:ro', out.as_posix() + ':/evidence']}},
             'networks': {'http': {'internal': False}, 'backend': {'internal': True}, 'provider_egress': {'internal': True}}}

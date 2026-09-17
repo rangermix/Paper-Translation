@@ -12,7 +12,7 @@ for (const template of ['reader-v1', 'reader-v2']) for (const format of ['single
   test(`independent authored complex source stays complete in ${template} ${format} at 320px`, async ({ page, context }, testInfo) => {
     test.skip(!supplied, 'Requires the final authored M0 export evidence, not a parser gold.');
     const folder = inputPath(supplied!);
-    const manifest = JSON.parse(await readFile(resolve(root, 'fixtures/complex-reader/authored-source-manifest.json'), 'utf8'));
+    const manifest = JSON.parse(await readFile(resolve(root, 'tests/fixtures/complex-reader/authored-source-manifest.json'), 'utf8'));
     const file = resolve(folder, format === 'single' ? `${template}.html` : `${template}-extracted/index.html`);
     const errors: string[] = [], network: string[] = [];
     page.on('pageerror', error => errors.push(error.message));

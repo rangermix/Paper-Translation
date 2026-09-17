@@ -20,7 +20,7 @@ def main():
     output.mkdir(parents=True)
     override = output / 'override.json'
     override.write_text(json.dumps({'services': {'app': {'volumes': [
-        str(ROOT / 'fixtures').replace('\\', '/') + ':/batch-fixtures:ro',
+        str(ROOT / 'tests/fixtures').replace('\\', '/') + ':/batch-fixtures:ro',
         str(output).replace('\\', '/') + ':/batch-evidence']}}}), encoding='utf-8')
     env = {**os.environ, 'PORT': '18087',
         'APP_IMAGE': os.environ.get('ACCEPTANCE_APP_IMAGE', 'bilingual-personal-pdf-app:acceptance-candidate'),
@@ -39,7 +39,7 @@ def main():
         assert record.get('exit_code') == 0, str(record)[-3000:]
         return record['stdout']
     def compose(*args):
-        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', 'deployment/compose.acceptance-offline.yaml',
+        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', 'tests/compose.offline.yaml',
             '-f', str(override), '-p', project, *args])
     try:
         call(['docker', 'image', 'inspect', env['APP_IMAGE'], env['PARSER_IMAGE'], env['DATABASE_IMAGE']])

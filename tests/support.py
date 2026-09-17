@@ -23,11 +23,11 @@ def legacy_insert(session, model, **values):
 
 
 def seed_editor(db, config, *, legacy_schema=False, document_ir=None):
-    ir = copy.deepcopy(document_ir) if document_ir is not None else json.loads(Path('fixtures/sample-document-v3.json').read_text(encoding='utf-8'))
+    ir = copy.deepcopy(document_ir) if document_ir is not None else json.loads(Path('tests/fixtures/sample-document.json').read_text(encoding='utf-8'))
     source = ir['source_revision']
     (config.data / 'fixtures').mkdir(exist_ok=True)
     for name in ('sample.pdf', 'figure.png'):
-        shutil.copyfile(Path('fixtures') / name, config.data / 'fixtures' / name)
+        shutil.copyfile(Path('tests/fixtures') / name, config.data / 'fixtures' / name)
     source_key = 'documents/doc_fixture/sources/src_fixture/document.json'
     source_hash = write_snapshot(config.data, source_key, source)
     with db.transaction() as session:

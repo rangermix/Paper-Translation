@@ -17,7 +17,7 @@ class PDFParsing(unittest.TestCase):
         self.path = Path(self.temp.name)
 
     def test_inspector_reads_real_pdf(self):
-        result = inspect_pdf(ROOT/'fixtures/sample.pdf')
+        result = inspect_pdf(ROOT/'tests/fixtures/sample.pdf')
         self.assertEqual(result['page_count'],1)
         self.assertEqual(result['media_type'],'application/pdf')
         self.assertGreater(result['pages'][0]['text_characters'],0)
@@ -36,16 +36,16 @@ class PDFParsing(unittest.TestCase):
         self.assertEqual(ctx.exception.code,'PDF_ENCRYPTED')
 
     def test_actual_byte_limit(self):
-        with self.assertRaises(PDFError) as ctx: inspect_pdf(ROOT/'fixtures/sample.pdf',{'max_bytes':10})
+        with self.assertRaises(PDFError) as ctx: inspect_pdf(ROOT/'tests/fixtures/sample.pdf',{'max_bytes':10})
         self.assertEqual(ctx.exception.code,'UPLOAD_TOO_LARGE')
 
     def test_page_limit(self):
-        with self.assertRaises(PDFError) as ctx: inspect_pdf(ROOT/'fixtures/sample.pdf',{'max_pages':0})
+        with self.assertRaises(PDFError) as ctx: inspect_pdf(ROOT/'tests/fixtures/sample.pdf',{'max_pages':0})
         self.assertEqual(ctx.exception.code,'PDF_PAGE_LIMIT')
 
     def test_rotated_cropbox_coordinates_retain_title(self):
         from pypdf import PdfReader,PdfWriter
-        page=PdfReader(ROOT/'fixtures/sample.pdf').pages[0]
+        page=PdfReader(ROOT/'tests/fixtures/sample.pdf').pages[0]
         page.rotate(90);page.cropbox.lower_left=(20,30);page.cropbox.upper_right=(590,770)
         writer=PdfWriter();writer.add_page(page);file=self.path/'rotated.pdf'
         with file.open('wb') as handle:writer.write(handle)
@@ -57,7 +57,7 @@ class PDFParsing(unittest.TestCase):
 
     def test_models_missing_never_fallback_or_download(self):
         with self.assertRaises(PDFError) as ctx:
-            DoclingParser(artifacts_path=self.path/'absent').parse(ROOT/'fixtures/sample.pdf','asset_test',self.path/'result')
+            DoclingParser(artifacts_path=self.path/'absent').parse(ROOT/'tests/fixtures/sample.pdf','asset_test',self.path/'result')
         self.assertEqual(ctx.exception.code,'PARSER_MODELS_MISSING')
 
     def test_spool_rejects_paths_secrets_and_stale_fence(self):

@@ -1,0 +1,48 @@
+# Isolated implementation tests and repository checks. Never merged into production.
+name: bilingual-personal-pdf-test
+x-test-build: &test-build
+  context: ..
+  dockerfile: tests/Dockerfile
+services:
+  tests:
+    profiles: [tests]
+    build: *test-build
+    environment:
+      LIBRARY_TEST_MODE: "1"
+      TEST_DATABASE_URL: postgresql+psycopg://library_test:library_test_only@db:5432/library_test
+      ACCEPTANCE_DATABASE_URL: postgresql+psycopg://library_test:library_test_only@db:5432/library_test
+    volumes:
+      - ../.agent/harness:/app/.agent/harness:ro
+      - ../.agent/relocation.json:/app/.agent/relocation.json:ro
+    mem_limit: 4g
+    cpus: "4"
+    depends_on:
+      db:
+        condition: service_healthy
+  checks:
+    profiles: [checks]
+    build: *test-build
+    command: [python, src/tools/check_package.py]
+    network_mode: none
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m,mode=1777"]
+  db:
+    image: postgres:15-bookworm@sha256:5d1d70e254e3c5d7d76847a9deebb18478cd518df37abf6b278d4bdb1fe5d96c
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: library_test
+      POSTGRES_USER: library_test
+      POSTGRES_PASSWORD: library_test_only
+    ports:
+      - "127.0.0.1:55439:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U library_test -d library_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    restart: "no"

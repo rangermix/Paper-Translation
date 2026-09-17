@@ -18,7 +18,7 @@ pytestmark = pytest.mark.postgres
 
 
 def seed_risk(db, cfg, damage=None):
-    ir = json.loads(Path('fixtures/sample-document-v3.json').read_text(encoding='utf-8'))
+    ir = json.loads(Path('tests/fixtures/sample-document.json').read_text(encoding='utf-8'))
     source = ir['source_revision']
     block = next(b for b in source['blocks'] if b['id'] == 'item')
     block['raw_text'] = block['normalized_text'] = 'Only keep the original.'

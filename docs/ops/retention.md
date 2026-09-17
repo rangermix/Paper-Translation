@@ -2,6 +2,10 @@
 
 Retention uses the production Compose maintenance service. It produces a plan by default; an explicit `--apply` executes a newly calculated plan while holding the same exclusive advisory lock as backup and restore.
 
+Use the same project name, environment and overlays as the instance being maintained.
+The examples use the shared definition; substitute the local `compose.yaml` only
+when it is the selected instance's actual configuration.
+
 ```powershell
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance retention
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance retention --apply
@@ -24,4 +28,5 @@ Cleanup checks the current connection's exclusive PostgreSQL advisory lock and t
 
 Maintenance remains enabled and external dispatch remains disabled afterward. Inspect the plan and any warnings, then use `maintenance-off` to reopen ordinary writes. Enabling paid dispatch is a separate explicitly authorized action. Expiration of a local backup does not recall already downloaded copies or backups stored elsewhere.
 
-Verification: `tests/integration/test_retention.py` exercises actual PostgreSQL lock ownership/exclusion, dry-run preservation, historical Artifact and independent-TM preservation, live parser fences, fresh-file protection, upload/receipt/backup deadlines, symlink containment, bounded cleanup, and large-backup continuation. The current local run passed six tests; this is distinct from running apply on a production library.
+Behavior is exercised by `tests/integration/test_retention.py` using an isolated
+PostgreSQL database. Running those tests does not apply cleanup to a live library.

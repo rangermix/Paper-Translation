@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class IRSemantics(unittest.TestCase):
     def setUp(self):
-        self.ir = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))
+        self.ir = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))
 
     def rejected(self, mutation):
         mutation(self.ir)
@@ -20,7 +20,7 @@ class IRSemantics(unittest.TestCase):
             validate_ir(self.ir)
 
     def test_frozen_all_kinds_fixture(self):
-        self.assertIs(validate_ir(self.ir, ROOT), self.ir)
+        self.assertIs(validate_ir(self.ir, ROOT / 'tests'), self.ir)
 
     def test_duplicate_json_keys(self):
         with self.assertRaises(IRValidationError):

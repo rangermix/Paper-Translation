@@ -9,7 +9,7 @@ from packages.publisher import Publisher, export_bundle, export_single_html
 
 
 def fixture():
-    ir = json.loads(Path('fixtures/sample-document-v3.json').read_text('utf-8'))
+    ir = json.loads(Path('tests/fixtures/sample-document.json').read_text('utf-8'))
     source, tr = ir['source_revision'], ir['translation_revision']
     tr['content_policy'] = 'nonblocking-v1'
     result = next(r for r in tr['results'] if r['block_id'] == 'p2')
@@ -34,7 +34,7 @@ def fixture():
 def test_fallback_and_original_comparisons_survive_offline_exports(tmp_path):
     ir = fixture()
     directory = tmp_path/'artifact'
-    Publisher().build(ir, Path('.'), directory, include_source=True)
+    Publisher().build(ir, Path('tests'), directory, include_source=True)
     html = (directory/'index.html').read_text('utf-8')
     assert '此段尚无译文，以下保留原文' in html
     assert 'data-issue-filter="page"' in html and 'data-issue-filter="category"' in html
@@ -51,7 +51,7 @@ def test_fallback_and_original_comparisons_survive_offline_exports(tmp_path):
 def test_missing_crop_keeps_original_pdf_link_without_claiming_image_is_available(tmp_path):
     ir = fixture()
     (tmp_path/'fixtures').mkdir()
-    shutil.copyfile('fixtures/sample.pdf', tmp_path/'fixtures/sample.pdf')
+    shutil.copyfile('tests/fixtures/sample.pdf', tmp_path/'fixtures/sample.pdf')
     Publisher().build(ir, tmp_path, tmp_path/'artifact', include_source=True)
     html = (tmp_path/'artifact/index.html').read_text('utf-8')
     assert '对照图暂不可用，打开原 PDF 查看' in html

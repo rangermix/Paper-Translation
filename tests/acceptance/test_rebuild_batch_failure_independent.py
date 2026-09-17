@@ -22,11 +22,11 @@ pytestmark = pytest.mark.postgres
 
 def test_twenty_api_rebuilds_isolate_one_corrupt_resource(client, database):
     db, cfg = database
-    fixture = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))
+    fixture = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))
     original = next(a for a in fixture['source_revision']['assets'] if a['id'] == fixture['source_revision']['original_asset_id'])
     original_path = cfg.data / original['storage_key']
     original_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(ROOT / original['storage_key'], original_path)
+    shutil.copyfile(ROOT/'tests'/original['storage_key'], original_path)
     private_images = {}
     with db.transaction() as session:
         session.add(SourceAsset(id=original['id'], sha256=original['sha256'], byte_size=original['byte_size'], page_count=1, storage_key=original['storage_key']))
@@ -41,7 +41,7 @@ def test_twenty_api_rebuilds_isolate_one_corrupt_resource(client, database):
                 asset['storage_key'] = f'documents/doc_{i}/source-assets/{asset["id"]}.png'
                 target = cfg.data / asset['storage_key']
                 target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(ROOT / old_path, target)
+                shutil.copyfile(ROOT / 'tests' / old_path, target)
                 private_images[i] = target
             source_key, tr_key = f'documents/doc_{i}/source.json', f'documents/doc_{i}/translation.json'
             source_sha, tr_sha = write_snapshot(cfg.data, source_key, source), write_snapshot(cfg.data, tr_key, tr)

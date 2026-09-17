@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 def scenario():
-    source=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text(encoding='utf8'))['source_revision']
+    source=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text(encoding='utf8'))['source_revision']
     block=next(b for b in source['blocks'] if b['id']=='p1')
     text='Before formula N = sqrt A/B after formula.'
     block.update(raw_text=text,normalized_text=text,source_inline=[{'type':'text','text':text}],normalization_edits=[])

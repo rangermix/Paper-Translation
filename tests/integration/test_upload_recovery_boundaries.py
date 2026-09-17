@@ -12,7 +12,7 @@ pytestmark = pytest.mark.postgres
 
 
 def start(client):
-    data = Path('fixtures/sample.pdf').read_bytes()
+    data = Path('tests/fixtures/sample.pdf').read_bytes()
     response = client.post('/api/v1/uploads', json={'filename': 'sample.pdf', 'media_type': 'application/pdf',
         'byte_size': len(data)}, headers={'Idempotency-Key': 'receipt'})
     assert response.status_code == 201

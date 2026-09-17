@@ -65,14 +65,14 @@ def test_correct_authored_targets_and_declared_original_figure_bind_qa_and_seal(
     stale = seal(client, 'draft_fixture', quality, changed.json()['generation'], 'stale-quality')
     assert stale.status_code == 201
     save_evidence('correct-original-figure', {'scope': 'Hand-authored IR and targets, original sample PDF/image; not parser gold or Provider quality',
-        'fixture': 'fixtures/sample-document-v3.json', 'fixture_sha256': file_hash(ROOT / 'fixtures/sample-document-v3.json'),
+        'fixture': 'fixtures/sample-document.json', 'fixture_sha256': file_hash(ROOT / 'tests/fixtures/sample-document.json'),
         'source_hash': digest(source), 'qa': quality, 'figure_result': figure, 'assets_sha256': original_assets,
         'sealed_translation_sha256': digest(translation), 'later_target_edit_refreshes_old_qa': True, 'provider_requests': 0})
 
 
 def test_missing_original_figure_is_hard(client, database):
     db, cfg = database; ir = seed_editor(db, cfg); source = ir['source_revision']
-    original_figure_hash = file_hash(ROOT / 'fixtures/figure.png')
+    original_figure_hash = file_hash(ROOT / 'tests/fixtures/figure.png')
     assert qa(client, 'draft_fixture')['valid']
     (cfg.data / 'fixtures/figure.png').unlink()  # Only the copied per-test data volume.
     quality = qa(client, 'draft_fixture', key='qa-missing-figure')
@@ -80,7 +80,7 @@ def test_missing_original_figure_is_hard(client, database):
     assert issue['severity'] == 'general' and issue['blocking'] is False
     denied = seal(client, 'draft_fixture', quality)
     assert denied.status_code == 201
-    assert file_hash(ROOT / 'fixtures/figure.png') == original_figure_hash
+    assert file_hash(ROOT / 'tests/fixtures/figure.png') == original_figure_hash
     save_evidence('missing-image', {'scope': 'Missing local copy, original fixture unchanged', 'source_hash': digest(source),
         'original_figure_sha256': original_figure_hash, 'qa': quality, 'provider_requests': 0})
 

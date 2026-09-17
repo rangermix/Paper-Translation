@@ -12,7 +12,7 @@ from packages.source_revisions.corrections import _set_order
 ROOT=Path(__file__).resolve().parents[2]
 
 
-def sample():return json.loads((ROOT/'fixtures/sample-document-v3.json').read_text(encoding='utf8'))
+def sample():return json.loads((ROOT/'tests/fixtures/sample-document.json').read_text(encoding='utf8'))
 
 
 def changed_source(source):

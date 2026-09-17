@@ -1,19 +1,24 @@
 # Documentation
 
-Start with the [product baseline](product-baseline.md) and the
-[current source handoff](../.agent/memory/current.md). A dated plan or report
-records its original scope; it does not certify the current application.
+These guides describe maintained source and commands. Deployment-specific results
+belong in run evidence; an old test report does not describe a running instance.
 
-| Directory | Purpose |
+| Guide | Contents |
 | --- | --- |
-| [shared](shared) | Current architecture, API, workflow and data contracts |
-| [milestones](milestones) | Original milestone specifications and later workflow plans |
-| [plans](plans) | Implementation plans and design decisions |
-| [ops](ops) | Deployment, backup, restore and retention procedures |
-| [deployment](deployment) | Packaging, acceleration and local-model guidance |
-| [contracts](contracts/) | Requirements, acceptance gates and planning data |
-| [reference](reference) | Provenance of the frozen reader and controlled seed papers |
+| [Product scope](product-baseline.md) | Implemented capabilities and boundaries |
+| [Architecture](architecture.md) | Processes, storage, immutable revisions and isolation |
+| [Workflows](workflows.md) | Translation, recovery, original-only content and task history |
+| [API](api.md) | Current route groups, schemas, concurrency and request handling |
+| [Deployment](deployment/README.md) | Compose setup, file ownership and configuration |
+| [Extraction acceleration](deployment/extraction-acceleration.md) | CPU, CUDA and Docker-managed MLX |
+| [MLX backend](deployment/mlx-backend.md) | Build, installation and verification procedure |
+| [Local translation](deployment/local-translation.md) | On-demand models and shared MLX backend |
+| [Backup and restore](ops/restore.md) | Maintenance lock, backups and upgrades |
+| [Retention](ops/retention.md) | Cleanup policy and bounded maintenance commands |
+| [Dependencies](ops/dependencies.md) | Locks, packaged models and image inventories |
+| [Tests](../tests/README.md) | Reproducible checks and test evidence limits |
+| [Resources](../res/README.md) | Runtime resources and controlled seed provenance |
 
-Runtime schemas and frozen reader/seed resources live under [`res/`](../res/).
-Build definitions remain in [deployment](../deployment); documentation alone
-is not a deployable release or evidence of a completed acceptance gate.
+Completed milestone plans, obsolete acceptance registries and superseded designs
+are available in Git history. Current implementation is defined by source,
+runtime schemas and tests, without a parallel backlog claiming it is unimplemented.

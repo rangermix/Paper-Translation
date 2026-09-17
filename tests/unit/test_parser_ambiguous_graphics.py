@@ -23,7 +23,7 @@ def test_complete_fallback_does_not_hide_partial_figure_grouping_ambiguity():
 
 
 def test_missed_full_image_and_partial_model_picture_keep_assets_and_visible_review(tmp_path):
-    pdf=ROOT/'fixtures/sample.pdf';inspection=inspect_pdf(pdf)
+    pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     native=inspection['pages'][0]['image_regions'][0]['bbox'];x0,y0,x1,y1=native
     partial=[x0,y0,x0+(x1-x0)/3,y1]
     result=DoclingParser().adapt([item('title','title','Controlled title',[15,15,200,30]),

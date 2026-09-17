@@ -20,7 +20,7 @@ PROFILE={'configured':True,'provider':'openai','model_id':'fixture-model','profi
 
 
 def setup_library(db,cfg,hundred=False):
-    source=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text('utf-8'))['source_revision']
+    source=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))['source_revision']
     if hundred:
         title=source['blocks'][0];base=source['blocks'][1]
         blocks=[title]
@@ -28,7 +28,7 @@ def setup_library(db,cfg,hundred=False):
             block=copy.deepcopy(base);block.update(id='para'+str(i),order=i+1);blocks.append(block)
         source['blocks']=blocks;source['reading_order']=[b['id'] for b in blocks]
     for asset in source['assets']:
-        target=cfg.data/asset['storage_key'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/asset['storage_key'],target)
+        target=cfg.data/asset['storage_key'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'tests'/asset['storage_key'],target)
     key='source.json';sha=write_snapshot(cfg.data,key,source)
     with db.transaction() as session:
         settings=session.get(Settings,'singleton');settings.instance_budget_micro=10_000_000;settings.dispatch_disabled=False

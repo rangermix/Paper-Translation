@@ -119,7 +119,7 @@ def test_planner_fits_dense_references_and_multibyte_context():
     from pathlib import Path
     from packages.translation.planner import plan_units
     from packages.providers.local_translation import request_body
-    source = json.loads(Path('fixtures/sample-document-v3.json').read_text())['source_revision']
+    source = json.loads(Path('tests/fixtures/sample-document.json').read_text())['source_revision']
     block = next(b for b in source['blocks'] if b['translatable'])
     block.update(parent_id=None, normalized_text='测试' * 1000,
                  source_inline=[{'type': 'protected_ref', 'ref': f'n{i}'} for i in range(250)])

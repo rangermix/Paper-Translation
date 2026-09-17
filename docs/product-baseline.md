@@ -1,99 +1,60 @@
-# 对照文库 · 个人 PDF 知识库产品基线
+# Product scope
 
-**v3 · 当前源码契约 · 2026-09-16**
+Paper Translation is a personal PDF library served by one Docker Compose instance.
+FastAPI provides the API, files and React frontend directly. There is no account,
+login, workspace or role system. Any client able to reach the service can operate
+the instance; the default published address is loopback.
 
-M0–M2 产品代码与后续增量已实现；实现、局部测试和正式 release 认证分别记录。最新源码交接见 [.agent/memory/current.md](../.agent/memory/current.md)，原阶段报告属于历史证据，不认证后来提交或当前运行实例。
+## Implemented workflow
 
-内容质量统一采用 [nonblocking-v1](shared/nonblocking-contract.md)：自动解析、检查和确定性恢复后生成结果，缺段、数字/公式/表格差异和未人工核对均不阻止翻译、封存、发布或导出。不能恢复的内容以有标签的原文/页图呈现，执行故障、秘密保护、外发授权、fence/CAS 和不可变历史继续生效。NB 实施范围见[验收记录](../.agent/notes/nonblocking-20260909-acceptance.md)。
+- Upload, inspect and store PDFs; browse, search, tag, star and archive documents.
+  Defaults are 50 MiB per PDF, 200 pages and ten files per upload batch.
+- Parse with PaddleOCR-VL-1.6 (the default for new preferences), Docling or Granite.
+  Select an available CPU/CUDA/MLX runtime and a bounded parsing timeout. Queued jobs
+  keep their chosen model, device and timeout.
+- Recover extraction gaps using original-PDF evidence, show unresolved content
+  beside page images, and expose saved parse results for later translation.
+- Translate through a saved API service or the optional local MLX service.
+  All languages are selectable; model quality for each language is not guaranteed
+  by the selector. Provider configuration and content processing require confirmation.
+- Edit translations, request selected candidates, maintain terminology and explicit
+  translation memories, correct source extraction, and optionally review segments
+  or run model-assisted semantic checks.
+- Seal immutable revisions, publish static bilingual readers, switch historical
+  publications, and export self-contained HTML or a resource bundle. Draft exports
+  clearly preserve missing translations as original content.
+- Keep task stages, actual model identities, timings, redacted logs, attempts and
+  uncertain outcomes. Clearing finished task history changes list visibility only.
+- Discover DOI metadata asynchronously, retaining the filename when lookup fails.
+  Back up, restore, verify and clean storage through the maintenance service.
 
-新解析默认 PaddleOCR-VL-1.6；保留已保存方案，另支持 Docling 标准和 Granite Docling 258M。模型、设备及超时在入队时冻结；新任务默认 120 分钟，可保存 1–1440 整数分钟，旧任务无字段及上传检查仍为 15 分钟。parser 为单 PDF、4 CPU、16 GiB；模型和 OCR/公式/代码依赖在构建期固定并打包。CPU/CUDA 断网解析，Apple MLX 仅通过 Docker 管理的本机推理服务进行 Paddle 识别；设备可用性由新鲜心跳与实际验证记录决定。详见[解析部署](deployment/extraction-acceleration.md)。
+## Content and execution
 
-翻译支持四种远端协议和可选 [Docker 管理的本地模型](deployment/local-translation.md)。本地模型仅在明确选择使用时准备；读取设置或启动不下载。所有语言可选，成本控制新配置默认关闭，人工核对可选。实际模型/时间/脱敏日志、DOI 元数据、[任务历史清理](shared/task-history.md)及[学术元数据保留原文](shared/original-only-content.md)使用各自契约，不改写旧内容。
+Content issues are nonblocking. Automatic checks and deterministic recovery remain
+active; damaged or unavailable content is represented safely as original text or
+page imagery. Optional human review is never fabricated. Recognized author lists,
+affiliations, contact/identifier lines and bibliographies remain original-only.
 
-仓库以实际应用为入口，受控种子论文在 `res/reference/legacy/`，`reader-v1.css` 字节不变。历史决策可从 Git 与原阶段 Spec/Plan 追踪；与本页及后续专项契约冲突的旧质量、语言、预算或部署限定不再适用。
+Execution failures, stale versions, unsafe paths, invalid resource hashes and
+missing outbound authorization are separate from content warnings. A source-only
+publication is not a translation. An uncertain paid request is not retried as
+though nothing was sent. See [workflows](workflows.md).
 
-## 1. 不可变更的产品边界
+## Configuration
 
-2026-09-07 用户补充：实例的外部 API 请求允许/暂停状态在设置页管理，保存至数据库并跨重启保留，不使用环境变量。新实例与备份恢复默认暂停；开启仍保留逐任务外发确认、可选成本控制和未知请求风险处理。
+The settings page supports Responses, Chat Completions, Gemini Interactions and
+Claude Messages. Endpoints and model IDs are user-configurable; saving does not
+send a request. Keys live in backend files and are never returned. Protocol,
+authentication and native response model identity must agree with the saved profile.
+There is no automatic provider fallback.
 
-| 决策 | 正式要求 | 禁止换一种方式重新引入 |
-|---|---|---|
-| 输入 | 仅上传 PDF；一次最多 10 份，各自独立任务 | URL、HTML/TXT/MD/DOCX/EPUB/ZIP、文本粘贴、双语粘贴、公开 IR 导入 |
-| 使用方式 | 一个实例、一份个人知识库 | 用户、租户、工作区、组织、成员、角色、ACL、共享权限 |
-| 身份 | 不实现注册、登录、会话、身份校验 | 隐形默认用户、owner 初始化、JWT、OAuth、身份反代集成 |
-| 部署 | 仅 Docker Compose；宿主只安装 Docker 与 Compose | 宿主 pip/npm/数据库安装，裸机、Kubernetes、云托管多套方案 |
-| 依赖 | 应用与数据库、原生 PDF 库、模板、前端产物、所需解析模型随镜像交付 | 容器每次启动下载依赖或模型，要求用户单独装 Redis/Postgres |
-| 接入 | app 直接提供一个 HTTP 端口 | Nginx/Caddy/Traefik、TLS证书、反代配置模板；这些由用户独立处理 |
-| 阅读 | 发布后完整静态 HTML，沿用 reader-v1 | 打开文章再请求翻译；LLM 自行生成 HTML/CSS |
+Cost control defaults off for new settings and preserves existing choices.
+Enabled control requires pricing and a positive job budget. Unknown amounts are
+`null`, not zero. Input/output token limits default to 32768/8192 and unit text to
+2000 characters; these are application limits, not model capability claims.
 
-**无登录意味着：能访问实例的人就能读、改、删除并发起付费任务。** 默认绑定 `127.0.0.1:8080`；需要扩大可达范围由部署者自行决定。本产品不提供互联网开放访问的安全承诺，不用“个人”替代实际访问控制。基础 Host/Origin、恶意文件、路径和脚本防护仍然需要，但不是账户权限系统。
-
-## 2. PDF 支持等级
-
-M0 保存通过有效性检查的未加密 PDF，提供原件阅读、目录管理和静态出版基础；不会给新 PDF 生成翻译。M1/M2 的认证翻译范围是**有可靠文本层的 PDF** ，包括普通单栏、双栏论文和具备可核验来源的图表。页面内图像不是“扫描正文”，不应误报。
-
-扫描页执行已打包的 OCR 与确定性恢复；无法恢复的页面保留原图并显示内容提示，不能静默跳过后声称全文已翻译。扫描/OCR 的完整质量认证仍不在原 M0–M2 范围。损坏、加密、超限且无法安全读取的 PDF 返回执行错误；不实现密码破解或图中文字重绘。
-
-原PDF中的参考链接可以显示为普通安全超链接，但系统不抓取；图像、公式、页图和表格都从该PDF自身获得。不会让用户再上传图片附件来补网页。
-
-## 3. 阶段与用户价值
-
-| 阶段 | 可用能力 | 本阶段不承诺 |
-|---|---|---|
-| M0：PDF库与出版底座 | 真实保存PDF、查重、原件阅读、题名/标签/收藏/归档；已确认IR的确定性渲染；两篇旧资料可选受控种子；离线导出；Compose与备份 | 新PDF自动翻译、完整语义解析；无“已有双语文本”入口 |
-| M1：真实PDF翻译 | 原文解析、结构预检、费用/外发确认、一个真实Provider、耐久任务、基础校对和发布 | 扫描/OCR 完整认证与高级编辑；不拿示例内容冒充上传文件结果 |
-| M2：校对与版本 | PDF来源高亮、术语修订、局部候选、多目标语言、人工确认、版本差异/回滚、全文检索、零模型重建 | 多人协同、知识库聊天、向量检索、更多输入类型 |
-
-M0 的 IR 输入只来自**内部测试夹具和受控种子任务** ，不是对用户开放的新文档入口。阶段完成情况按实际验收证据判断。
-
-## 4. 采用的架构与技术
-
-管理前端：React + TypeScript + Vite。服务：FastAPI 模块化单体与独立 Worker，共享领域模型。数据库：PostgreSQL，同时承载初期耐久任务队列，不添加 Redis。存储：Compose 命名卷，Storage 接口作为代码解耦，不另外承诺 S3 部署。PDF：Docling 适配器及受限原生检查器。渲染：固定 HTML 模板 + `reader-v1.css` + 小型阅读脚本；公式构建期处理或原式/原图回退。
-
-模型：保留官方 OpenAI Responses 适配器与 FakeProvider 测试替身。按2026-09-06用户新增要求，设置页支持 OpenAI 兼容 Responses / Chat Completions、原生 Gemini Interactions、原生 Claude Messages 的完整请求 endpoint、model ID、鉴权方式、API key、能力与费率。协议自动映射 `openai` / `gemini` / `anthropic`；OpenAI 兼容协议使用 Bearer，Gemini 使用 `x-goog-api-key`，Claude 使用 `x-api-key` 与 `anthropic-version`，均允许明确选择无鉴权。原生支持范围为普通 API key，不含 OAuth 或多 workspace 选择。Claude `api_version` 默认 `2023-06-01`，可在高级选项填写；其他协议不带该字段。
-
-用户明确输入的模型名称原样使用（包括本地服务的 `:latest`）；系统不自动选模型、切换供应商或回退协议。Gemini 和 Claude 两个原生协议的响应 model 必须匹配配置，仅 Gemini 正规化 `models/` 前缀，原生模型别名须填写服务实际返回的模型 ID。可保存未完成配置，未知费率不补零；派发前仍需模型/地址完整、密钥或明确无鉴权以及单独外发确认。金额预算仅在成本控制开启时必填。密钥仅输入时提交后端，保存后不回显，协议或目的地变更不静默重绑旧密钥。
-
-**2026-09-07 可选成本控制补充：** 新配置 `cost_control_enabled=false`，不要求费率、不应用作业或实例金额预算，但保留 Attempt/Permit、用量、网络未知结果和并发限制。能依据完整价格计算时可记录实费，不能计算的金额为 `null`。开启后沿用版本化价格与预算预留。旧完整配置或已授权快照缺字段按开启处理；旧未完成草稿缺字段可在下次保存时采用关闭，已有明确开关值不因字段省略而变化。本补充优先于本文旧流程中金额预算必选的简写，不改变真实 Provider 验收所需的批准测试预算。
-
-输入/输出 token 和正文单元上限的新配置默认值分别为 `32768`、`8192`、`2000`，是应用限制。设置显示当前值和 `token_limits_defaults`；重置只更改三项上限，使用原 CAS 保存，不改 endpoint/key。旧不可变 profile/hash 不由读取操作改写，保存新 revision 才固化默认值。
-
-原生请求不提供工具、历史对话续接或协议回退。Gemini 显式关闭存储；Claude 无 `store` 字段，不主动启用缓存写入，也不覆盖模型默认思考策略。数据保留以服务商政策为准。用量按协议归一：Gemini 输出加思考；Claude 输出已含思考，输入汇总未缓存、缓存读取与缓存写入。必需计数缺失/不一致或未定价用量进入未知成本核对，不当作免费成功。[Gemini 官方协议核对](../.agent/notes/gemini-claude-20260906.md)与 [Claude 独立协议核对](../.agent/notes/gemini-claude-20260906.md)只支持实现范围；正式真实 Provider 认证仍需固定可追溯模型、价格与实际受控调用，既有 blocked 退出门不因此解除。LLM 外部服务和用户凭据不作为容器依赖打包；可选本地翻译通过 Compose / Docker Model Runner 提供，CPU/远端翻译部署无需启用；不另设宿主 Python 推理服务。
-
-生产镜像打包**全部本地运行依赖** ，不等于无需联网取得镜像，也不等于能离线调用外部翻译API。正式版本必须提供镜像摘要、软件锁文件、所用解析模型文件hash和许可证清单；源码仓库不附带发布镜像，实际构建与认证范围以对应记录为准。
-
-## 5. 默认值和容量约束
-
-以下是产品配置基线与验收输入，不是未经测量的性能保证。
-
-| 项目 | 默认值 | 处理方式 |
-|---|---|---|
-| 单份PDF | 50 MiB，最多200页 | 服务端按实际接收和真实页数判定；413/422 |
-| 批量 | 最多10份 | 每份独立import/job/错误/费用确认 |
-| 正文规模 | 最多1,000,000 Unicode code points，10,000块 | 预检超限，不能截断正文 |
-| 解析资产 | 最多500项、总200 MiB；单图像素上限配置 | 限额必须在解码/分配前后分层检查 |
-| 解析资源 | 1个PDF并发；4 CPU、16 GiB；新任务默认120分钟 | 可保存1–1440分钟；可用资源不代表任意PDF/模型都能成功 |
-| 翻译并发 | 每实例2个请求 | 两份文档共享速率和费用上限 |
-| 重试 | 最多3次传输尝试（含首发），最多1次结构修复 | 所有潜在付费均计入；未知结果不自动重试 |
-| 发布 | 新工作流默认自动发布，保留用户保存的手动偏好；人工核对可选 | 内容提示不阻断，执行状态、授权、可选预算与取消检查继续生效 |
-| 语言 | 所有语言均可选择，名称使用各自语言；保留脚本和地区差异 | 不保证任意模型的翻译质量，来源未确定仍需选择 |
-| 运行 | Linux containers，优先linux/amd64，CPU即可 | ARM64需同样构建和验收，不作为本轮必过支持平台 |
-| 暂存 | 中断上传24小时、未引用产物24小时后可回收 | tombstone先禁止读取/写回，再异步清理 |
-
-## 6. 用户流程
-
-上传PDF → 保存原件 → 解析 → 结构/覆盖预检 → 选择目标语言和已配置模型 → 确认内容外发及已启用的预算 → 翻译 → 校验 → 必要时校对 → 封存 → 构建 → 原子发布指针切换 → 文档库阅读/导出。
-
-页图/结构内容异常先自动恢复，不能恢复时使用有标签的原文/页图；无安全可用输入等执行故障仍失败。重试只针对缺失且可安全重发的单元，未知付费结果不得自动重发。修改某个目标段落使相应确认和QA失效，封存流程自动补查。阅读旧版本不依赖当前任务成功，新任务失败不影响已发表文章。
-
-## 7. 统一术语与规则
-
-Document 是一篇逻辑文档；SourceAsset 是原PDF字节；SourceRevision 是已封存结构；TranslationDraft 是可变译文草稿；TranslationRevision 是封存译文；Edition 按文档+目标locale唯一；Artifact 是绑定源/译/模板的不可变文件包。
-
-`owner_id` 在内部IR中只表示图题/表格单元的**渲染容器归属** ，不是用户所有者。费用外发“授权”指本人确认成本与内容处理，不是登录鉴权。后台 Worker 的 fencing token、上传upload_id与技术连接凭据同样不是用户身份。
-
-## 8. 文档优先级
-
-最新五条用户约束 → 本基线 → 共享契约 → 阶段Spec → 阶段Plan。历史演示不定义正式后端行为；代码注释不扩大产品范围。
-
-需求 `M0/M1/M2-Rxx`、测试 `ATxxA/B`、工作包 `Pxx`、退出门 `Gxx` 延续旧编号以便追踪，但含义按v3重新审阅；不能因为编号相同就复用旧权限/多格式测试结论。原 M0–M2 规划表保留 planned / not_started / not_evaluated 用于追踪；当前执行状态只由绑定对应源码和环境的证据给出。
+The shared source is packaged for Compose. Parser models are built into images;
+optional local translation weights are fetched only on explicit preparation/use.
+Model inference, arbitrary scanned-PDF accuracy and hardware support require
+verification in the selected environment. Test fixtures and prior runs do not
+certify all documents or an untested deployment.

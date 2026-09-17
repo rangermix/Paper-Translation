@@ -39,7 +39,7 @@ def test_root_is_product_root_and_legacy_record_hash_remains_valid(tmp_path):
 
 @pytest.mark.parametrize('old,new', [
     ('harness/memory/current.md', '.agent/memory/current.md'),
-    ('harness/gate-policy.json', '.agent/harness/gate-policy.json'),
+    ('harness/acceptance.py', '.agent/harness/acceptance.py'),
     ('notes/handoff.md', '.agent/notes/handoff.md'),
     ('reports/check.xml', '.agent/tmp/reports/check.xml'),
     ('src/apps/web/evidence/review.json', '.agent/tmp/frontend/evidence/review.json'),
@@ -47,7 +47,8 @@ def test_root_is_product_root_and_legacy_record_hash_remains_valid(tmp_path):
     ('package-validation.json', '.agent/tmp/validation/package-validation.json'),
     ('html/package-review.html', '.agent/tmp/validation/package-review.html'),
     ('bilingual-library-personal-pdf-v3/evidence/run.json', '.agent/tmp/evidence/run.json'),
-    ('fixtures/sample.pdf', 'fixtures/sample.pdf'),
+    ('fixtures/sample.pdf', 'tests/fixtures/sample.pdf'),
+    ('fixtures/sample-document-v3.json', 'tests/fixtures/sample-document.json'),
 ])
 def test_exact_legacy_prefixes_map_inside_repository(tmp_path, old, new):
     assert artifact_path(old, tmp_path) == tmp_path / new
@@ -60,7 +61,7 @@ def test_relocation_contract_matches_mapper():
         assert artifact_path(old) == ROOT / new
     for old, new in contract['prefixes'].items():
         assert artifact_path(old + 'example') == ROOT / (new + 'example')
-    assert artifact_path(contract['previous_project_prefix'] + 'fixtures/sample.pdf') == ROOT / 'fixtures/sample.pdf'
+    assert artifact_path(contract['previous_project_prefix'] + 'fixtures/sample.pdf') == ROOT / 'tests/fixtures/sample.pdf'
 
 
 @pytest.mark.parametrize('bad', ['../outside', 'evidence/../../outside', '/etc/passwd',

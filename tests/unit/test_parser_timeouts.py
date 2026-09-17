@@ -11,7 +11,7 @@ from packages.parsers.spool import validate_request, write_request
 from packages.parsers.timeouts import request_timeout_seconds, selected_timeout_seconds
 from workers.parser import main as parser
 
-SOURCE = Path(__file__).resolve().parents[2] / 'fixtures/sample.pdf'
+SOURCE = Path(__file__).resolve().parents[2] / 'tests/fixtures/sample.pdf'
 
 
 def request(timeout=None, deadline=10000):

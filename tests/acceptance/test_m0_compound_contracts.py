@@ -10,11 +10,11 @@ ROOT=Path(__file__).resolve().parents[2]
 
 @pytest.mark.postgres
 def test_m0_at04a_full_internal_structure_renders_but_public_ir_is_not_an_entry(client,tmp_path):
-    ir=json.loads((ROOT/'fixtures/complex-reader/document-ir.json').read_text('utf-8'))
+    ir=json.loads((ROOT/'tests/fixtures/complex-reader/document-ir.json').read_text('utf-8'))
     assert {'heading','paragraph','table','table_cell','caption','figure','math','code','footnote','reference'} <= {b['kind'] for b in ir['source_revision']['blocks']}
-    validate_ir(ir,ROOT)
+    validate_ir(ir,ROOT / 'tests')
     output=tmp_path/'trusted-artifact'
-    Publisher().build(ir,ROOT,output)
+    Publisher().build(ir,ROOT / 'tests',output)
     html=(output/'index.html').read_text('utf-8')
     assert all(html.count('id="b-'+b['id']+'"')==1 for b in ir['source_revision']['blocks'])
     refused=client.post('/api/v1/imports',json={'source':ir},headers={'Idempotency-Key':'public-ir-forbidden'})
@@ -24,15 +24,15 @@ def test_m0_at04a_full_internal_structure_renders_but_public_ir_is_not_an_entry(
 
 @pytest.mark.parametrize('damage',['missing-prose','unknown-result','retained-prose'])
 def test_m0_at06b_invalid_prose_alignment_is_rejected_before_any_artifact(tmp_path,damage):
-    ir=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text('utf-8'))
+    ir=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))
     rows=ir['translation_revision']['results']
     row=next(r for r in rows if r['block_id']=='p1')
     if damage=='missing-prose':rows.remove(row)
     elif damage=='unknown-result':row['block_id']='unknown-block-not-in-source'
     else:row.update(status='retained',target_inline=[],reason='original_figure')
-    with pytest.raises(IRValidationError):validate_ir(ir,ROOT)
+    with pytest.raises(IRValidationError):validate_ir(ir,ROOT / 'tests')
     output=tmp_path/'rejected-artifact'
-    with pytest.raises(IRValidationError):Publisher().build(ir,ROOT,output)
+    with pytest.raises(IRValidationError):Publisher().build(ir,ROOT / 'tests',output)
     assert not (output/'index.html').exists()
 
 @pytest.mark.postgres

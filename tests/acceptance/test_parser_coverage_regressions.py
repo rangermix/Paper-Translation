@@ -17,7 +17,7 @@ class NativeCoverageRegressions(unittest.TestCase):
         self.assertEqual(reconstructed,'包含64个、3.5倍和100%，标识abc64x及v2保持。')
 
     def test_real_pdf_records_embedded_image_and_vector_table_regions(self):
-        page = inspect_pdf(ROOT / 'fixtures/sample.pdf')['pages'][0]
+        page = inspect_pdf(ROOT / 'tests/fixtures/sample.pdf')['pages'][0]
         self.assertEqual(len(page['image_regions']), 1)
         self.assertTrue(page['graphic_regions'])
 

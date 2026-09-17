@@ -16,7 +16,7 @@ ComposeLoader.add_constructor('!reset', lambda loader, node: None)
 
 
 def test_offline_acceptance_harness_mount_contains_the_restore_runner():
-    compose_path = Path('deployment/compose.acceptance-offline.yaml')
+    compose_path = Path('tests/compose.offline.yaml')
     doc = yaml.safe_load(compose_path.read_text())
     for service in ('app', 'maintenance'):
         mounts = [entry.split(':') for entry in doc['services'][service]['volumes']]

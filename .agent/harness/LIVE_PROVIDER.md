@@ -19,7 +19,7 @@ scope. Do not infer approval from this document or an example. Approval fields:
   "approved": false,
   "approval_id": "unique-one-use-test-id",
   "scope": "controlled_eight_blocks_translation_candidate_semantic_review",
-  "manifest_sha256": "SHA256 of fixtures/live-provider/manifest.json",
+  "manifest_sha256": "SHA256 of tests/fixtures/live-provider/manifest.json",
   "profile_file": "C:/private/public-provider-profile.json",
   "profile_sha256": "SHA256 of the fixed public profile",
   "secret_file": "C:/private/backend-key-file",

@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 if __package__:
-    from ._project import ROOT, artifact_path, output_path
+    from ._project import ROOT, artifact_path
 else:
-    from _project import ROOT, artifact_path, output_path
+    from _project import ROOT, artifact_path
 
 import argparse
-from collections import Counter
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -73,43 +72,6 @@ def fingerprint(root=ROOT):
     return hashlib.sha256(json.dumps(rows, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
 
 
-def catalog(root=ROOT):
-    requirements = read_json(root / "docs/contracts/requirements.json")
-    gates = read_json(root / "docs/contracts/exit-gates.json")
-    packages = read_json(root / "docs/contracts/implementation-backlog.json")
-    tests = {test["id"]: {**test, "milestone": req["milestone"]} for req in requirements for test in req["tests"]}
-    req_ids = {req["id"] for req in requirements}
-    package_ids = {package["id"] for package in packages}
-    assert len(requirements) == len(req_ids) == 65, "Requirement registry changed or duplicated"
-    assert len(tests) == 130, "Expected 130 distinct acceptance scenarios"
-    assert len({gate["id"] for gate in gates}) == len(gates) == 24, "Expected 24 distinct gates"
-    assert len(package_ids) == len(packages) == 42, "Expected 42 work packages"
-    for gate in gates:
-        assert set(gate["requirements"]) <= req_ids, gate["id"]
-    graph = {package["id"]: package["depends_on"] for package in packages}
-    for package in packages:
-        assert set(package["requirements"]) <= req_ids, package["id"]
-        assert set(package["depends_on"]) <= package_ids, package["id"]
-    visiting, done = set(), set()
-    def visit(node):
-        assert node not in visiting, "Dependency cycle at " + node
-        if node in done:
-            return
-        visiting.add(node)
-        for dependency in graph[node]:
-            visit(dependency)
-        visiting.remove(node)
-        done.add(node)
-    for node in graph:
-        visit(node)
-    policy = read_json(root / ".agent/harness/gate-policy.json")
-    assert set(policy) == {gate["id"] for gate in gates}, "Gate policy coverage differs"
-    prerequisites = read_json(root / ".agent/harness/gate-prerequisites.json")
-    assert set(prerequisites) <= set(policy), "Unknown gate prerequisite target"
-    assert all(set(values) <= set(tests) for values in prerequisites.values()), "Unknown literal gate prerequisite"
-    return requirements, tests, gates, packages
-
-
 def command_result(argv, timeout=30):
     try:
         result = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, shell=False)
@@ -142,11 +104,12 @@ def safe_evidence(path, root=ROOT):
     return {"path": resolved.relative_to(root).as_posix(), "sha256": digest(resolved), "bytes": resolved.stat().st_size}
 
 
-def validate_record(record, tests, root=ROOT):
+def validate_record(record, root=ROOT):
     if record.get("status") not in STATUSES or record.get("kind") not in KINDS:
         raise ValueError("Invalid evidence status/kind")
-    if not set(record.get("test_ids", [])) <= set(tests):
-        raise ValueError("Unknown AT in evidence")
+    test_ids = record.get("test_ids", [])
+    if not isinstance(test_ids, list) or any(not isinstance(value, str) or not value.strip() for value in test_ids):
+        raise ValueError("Test IDs must be a list of nonempty descriptive strings")
     if not re.fullmatch(r"[a-f0-9]{64}", record.get("source_tree_sha256", "")):
         raise ValueError("Missing source tree fingerprint")
     for item in record.get("files", []):
@@ -169,8 +132,7 @@ def validate_record(record, tests, root=ROOT):
 
 
 def store_record(record):
-    _, tests, _, _ = catalog()
-    validate_record(record, tests)
+    validate_record(record, root=ROOT)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     safe_id = re.sub(r"[^A-Za-z0-9_.-]", "-", record["id"])
     path = ROOT / ".agent/tmp/evidence/runs" / (stamp + "-" + safe_id + "-" + uuid.uuid4().hex[:8] + ".json")
@@ -179,78 +141,10 @@ def store_record(record):
     print(path.relative_to(ROOT).as_posix())
 
 
-def aggregate(tests, gates, records, source_tree, policy, prerequisites=None):
-    prerequisites = prerequisites or {}
-    current = [r for r in records if r["source_tree_sha256"] == source_tree]
-    results = {}
-    for test_id, test in tests.items():
-        relevant = [r for r in current if test_id in r.get("test_ids", [])]
-        full = [r for r in relevant if r.get("full_scenario") and r["kind"] != "specification"]
-        # Latest observation in a proof kind controls it; a fixed failure must be rerun.
-        latest = {r["kind"]: r for r in full}
-        passing = {kind for kind, r in latest.items() if r["status"] == "passed"}
-        if any(r["status"] == "failed" for r in latest.values()):
-            status = "failed"
-        elif passing - {"agent_review"} and (test["mode"] != "mixed" or "agent_review" in passing):
-            status = "passed"
-        elif any(r["status"] == "blocked" for r in relevant):
-            status = "blocked"
-        else:
-            status = "not_run"
-        results[test_id] = {"status": status, "requirement_id": test["requirement_id"], "mode": test["mode"], "proof_kinds": sorted(passing), "supporting_records": [r["id"] for r in relevant], "scenario": test["scenario"]}
-    gate_results = []
-    for gate in gates:
-        members = [key for key, value in results.items() if value["requirement_id"] in gate["requirements"] or key in prerequisites.get(gate['id'], [])]
-        states = [results[key]["status"] for key in members]
-        kinds = {kind for key in members for kind in results[key]["proof_kinds"]}
-        missing = sorted(set(policy[gate["id"]]) - kinds)
-        state = "failed" if "failed" in states else "blocked" if "blocked" in states else "passed" if all(s == "passed" for s in states) and not missing else "not_run"
-        gate_results.append({"id": gate["id"], "milestone": gate["milestone"], "title": gate["title"], "status": state, "test_ids": members, "missing_proof_kinds": missing, "required_evidence": gate["evidence"]})
-    for gate in gate_results:
-        if gate["id"] == "M2-G08":
-            incomplete = [g["id"] for g in gate_results if g["milestone"] in {"M0", "M1"} and g["status"] != "passed"]
-            gate["incomplete_inherited_gates"] = incomplete
-            if incomplete and gate["status"] == "passed":
-                gate["status"] = "not_run"
-    return results, gate_results
-
-
-def report():
-    requirements, tests, gates, packages = catalog()
-    source_tree = fingerprint()
-    records, rejected = [], []
-    for path in sorted((ROOT / ".agent/tmp/evidence/runs").glob("*.json")):
-        try:
-            records.append(validate_record(read_json(path), tests))
-        except (ValueError, KeyError, OSError) as exc:
-            rejected.append({"path": path.relative_to(ROOT).as_posix(), "error": str(exc)})
-    results, gate_results = aggregate(tests, gates, records, source_tree, read_json(ROOT / ".agent/harness/gate-policy.json"), read_json(ROOT / ".agent/harness/gate-prerequisites.json"))
-    result = {"generated_at": datetime.now(timezone.utc).isoformat(), "source_tree_sha256": source_tree, "environment": environment(), "counts": {"requirements": len(requirements), "tests": len(tests), "gates": len(gates), "work_packages": len(packages)}, "test_status_counts": dict(Counter(r["status"] for r in results.values())), "gate_status_counts": dict(Counter(g["status"] for g in gate_results)), "tests": results, "gates": gate_results, "rejected_records": rejected, "stale_record_count": sum(r["source_tree_sha256"] != source_tree for r in records), "completion_claim_allowed": not rejected and all(g["status"] == "passed" for g in gate_results)}
-    observed_path = ROOT / ".agent/tmp/evidence/observed-scenario-map.json"
-    observed = read_json(observed_path).get("tests", []) if observed_path.is_file() else []
-    observed_counts = {
-        "tests_with_scoped_observations": sum(bool(row.get("observations")) for row in observed),
-        "tests_with_historical_literal_coverage_assertion": sum(any(item.get("literal_scenario_covered") is True for item in row.get("observations", [])) for row in observed),
-        "tests_without_mapping": len(tests) - sum(bool(row.get("observations")) for row in observed),
-    }
-    result["historical_observations"] = {"counts": observed_counts, "path": ".agent/tmp/evidence/observed-scenario-map.json",
-        "meaning": "Scoped behavior observations from implementation and independent agents; never automatically promoted to current source-bound gate passes."}
-    write_json(ROOT / ".agent/tmp/evidence/acceptance-report.json", result)
-    lines = ["# Implementation acceptance status", "", "Generated from actual execution evidence by `.agent/harness/acceptance.py report`.", "", f"Source tree: `{source_tree}`. Git: `{result['environment']['git_commit']}`; dirty: {result['environment']['dirty_tree']}.", "", "Design/prototype checks and file presence do not prove product completion. A stale result never completes the current tree.", "", f"AT: {result['test_status_counts']}. Gates: {result['gate_status_counts']}. Stale records: {result['stale_record_count']}.", "", "| Gate | Status | Missing proof kinds |", "|---|---|---|"]
-    lines += [f"| {gate['id']} {gate['title']} | {gate['status']} | {', '.join(gate['missing_proof_kinds']) or '-'} |" for gate in gate_results]
-    lines += ["", "The table above answers whether the current source has all required registered proof. `not_run` does not mean that the feature is absent: source changes invalidate earlier certificates, and partial behavior checks cannot complete a literal scenario.", "",
-        f"Historical scoped observations: {observed_counts['tests_with_scoped_observations']}/{len(tests)} scenarios mapped; {observed_counts['tests_with_historical_literal_coverage_assertion']} have at least one agent's literal-coverage assertion for its recorded version. These assertions do not change the gate table.", "",
-        "Read the [scenario observation map](tmp/evidence/observed-scenario-map.json) for commands, evidence paths, exact scope and missing behavior. Real Provider execution remains unauthorized; authored M0 fixtures and simulated Provider responses do not replace real parsed-paper or translation review.", "",
-        "Details and current certificates: [acceptance-report.json](tmp/evidence/acceptance-report.json).", "", "File-based handoff: [memory/current.md](memory/current.md).", "", "Completion claim allowed: " + str(result["completion_claim_allowed"]).lower() + "."]
-    (ROOT / ".agent/IMPLEMENTATION_STATUS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(json.dumps({key: result[key] for key in ["test_status_counts", "gate_status_counts", "stale_record_count", "completion_claim_allowed"]}, ensure_ascii=False))
-    return result
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ["inventory", "probe", "fingerprint", "report", "gates"]:
+    for name in ["probe", "fingerprint"]:
         sub.add_parser(name)
     run = sub.add_parser("run")
     run.add_argument("--id", required=True)
@@ -268,14 +162,6 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command == "fingerprint":
         print(fingerprint()); return 0
-    if args.command in {"report", "gates"}:
-        result = report()
-        return 0 if args.command == "report" or result["completion_claim_allowed"] else 1
-    if args.command == "inventory":
-        reqs, tests, gates, packages = catalog()
-        inventory = {"scope": "code presence only, never implementation completion", "counts": [len(reqs), len(tests), len(gates), len(packages)], "work_packages": [{"id": package["id"], "depends_on": package["depends_on"], "outputs": [{"path": path, "exists": artifact_path(path).exists()} for path in package["outputs"]]} for package in packages]}
-        write_json(ROOT / ".agent/tmp/evidence/inventory.json", inventory)
-        print(json.dumps({"requirements": len(reqs), "tests": len(tests), "gates": len(gates), "work_packages": len(packages), "mixed_tests": sum(t["mode"] == "mixed" for t in tests.values())})); return 0
     if args.command == "probe":
         probe = {"environment": environment(), "docker_version": command_result(["docker", "version", "--format", "{{json .}}"]), "compose_version": command_result(["docker", "compose", "version", "--short"]), "note": "CLI/engine discovery only; this does not prove production build or cold start"}
         write_json(ROOT / ".agent/tmp/evidence/environment-probe.json", probe)

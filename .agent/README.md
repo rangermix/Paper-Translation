@@ -1,31 +1,22 @@
 # Agent workspace
 
-Run maintained commands from the repository root. Executable sources live under `src/`, runtime resources under root `res/`, and
-prose/plans under `docs/`. Tests, fixtures and deployment definitions keep their
-root directories. Python harness helpers add `src/` to their import path.
+Run commands from the repository root. Code lives in `src/`, runtime assets in
+`res/`, current guides in `docs/`, and tests plus their fixtures/build inputs in
+`tests/`. Python harness helpers add `src/` to their import path.
 
-| Directory | Contents | Git |
-| --- | --- | --- |
-| `harness/` | Reusable acceptance tools, policies and path resolvers | Tracked |
-| `memory/` | Current handoff and durable agent context | Tracked |
-| `notes/` | Working decisions and independent review summaries | Tracked |
-| `tmp/` | Run logs, screenshots, reports, scratch scripts and archived evidence | Ignored |
-| `local-data/` | Persistent local runtime configuration, authorization receipts and VM disks | Ignored |
+| Directory | Purpose |
+| --- | --- |
+| `harness/` | Reusable probes, controlled test runners, evidence logging and path resolution |
+| `memory/` | Current source handoff |
+| `notes/` | Dated decisions/reports describing only their recorded source and environment |
+| `tmp/` | Ignored run logs, screenshots, scratch scripts and archived execution artifacts |
+| `local-data/` | Ignored persistent runtime configuration, authorization receipts and virtual disks |
 
-Use a separate directory under `tmp/` for every new run. Historical evidence is
-retained byte for byte; moving it does not certify the changed source tree.
-Use `relocation.json` or the maintained harness resolvers to locate old relative
-paths. Archived one-off scripts retain their original paths and are not current
-entry points. Do not run them against an existing user instance.
+Use a distinct `tmp/` directory for every run. Never clean `local-data/` as scratch.
+Historical notes and evidence are not current implementation instructions. Resolve
+known relocated paths with `relocation.json`; deleted designs remain in Git history.
+Do not replay instance-specific old scripts against an existing user deployment.
 
-Persistent local data is not disposable temporary output. Existing credential
-files and used authorization receipts must survive reorganization. No agent
-directory is copied into Docker images.
-
-```powershell
-python .agent/harness/acceptance.py --help
-python -m pytest tests/acceptance/test_agent_path_migration.py -q
-```
-
-The original full M0/M1/M2 live-provider acceptance remains separately gated;
-repository reorganization does not supply missing authorization or evidence.
+The [harness guide](harness/README.md) explains command capture and optional probes.
+[Current handoff](memory/current.md) and [test instructions](../tests/README.md) give
+maintained entry points. Entire `.agent/` content is excluded from product images.

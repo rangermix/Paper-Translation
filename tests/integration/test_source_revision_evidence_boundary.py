@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 def setup_source(database):
     db,cfg=database;source=fixture_source();key='documents/doc_evidence/source.json'
-    atomic_write(cfg.data,'original.pdf',(ROOT/'fixtures/sample.pdf').read_bytes())
+    atomic_write(cfg.data,'original.pdf',(ROOT/'tests/fixtures/sample.pdf').read_bytes())
     metadata={'inspection':{'sha256':source['sha256'],'pages':[]},'page_images':{'1':'pages/original-1.png'},
         'coverage':{'can_translate':True,'unresolved':[]},'origin':'parser','unrelated_field':'not blindly inherited'}
     with db.transaction() as session:

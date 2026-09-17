@@ -1,4 +1,9 @@
-"""Repeat all publication/export bytes in a clean, network-none app container."""
+"""Repeat all publication/export bytes in a clean, network-none app container.
+
+Bind the repository's tests/fixtures directory read-only at /app/fixtures and a
+fresh output directory at /result. Product images do not contain test fixtures.
+The /app/fixtures path also supports the historical pre-layout app images.
+"""
 
 if __package__:
     from ._project import ROOT, artifact_path, output_path

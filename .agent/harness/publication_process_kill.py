@@ -23,7 +23,8 @@ def main():
     override=evidence/'compose.yaml'
     mount=lambda host,target:f'{host.as_posix()}:{target}'
     override.write_text(json.dumps({'services':{
-        'app':{'volumes':[mount(ROOT/'.agent/harness','/harness:ro'),mount(ROOT/'tests/support.py','/tests/support.py:ro'),mount(evidence,'/evidence')]},
+        'app':{'volumes':[mount(ROOT/'.agent/harness','/harness:ro'),mount(ROOT/'tests/support.py','/tests/support.py:ro'),
+            mount(ROOT/'tests/fixtures','/app/tests/fixtures:ro'),mount(evidence,'/evidence')]},
         'worker':{'environment':{'FAULT_WINDOW':args.window},'volumes':[mount(ROOT/'.agent/harness','/harness:ro'),mount(evidence,'/evidence')]}}}))
     env={**os.environ,'APP_IMAGE':os.environ.get('ACCEPTANCE_APP_IMAGE','bilingual-personal-pdf-app:acceptance-candidate'),
          'PARSER_IMAGE':os.environ.get('ACCEPTANCE_PARSER_IMAGE','bilingual-personal-pdf-parser:acceptance-candidate'),
@@ -36,7 +37,7 @@ def main():
         (evidence/'commands.json').write_text(json.dumps(commands,indent=2))
         assert result.returncode==0,result.stderr[-3000:]+result.stdout[-1000:]
         return result.stdout
-    def compose(*args):return run(['docker','compose','-f','deployment/compose.production.yaml','-f','deployment/compose.acceptance-offline.yaml','-f',str(override),'-p',project,*args])
+    def compose(*args):return run(['docker','compose','-f','deployment/compose.production.yaml','-f','tests/compose.offline.yaml','-f',str(override),'-p',project,*args])
     script='publication_kill' if publication else 'translation_kill'
     def product(action):return compose('exec','-T','app','python','/harness/'+script+'_product.py',action)
     try:

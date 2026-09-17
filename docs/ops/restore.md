@@ -1,137 +1,70 @@
-# Backup, recovery and safe external dispatch
+# Backup, restore and upgrades
 
-Run from the project root with Docker and Compose. The examples below use the
-shared `deployment/compose.production.yaml`. If you deploy with an ignored local
-`compose.yaml`, use that same configuration instead. Preserve the existing project
-name, image pins, and deployment overrides when running maintenance commands.
+Use the same Compose project, environment and overlays as the instance being
+maintained. These examples use the shared definition; substitute the ignored local
+`compose.yaml` only when that is your actual deployment configuration.
 
-Create and verify a backup:
+## Back up and verify
 
-```powershell
+```sh
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance backup
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance verify-backup --backup-id BACKUP_ID
 ```
 
-Replace `BACKUP_ID` with the identifier printed by the first command. A successful
-backup includes a custom-format PostgreSQL dump and hashes of database-referenced
-source PDFs, snapshots, completed parser evidence, publication files, exports and
-upload chunks. Unreferenced temporary output is excluded. An incomplete backup
-keeps a temporary directory and must not be restored. The maintenance service has
-no Provider key. Backups themselves contain document text and should be protected
-as private library data.
+Replace `BACKUP_ID` with the printed identifier. A backup includes a PostgreSQL
+custom-format dump and hashes of registered document files, source/translation
+snapshots, parser evidence, artifacts, exports and upload chunks. Unreferenced
+scratch output is excluded. An incomplete temporary backup is not restorable.
+Provider configuration and API secrets are excluded and must be configured on a new
+host. Backups contain private document content.
 
-Maintenance obtains an exclusive advisory session lock after active workers
-finish their bounded operations. It uses repeated nonblocking lock attempts, so
-it does not prevent those workers from completing their short transactions on
-other database connections. Once the lock is held, normal writes and new claims
-stop. Backup and restore hold the lock across database and file operations.
+The maintenance service obtains the exclusive PostgreSQL advisory lock after
+bounded active operations finish. This stops new claims and ordinary writes while
+copying database and file state. Backup, restore and retention use the same lock.
 
-Restore into the same explicitly selected Compose project's named volumes:
+## Restore
 
-```powershell
+```sh
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance restore --backup-id BACKUP_ID --replace
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance verify
 ```
 
-`--replace` explicitly permits replacing nonempty `/data` and `/uploads` volumes
-and restoring their database snapshot. The CLI refuses arbitrary host targets.
-Manifest hashes are verified before replacement. Keep a separate verified backup
-before replacing data. A failed command leaves maintenance enabled; inspect the
-failure and rerun verification or restore a known-good backup before opening
-writes. The command does not erase unrelated host directories.
+`--replace` explicitly permits replacement of nonempty managed data/upload volumes
+and the database snapshot. Verify a separate backup before using it. The CLI checks
+manifest hashes first and refuses arbitrary host targets. Without `--replace`,
+restore requires fresh destination content volumes. Failure leaves maintenance on.
 
-Both successful backup and restore leave maintenance enabled and external
-dispatch disabled. Inspect documents, original PDFs, publication pointers and any
-`outcome_unknown` attempts, then reopen ordinary writes:
+Successful backup and restore also leave maintenance on and external dispatch off.
+Inspect documents, original PDFs, publication pointers and uncertain attempts, then:
 
-```powershell
+```sh
 docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance maintenance-off
 ```
 
-External dispatch stays disabled. In Settings → AI 服务 → 外部 API 请求, select
-“允许外部 API 请求” and save to allow dispatch again. This state persists in
-PostgreSQL across container recreation and does not use an environment variable.
-Provider configuration, external-processing confirmation and (when enabled) cost
-controls still apply to each request. If unknown billing risk remains, review the
-specific attempts, then check the risk acknowledgment and enter a reason on the
-page. The maintenance CLI `enable-dispatch` remains available with the same risk
-guard (`--accept-unknown-risk --reason "Reviewed the request evidence"`).
-This records a manual risk acknowledgment while retaining every unknown permit
-in the budget. It enables other approved jobs; it does not resume unknown tasks,
-assert that a request was uncharged, or create Provider usage evidence. A specific
-unknown task still needs its separate explicit risk-retry action.
+This reopens ordinary writes only. Enable model dispatch separately in Settings.
+Unknown requests retain their accounting risk; acknowledgment does not prove a
+request was free or automatically resume it. Retrying an unknown task requires its
+own explicit risk action.
 
-Schema upgrades run numbered frozen SQL statements in
-`packages/domain/migrations`, with recorded SHA-256 checksums. Future ORM changes
-do not rewrite old migration definitions. Downgrades and changed installed
-checksums are rejected. Pre-release databases created before checksums existed
-retain NULL checksum provenance for those old steps; new steps are recorded.
-Rollback uses the verified pre-upgrade database and content backup with its
-matching image. It does not run destructive reverse migrations on live history.
+## Schema, database and host changes
 
-`docker compose down` preserves named volumes; `down --volumes` deletes them and is
-not an upgrade or backup procedure. The isolated acceptance harness
-`.agent/harness/offline_compose_roundtrip.py` uses prepared acceptance images to
-create fresh projects, dump PostgreSQL, restore into a second fresh project and
-compare document and export bytes. It requires available acceptance ports and
-must run alone because its ports and working output are shared. The former
-production-targeted `backup_roundtrip.py` is retained only as
-[historical source](../../.agent/notes/historical-probes/README.md). Neither historical
-evidence nor this harness implies that every crash point or storage failure has
-been tested.
+Numbered SQL migrations in
+[`src/packages/domain/migrations/`](../../src/packages/domain/migrations/) are frozen
+and checksum checked. New steps are additive; downgrades and changed installed
+checksums are rejected. Rollback restores a verified backup with its matching image.
 
-## Upgrade the older bookworm instance into a fresh trixie project
+For a database major-version or base-distribution change, restore a logical backup
+into a fresh project's database volume. In particular, an existing PostgreSQL 15
+Bookworm volume must not be attached directly to the current Trixie-based image.
+Keep the old project and images for rollback; share only the explicitly selected
+backup volume with the new project. Start the new instance on a different loopback
+port, restore, run `migrate` and `verify`, then inspect data and artifact hashes
+before switching clients. Current and old application images must be compatible
+with the schema they operate on.
 
-The production default now pins PostgreSQL15-trixie. A pre-release installation
-using PostgreSQL15-bookworm must move through a logical backup into a fresh
-database volume so indexes/collations are created by the destination libraries.
-Never replace the old PostgreSQL image against its existing volume as this
-upgrade procedure. Keep the old instance and its volumes available for rollback.
-
-1. Select the old Compose project explicitly and record its actual running image
-   IDs with `docker compose -p OLD_PROJECT -f deployment/compose.production.yaml ps`
-   and `docker inspect OLD_APP_CONTAINER OLD_DB_CONTAINER`. Do not run `up` on it
-   with the new default. Preserve the matching old Compose configuration/images.
-2. Use the maintenance image that matches that old schema to create and verify
-   its backup. `docker compose ... run --no-deps maintenance` can use the old
-   `APP_IMAGE` override without recreating existing services. Capture the printed
-   backup identifier and the actual named backup volume from `docker inspect`.
-   Backup leaves the old library in maintenance and disables external dispatch.
-3. Prepare `deployment/restore-from-old.yaml` containing only the exact selected
-   backup volume. This volume is shared; the database, data, uploads and internal
-   configuration volumes must all be new in the new project:
-
-   ```yaml
-   volumes:
-     backups:
-       external: true
-       name: OLD_PROJECT_backups
-   ```
-
-4. Start the new project on a different loopback port, using final pinned app and
-   parser image references. Set `APP_IMAGE`, `PARSER_IMAGE` and `PORT` in the
-   command environment, then run:
-
-   ```powershell
-   $env:PORT = '18080'
-   docker compose -p NEW_PROJECT -f deployment/compose.production.yaml -f deployment/restore-from-old.yaml up -d --wait --no-build --pull never
-   docker compose -p NEW_PROJECT -f deployment/compose.production.yaml -f deployment/restore-from-old.yaml run --rm --no-deps maintenance python -m packages.maintenance restore --backup-id BACKUP_ID
-   docker compose -p NEW_PROJECT -f deployment/compose.production.yaml -f deployment/restore-from-old.yaml run --rm --no-deps maintenance python -m packages.maintenance migrate
-   docker compose -p NEW_PROJECT -f deployment/compose.production.yaml -f deployment/restore-from-old.yaml run --rm --no-deps maintenance python -m packages.maintenance verify
-   ```
-
-   No `--replace` is needed: the selected destination data volumes are fresh.
-   The destination schema is upgraded through frozen, additive migrations after
-   the logical restore. Existing unknown attempts and their reserved risk are
-   retained. The original project's database volume is never attached.
-5. Verify the destination readiness and compare representative original-PDF,
-   sealed snapshot, current/old publication and export hashes with the verified
-   backup. Check unknown attempts and counters, then use `maintenance-off` in
-   `NEW_PROJECT` for ordinary writes. External dispatch remains disabled until
-   its separate review/authorization step. Keep clients on the old read-only
-   instance until destination verification passes; then switch the chosen port.
-
-The real acceptance implementation is `.agent/harness/offline_compose_roundtrip.py`:
-both projects use fresh named volumes, outbound networks are disabled, and the
-restore compares original bytes, library state, two legacy artifacts and four
-worker exports. Its per-run command logs retain the actual image references.
+`docker compose down` preserves named volumes. `down --volumes` deletes them and is
+not a backup or upgrade procedure. Disposable restore tests must use their own
+project, ports and volumes. The optional offline harness in
+[`.agent/harness/offline_compose_roundtrip.py`](../../.agent/harness/offline_compose_roundtrip.py)
+uses [`tests/compose.offline.yaml`](../../tests/compose.offline.yaml); read its explicit
+candidate/image requirements before running it.

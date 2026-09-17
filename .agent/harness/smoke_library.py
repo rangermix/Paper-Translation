@@ -65,7 +65,7 @@ def main():
     args=parser.parse_args()
     base=args.base_url.rstrip('/')
     report_path=ROOT/'.agent/tmp/evidence/library-smoke.json'
-    data=(ROOT/'fixtures/sample.pdf').read_bytes()
+    data=(ROOT/'tests/fixtures/sample.pdf').read_bytes()
     if args.verify_existing:
         previous=json.loads(report_path.read_text())
         document,h=request(base,'GET','/api/v1/documents/'+previous['document_id'])

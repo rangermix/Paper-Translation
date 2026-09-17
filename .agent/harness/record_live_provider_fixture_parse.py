@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def main():
-    path=ROOT/'fixtures/live-provider/manifest.json'
+    path=ROOT/'tests/fixtures/live-provider/manifest.json'
     manifest=json.loads(path.read_text('utf-8'))
     for case in manifest['documents']:
         language='en' if case['source_language']=='en' else 'zh'
@@ -24,7 +24,7 @@ def main():
         blocks=result['source_revision']['blocks']
         assert [block['raw_text'] for block in blocks]==case['source_text']
         assert [atom['value'] for atom in result['source_revision']['protected_atoms'].values() if atom['kind']=='number']==['64']
-        assert hashlib.sha256((ROOT/case['path']).read_bytes()).hexdigest()==case['sha256']==result['inspection']['sha256']
+        assert hashlib.sha256(artifact_path(case['path']).read_bytes()).hexdigest()==case['sha256']==result['inspection']['sha256']
         case['parse_evidence']={
             'execution':json.loads((folder/'execution.json').read_text()),
             'result_path':(folder/'result.json').relative_to(ROOT).as_posix(),

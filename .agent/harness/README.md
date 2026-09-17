@@ -1,93 +1,54 @@
-# Implementation and acceptance harness
+# Execution evidence and optional probes
 
-Project-local working memories under `.agent/memory/` and root `.agent/notes/` are
-excluded from source fingerprints. Root `secrets/`, `.agent/local-data/`, `.env` and
-private `.env.*` files are never fingerprinted; `.env.example` remains source.
-Local `compose.yaml`, `.vscode/`, `provider_config/`, and non-example
-`deployment/provider_key.*` files are also excluded without reading their bytes.
-Portable Compose definitions and the empty key fixture remain source; record the
-selected runtime configuration separately with redacted deployment evidence.
-Production files, tests, contracts, fixtures
-and harness implementation remain included. Reports and evidence are separately
-hashed by each evidence record. This permits agent progress notes without
-invalidating otherwise identical source, while changes to executable behavior
-still invalidate previous full-scenario proof.
+Run from the repository root. The default regression workflow is documented in
+[tests/README.md](../../tests/README.md). These tools supplement it with command
+records, isolated deployment probes and explicitly authorized model tests.
+There is no separate milestone catalog or generated project-completion gate.
 
-The contracts are the acceptance specification, not evidence that the product works.
-This harness keeps the 130 scenarios and 24 exit gates tied to actual executions.
-Run commands from the project root. The Python CLI uses only the standard library;
-the supported product deployment remains Docker Compose.
+## Command records
 
-```powershell
-python .agent/harness/acceptance.py inventory
+```sh
 python .agent/harness/acceptance.py probe
-python .agent/harness/acceptance.py run --id unit-regression --kind automated -- python -m pytest -q
-python .agent/harness/acceptance.py report
-python .agent/harness/acceptance.py gates
+python .agent/harness/acceptance.py fingerprint
+python .agent/harness/acceptance.py run --id focused-tests --kind automated -- python -m pytest -q tests/unit
 ```
 
-`run` captures the exact argument list, UTC time, duration, exit code, environment,
-git commit, dirty state, source-tree digest and redacted command output. Execution
-records and logs are append-only under `.agent/tmp/evidence/runs/`. A successful command is
-not automatically a passed AT. Use `--tests M0-AT01A M0-AT01B` to attach supporting
-evidence; `--full-scenario` additionally asserts that the command exercises every
-Given/When/Then assertion of each listed scenario. Review the literal scenario
-before making that assertion. Do not mark a static grep or schema check as a
-complete product scenario.
+`run` records the arguments, source fingerprint, Git commit/dirty state, environment,
+exit status, elapsed time and redacted output. Logs and records use unique names
+under `.agent/tmp/evidence/`. A changed source tree makes the run fail. Optional
+`--tests` values describe the checks exercised, not entries in a planned registry.
+`--full-scenario` is an explicit scope claim and requires actual execution evidence;
+static checks cannot claim it. Exit status zero alone does not certify the product.
 
-Allowed evidence kinds are `specification`, `automated`, `compose`, `browser`,
-`live_provider`, and `agent_review`. `specification` can never pass an AT.
-FakeProvider executions are `automated`; they never count as `live_provider`.
-Docker YAML/config checks are specification evidence, never a Compose cold start.
+`blocked` records a concrete missing prerequisite. `review` imports independent,
+source-bound findings after file/hash verification; see [review format](AGENT_REVIEW.md).
+Fake providers belong to automated evidence, never live-provider evidence. YAML
+validation is a static check, never a Compose cold-start result.
 
-For a blocked scenario, save an explicit record with the concrete missing
-prerequisite. Do not assume that Docker is absent from an old design note:
+Fingerprints include maintained source, tests, fixtures and harness code. They
+exclude agent notes/memory/output, dependencies, local Compose/editor settings and
+private configuration/secret files without reading their contents. Record selected
+runtime configuration separately with redacted evidence. Archived source hashes
+are not silently promoted after a path change.
 
-```powershell
-python .agent/harness/acceptance.py blocked --id live-credentials --tests M1-AT08A M1-AT26A --reason "No approved model/profile, secret and capped external-processing test authorization"
-```
+## Explicit probes
 
-An independent agent performs every scenario labelled `mixed` in the contracts.
-Read `.agent/harness/AGENT_REVIEW.md`, copy the JSON template, perform the actual review,
-and import it with `python .agent/harness/acceptance.py review path/to/review.json`.
-Reviewer identities describe harness agents, never product accounts or end-user
-`human_reviewed` values. Acceptance review does not create product ReviewRecords.
+Most matrix scripts accept candidate images or target a disposable Compose project.
+Read their arguments and target configuration before running them. They can create
+containers/volumes, execute native parsers or mutate test data. Historical source
+review replays require their exact ignored evidence corpus; absence is not a pass.
 
-`report` writes `.agent/tmp/evidence/acceptance-report.json` and `.agent/IMPLEMENTATION_STATUS.md`.
-Only current source-tree evidence counts. Mixed scenarios require both full
-automated/browser/Compose/provider execution and independent agent review. Gates
-also require the proof kinds in `.agent/harness/gate-policy.json`; M2 cumulative delivery
-requires M0 and M1. `gates` exits nonzero for failed, blocked or not-run gates.
-There is no waiver that converts missing evidence into a pass.
+- `verify_compose.py`: default configuration inspection; `--running` additionally
+  inspects the explicitly configured live containers.
+- `offline_compose_roundtrip.py`: fresh-project backup/restore exercise, using
+  `tests/compose.offline.yaml` and prepared candidate images.
+- `release_inventory.py`: combines exact image IDs with matching scan/SBOM output
+  into a fresh report. Use `--help` for candidate arguments.
+- `parser_runtime_dependencies.py`: checks actual dependencies/model assets inside
+  the selected parser image. This is inventory, not inference or a vulnerability audit.
+- `build_*fixtures.py`: explicit synthetic-fixture generators; not application code.
+- `live_provider_run.py`: guarded real-model runner requiring the authorization
+  described in [LIVE_PROVIDER.md](LIVE_PROVIDER.md).
 
-`.agent/harness/gate-prerequisites.json` makes explicit any literal gate evidence absent
-from its requirement-ID list. M0-G06 names Docker-only cold start and recovery,
-but the original contract lists only publication requirement M0-R14. Its gate
-therefore additionally requires M0-AT18A/B; a publication crash test cannot stand
-in for a clean-host deployment test. The original contracts remain unchanged.
-
-Run `python .agent/harness/build_acceptance_observation_map.py` to join the four agents'
-scoped observations and generate `.agent/tmp/evidence/observed-scenario-map.json` plus
-`.agent/tmp/evidence/formal-gate-gap-report.md`. These keep actual behavior and precise gaps
-visible while the source is changing. A historical literal-coverage assertion
-never becomes a current gate pass merely by appearing in that map.
-
-Keep file-based memory in `.agent/memory/`: state, decisions, ownership, commands,
-findings and next actions. Never store secrets or claim unsupported completion.
-
-Release inventory requires three explicit immutable image IDs through repeated
-`--candidate ROLE sha256:... SCAN_PREFIX` arguments for `app`, `parser` and
-`database`. It reads matching historical scan/SBOM files without changing them
-and writes a fresh run directory; `--native-evidence` is optional and does not
-establish candidate binding. Run `release_inventory.py --help` for the full CLI.
-
-`parser_runtime_dependencies.py` runs inside the selected parser image with
-network access disabled by the caller and a fresh writable result directory. It
-records the installed OpenCV distribution and observed native linkage, verifies
-locked model assets and checks the heartbeat. Its output is runtime inventory,
-not a vulnerability assessment. Existing output files are never replaced.
-
-Four dated instance-specific probes were moved to
-[`../notes/historical-probes/`](../notes/historical-probes/README.md) as
-non-executable source records. Use the maintained, explicitly scoped harnesses
-described there instead of replaying their old production targets.
+Dated source probes under `../notes/historical-probes/` are archival, not current
+entry points. Keep credentials, persistent disks, old receipts and evidence intact.

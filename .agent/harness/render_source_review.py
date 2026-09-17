@@ -25,7 +25,7 @@ def main():
     args=parser.parse_args();base=artifact_path(args.source_evidence);out=output_path(args.output);out.mkdir(parents=True,exist_ok=False)
     response=json.loads((base/'response.json').read_text(encoding='utf8'));source=response['source']
     if 'source_hash' in response:assert digest(source)==response['source_hash']
-    fixture=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text(encoding='utf8'));example=fixture['translation_revision']['results'][1]
+    fixture=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text(encoding='utf8'));example=fixture['translation_revision']['results'][1]
     translation=copy.deepcopy(fixture['translation_revision'])
     translation.update(source_revision_id=source['id'],title='DRAFT',results=[{**copy.deepcopy(example),'block_id':b['id'],'source_hash':b['source_hash'],
         'status':'unresolved','target_inline':[],'review_state':'not_reviewed','review_record':None} for b in source['blocks']])

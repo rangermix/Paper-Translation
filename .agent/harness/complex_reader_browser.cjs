@@ -7,7 +7,7 @@ const {chromium,expect}=createRequire(path.join(root,'src/apps/web/package.json'
 const directory=inputPath(process.env.COMPLEX_READER_INPUT||process.env.COMPLEX_READER_OUTPUT||'evidence/complex-reader-reviewed');
 const output=outputDirectory('complex_reader_browser');
 fs.mkdirSync(output,{recursive:true});
-const ir=JSON.parse(fs.readFileSync(path.join(root,'fixtures/complex-reader/document-ir.json'),'utf8'));
+const ir=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/complex-reader/document-ir.json'),'utf8'));
 
 async function main(){
   const browser=await chromium.launch({headless:true});

@@ -17,7 +17,7 @@ import uuid
 
 
 sys.path.insert(0, str(ROOT))
-MANIFEST = ROOT / 'fixtures/live-provider/manifest.json'
+MANIFEST = ROOT / 'tests/fixtures/live-provider/manifest.json'
 
 
 def sha(path):
@@ -81,8 +81,8 @@ def authorization(path):
     need(len(manifest['documents']) == 2 and {doc['id'] for doc in manifest['documents']} == {'controlled-en', 'controlled-zh'}, 'Unexpected controlled document set.')
     need(sum(len(doc['source_text']) for doc in manifest['documents']) == 8, 'Expected eight controlled source blocks.')
     for doc in manifest['documents']:
-        original = ROOT / doc['path']
-        need(original.resolve().is_relative_to((ROOT / 'fixtures/live-provider').resolve()), 'Source path escapes controlled fixture directory.')
+        original = artifact_path(doc['path'])
+        need(original.resolve().is_relative_to((ROOT / 'tests/fixtures/live-provider').resolve()), 'Source path escapes controlled fixture directory.')
         need(original.is_file() and sha(original) == doc['sha256'], 'Controlled PDF bytes changed.')
     return approval, profile_path, key_path, profile, profile_bytes
 
@@ -119,7 +119,7 @@ def main():
     mounts = [str(frozen_profile).replace('\\', '/') + ':/config/provider-profile.json:ro']
     override.write_text(json.dumps({'services': {'app': {'volumes': mounts + [
         str(ROOT / '.agent/harness').replace('\\', '/') + ':/harness:ro',
-        str(ROOT / 'fixtures/live-provider').replace('\\', '/') + ':/controlled:ro',
+        str(ROOT / 'tests/fixtures/live-provider').replace('\\', '/') + ':/controlled:ro',
         str(output).replace('\\', '/') + ':/live-evidence']}, 'worker': {'volumes': mounts}}}, indent=2))
     env = {**os.environ, 'PORT': '18088', 'APP_ORIGINS': 'http://127.0.0.1:18088,http://localhost:18088',
         'APP_IMAGE': os.environ.get('ACCEPTANCE_APP_IMAGE', 'bilingual-personal-pdf-app:acceptance-candidate'),

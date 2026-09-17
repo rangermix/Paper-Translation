@@ -19,7 +19,7 @@ pytestmark = pytest.mark.postgres
     ('64 and 64 cores at 50%', '64 个核心，50', False),
 ])
 def test_numeric_formats_in_current_qa(client, database, source, target, valid):
-    ir = json.loads(Path('fixtures/sample-document-v3.json').read_text(encoding='utf-8'))
+    ir = json.loads(Path('tests/fixtures/sample-document.json').read_text(encoding='utf-8'))
     revision = ir['source_revision']
     block = next(b for b in revision['blocks'] if b['id'] == 'item')
     block['raw_text'] = block['normalized_text'] = source

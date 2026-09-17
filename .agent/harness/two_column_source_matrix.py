@@ -76,7 +76,7 @@ def outside(overlay):
     image=command(['docker','image','inspect','--format','{{.Id}}',os.environ['ACCEPTANCE_PARSER_IMAGE']]).strip()
     argv=['docker','run','--rm','--network','none','--read-only','--user','10001:10001','--cap-drop','ALL','--security-opt','no-new-privileges:true',
         '--memory','4g','--cpus','2','--pids-limit','128','--tmpfs','/tmp:rw,nosuid,size=512m,mode=1777']
-    mounts=[(ROOT/'fixtures','/fixtures',True),(ROOT/'.agent/harness','/harness',True),(output,'/result',False)];overlays={}
+    mounts=[(ROOT/'tests/fixtures','/fixtures',True),(ROOT/'.agent/harness','/harness',True),(output,'/result',False)];overlays={}
     if overlay:
         for relative in ['src/packages/parsers/pdf_docling.py','src/workers/parser/main.py']:
             mounts.append((ROOT/relative,'/app/'+relative,True));overlays[relative]=digest((ROOT/relative).read_bytes())

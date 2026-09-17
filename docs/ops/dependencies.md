@@ -19,9 +19,8 @@ them. See [local translation](../deployment/local-translation.md).
 `deployment/images/database.Dockerfile` derives the nonroot PostgreSQL15 runtime from its
 fixed trixie base, applies OS updates during build and removes the root-only
 privilege-switch helper. Build all three images with `build app parser db`.
-Do not substitute a successful vulnerability scan for a complete review:
-`.agent/tmp/evidence/release/DEPENDENCY_TRIAGE.md` records remaining scanner findings and
-native linkage limitations for the exact candidate images.
+Record scanner findings and native linkage limits for the exact built image.
+An old scan does not describe a newly built candidate.
 
 PostgreSQL server and the app's `pg_dump`/`pg_restore` clients use major version 15.
 Minor versions are recorded by the runtime inventory and verified during backup
@@ -29,7 +28,3 @@ tests. Release records must include the actual app/parser/db image IDs and diges
 source commit plus source-tree hash, architecture, all dependency locks, model
 manifest, license notices and vulnerability scan results. Unknown or missing
 license fields require review; generating an inventory is not legal clearance.
-
-The obsolete design-only dependency checklist was removed. Use the maintained
-lockfiles and actual image inventories described above. The harness refuses to
-mark missing runtime/Compose/provider proof as passed.

@@ -35,7 +35,9 @@ def main():
         return run_recorded_command(argv, env=env, commands=commands, evidence_path=output/'commands.json', timeout=timeout)
     mounts = [str(ROOT/'.agent/harness')+':/harness:ro', str(ROOT/'tests')+':/review/tests:ro', str(output)+':/upgrade-evidence']
     override = output/'offline.json'
-    override.write_text(json.dumps({'services': {name: {'volumes': mounts, 'environment': {'PYTHONPATH': '/app/src:/app:/review:/harness'}}
+    override.write_text(json.dumps({'services': {name: {'volumes': mounts + (
+        [(ROOT/'tests/fixtures').as_posix()+':/app/tests/fixtures:ro'] if name == 'app' else []),
+        'environment': {'PYTHONPATH': '/app/src:/app:/review:/harness'}}
         for name in ('app', 'maintenance')}, 'networks': {'http': {'internal': True}, 'provider_egress': {'internal': True}}}, indent=2))
     restore_override = output/'restore-backup-volume.json'
     restore_override.write_text(json.dumps({'volumes': {'backups': {'external': True, 'name': old_project+'_backups'}}}))

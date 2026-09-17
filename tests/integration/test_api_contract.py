@@ -20,7 +20,7 @@ def test_pdf_only_and_no_identity(client):
 
 
 def test_upload_chunks_idempotency_and_preconditions(client):
-    data = Path('fixtures/sample.pdf').read_bytes()
+    data = Path('tests/fixtures/sample.pdf').read_bytes()
     payload = {'filename': 'sample.pdf', 'media_type': 'application/pdf', 'byte_size': len(data)}
     headers = {'Idempotency-Key': 'upload-one'}
     first = client.post('/api/v1/uploads', json=payload, headers=headers)

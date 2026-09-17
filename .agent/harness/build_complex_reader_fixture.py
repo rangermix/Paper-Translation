@@ -16,7 +16,7 @@ from reportlab.pdfgen import canvas
 sys.path.insert(0, str(ROOT))
 from packages.ir import block_hash, digest, validate_ir
 
-DEST = ROOT / 'fixtures/complex-reader'
+DEST = ROOT / 'tests/fixtures/complex-reader'
 TITLE = 'A deliberately long publication title for reviewing offline bilingual reading, merged table cells, exact code, and cross-page source locations'
 CODE = 'checkpoint = save_document(source_revision, translation_revision, expected_generation, immutable=True)\nif checkpoint.outcome == "unknown":\n    do_not_dispatch_a_second_request(checkpoint.request_id, preserve_reserved_budget=True)\nelse:\n    publish_after_verifying_every_asset(checkpoint.artifact_directory, expected_hash=checkpoint.sha256)'
 
@@ -27,7 +27,7 @@ def main():
     pdf = canvas.Canvas(str(pdf_path), pagesize=(612, 792), invariant=1)
     pdf.setTitle(TITLE)
     pdf.setAuthor('Local acceptance fixture; explicitly authored')
-    base = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))
+    base = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))
     source, tr = base['source_revision'], base['translation_revision']
     source.update(id='src_complex', title_block_id='title', blocks=[], reading_order=[], protected_atoms={})
     source['parser']['name'] = 'manually-authored-complex-renderer-fixture'
@@ -65,7 +65,7 @@ def main():
             pdf.drawString(x, 792-top-index*leading, line)
         return [x, top-size-2, max(x+pdf.stringWidth(line,font,size) for line in lines), top+(len(lines)-1)*leading+3]
 
-    base_result = json.loads((ROOT / 'fixtures/sample-document-v3.json').read_text('utf-8'))['translation_revision']['results'][0]
+    base_result = json.loads((ROOT / 'tests/fixtures/sample-document.json').read_text('utf-8'))['translation_revision']['results'][0]
     title_lines = '\n'.join(textwrap.wrap(TITLE, 63))
     title_box = draw(title_lines, 54, size=17, leading=23)
     block('title', 'heading', TITLE, tr['title'], 1, title_box, parent=None, attrs={'level': 1})
@@ -111,7 +111,7 @@ def main():
         'Table two. Row span two and column span two in a three by three grid.')
     text = 'Keep the original figure, code, formula, footnote, and reference.'
     block('list', 'list_item', text, '保留原图、代码、公式、脚注和参考文献。', 2, draw(text, 320), parent='section-two', attrs={'list_ordered':True,'list_index':1})
-    pdf.drawImage(str(ROOT/'fixtures/figure.png'),50,792-437,width=360,height=100)
+    pdf.drawImage(str(ROOT/'tests/fixtures/figure.png'),50,792-437,width=360,height=100)
     block('figure', 'figure', '', None, 2, [50,337,410,437], parent='section-two', attrs={'asset_id':'figure_png','caption_block_ids':['figure-caption']})
     text = 'Figure one. Three original colour patches.'
     block('figure-caption','caption',text,'图一：三个原始色块。',2,draw(text,457),parent='section-two',owner='figure')
@@ -130,7 +130,7 @@ def main():
     pdf_bytes = pdf_path.read_bytes()
     source['sha256'] = digest(pdf_bytes)
     source['assets'][0].update(sha256=digest(pdf_bytes), storage_key='fixtures/complex-reader/complex-reader.pdf', byte_size=len(pdf_bytes))
-    validate_ir(base, asset_root=ROOT)
+    validate_ir(base, asset_root=ROOT / 'tests')
     (DEST/'document-ir.json').write_text(json.dumps(base,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     (DEST/'authored-source-manifest.json').write_text(json.dumps({'purpose':'M0 authored renderer fixture, never M1 parser gold',
         'pdf_sha256':digest(pdf_bytes),'page_count':2,'blocks':locations},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

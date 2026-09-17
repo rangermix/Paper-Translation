@@ -12,7 +12,7 @@ Settings → AI service → **本地翻译模型（MLX）** offers:
 Apple Silicon uses MLX safetensors through the same Docker Model Runner
 vLLM Metal backend as PaddleOCR. These are MLX affine quantizations, not GGUF.
 This overlay requires Apple Silicon and the Docker-managed Paddle MLX backend;
-CPU/CUDA runtime certification is not established by these instructions.
+the current implementation does not provide a CPU/CUDA local-translation backend.
 
 ## Download and use
 
@@ -43,7 +43,7 @@ Build the normal app image, then add this overlay to the existing MLX deployment
 
 ```sh
 docker compose -f deployment/compose.production.yaml build app
-docker compose --env-file .agent/local-data/mlx-docker-20260913/mlx.env \
+docker compose --env-file .env.mlx \
   -f deployment/compose.production.yaml -f deployment/compose.mlx.yaml \
   -f deployment/compose.local-translation.yaml \
   up -d --no-build --wait app worker local-translator
@@ -61,13 +61,15 @@ The Paddle backend image must already exist as
 `local/paper-translation-vllm-metal:latest`. Build the translation extension:
 
 ```sh
+TASK_DIR=".agent/tmp/translation-backend-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$TASK_DIR"
 docker buildx build --platform darwin/arm64 \
   -f deployment/local-translation-backend/Dockerfile \
-  --output type=oci,dest=.agent/tmp/translation-backend.oci.tar \
+  --output "type=oci,dest=$TASK_DIR/translation-backend.oci.tar" \
   -t local/paper-translation-mlx-translator:latest .
 ```
 
-Use a fresh per-run output directory in practice. The extension preserves the
+The extension preserves the
 Paddle runtime and fails the build if its reviewed source anchors change. It
 routes quantized Gemma3 text checkpoints through MLX-LM and caps the translation
 KV cache to one configured context plus the scheduler's reserved block. The
@@ -89,13 +91,7 @@ DMR unload removes runtime configuration, so preparation rechecks the effective
 flags before inference. The UI's downloaded state describes cache availability,
 not proof that inference can fit or succeed on the current machine.
 
-## Upstream references
-
-- [Hy-MT2 native prompts](https://huggingface.co/tencent/Hy-MT2-1.8B)
-- [MiLMMT native completion prompt](https://huggingface.co/xiaomi-research/MiLMMT-46-4B-v0.1)
-- [Docker Model Runner API](https://docs.docker.com/ai/model-runner/api-reference/)
-- [vLLM Metal](https://github.com/vllm-project/vllm-metal)
-
-The lock file records upstream license metadata. Hy weights use the Tencent
-Hunyuan community license; MiLMMT derives from Gemma and retains its upstream
-terms. Consult the pinned repository model cards for the full terms.
+The catalog and model file hashes are maintained in
+[`models.lock.json`](../../src/packages/local_models/models.lock.json). Inspect the
+pinned upstream license/model-card metadata before redistributing weights. A listed
+model is selectable, not proof that it has run successfully on the current host.

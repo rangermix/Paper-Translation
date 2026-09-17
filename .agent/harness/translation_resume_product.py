@@ -40,7 +40,7 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('operation',choices=['prepare','barrier','final']);op=p.parse_args().operation
     cfg=Config.load();db=Database(cfg)
     if op=='prepare':
-        ir=json.loads(Path('fixtures/sample-document-v3.json').read_text(encoding='utf8'));source=copy.deepcopy(ir['source_revision'])
+        ir=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text(encoding='utf8'));source=copy.deepcopy(ir['source_revision'])
         source['id']='source_resume';title=source['blocks'][0];example=source['blocks'][1];blocks=[title]
         for index,bid in enumerate(IDS):
             b=copy.deepcopy(example);value='Controlled paragraph '+chr(65+index)+' keeps its exact saved result after the worker restarts.'
@@ -49,7 +49,7 @@ def main():
             b['source_hash']=block_hash(b,source['protected_atoms']);blocks.append(b)
         source['blocks']=blocks;source['reading_order']=[b['id'] for b in blocks]
         for asset in source['assets']:
-            target=cfg.data/asset['storage_key'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(Path(asset['storage_key']),target)
+            target=cfg.data/asset['storage_key'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/'tests'/asset['storage_key'],target)
         validate_source(source,asset_root=cfg.data);key='documents/doc_resume/sources/source_resume.json';sha=write_snapshot(cfg.data,key,source)
         original=next(a for a in source['assets'] if a['id']==source['original_asset_id'])
         with db.transaction() as session:

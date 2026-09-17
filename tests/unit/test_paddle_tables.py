@@ -93,7 +93,7 @@ def adapt_table(tmp_path, html=MERGED):
 
 
 def as_ir(source):
-    ir = json.loads(Path('fixtures/sample-document-v3.json').read_text('utf-8'))
+    ir = json.loads(Path('tests/fixtures/sample-document.json').read_text('utf-8'))
     ir['source_revision'] = source
     ir['document']['title'] = source['blocks'][0]['normalized_text']
     template = ir['translation_revision']['results'][0]

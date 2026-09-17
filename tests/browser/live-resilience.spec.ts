@@ -14,7 +14,7 @@ test('real inspector rejects one selected PDF while the following PDF is saved i
   page.on('response', r => {if(r.request().method()!=='GET') posts.push({path:new URL(r.url()).pathname,status:r.status()});});
   await page.goto('/#/upload');
   await page.getByLabel('生成内容', { exact: true }).selectOption('source');
-  await page.locator('input[type=file]').setInputFiles([resolve(root,'fixtures/security/malformed.pdf'),resolve(root,'fixtures/sample.pdf')]);
+  await page.locator('input[type=file]').setInputFiles([resolve(root,'tests/fixtures/security/malformed.pdf'),resolve(root,'tests/fixtures/sample.pdf')]);
   await page.getByRole('button',{name:'上传并开始处理',exact:true}).click();
   const failed=page.locator('.file-result').filter({has:page.getByText('malformed.pdf',{exact:true})});
   const valid=page.locator('.file-result').filter({has:page.getByText('sample.pdf',{exact:true})});

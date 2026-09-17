@@ -3,6 +3,22 @@
 Run from the repository root. The default suite uses test doubles for Providers;
 it does not grant real model, credential or outbound-content authorization.
 
+## Repository checks
+
+```sh
+docker compose -p paper-checks -f tests/compose.yaml --profile checks run --build --rm checks
+```
+
+This reuses the locked test image with no network, database dependency or product
+volume. It checks actual runtime schemas/templates, test fixture integrity and
+current documentation links. It does not evaluate an obsolete milestone registry.
+On a supported locked development environment the equivalent command is
+`uv run python src/tools/check_package.py`.
+
+Synthetic PDF/IR inputs live under [fixtures/](fixtures/README.md), separate from
+runtime [resources](../res/README.md). The optional `compose.offline.yaml` is a
+fresh-project acceptance overlay for the explicit harness, not a production default.
+
 ## Reproducible Linux and PostgreSQL suite
 
 Only Docker and Compose are needed. This test project has its own temporary
@@ -11,8 +27,8 @@ The image builds the frontend for real readiness checks and installs locked test
 dependencies during the build:
 
 ```sh
-docker compose -p paper-tests -f deployment/compose.test.yaml --profile tests run --build --rm tests
-docker compose -p paper-tests -f deployment/compose.test.yaml down --volumes
+docker compose -p paper-tests -f tests/compose.yaml --profile tests run --build --rm tests
+docker compose -p paper-tests -f tests/compose.yaml down --volumes
 ```
 
 Port 55439 must be free. Use a distinct project name and never merge this Compose

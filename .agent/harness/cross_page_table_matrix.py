@@ -12,10 +12,10 @@ from packages.ir import digest,validate_source
 
 
 def verify(output):
-    expected=json.loads((ROOT/'fixtures/cross-page-resources/expected-visible.json').read_text())
+    expected=json.loads((ROOT/'tests/fixtures/cross-page-resources/expected-visible.json').read_text())
     result=json.loads((output/'actual/result.json').read_text(encoding='utf8'));source=result['source_revision']
     validate_source(source,asset_root=output/'actual');by={b['id']:b for b in source['blocks']}
-    assert source['sha256']==expected['pdf_sha256']==digest((ROOT/'fixtures/cross-page-resources/cross-page-resources.pdf').read_bytes())
+    assert source['sha256']==expected['pdf_sha256']==digest((ROOT/'tests/fixtures/cross-page-resources/cross-page-resources.pdf').read_bytes())
     rows=[];captions=[]
     for bid in source['reading_order']:
         block=by[bid]
@@ -33,16 +33,17 @@ def verify(output):
         captions.append({'table_id':bid,'page':block['provenance'][0]['page'],'caption_id':caption['id'],'text':caption['normalized_text']})
     assert rows==expected['table_rows']
     issue=next(i for i in result['coverage']['unresolved'] if i['reason']=='Original image overlaps separate incomplete layout graphics')
+    # This legacy parser field describes coverage, not application readiness.
     assert not result['coverage']['can_translate'] and len(result['coverage']['unresolved'])==1
     assert all(any('分组与图注' in w for w in by[bid]['warnings']) for bid in issue['block_ids'])
     assets={a['storage_key']:digest((output/'actual'/a['storage_key']).read_bytes()) for a in source['assets']}
     assert all(assets[a['storage_key']]==a['sha256'] for a in source['assets'])
     footnotes=[b for b in source['blocks'] if b['kind']=='footnote'];assert len(footnotes)==1
     assert footnotes[0]['provenance'][0]['page']==1 and footnotes[0]['normalized_text']=='1 Values are synthetic; they test extraction, not scientific claims.'
-    return {'status':'passed_as_explicit_source_review_required','table_rows_complete_and_ordered':True,'table_rows':rows,
+    return {'status':'passed_with_source_warnings','table_rows_complete_and_ordered':True,'table_rows':rows,
         'captions':captions,'assets_sha256':assets,'source_sha256':digest(source),'result_sha256':digest((output/'actual/result.json').read_bytes()),
-        'unresolved':result['coverage']['unresolved'],'footnote':footnotes[0],
-        'scope':'Real PDF/Docling; complete original assets and table rows retained. Ambiguous figure grouping blocks confirmation. No automatic figure-group or footnote-reference correctness claimed.'}
+        'unresolved':result['coverage']['unresolved'],'diagnostic_can_translate':result['coverage']['can_translate'],'footnote':footnotes[0],
+        'scope':'Real PDF/Docling; complete original assets and table rows retained with figure-grouping warnings. Parser coverage is diagnostic; this probe does not exercise workflow readiness or certify figure grouping or footnote references.'}
 
 
 def main():
@@ -54,7 +55,7 @@ def main():
     image=command(['docker','image','inspect','--format','{{.Id}}',os.environ['ACCEPTANCE_PARSER_IMAGE']]).strip()
     argv=['docker','run','--rm','--network','none','--read-only','--user','10001:10001','--cap-drop','ALL',
         '--security-opt','no-new-privileges:true','--memory','4g','--cpus','2','--pids-limit','128','--tmpfs','/tmp:rw,nosuid,size=512m,mode=1777']
-    mounts=[(ROOT/'fixtures/cross-page-resources','/source',True),(ROOT/'.agent/harness','/harness',True),(output/'actual','/result',False)]
+    mounts=[(ROOT/'tests/fixtures/cross-page-resources','/source',True),(ROOT/'.agent/harness','/harness',True),(output/'actual','/result',False)]
     overlays={}
     if args.current_source_overlay:
         for relative in ['src/packages/parsers/pdf_docling.py','src/packages/parsers/fidelity.py']:

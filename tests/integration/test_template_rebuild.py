@@ -23,12 +23,12 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(database):
     db, cfg = database
-    fixture = json.loads((ROOT/'fixtures/sample-document-v3.json').read_text('utf-8'))
+    fixture = json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))
     source_template, translation_template = fixture['source_revision'], fixture['translation_revision']
     for asset in source_template['assets']:
         destination = cfg.data/asset['storage_key']
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT/asset['storage_key'], destination)
+        shutil.copyfile(ROOT/'tests'/asset['storage_key'], destination)
     original = next(a for a in source_template['assets'] if a['id'] == source_template['original_asset_id'])
     previous_files = {}
     with db.transaction() as session:

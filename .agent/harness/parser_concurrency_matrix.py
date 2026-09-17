@@ -154,7 +154,7 @@ def outside(current_source_overlay=False, allocator_arenas=None, research_paper=
         '--pids-limit', '128', '--tmpfs', '/tmp:rw,nosuid,size=512m,mode=1777']
     if allocator_arenas is not None:
         args += ['-e', 'MALLOC_ARENA_MAX=' + str(allocator_arenas)]
-    mounts = [(root / 'fixtures', '/fixtures', True), (root / '.agent/harness', '/harness', True), (output, '/result', False)]
+    mounts = [(root / 'tests/fixtures', '/fixtures', True), (root / '.agent/harness', '/harness', True), (output, '/result', False)]
     if research_paper:
         mounts.append((root / 'res/reference/legacy/source', '/papers', True))
     overlays = {}

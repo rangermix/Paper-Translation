@@ -1,4 +1,4 @@
-"""Strict syntax, source semantics and publication invariants for IR v3."""
+"""Strict syntax, source semantics and publication invariants for the stored render input."""
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +13,7 @@ import jsonschema
 from .retention import original_only_blocks
 
 from packages.paths import ROOT
-SCHEMA = json.loads((ROOT / 'res/schemas/document-ir-v3.schema.json').read_text('utf-8'))
+SCHEMA = json.loads((ROOT / 'res/schemas/document-ir.schema.json').read_text('utf-8'))
 RASTER_TYPES = {'image/png', 'image/jpeg', 'image/webp'}
 PROSE = {'heading', 'paragraph', 'list_item', 'caption', 'table_cell', 'footnote'}
 

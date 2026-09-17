@@ -1,26 +1,52 @@
-# Current implementation handoff · 2026-09-17
+# Current source handoff · 2026-09-17
 
-This is a source handoff, not a statement about a live instance. Check the actual selected deployment before making runtime claims or changing its services. Work from the Git repository root, using the configured branch and remote; commit and push verified checkpoints. Preserve unrelated work and local configuration.
+This describes the checkout, not a live instance. Inspect the selected deployment
+before runtime claims or service changes. Work from the repository root and commit
+and push completed, verified checkpoints to the configured branch/remote.
 
-## Current source
+## Maintained structure
 
-- The repository uses `src/` for executable code, `docs/` for prose/plans, root `res/` for runtime schemas and frozen assets, and `deployment/` for Compose/Docker inputs. Docker recipes are under `deployment/images/`.
-- Product code is in `src/apps/`, `src/packages/`, and `src/workers/`. Schema migrations currently end at 13; old migration checksums and published artifacts remain immutable.
-- The retired demonstration app, prototype server and generated design pages were removed in `fdf8a61`. The two controlled seed papers are under `res/reference/legacy/`; `res/reference/reader-v1.css` remains frozen.
-- Nonblocking content quality, automatic recovery, DOI metadata, optional costs, all languages, task history clearing, original-only scholarly metadata and optional local translation are implemented. The current contract is `docs/product-baseline.md` plus the relevant `docs/shared/` and deployment documents.
-- PaddleOCR-VL-1.6 is the new parsing default; Docling and Granite remain available. CPU/CUDA assets are packaged. MLX uses Docker Model Runner and requires deployment-specific proof. Local translation models are prepared only on explicit use, never by startup or settings reads.
-- `compose.example.yaml` is the shared standalone template; root `compose.yaml` is local and ignored. `deployment/compose.production.yaml` remains the maintained composable entry point. Keep the active project's name, overrides and image bindings when doing maintenance. Machine-specific `.vscode/settings.json` is also local.
+- `src/`: app, domain packages, workers and tools. Host Python module calls use
+  `PYTHONPATH=src`; pytest and containers configure it already.
+- `res/`: the runtime render-input schema and frozen reader/controlled seed assets.
+  Their persisted format/template identities remain compatible.
+- `tests/`: regression code, authored fixtures, shared test/check Dockerfile and
+  Compose definitions. Test corpora are absent from production images.
+- `deployment/`: production Compose, hardware/local-model overlays, product recipes,
+  backend payload sources, locked models/dependencies and required empty config inputs.
+- `docs/`: current product, architecture, workflow, API and operations guides.
+  Completed plans, duplicate schemas and obsolete milestone registries were removed.
 
-## Verification and limits
+## Implemented behavior
 
-- `tests/README.md` describes reproducible database, memory-bounded Linux and browser tests; `deployment/compose.verify.yaml` runs portable repository checks independently of local hardware configuration.
-- `.agent/IMPLEMENTATION_STATUS.md` links to historical full-milestone evidence. Later targeted tests and historical hardware/model runs do not certify the current tree as a full release.
-- No real API key may be read or used for testing without explicit budget and content-egress authorization. FakeProvider, local HTTP doubles and static Compose checks have narrower proof scopes.
-- The 2026-09-17 directory layout and verification are recorded in `.agent/notes/repository-layout-20260917.md`; its run artifacts are under `.agent/tmp/repo-layout-20260917-01/`.
-- Repository audit results and current verification commands are recorded in `.agent/notes/repository-audit-20260916.md`; its run artifacts are under `.agent/tmp/repo-audit-20260916-01/`.
+The app implements PDF intake, parsing/recovery, translation continuation, optional
+editing/review, nonblocking content findings, original-only scholarly metadata,
+DOI metadata, task logs/history visibility, immutable publication/export and maintenance.
+Database migrations end at 13 and installed migration bytes remain frozen.
 
-## Preserved history and local data
+New parser preferences default to PaddleOCR-VL-1.6. Docling/Granite and saved choices
+remain available. MLX uses Docker Model Runner with deployment-specific verification.
+Local translation models prepare only on explicit use; startup/settings reads do
+not download them. Source-only results are not translated results.
 
-The [previous handoff](../notes/handoff-before-repository-audit-20260916.md) is unchanged historical context. Its Windows paths, old image IDs, open-work claims and “uncommitted” labels are not current instructions. Dated notes under `.agent/notes/` describe their recorded source/environment only.
+`compose.example.yaml` is the shared standalone template. Root `compose.yaml` and
+machine editor settings are ignored local files. Preserve their project name,
+image pins, model settings and overlays. `deployment/compose.production.yaml` is
+the shared composable entry point.
 
-Use a unique `.agent/tmp/` directory for each run. `.agent/local-data/` contains persistent environments, receipts and private state and must never be cleaned as scratch. Neither directory is tracked or shipped in images. Resolve legacy relative evidence paths with `.agent/relocation.json`; do not rewrite archived evidence or run old instance-mutating scripts without checking their target.
+## Verification and evidence
+
+Use [tests/README.md](../../tests/README.md) and current docs. `tests/compose.yaml`
+provides isolated repository checks and a Linux/PostgreSQL suite. The optional
+[harness](../harness/README.md) captures source-bound execution/review evidence;
+it does not maintain a retired milestone-completion catalog.
+
+Test doubles, static checks and historical hardware/model runs have limited scopes.
+Real API keys require explicit test budget and content-egress authorization.
+Existing dated notes describe only their recorded commit/environment. No cleanup
+operation here is production deployment or new inference proof.
+
+Use unique `.agent/tmp/` run directories. `.agent/local-data/` is persistent private
+state and never disposable scratch. Both are ignored; `.agent/` is excluded from
+product images. Keep archived evidence unchanged; known path moves resolve through
+`.agent/relocation.json`. Deleted plans remain available in Git history.

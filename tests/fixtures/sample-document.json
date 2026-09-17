@@ -1,0 +1,1019 @@
+{
+  "schema_version": "3.0",
+  "document": {
+    "id": "doc_fixture",
+    "title": "Publication fixture",
+    "notice": "人工编写的PDF及其对应源/译IR契约样例；位置由生成时记录并核对，不是自动解析或模型翻译结果。"
+  },
+  "source_revision": {
+    "id": "src_fixture",
+    "kind": "pdf_upload",
+    "language": "en",
+    "original_asset_id": "source_pdf",
+    "sha256": "70aca9df1720e11672780b47e9b0f539b319c412850dd47e37778bbdabfd8f6a",
+    "created_at": "2026-09-05T00:00:00Z",
+    "parser": {
+      "name": "manually-authored-pdf-fixture",
+      "version": "3.0",
+      "config_hash": "ff452c52a2a87baed12a925c25d5a2474052b393e1eeca4aa4896df271f0ad68"
+    },
+    "normalization_version": "mechanical-v1",
+    "title_block_id": "title",
+    "reading_order": [
+      "title",
+      "p1",
+      "item",
+      "code",
+      "math",
+      "fig",
+      "table",
+      "p2",
+      "fn1",
+      "ref1"
+    ],
+    "assets": [
+      {
+        "id": "source_pdf",
+        "media_type": "application/pdf",
+        "sha256": "70aca9df1720e11672780b47e9b0f539b319c412850dd47e37778bbdabfd8f6a",
+        "storage_key": "fixtures/sample.pdf",
+        "byte_size": 3822
+      },
+      {
+        "id": "figure_png",
+        "media_type": "image/png",
+        "sha256": "f92b5be07d8b48ac8a0b85bdece1f81fd8ffbc67dce4413713befb8a7ca5384a",
+        "storage_key": "fixtures/figure.png",
+        "byte_size": 456
+      }
+    ],
+    "protected_atoms": {
+      "n64": {
+        "kind": "number",
+        "value": "64"
+      },
+      "formula1": {
+        "kind": "math",
+        "value": "x + 1"
+      }
+    },
+    "blocks": [
+      {
+        "id": "title",
+        "order": 0,
+        "parent_id": null,
+        "owner_id": null,
+        "kind": "heading",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "Publication fixture",
+        "normalized_text": "Publication fixture",
+        "source_hash": "e397dd77b14c7d47ceb194911aabb096e346e36d57e0563ce17bdd7ab36e3efc",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "Publication fixture"
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              31,
+              253.65200000000002,
+              61
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {
+          "level": 1
+        }
+      },
+      {
+        "id": "p1",
+        "order": 1,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "paragraph",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "The job has 64 tokens.",
+        "normalized_text": "The job has 64 tokens.",
+        "source_hash": "57509ea4b883b36b79cdf18a57751db7a935b478046d204a2cf998684cb0427b",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "The job has "
+          },
+          {
+            "type": "protected_ref",
+            "ref": "n64"
+          },
+          {
+            "type": "text",
+            "text": " tokens."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              93,
+              174.404,
+              112
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "item",
+        "order": 2,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "list_item",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "Keep the original.",
+        "normalized_text": "Keep the original.",
+        "source_hash": "19f23e6d9e3fc038cb7cd1b924a42d9c1a8ab82af2f189e900ad5ec03d1f5906",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "Keep the original."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              62,
+              127,
+              158.38400000000001,
+              146
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {
+          "list_ordered": true,
+          "list_index": 1
+        }
+      },
+      {
+        "id": "code",
+        "order": 3,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "code",
+        "language": "en",
+        "translatable": false,
+        "raw_text": "print(\"hello\")",
+        "normalized_text": "print(\"hello\")",
+        "source_hash": "487bd33278421038013ffd464eb20b76996c6a390d090520082ab6a1f8ef86ae",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "print(\"hello\")"
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              162,
+              153.8,
+              181
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {
+          "code_language": "python"
+        }
+      },
+      {
+        "id": "math",
+        "order": 4,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "math",
+        "language": "en",
+        "translatable": false,
+        "raw_text": "x + 1",
+        "normalized_text": "x + 1",
+        "source_hash": "2d9edbbd39796501804a76bf6a6fca6cf2d725f000d22ec7f563788cb1623379",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "protected_ref",
+            "ref": "formula1"
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              197,
+              78.428,
+              216
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {
+          "representation": "plain"
+        }
+      },
+      {
+        "id": "fig",
+        "order": 5,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "figure",
+        "language": "en",
+        "translatable": false,
+        "raw_text": "",
+        "normalized_text": "",
+        "source_hash": "c1b6f81126e68814bdc284c39944f2f4a9b8b0cbfd1b3ebb39ed18d973f91c43",
+        "normalization_edits": [],
+        "source_inline": [],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              216,
+              410,
+              316
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {
+          "asset_id": "figure_png",
+          "caption_block_ids": [
+            "figcap"
+          ]
+        }
+      },
+      {
+        "id": "figcap",
+        "order": 6,
+        "parent_id": "title",
+        "owner_id": "fig",
+        "kind": "caption",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "Figure 1. Synthetic test pixels.",
+        "normalized_text": "Figure 1. Synthetic test pixels.",
+        "source_hash": "02f763b0f3e7708ed54a1624bfb21af2beda1860ae0fda9c80eafb3126d37a07",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "Figure 1. Synthetic test pixels."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              325,
+              199.729,
+              343
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "table",
+        "order": 7,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "table",
+        "language": "en",
+        "translatable": false,
+        "raw_text": "",
+        "normalized_text": "",
+        "source_hash": "1574de6bb6902327f263a1b4e00fafd2d2728d4af4308c397a1fca9ee7d30639",
+        "normalization_edits": [],
+        "source_inline": [],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              387,
+              450,
+              431
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {
+          "representation": "structured",
+          "rows": 1,
+          "columns": 2,
+          "caption_block_ids": [
+            "tablecap"
+          ],
+          "cells": [
+            {
+              "row": 0,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "content_block_id": "c1"
+            },
+            {
+              "row": 0,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "content_block_id": "c2"
+            }
+          ]
+        }
+      },
+      {
+        "id": "tablecap",
+        "order": 8,
+        "parent_id": "title",
+        "owner_id": "table",
+        "kind": "caption",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "Table 1. A status example.",
+        "normalized_text": "Table 1. A status example.",
+        "source_hash": "be2e68b8639600fcee7939da6558501ac40c2d7ab473c10d6c4e35a31edfed02",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "Table 1. A status example."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              442,
+              183.229,
+              460
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "c1",
+        "order": 9,
+        "parent_id": "title",
+        "owner_id": "table",
+        "kind": "table_cell",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "State",
+        "normalized_text": "State",
+        "source_hash": "594da470124a544a409b8b87fcc5f12943cb3abd41d97aa4d609064d1273e398",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "State"
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              62,
+              400,
+              93.02,
+              419
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "c2",
+        "order": 10,
+        "parent_id": "title",
+        "owner_id": "table",
+        "kind": "table_cell",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "Saved",
+        "normalized_text": "Saved",
+        "source_hash": "259726ad14c000f610711536916e14a29419e8ac95c52639feeb33f1b1672198",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "Saved"
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              262,
+              400,
+              299.02,
+              419
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "p2",
+        "order": 11,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "paragraph",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "See the note.",
+        "normalized_text": "See the note.",
+        "source_hash": "05c3e9778ca54a550995774fda3baa2a69c5280a560d8b4865a4c395410aa741",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "See "
+          },
+          {
+            "type": "xref",
+            "target_block_id": "fn1",
+            "label": "the note"
+          },
+          {
+            "type": "text",
+            "text": "."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              490,
+              124.388,
+              509
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "fn1",
+        "order": 12,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "footnote",
+        "language": "en",
+        "translatable": true,
+        "raw_text": "This is a manually authored fixture.",
+        "normalized_text": "This is a manually authored fixture.",
+        "source_hash": "afaa88bb37bf36e5e6d73d66874c208b093153375c5e455f78b35aa801afecd5",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "This is a manually authored fixture."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              559,
+              208.06,
+              576
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      },
+      {
+        "id": "ref1",
+        "order": 13,
+        "parent_id": "title",
+        "owner_id": null,
+        "kind": "reference",
+        "language": "en",
+        "translatable": false,
+        "raw_text": "Example reference. No external content was fetched.",
+        "normalized_text": "Example reference. No external content was fetched.",
+        "source_hash": "30822a687cf4e11c85628c085ac97ea37d85e571a2662ab1d2f1cc24bb5076ce",
+        "normalization_edits": [],
+        "source_inline": [
+          {
+            "type": "text",
+            "text": "Example reference. No external content was fetched."
+          }
+        ],
+        "provenance": [
+          {
+            "type": "pdf",
+            "asset_id": "source_pdf",
+            "page": 1,
+            "bbox": [
+              50,
+              595,
+              288.11,
+              612
+            ],
+            "coordinate_system": "top-left-points",
+            "page_size": [
+              612,
+              792
+            ]
+          }
+        ],
+        "warnings": [],
+        "attributes": {}
+      }
+    ]
+  },
+  "translation_revision": {
+    "id": "tr_fixture",
+    "source_revision_id": "src_fixture",
+    "target_language": "zh-Hans",
+    "title": "出版契约样例",
+    "profile_version": "manual-v1",
+    "glossary_revision": "empty-v1",
+    "engine": {
+      "kind": "human",
+      "provider": "none",
+      "model": "none",
+      "prompt_version": "none"
+    },
+    "sealed_at": "2026-09-05T00:00:00Z",
+    "results": [
+      {
+        "block_id": "title",
+        "source_hash": "e397dd77b14c7d47ceb194911aabb096e346e36d57e0563ce17bdd7ab36e3efc",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "出版契约样例"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "p1",
+        "source_hash": "57509ea4b883b36b79cdf18a57751db7a935b478046d204a2cf998684cb0427b",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "该任务有 "
+          },
+          {
+            "type": "protected_ref",
+            "ref": "n64"
+          },
+          {
+            "type": "text",
+            "text": " 个 token。"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "item",
+        "source_hash": "19f23e6d9e3fc038cb7cd1b924a42d9c1a8ab82af2f189e900ad5ec03d1f5906",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "保留原件。"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "code",
+        "source_hash": "487bd33278421038013ffd464eb20b76996c6a390d090520082ab6a1f8ef86ae",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "retained",
+        "target_inline": [],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "original_code",
+        "generation": {
+          "kind": "retained",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "math",
+        "source_hash": "2d9edbbd39796501804a76bf6a6fca6cf2d725f000d22ec7f563788cb1623379",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "retained",
+        "target_inline": [],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "original_math",
+        "generation": {
+          "kind": "retained",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "fig",
+        "source_hash": "c1b6f81126e68814bdc284c39944f2f4a9b8b0cbfd1b3ebb39ed18d973f91c43",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "retained",
+        "target_inline": [],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "original_figure",
+        "generation": {
+          "kind": "retained",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "figcap",
+        "source_hash": "02f763b0f3e7708ed54a1624bfb21af2beda1860ae0fda9c80eafb3126d37a07",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "图 1。合成测试像素。"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "table",
+        "source_hash": "1574de6bb6902327f263a1b4e00fafd2d2728d4af4308c397a1fca9ee7d30639",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "retained",
+        "target_inline": [],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "structural_container",
+        "generation": {
+          "kind": "retained",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "tablecap",
+        "source_hash": "be2e68b8639600fcee7939da6558501ac40c2d7ab473c10d6c4e35a31edfed02",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "表 1。状态示例。"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "c1",
+        "source_hash": "594da470124a544a409b8b87fcc5f12943cb3abd41d97aa4d609064d1273e398",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "状态"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "c2",
+        "source_hash": "259726ad14c000f610711536916e14a29419e8ac95c52639feeb33f1b1672198",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "已保存"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "p2",
+        "source_hash": "05c3e9778ca54a550995774fda3baa2a69c5280a560d8b4865a4c395410aa741",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "参见"
+          },
+          {
+            "type": "xref",
+            "target_block_id": "fn1",
+            "label": "注释"
+          },
+          {
+            "type": "text",
+            "text": "。"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "fn1",
+        "source_hash": "afaa88bb37bf36e5e6d73d66874c208b093153375c5e455f78b35aa801afecd5",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "translated",
+        "target_inline": [
+          {
+            "type": "text",
+            "text": "这是人工编写的契约样例。"
+          }
+        ],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "",
+        "generation": {
+          "kind": "human",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      },
+      {
+        "block_id": "ref1",
+        "source_hash": "30822a687cf4e11c85628c085ac97ea37d85e571a2662ab1d2f1cc24bb5076ce",
+        "context_hash": "38ca146da703f9a3c4d086fe5f119624733fb516d35de41229cde1268fd53cb0",
+        "status": "retained",
+        "target_inline": [],
+        "warnings": [],
+        "review_state": "not_reviewed",
+        "reason": "original_reference",
+        "generation": {
+          "kind": "retained",
+          "provider": "none",
+          "model": "none",
+          "profile_version": "manual-v1",
+          "prompt_version": "none",
+          "glossary_revision": "empty-v1",
+          "attempt_id": null
+        },
+        "review_record": null
+      }
+    ]
+  },
+  "render": {
+    "template_id": "reader-v1",
+    "template_sha256": "51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8",
+    "renderer_version": "authored-reader-fixture",
+    "settings_hash": "ccfe2da55f056291ef62b23b11e077a462e9322d9d5feb342c2632b98f51a81b",
+    "mode": "release"
+  }
+}

@@ -15,7 +15,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 @pytest.mark.parametrize('attack',['unknown-kind','non-pdf-locator','workspace-id','unreliable-math','external-svg','unsafe-link','other-instance-asset'])
 def test_literal_ir_attack_is_rejected_before_publication(attack):
-    ir=json.loads((ROOT/'fixtures/sample-document-v3.json').read_text('utf-8'))
+    ir=json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))
     source=ir['source_revision']
     if attack=='unknown-kind':source['blocks'][0]['kind']='unsupported_interactive_widget'
     elif attack=='non-pdf-locator':source['blocks'][0]['provenance'][0]['type']='html'
@@ -29,7 +29,7 @@ def test_literal_ir_attack_is_rejected_before_publication(attack):
         block['source_inline'][0]={'type':'link','text':'The job has ','href':'javascript:window.evil=1'}
         block['source_hash']=block_hash(block,source['protected_atoms'])
         next(r for r in ir['translation_revision']['results'] if r['block_id']=='p1')['source_hash']=block['source_hash']
-    with pytest.raises(IRValidationError):validate_ir(ir,asset_root=ROOT)
+    with pytest.raises(IRValidationError):validate_ir(ir,asset_root=ROOT / 'tests')
 
 
 @pytest.mark.parametrize('attack',['one-color','css-import'])

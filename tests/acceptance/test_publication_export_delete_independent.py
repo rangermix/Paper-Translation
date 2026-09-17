@@ -111,4 +111,4 @@ def test_delete_waits_for_actual_artifact_or_export_file_producer(client, databa
     assert client.get('/api/v1/documents/doc_fixture/original').status_code == 410
     if operation=='rebuild':
         from pathlib import Path
-        assert client.get('/api/v1/documents/shared_rebuild_original/original').content==Path('fixtures/sample.pdf').read_bytes()
+        assert client.get('/api/v1/documents/shared_rebuild_original/original').content==Path('tests/fixtures/sample.pdf').read_bytes()

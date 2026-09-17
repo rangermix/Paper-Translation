@@ -101,8 +101,8 @@ def main():
     (out / 'product.py').write_text(PRODUCT, encoding='utf-8')
     with socket.socket() as port:
         port.bind(('127.0.0.1', 18092))
-    expected = next(d for d in json.loads((ROOT / 'fixtures/live-provider/manifest.json').read_text('utf-8'))['documents'] if d['id']=='controlled-en')
-    source = ROOT / 'fixtures/live-provider/controlled-en.pdf'
+    expected = next(d for d in json.loads((ROOT / 'tests/fixtures/live-provider/manifest.json').read_text('utf-8'))['documents'] if d['id']=='controlled-en')
+    source = ROOT / 'tests/fixtures/live-provider/controlled-en.pdf'
     if hashlib.sha256(source.read_bytes()).hexdigest()!=expected['sha256']:
         raise RuntimeError('Controlled source changed')
     writer = PdfWriter(clone_from=PdfReader(source))

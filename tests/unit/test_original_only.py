@@ -134,7 +134,7 @@ RETAINED = {'authors': 'original_author_list', 'affiliation': 'original_affiliat
 
 
 def retained_ir():
-    ir = json.loads(Path('fixtures/sample-document-v3.json').read_text('utf-8'))
+    ir = json.loads(Path('tests/fixtures/sample-document.json').read_text('utf-8'))
     src = academic_paper()
     tr = ir['translation_revision']
     base = tr['results'][0]

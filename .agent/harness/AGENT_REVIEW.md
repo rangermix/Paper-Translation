@@ -1,40 +1,32 @@
-# Independent agent verification
+# Independent review evidence
 
-The user explicitly assigned all formerly manual verification to agents. The
-coordinator must allocate a bounded review to an agent other than the implementer
-of the reviewed behavior. A reviewer can test code or inspect produced documents;
-it cannot infer a browser rendering, real model result or Docker cold start from
-source alone. Use existing source PDFs to check extraction gold, not legacy English
-HTML or the old translation. Preserve uncertainties as findings.
+Review the current request, implementation and genuine output independently of the
+implementer. Record what was inspected or executed and what remains untested.
+Source inspection cannot prove browser rendering, model output or a Docker cold start.
+For extraction review compare the original PDF, not an existing translation.
 
-1. Read the literal scenario and related gate in `docs/contracts/`.
-2. Read `.agent/memory/current.md` and the implementation's command/evidence.
-3. Independently run the scenario or inspect the genuine artifact/output.
-4. Record exactly what was observed. For visual checks cover layout, colors,
-   hierarchy, tables/sidebar, controls and mobile wrapping at 1440x1060 and
-   390x844; include 320px when required. For translation review compare source
-   meaning, numbers, units, negation, limitations and terminology.
-5. Include evidence paths and hashes, test IDs, reviewer and implementer agent
-   IDs, source-tree digest, browser/environment, findings and remaining limits.
-6. A missing credential, unavailable runtime or unexecuted action is `blocked`
-   or `not_run`. Do not replace it with a generated screenshot or a fake response.
-7. Import the record; the harness will refuse self-review, absent files, stale
-   code, empty findings or a successful review without evidence.
+`acceptance.py review` rejects self-review, absent evidence, changed file hashes,
+stale source fingerprints and empty findings. Agent identities here describe
+reviewers, never application users or product human-review records.
 
-Use `python .agent/harness/acceptance.py fingerprint` for `source_tree_sha256`. Paths are
-relative to the project. Store a review JSON under `.agent/tmp/evidence/reviews/` first.
+Get the source hash with `python .agent/harness/acceptance.py fingerprint`, save
+this structure with actual observations under a unique `.agent/tmp/` directory,
+and import it with `python .agent/harness/acceptance.py review PATH`:
 
 ```json
 {
-  "id": "agent-review-descriptive-name",
-  "reviewer_agent": "/root/independent_reviewer",
+  "id": "descriptive-review",
+  "reviewer_agent": "/root/reviewer",
   "implementation_agent": "/root/implementer",
-  "test_ids": ["M0-AT02A"],
+  "test_ids": ["behavior-or-test-name"],
   "status": "not_run",
   "source_tree_sha256": "replace-with-current-fingerprint",
-  "environment": {"browser": "not_run", "viewport": "not_run"},
+  "environment": {},
   "evidence_paths": [],
-  "findings": ["Actual observations, failures and uncertainty go here."],
+  "findings": ["Actual observations belong here."],
   "limitations": ["This template is not completed verification."]
 }
 ```
+
+Record missing runtime/credentials or unexecuted checks as blocked/not run. Do not
+manufacture evidence or interpret a passing test double as real model validation.

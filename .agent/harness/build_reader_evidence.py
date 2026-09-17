@@ -17,7 +17,7 @@ from packages.templates.registry import get_template
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--fixture',default='fixtures/sample-document-v3.json')
+    parser.add_argument('--fixture',default='fixtures/sample-document.json')
     parser.add_argument('--output',default='.agent/tmp/evidence/reader-review')
     args=parser.parse_args()
     destination=output_path(args.output)
@@ -28,7 +28,7 @@ def main():
         document['render']['template_id']=name
         document['render']['template_sha256']=template['css_sha256']
         artifact=destination/name
-        Publisher().build(document,ROOT,artifact,include_source=True)
+        Publisher().build(document,ROOT / 'tests',artifact,include_source=True)
         export_bundle(artifact,destination/(name+'.zip'))
         export_single_html(artifact,destination/(name+'.html'))
         export_single_html(artifact,destination/(name+'-with-source.html'),include_source=True)

@@ -57,6 +57,13 @@ The [2026-09-17 cleanup verification](../notes/repository-current-cleanup-202609
 records commit `331a642`, the full regression results, app-image checks and deliberate
 compatibility exceptions. It is a dated source record, not a live-instance status.
 
+The [2026-09-18 Compose verification](../notes/compose-consolidation-20260918.md)
+records `4f955bb`: 1,248 regression passes and 18 historical-evidence skips, followed
+by 63 focused passes after the test-network correction. App-managed settings
+save/reload and host test-database access passed on disposable projects. Test
+cleanup requires `--profile tests down --volumes` with its explicit separate project.
+The existing instance was not restarted and model inference was not exercised.
+
 Use unique `.agent/tmp/` run directories. `.agent/local-data/` is persistent private
 state and never disposable scratch. Both are ignored; `.agent/` is excluded from
 product images. Keep archived evidence unchanged; known path moves resolve through

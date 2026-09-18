@@ -16,11 +16,15 @@ CPU/CUDA images contain locked model assets and parse without network access.
 The CUDA build uses separate Torch/Paddle environments because their native GPU
 libraries conflict. They share the same parser code and model directory.
 
+Copy [`compose.example.yaml`](../../compose.example.yaml) to local `compose.yaml`
+only for a new deployment. CPU mode is enabled by default. To select CUDA on a
+host with a compatible NVIDIA driver and Docker GPU support, comment the CPU mode
+block and uncomment the CUDA mode block in that local file. Keep exactly one mode
+active, then use the same commands for the selected mode:
+
 ```sh
-# CPU
-docker compose -f deployment/compose.production.yaml up -d --build
-# CUDA on a host with compatible NVIDIA driver and Docker GPU support
-docker compose -f deployment/compose.production.yaml -f deployment/compose.cuda.yaml up -d --build
+docker compose build app parser db
+docker compose up -d --wait
 ```
 
 The parser handles one PDF at a time with bounded process resources, deadlines and
@@ -32,14 +36,16 @@ fits in available memory. Failed device/model selection does not silently fall b
 
 Apple MLX uses Docker Model Runner's macOS Metal backend; Linux containers cannot
 access Metal directly. Provision the compatible [backend payload](mlx-backend.md)
-and package the exact locked Paddle weights before enabling the overlay.
+and package the exact locked Paddle weights before enabling MLX mode in the local
+Compose file.
 
-Create `MODEL_EXPORT_DIR` first and make it writable by the exporter container's
-UID 10001. An automatically created root-owned bind directory will not work.
+Create an empty `MODEL_EXPORT_DIR` first and make it writable by the exporter
+container's UID 10001. An automatically created root-owned bind directory will not
+work. The `model-export` service has no default output mount; supply it explicitly:
 
 ```sh
 export MODEL_EXPORT_DIR=/absolute/path/to/empty-model-output
-docker compose -f deployment/compose.model-package.yaml run --build --rm model_export
+docker compose run --build --rm --volume "$MODEL_EXPORT_DIR:/export" model-export
 docker model package --safetensors-dir "$MODEL_EXPORT_DIR/paddleocr-vl-1.6" --license "$MODEL_EXPORT_DIR/paddleocr-vl-1.6/LICENSE" local/paddleocr-vl-1.6:latest
 docker model inspect docker.io/local/paddleocr-vl-1.6:latest
 ```
@@ -50,8 +56,12 @@ inspected content ID. After a real image request succeeds, set
 `PARSER_MLX_VERIFIED_MODEL_ID` to that same ID. Keep these values in a local ignored
 environment file; never invent a digest or reuse a receipt after replacing the model/backend.
 
+Comment the current mode block and uncomment the entire MLX mode block, including
+the top-level model declaration, in local `compose.yaml`. With those values saved
+in `.env.mlx`, start the selected deployment:
+
 ```sh
-docker compose --env-file .env.mlx -f deployment/compose.production.yaml -f deployment/compose.mlx.yaml up -d --build
+docker compose --env-file .env.mlx up -d --build --wait
 ```
 
 The parser rechecks backend/model metadata and sends region images to the fixed

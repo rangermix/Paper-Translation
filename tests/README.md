@@ -6,7 +6,7 @@ it does not grant real model, credential or outbound-content authorization.
 ## Repository checks
 
 ```sh
-docker compose -p paper-checks -f tests/compose.yaml --profile checks run --build --rm checks
+docker compose -p paper-checks -f compose.example.yaml run --build --rm checks
 ```
 
 This reuses the locked test image with no network, database dependency or product
@@ -16,8 +16,9 @@ On a supported locked development environment the equivalent command is
 `uv run python src/tools/check_package.py`.
 
 Synthetic PDF/IR inputs live under [fixtures/](fixtures/README.md), separate from
-runtime [resources](../res/README.md). The optional `compose.offline.yaml` is a
-fresh-project acceptance overlay for the explicit harness, not a production default.
+runtime [resources](../res/README.md). Both test profiles live in the sole tracked
+[`compose.example.yaml`](../compose.example.yaml). The optional offline harness
+creates its own temporary overrides and fresh projects for backup/restore probes.
 
 ## Reproducible Linux and PostgreSQL suite
 
@@ -27,15 +28,24 @@ The image builds the frontend for real readiness checks and installs locked test
 dependencies during the build:
 
 ```sh
-docker compose -p paper-tests -f tests/compose.yaml --profile tests run --build --rm tests
-docker compose -p paper-tests -f tests/compose.yaml down --volumes
+docker compose -p paper-tests -f compose.example.yaml run --build --rm tests
+docker compose -p paper-tests -f compose.example.yaml --profile tests down --volumes
 ```
 
-Port 55439 must be free. Use a distinct project name and never merge this Compose
-file into production. Database fixtures create and drop a unique schema per test;
-they never reset the product database. Runtime test containers install no packages
-and load no parser model weights. The harness and relocation manifest are mounted
-read-only; private agent state is excluded from the image.
+`tests` starts only its dedicated `test-db` dependency. Port 55439 must be free;
+set `TEST_DB_PORT` to another free port if needed. Keep that value for every command
+in the test project. The separate test bridge exposes only this loopback-bound
+database port for host tests; it shares no product network or volume.
+Use the explicit project and template options above, rather
+than the local production `compose.yaml`. A profile-wide `up` also starts default
+product services; target `tests` with `run` instead. Cleanup must include
+`--profile tests` so Compose removes the test database. Use `down --volumes` only
+for this disposable test project, with the same `-p` and `-f` options.
+
+Database fixtures create and drop a unique schema per test; they never reset the
+product database. Runtime test containers install no packages and load no parser
+model weights. The harness and relocation manifest are mounted read-only; private
+agent state is excluded from the image.
 
 The `parser_container` marker covers tests that actually execute the native PDF
 inspection child. The production cgroup memory guard remains active. These tests
@@ -46,11 +56,18 @@ full parser certification.
 ## Host development
 
 On a supported Linux/Windows Python environment, install locked development
-dependencies with `uv sync --frozen`. Start only the dedicated database, then set
-`TEST_DATABASE_URL` to
+dependencies with `uv sync --frozen`. Start only the dedicated database:
+
+```sh
+docker compose -p paper-tests -f compose.example.yaml up -d --wait test-db
+```
+
+Then set `TEST_DATABASE_URL` to
 `postgresql+psycopg://library_test:library_test_only@127.0.0.1:55439/library_test`
-and run `uv run pytest -q -rs`. Pytest adds `src/` to the import path. For other
-host Python module commands, set `PYTHONPATH=src`. Without the database variable
+and run `uv run pytest -q -rs`; substitute `TEST_DB_PORT` if changed. Remove the
+disposable test project afterward with the same cleanup command above. Pytest adds
+`src/` to the import path. For other host Python module commands, set
+`PYTHONPATH=src`. Without the database variable
 PostgreSQL cases skip.
 On macOS, use the Linux test container for the locked environment and real child
 resource-limit test. Frontend unit/build checks are:

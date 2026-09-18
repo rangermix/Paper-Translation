@@ -3,6 +3,11 @@
 Run commands from the repository root. Code lives in `src/`, runtime assets in
 `res/`, current guides in `docs/`, and tests plus their fixtures/build inputs in
 `tests/`. Python harness helpers add `src/` to their import path.
+Root [`compose.example.yaml`](../compose.example.yaml) is the only tracked Compose
+template. Product commands use the preserved local `compose.yaml`; tests/checks
+use the template explicitly with their own project and targeted `run` service.
+Hardware blocks and optional profiles are documented in the
+[deployment guide](../docs/deployment/README.md).
 
 | Directory | Purpose |
 | --- | --- |

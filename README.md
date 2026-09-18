@@ -12,7 +12,7 @@ docker compose build app parser db
 docker compose up -d --wait
 ```
 
-打开 `http://127.0.0.1:8080`。根目录 `compose.yaml` 是 Git 忽略的本地配置；共享配置和 CPU/CUDA/MLX 选项见[部署说明](docs/deployment/README.md)。构建会取得锁定的依赖与解析模型，运行容器不安装依赖。默认只绑定本机地址；能访问服务的客户端均可操作文库。
+打开 `http://127.0.0.1:8080`。`compose.example.yaml` 是唯一受版本管理的 Compose 模板，默认启用 CPU；CUDA/MLX 通过复制文件中的注释块选择。根目录 `compose.yaml` 是 Git 忽略的本地配置，保留已有实例设置。详见[部署说明](docs/deployment/README.md)。构建会取得锁定的依赖与解析模型，运行容器不安装依赖。默认只绑定本机地址；能访问服务的客户端均可操作文库。
 
 ## 使用
 
@@ -27,12 +27,12 @@ docker compose up -d --wait
 ## 开发与验证
 
 ```sh
-docker compose -p paper-checks -f tests/compose.yaml --profile checks run --build --rm checks
-docker compose -p paper-tests -f tests/compose.yaml --profile tests run --build --rm tests
-docker compose -p paper-tests -f tests/compose.yaml down --volumes
+docker compose -p paper-checks -f compose.example.yaml run --build --rm checks
+docker compose -p paper-tests -f compose.example.yaml run --build --rm tests
+docker compose -p paper-tests -f compose.example.yaml --profile tests down --volumes
 ```
 
-以上命令使用独立检查/测试环境。实际解析模型、硬件推理、真实翻译服务和生产恢复需要各自的运行证据；普通测试通过不代表它们已经验证。宿主开发和浏览器测试见[测试说明](tests/README.md)。
+以上命令使用模板中的检查/测试服务和独立项目；测试只启动专用 `test-db` 依赖。不要改用 profile 整体 `up`，它也会启动默认产品服务；清理命令仅用于该独立测试项目。实际解析模型、硬件推理、真实翻译服务和生产恢复需要各自的运行证据；普通测试通过不代表它们已经验证。宿主开发和浏览器测试见[测试说明](tests/README.md)。
 
 | 目录 | 内容 |
 | --- | --- |
@@ -41,8 +41,8 @@ docker compose -p paper-tests -f tests/compose.yaml down --volumes
 | `src/workers/` | 任务 worker 与隔离 PDF parser |
 | `src/tools/` | 仓库检查、模型打包与部署工具 |
 | [res/](res/README.md) | 运行时 Schema、冻结阅读样式和受控种子资料 |
-| [tests/](tests/README.md) | 自动化测试、合成测试资料、测试容器配置 |
-| [deployment/](docs/deployment/README.md) | 部署配置、产品镜像和模型构建输入 |
+| [tests/](tests/README.md) | 自动化测试、合成测试资料、测试镜像构建输入 |
+| [deployment/](docs/deployment/README.md) | 产品镜像、硬件运行环境和模型构建输入 |
 | [docs/](docs/README.md) | 当前产品、架构、API 与操作说明 |
 
 Python 模块入口仍为 `apps`、`packages`、`workers`、`tools`。宿主直接调用时设置 `PYTHONPATH=src`；pytest 和容器已配置搜索路径。前端命令使用 `npm --prefix src/apps/web ...`。

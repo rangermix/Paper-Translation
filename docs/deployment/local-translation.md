@@ -11,7 +11,7 @@ Settings → AI service → **本地翻译模型（MLX）** offers:
 
 Apple Silicon uses MLX safetensors through the same Docker Model Runner
 vLLM Metal backend as PaddleOCR. These are MLX affine quantizations, not GGUF.
-This overlay requires Apple Silicon and the Docker-managed Paddle MLX backend;
+The local translation service requires Apple Silicon and the Docker-managed Paddle MLX backend;
 the current implementation does not provide a CPU/CUDA local-translation backend.
 
 ## Download and use
@@ -39,15 +39,23 @@ in effect. Task records include the returned artifact ID and pinned revision.
 
 ## Compose deployment
 
-Build the normal app image, then add this overlay to the existing MLX deployment:
+The `local-translation` profile is included in
+[`compose.example.yaml`](../../compose.example.yaml). For an existing deployment,
+add its `local-model-init` and `local-translator` services and their network/cache
+declarations to the preserved local `compose.yaml`; keep the app/worker connections
+to the internal model-control network. New copies already contain these definitions.
+Prepare the [MLX backend](mlx-backend.md) and select the local file's MLX parser mode
+as described in [acceleration](extraction-acceleration.md), then build the app image
+and start the optional services:
 
 ```sh
-docker compose -f deployment/compose.production.yaml build app
-docker compose --env-file .env.mlx \
-  -f deployment/compose.production.yaml -f deployment/compose.mlx.yaml \
-  -f deployment/compose.local-translation.yaml \
+docker compose --env-file .env.mlx build app
+docker compose --env-file .env.mlx --profile local-translation \
   up -d --no-build --wait app worker local-translator
 ```
+
+Keep `--profile local-translation` when starting this configuration, or set
+`COMPOSE_PROFILES=local-translation` in the instance's local environment file.
 
 The sidecar runs from the app image with a read-only root filesystem and only its
 own cache volume. It has no document, database, provider-secret or Docker-socket

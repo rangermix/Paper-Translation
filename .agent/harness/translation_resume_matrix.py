@@ -60,33 +60,31 @@ process.stdout.write(JSON.stringify({browser_closed:report.browser_closed,verifi
 def main():
     OUT=ROOT/'.agent/tmp/evidence/translation-resume'/uuid.uuid4().hex[:8]
     OUT.mkdir(parents=True,exist_ok=False)
-    empty=ROOT/'deployment/provider_key.empty';assert empty.read_bytes()==b''
     with socket.socket() as probe:
         probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
     assert port!=8080
     project='biblio-resume30-'+uuid.uuid4().hex[:8]
-    profile=OUT/'empty-public-profile.json';profile.write_text('{}',encoding='utf8')
-    common=[OUT.as_posix()+':/evidence', (ROOT/'.agent/harness').as_posix()+':/harness:ro',profile.as_posix()+':/config/provider-profile.json:ro']
+    common=[OUT.as_posix()+':/evidence', (ROOT/'.agent/harness').as_posix()+':/harness:ro']
     override=OUT/'override.json'
     override.write_text(json.dumps({'services':{'app':{'volumes':common + [
         (ROOT/'tests/fixtures').as_posix()+':/app/tests/fixtures:ro']},'worker':{'volumes':common,
         'command':['python','/harness/translation_resume_worker.py'],'restart':'no'}},'networks':{'backend':{'internal':True},
         'http':{'internal':False},'provider_egress':{'internal':True}}},indent=2),encoding='utf8')
     images={key:os.environ.get('ACCEPTANCE_'+key,default) for key,default in [('APP_IMAGE',APP),('PARSER_IMAGE',PARSER),('DATABASE_IMAGE',DATABASE)]}
-    env={**os.environ,**images,'PORT':str(port),
-        'BIND_ADDRESS':'127.0.0.1','PROVIDER_KEY_FILE':str(empty),'READ_ONLY':'false','DISPATCH_DISABLED':'false',
+    env={**os.environ, "COMPOSE_PROFILES": "",**images,'PORT':str(port),
+        'BIND_ADDRESS':'127.0.0.1','READ_ONLY':'false','DISPATCH_DISABLED':'false',
         'ALLOWED_HOSTS':'localhost,127.0.0.1,app','APP_ORIGINS':f'http://127.0.0.1:{port},http://localhost:{port}'}
     commands=[]
     def command(argv,timeout=240):
         return run_recorded_command(argv,env=env,commands=commands,evidence_path=OUT/'commands.json',timeout=timeout)
     def call(*args,timeout=240):
-        return command(['docker','compose','-f','deployment/compose.production.yaml','-f',str(override),'-p',project,*args],timeout)
+        return command(['docker','compose','-f','compose.example.yaml','-f',str(override),'-p',project,*args],timeout)
     # Resolve any explicit caller aliases once, then use immutable local IDs for
     # every Compose service; never pull a changing image while running.
     images={key:command(['docker','image','inspect','--format','{{.Id}}',value]).strip() for key,value in images.items()}
     env.update(images)
     runtime={'project':project,'port':port,'images':images,
-        'empty_key_confirmed':True,'external_provider_requests':0,'provider_kind':'explicit injected FakeProvider',
+        'external_provider_requests':0,'provider_kind':'explicit injected FakeProvider',
         'source_kind':'authored internal IR only; not parser or translation gold',
         'script_sha256':{n:hashlib.sha256((ROOT/'.agent/harness'/n).read_bytes()).hexdigest() for n in ('translation_resume_product.py','translation_resume_worker.py','translation_resume_matrix.py')}}
     (OUT/'runtime.json').write_text(json.dumps(runtime,indent=2),encoding='utf8')
@@ -96,7 +94,7 @@ def main():
         inspect_images=json.loads(command(['docker','image','inspect',*images.values()]))
         assert {row['Id'] for row in inspect_images}==set(images.values())
         (OUT/'images.json').write_text(json.dumps(inspect_images,indent=2),encoding='utf8')
-        network=json.loads(command(['docker','network','inspect',*[project+'_'+suffix for suffix in ('backend','http','provider_egress')]]))
+        network=json.loads(command(['docker','network','inspect',*[project+'_'+suffix for suffix in ('backend','http','provider_egress','local_model_control')]]))
         assert all(row['Internal'] for row in network if row['Name']!=project+'_http')
         assert next(row for row in network if row['Name']==project+'_http')['Internal'] is False
         (OUT/'networks.json').write_text(json.dumps(network,indent=2),encoding='utf8')
@@ -104,11 +102,11 @@ def main():
         containers=json.loads(command(['docker','inspect',parser_id,worker_id]))
         parser_info,worker_info=containers
         assert parser_info['HostConfig']['NetworkMode']=='none'
-        assert set(worker_info['NetworkSettings']['Networks'])=={project+'_backend',project+'_provider_egress'}
+        assert set(worker_info['NetworkSettings']['Networks'])=={project+'_backend',project+'_provider_egress',project+'_local_model_control'}
         assert worker_info['HostConfig']['RestartPolicy']['Name']=='no'
-        secret=next(m for m in worker_info['Mounts'] if m['Destination']=='/run/secrets/provider_key')
-        assert secret['RW'] is False
-        assert command(['docker','exec',worker_id,'python','-c',"from pathlib import Path; assert Path('/run/secrets/provider_key').read_bytes()==b''; print('empty key confirmed')"]).strip()=='empty key confirmed'
+        assert not any(m['Destination'].startswith('/run/secrets/') for m in worker_info['Mounts'])
+        command(['docker','exec',worker_id,'python','-c',
+            "from pathlib import Path; assert not Path('/run/secrets/provider_key').exists(); assert not Path('/provider_config/current.json').exists()"])
         (OUT/'containers-before.json').write_text(json.dumps(containers,indent=2),encoding='utf8')
         call('exec','-T','app','python','/harness/translation_resume_product.py','prepare')
         deadline=time.monotonic()+65
@@ -136,7 +134,7 @@ def main():
         call('exec','-T','app','python','/harness/translation_resume_product.py','final',timeout=190)
         result=json.loads((OUT/'result.json').read_text())
         runtime.update(status='passed',signal='SIGKILL',worker_exit_code=137,worker_container_id=worker_id,
-            worker_only_internal_networks=True,app_loopback_http_bridge=True,parser_network_none=True,readonly_empty_key=True,
+            worker_only_internal_networks=True,app_loopback_http_bridge=True,parser_network_none=True,provider_secret_absent=True,
             browser_closed_at_three_of_ten=True,browser_evidence_sha256=hashlib.sha256((OUT/'browser-closed.json').read_bytes()).hexdigest(),
             elapsed_seconds=round(time.monotonic()-started,3),real_publication_count=result['real_publication_count'])
     except BaseException as error:

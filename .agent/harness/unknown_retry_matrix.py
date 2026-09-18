@@ -98,13 +98,10 @@ def main():
         raise ValueError('Unexpected project name.')
     if not all(re.fullmatch(r'sha256:[a-f0-9]{64}', v) for v in runtime['images'].values()):
         raise ValueError('Only inspected immutable image IDs are supported.')
-    empty = ROOT / 'deployment/provider_key.empty'
-    if empty.read_bytes() != b'':
-        raise ValueError('Only the fixed empty Provider key is allowed.')
-    env = {**os.environ, **runtime['images'], 'PORT': str(runtime['port']), 'BIND_ADDRESS': '127.0.0.1',
-        'PROVIDER_KEY_FILE': str(empty), 'APP_ORIGINS': 'http://127.0.0.1:' + str(runtime['port'])}
+    env = {**os.environ, "COMPOSE_PROFILES": "", **runtime['images'], 'PORT': str(runtime['port']), 'BIND_ADDRESS': '127.0.0.1',
+        'APP_ORIGINS': 'http://127.0.0.1:' + str(runtime['port'])}
     commands = json.loads((out / 'commands.json').read_text()) if (out / 'commands.json').exists() else []
-    base = ['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', str(out / 'override.json'), '-p', runtime['project']]
+    base = ['docker', 'compose', '-f', 'compose.example.yaml', '-f', str(out / 'override.json'), '-p', runtime['project']]
     def command(argv, timeout=240):
         return run_recorded_command(argv, env=env, commands=commands, evidence_path=out / 'commands.json', timeout=timeout)
     def call(*args, timeout=240):
@@ -113,13 +110,15 @@ def main():
         try:
             command(['docker', 'image', 'inspect', *runtime['images'].values()])
             call('up', '-d', '--wait', '--no-build', '--pull', 'never')
-            networks = json.loads(command(['docker', 'network', 'inspect', *[runtime['project'] + '_' + n for n in ('backend', 'provider_egress')]]))
+            networks = json.loads(command(['docker', 'network', 'inspect', *[runtime['project'] + '_' + n for n in ('backend', 'provider_egress', 'local_model_control')]]))
             if not all(n['Internal'] for n in networks):
                 raise RuntimeError('Worker networks must be internal.')
             worker = call('ps', '-q', 'worker').strip()
             info = json.loads(command(['docker', 'inspect', worker, call('ps', '-q', 'parser').strip()]))
-            if set(info[0]['NetworkSettings']['Networks']) != {runtime['project'] + '_' + n for n in ('backend', 'provider_egress')} or info[1]['HostConfig']['NetworkMode'] != 'none':
+            if set(info[0]['NetworkSettings']['Networks']) != {runtime['project'] + '_' + n for n in ('backend', 'provider_egress', 'local_model_control')} or info[1]['HostConfig']['NetworkMode'] != 'none':
                 raise RuntimeError('Unexpected worker/parser network exposure.')
+            if any(m['Destination'].startswith('/run/secrets/') for m in info[0]['Mounts']):
+                raise RuntimeError('No Provider secret may be mounted for a simulated retry.')
             call('stop', 'worker')
             call('exec', '-T', 'app', 'python', '/harness/translation_kill_product.py', 'prepare')
             call('exec', '-T', 'app', 'python', '/harness/translation_kill_product.py', 'queue')

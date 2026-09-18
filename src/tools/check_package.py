@@ -36,7 +36,7 @@ def package_files(suffix=None):
                 continue
             if path.parent == ROOT and name == 'compose.yaml':
                 continue
-            if path.parent == ROOT / 'deployment' and name.startswith('provider_key.') and name != 'provider_key.empty':
+            if path.parent == ROOT / 'deployment' and name.startswith('provider_key.'):
                 continue
             if suffix is None or path.suffix == suffix:
                 yield path
@@ -66,17 +66,27 @@ def check_resources():
 
 
 def check_compose():
-    production = yaml.safe_load((ROOT / 'deployment/compose.production.yaml').read_text())
+    production = yaml.safe_load((ROOT / 'compose.example.yaml').read_text())
     services = production['services']
-    require(set(services) == {'init', 'db', 'migrate', 'app', 'worker', 'parser', 'maintenance'}, 'Unexpected product services')
-    require([name for name, service in services.items() if 'ports' in service] == ['app'], 'Unexpected published port')
+    core = {name: service for name, service in services.items() if not service.get('profiles')}
+    require(set(core) == {'init', 'db', 'migrate', 'app', 'worker', 'parser'}, 'Unexpected default services')
+    require([name for name, service in core.items() if 'ports' in service] == ['app'], 'Unexpected product port')
     require('127.0.0.1' in services['app']['ports'][0], 'Default bind is not loopback')
     require(services['parser']['network_mode'] == 'none' and not services['parser'].get('secrets'), 'Default parser isolation')
-    require('secrets' not in services['app'] and services['worker']['secrets'] == ['provider_key'], 'External key boundary')
+    require(not production.get('secrets') and not any(s.get('secrets') for s in services.values()), 'Unexpected external secret mount')
+    require(not any({'PROVIDER_PROFILE_FILE', 'PROVIDER_KEY_FILE'} & s.get('environment', {}).keys()
+                    for s in services.values()), 'Provider settings must come from the application')
+    for name in ('init', 'app', 'worker'):
+        require('provider_config:/provider_config' + (':ro' if name == 'worker' else '') in services[name]['volumes'],
+                'Managed provider configuration access: ' + name)
     require('docker.sock' not in str(services), 'Docker socket in product services')
-    tests = yaml.safe_load((ROOT / 'tests/compose.yaml').read_text())
-    checks = tests['services']['checks']
-    require(tests['name'] != production['name'], 'Tests share production project name')
+    require(set(services['tests']['depends_on']) == {'test-db'} and services['test-db']['profiles'] == ['tests'],
+            'Tests must use only the isolated test database')
+    require(not services['test-db'].get('volumes') and services['test-db']['networks'] == ['test_backend'],
+            'Test database must not share product storage or networks')
+    require(not production['networks']['test_backend'].get('internal', False),
+            'Test database bridge must publish its loopback port for host tests')
+    checks = services['checks']
     require(checks['network_mode'] == 'none' and checks['read_only'], 'Repository check isolation')
     require(not any(checks.get(key) for key in ('ports', 'volumes', 'secrets', 'depends_on')), 'Repository checks access services or volumes')
 

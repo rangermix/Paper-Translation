@@ -7,6 +7,9 @@
 # The shared services and persistent volumes below stay the same.
 # See docs/ops/restore.md for upgrades and docs/deployment/extraction-acceleration.md
 # for GPU prerequisites and MLX model packaging/verification.
+# Optional services: --profile local-translation; explicit run model-export, tests, checks.
+# Tests/checks: use this template with a separate project name; see tests/README.md.
+# Translation endpoint, model and credentials are configured in the application.
 name: bilingual-personal-pdf
 
 x-parser-build: &parser-build
@@ -84,7 +87,7 @@ x-parser-mode: &parser-mode
 
 x-app: &app
   image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
-  build:
+  build: &app-build
     context: .
     dockerfile: deployment/images/app.Dockerfile
     args:
@@ -103,14 +106,15 @@ x-app: &app
     PARSER_INPUTS_DIR: /parser_inputs
     PARSER_OUTPUTS_DIR: /parser_outputs
     DATABASE_CONFIG_FILE: /internal/database.json
-    PROVIDER_PROFILE_FILE: /config/provider-profile.json
     PROVIDER_CONFIG_DIR: /provider_config
     ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,app}"
     APP_ORIGINS: "${APP_ORIGINS:-http://localhost:${PORT:-8080},http://127.0.0.1:${PORT:-8080}}"
     READ_ONLY: "${READ_ONLY:-false}"
   volumes:
     - internal:/internal:ro
-    - ./deployment/provider-profile.json:/config/provider-profile.json:ro
+x-test-build: &test-build
+  context: .
+  dockerfile: tests/Dockerfile
 services:
   init:
     <<: *app
@@ -177,7 +181,7 @@ services:
     restart: "no"
   app:
     <<: *app
-    networks: [backend, http]
+    networks: [backend, http, local_model_control]
     command: [uvicorn, apps.api.main:app, --host, 0.0.0.0, --port, "8080"]
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
@@ -186,7 +190,6 @@ services:
       - uploads:/uploads
       - parser_outputs:/parser_outputs:ro
       - internal:/internal:ro
-      - ./deployment/provider-profile.json:/config/provider-profile.json:ro
       - provider_config:/provider_config
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -199,19 +202,14 @@ services:
   worker:
     <<: *app
     command: [python, -m, workers.main]
-    environment:
-      <<: *app-environment
-      PROVIDER_KEY_FILE: /run/secrets/provider_key
     volumes:
       - data:/data
       - uploads:/uploads
       - internal:/internal:ro
       - parser_inputs:/parser_inputs
       - parser_outputs:/parser_outputs
-      - ./deployment/provider-profile.json:/config/provider-profile.json:ro
       - provider_config:/provider_config:ro
-    secrets: [provider_key]
-    networks: [backend, provider_egress]
+    networks: [backend, provider_egress, local_model_control]
     depends_on:
       migrate: {condition: service_completed_successfully}
       parser: {condition: service_healthy}
@@ -259,9 +257,111 @@ services:
       - backups:/backups
       - parser_inputs:/parser_inputs
       - parser_outputs:/parser_outputs
-      - ./deployment/provider-profile.json:/config/provider-profile.json:ro
     depends_on:
       db: {condition: service_healthy}
+    restart: "no"
+  # Optional Docker-managed MLX translation. Startup does not download weights.
+  local-model-init:
+    profiles: [local-translation]
+    image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
+    build: *app-build
+    platform: linux/amd64
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    command: [python, -c, "import os; os.chown('/model_cache',10001,10001); os.chmod('/model_cache',0o700)"]
+    volumes: [local_translation_models:/model_cache]
+    restart: "no"
+  local-translator:
+    profiles: [local-translation]
+    image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
+    build: *app-build
+    platform: linux/amd64
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,nosuid,size=64m,mode=1777"]
+    command: [uvicorn, packages.local_models.service:app, --host, 0.0.0.0, --port, "8090", --no-access-log]
+    environment:
+      LOCAL_MODEL_CACHE: /model_cache
+      PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
+    volumes: [local_translation_models:/model_cache]
+    networks: [local_model_control, model_inference]
+    depends_on:
+      local-model-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health',timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    mem_limit: 768m
+    cpus: 1
+    restart: unless-stopped
+  # Explicit setup operation: supply an existing writable output directory with
+  # run --volume "$MODEL_EXPORT_DIR:/export" model-export. No default host bind.
+  model-export:
+    profiles: [model-tools]
+    image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
+    build: *parser-build
+    platform: linux/amd64
+    user: "10001:10001"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOCLING_ARTIFACTS_PATH: /opt/docling/models
+    command: [python, /app/src/tools/export_parser_model.py, --destination, /export/paddleocr-vl-1.6]
+  # Run tests/checks explicitly with -p paper-tests/-p paper-checks. Their only
+  # database is disposable test-db; none of these services mounts library data.
+  tests:
+    profiles: [tests]
+    build: *test-build
+    environment:
+      LIBRARY_TEST_MODE: "1"
+      TEST_DATABASE_URL: postgresql+psycopg://library_test:library_test_only@test-db:5432/library_test
+      ACCEPTANCE_DATABASE_URL: postgresql+psycopg://library_test:library_test_only@test-db:5432/library_test
+    volumes:
+      - ./.agent/harness:/app/.agent/harness:ro
+      - ./.agent/relocation.json:/app/.agent/relocation.json:ro
+    mem_limit: 4g
+    cpus: "4"
+    networks: [test_backend]
+    depends_on:
+      test-db: {condition: service_healthy}
+  checks:
+    profiles: [checks]
+    build: *test-build
+    command: [python, src/tools/check_package.py]
+    network_mode: none
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m,mode=1777"]
+  test-db:
+    profiles: [tests]
+    image: postgres:15-bookworm@sha256:5d1d70e254e3c5d7d76847a9deebb18478cd518df37abf6b278d4bdb1fe5d96c
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: library_test
+      POSTGRES_USER: library_test
+      POSTGRES_PASSWORD: library_test_only
+    ports:
+      - "127.0.0.1:${TEST_DB_PORT:-55439}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks: [test_backend]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U library_test -d library_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
     restart: "no"
 volumes:
   data:
@@ -272,6 +372,7 @@ volumes:
   parser_outputs:
   backups:
   provider_config:
+  local_translation_models:
 networks:
   backend:
     internal: true
@@ -279,8 +380,10 @@ networks:
   # exposes the app's one explicitly loopback-bound HTTP port, without a proxy.
   http:
   provider_egress:
-  # Only the MLX mode connects a service to this network.
+  local_model_control:
+    internal: true
+  # Separate test bridge; internal-only networks cannot publish the host test port.
+  test_backend:
+    internal: false
+  # Only MLX parsing or optional local translation uses this network.
   model_inference:
-secrets:
-  provider_key:
-    file: "${PROVIDER_KEY_FILE:-./deployment/provider_key.empty}"

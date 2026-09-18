@@ -38,10 +38,12 @@ Read their arguments and target configuration before running them. They can crea
 containers/volumes, execute native parsers or mutate test data. Historical source
 review replays require their exact ignored evidence corpus; absence is not a pass.
 
-- `verify_compose.py`: default configuration inspection; `--running` additionally
-  inspects the explicitly configured live containers.
+- `verify_compose.py`: inspects `compose.example.yaml` by default and supports
+  CPU/CUDA/MLX configurations, including MLX model bindings. Select another input
+  with `--file`; `--running` inspects that deployment and requires `--project-name`.
 - `offline_compose_roundtrip.py`: fresh-project backup/restore exercise, using
-  `tests/compose.offline.yaml` and prepared candidate images.
+  root `compose.example.yaml`, prepared candidate images and overrides generated
+  inside its unique run directory. It does not use the local production configuration.
 - `release_inventory.py`: combines exact image IDs with matching scan/SBOM output
   into a fresh report. Use `--help` for candidate arguments.
 - `parser_runtime_dependencies.py`: checks actual dependencies/model assets inside
@@ -50,5 +52,21 @@ review replays require their exact ignored evidence corpus; absence is not a pas
 - `live_provider_run.py`: guarded real-model runner requiring the authorization
   described in [LIVE_PROVIDER.md](LIVE_PROVIDER.md).
 
+To inspect an existing local instance, replace `EXISTING_PROJECT` with its actual
+Compose project name and use the same configuration inputs as its deployment:
+
+```sh
+python .agent/harness/verify_compose.py --file compose.yaml --project-name EXISTING_PROJECT --running
+```
+
+Add `--env-file .env.mlx` when that is the instance's interpolation file. Both
+`--file` and `--env-file` may be repeated in deployment order for local overrides.
+This checks configuration and container state; it does not execute model inference.
+
 Dated source probes under `../notes/historical-probes/` are archival, not current
 entry points. Keep credentials, persistent disks, old receipts and evidence intact.
+
+The sole tracked Compose template includes `checks`, `tests`, `model-tools` and
+`local-translation` profiles. Use explicit service targets for one-off runs; profile
+`up` also starts default product services. Routine tests/checks must retain their
+separate project names and `-f compose.example.yaml` options from the test guide.

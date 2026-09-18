@@ -2,8 +2,10 @@
 
 if __package__:
     from ._project import ROOT, artifact_path, output_path
+    from ._compose import write_offline_override
 else:
     from _project import ROOT, artifact_path, output_path
+    from _compose import write_offline_override
 import json
 import os
 from pathlib import Path
@@ -22,10 +24,11 @@ def main():
     output.mkdir(parents=True)
     mounts = [str(ROOT / '.agent/harness').replace('\\', '/') + ':/harness:ro',
         str(output).replace('\\', '/') + ':/fault-evidence']
+    offline_override = write_offline_override(output)
     override = output / 'override.json'
     override.write_text(json.dumps({'services': {'app': {'volumes': mounts + [
         (ROOT / 'tests/fixtures').as_posix() + ':/app/fixtures:ro']}, 'parser': {'volumes': mounts}}}))
-    env = {**os.environ, 'PORT': '18093',
+    env = {**os.environ, "COMPOSE_PROFILES": "", 'PORT': '18093',
         'APP_IMAGE': os.environ.get('ACCEPTANCE_APP_IMAGE', 'bilingual-personal-pdf-app:final-review'),
         'PARSER_IMAGE': os.environ.get('ACCEPTANCE_PARSER_IMAGE', 'bilingual-personal-pdf-parser:final-review'),
         'DATABASE_IMAGE': os.environ.get('ACCEPTANCE_DATABASE_IMAGE', 'bilingual-personal-pdf-db:final-review')}
@@ -37,7 +40,7 @@ def main():
         assert result.returncode == 0, redact(result.stderr[-2000:] + result.stdout[-2000:])
         return result.stdout
     def compose(*args):
-        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', 'tests/compose.offline.yaml',
+        return call(['docker', 'compose', '-f', 'compose.example.yaml', '-f', str(offline_override),
             '-f', str(override), '-p', project, *args])
     try:
         call(['docker', 'image', 'inspect', env['APP_IMAGE'], env['PARSER_IMAGE'], env['DATABASE_IMAGE']])

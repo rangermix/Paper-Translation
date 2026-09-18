@@ -58,8 +58,6 @@ LEGACY_FILES = {
     'deployment/mlx-backend/README.md': 'docs/deployment/mlx-backend.md',
     'deployment/Dockerfile.test': 'tests/Dockerfile',
     'deployment/images/test.Dockerfile': 'tests/Dockerfile',
-    'deployment/compose.test.yaml': 'tests/compose.yaml',
-    'deployment/compose.acceptance-offline.yaml': 'tests/compose.offline.yaml',
     'deployment/production.env.example': '.env.example',
     'contracts/document-ir-v3.schema.json': 'res/schemas/document-ir.schema.json',
     'res/schemas/document-ir-v3.schema.json': 'res/schemas/document-ir.schema.json',

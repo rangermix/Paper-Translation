@@ -1,4 +1,4 @@
-"""Real image HTTP/parser chain with missing price, then a deliberately empty key.
+"""Real image HTTP/parser chain with missing profile, then unavailable credentials.
 
 Only run in an independently inspected, fresh, fully offline Compose project.
 No Provider transport is constructed or mocked by this helper.

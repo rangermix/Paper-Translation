@@ -29,8 +29,6 @@
     "deployment/mlx-backend/README.md": "docs/deployment/mlx-backend.md",
     "deployment/Dockerfile.test": "tests/Dockerfile",
     "deployment/images/test.Dockerfile": "tests/Dockerfile",
-    "deployment/compose.test.yaml": "tests/compose.yaml",
-    "deployment/compose.acceptance-offline.yaml": "tests/compose.offline.yaml",
     "deployment/production.env.example": ".env.example",
     "contracts/document-ir-v3.schema.json": "res/schemas/document-ir.schema.json",
     "res/schemas/document-ir-v3.schema.json": "res/schemas/document-ir.schema.json",
@@ -47,5 +45,16 @@
     "server-validation.json": ".agent/tmp/validation/server-validation.json"
   },
   "history_policy": "Archived records retain original bytes and source fingerprints. Resolve paths without rewriting their contents; changed maintained code does not satisfy old byte hashes.",
-  "local_runtime_policy": "local-data is persistent and ignored, never disposable scratch output. VM disks are relocated using the platform manager."
+  "local_runtime_policy": "local-data is persistent and ignored, never disposable scratch output. VM disks are relocated using the platform manager.",
+  "retired_compose_inputs": {
+    "deployment/compose.production.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "deployment/compose.cuda.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "deployment/compose.mlx.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "deployment/compose.local-translation.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "deployment/compose.model-package.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "deployment/compose.test.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "deployment/compose.acceptance-offline.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "tests/compose.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides.",
+    "tests/compose.offline.yaml": "Removed during Compose consolidation. Historical commands retain their original meaning; use the canonical template with explicit profiles or newly generated run overrides."
+  }
 }

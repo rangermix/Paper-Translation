@@ -2,13 +2,14 @@
 
 Retention uses the production Compose maintenance service. It produces a plan by default; an explicit `--apply` executes a newly calculated plan while holding the same exclusive advisory lock as backup and restore.
 
-Use the same project name, environment and overlays as the instance being maintained.
-The examples use the shared definition; substitute the local `compose.yaml` only
-when it is the selected instance's actual configuration.
+Run from the repository root using the instance's local `compose.yaml`. Keep its
+project name, environment file, enabled profiles and any local overrides; add the
+same Compose options to the examples below. Do not substitute the shared template
+for the selected instance's configuration.
 
 ```powershell
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance retention
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance retention --apply
+docker compose run --rm --no-deps maintenance python -m packages.maintenance retention
+docker compose run --rm --no-deps maintenance python -m packages.maintenance retention --apply
 ```
 
 The plan contains relative storage keys, reasons, file sizes and filesystem identity checks, an overall plan hash, expired upload and idempotency identifiers, and any skipped-link/missing-volume warnings. It does not print document bodies, receipt responses, database passwords, or Provider secrets. The default limit is 1,000 files and up to 1,000 records in each cleanup category; the scanner stops after 100,000 directory entries. Use `--limit` from 1 to 10,000 to change the per-run bound. If `truncated` is true, inspect the output and repeat until the remaining eligible work is drained. A dry-run plan is evidence, not a portable deletion script; apply computes references again under the lock.

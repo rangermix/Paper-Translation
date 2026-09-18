@@ -121,9 +121,7 @@ def main():
     fixture = {'sha256':hashlib.sha256((out/'action-probe.pdf').read_bytes()).hexdigest(),'source_text':expected['source_text'],
         'native_source_sha256':expected['sha256'],'pdf_probe_prefix':probe_url,'actions':['URI','SubmitForm','GoToR','Launch','page AA URI','link URI']}
     (out/'input.json').write_text(json.dumps(fixture,indent=2),encoding='utf-8')
-    empty = ROOT/'deployment/provider_key.empty'
-    if empty.read_bytes():raise RuntimeError('Only empty Provider key permitted')
-    env={**os.environ,'APP_IMAGE':APP,'PARSER_IMAGE':PARSER,'DATABASE_IMAGE':DATABASE,'PORT':'18092','PROVIDER_KEY_FILE':str(empty)}
+    env={**os.environ, "COMPOSE_PROFILES": "",'APP_IMAGE':APP,'PARSER_IMAGE':PARSER,'DATABASE_IMAGE':DATABASE,'PORT':'18092'}
     override=out/'override.json'
     override.write_text(json.dumps({'services':{'app':{'volumes':[str(ROOT/'.agent/harness')+':/harness:ro',str(out)+':/action-evidence'],'environment':{'PYTHONPATH':'/app/src:/app:/harness'}},
         'probe':{'image':APP,'command':['python','/probe-evidence/probe_server.py'],'user':'10001:10001','read_only':True,
@@ -132,7 +130,7 @@ def main():
         'networks':{'http':{'internal':True},'provider_egress':{'internal':True}}}),encoding='utf-8')
     commands=[]
     def call(argv,timeout=240):return run_recorded_command(argv,env=env,commands=commands,evidence_path=out/'commands.json',timeout=timeout)
-    base=['docker','compose','-f','deployment/compose.production.yaml','-f',str(override),'-p',project]
+    base=['docker','compose','-f','compose.example.yaml','-f',str(override),'-p',project]
     def compose(*args):return call(base+list(args))
     result={'status':'running','project':project,'images':{'app':APP,'parser':PARSER,'database':DATABASE},'started_at':datetime.now(timezone.utc).isoformat()}
     try:

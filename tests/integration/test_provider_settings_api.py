@@ -54,6 +54,34 @@ def test_settings_persist_across_app_recreate_without_secret_db_or_dispatch(clie
         assert all(secret.encode() not in path.read_bytes() for path in directory.rglob('*') if path.is_file())
 
 
+def test_app_setup_needs_no_external_provider_files(client, database, settings_store, monkeypatch):
+    monkeypatch.delenv('PROVIDER_PROFILE_FILE', raising=False)
+    monkeypatch.delenv('PROVIDER_KEY_FILE', raising=False)
+    before = client.get('/api/v1/settings/provider')
+    assert before.status_code == 200 and before.json()['config_source'] == 'unconfigured'
+    assert before.json()['has_api_key'] is False
+    assert not client.get('/api/v1/capabilities').json()['provider_configured']
+    assert not (settings_store / 'current.json').exists()
+    secret = 'SYNTHETIC_IN_APP_SETUP_ONLY'
+    saved = put(client, {'endpoint': 'https://example.invalid/v1/chat/completions',
+        'api_protocol': 'chat_completions', 'model_id': 'synthetic-model'}, secret)
+    assert saved.status_code == 200 and saved.json()['dispatch_configuration_ready'], saved.text
+    assert saved.json()['config_source'] == 'managed' and not saved.json()['cost_control_enabled']
+    assert secret not in saved.text
+    from packages.providers.settings import resolve_provider_credentials
+    from packages.domain.config import provider_profile
+    endpoint, protocol, auth, key_path = resolve_provider_credentials(provider_profile())
+    assert (endpoint, protocol, auth) == ('https://example.invalid/v1/chat/completions', 'chat_completions', 'bearer')
+    assert key_path.is_relative_to(settings_store) and key_path.read_text() == secret
+    db, cfg = database
+    with TestClient(create_app(cfg, db)) as recreated:
+        current = recreated.get('/api/v1/settings/provider')
+        assert current.json()['profile_hash'] == saved.json()['profile_hash'] and secret not in current.text
+    with db.transaction() as session:
+        assert session.scalar(select(func.count()).select_from(Job)) == 0
+        assert session.scalar(select(func.count()).select_from(Permit)) == 0
+
+
 def test_partial_settings_no_guessed_prices_and_clear_key_readiness(client, settings_store):
     saved = put(client, {'endpoint': 'http://localhost:11434/v1/chat/completions', 'api_protocol': 'chat_completions',
                          'model_id': 'local:latest', 'cost_control_enabled': True}, 'SYNTHETIC_KEY')

@@ -12,7 +12,7 @@ def pytest_runtest_setup(item):
         try:
             verify_memory_envelope()
         except PDFError:
-            pytest.skip('Requires the real parser in a Linux container with a finite memory limit <= 16 GiB; use tests/compose.yaml --profile tests.')
+            pytest.skip('Requires the real parser in a Linux container with a finite memory limit <= 16 GiB; run tests from compose.example.yaml in a dedicated project.')
 
 
 @pytest.fixture

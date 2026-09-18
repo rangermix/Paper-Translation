@@ -40,7 +40,6 @@ coverage/
 /secrets/
 /provider_config/
 /deployment/provider_key.*
-!/deployment/provider_key.empty
 
 # Generated logs and editor/OS noise.
 *.log

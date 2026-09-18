@@ -3,8 +3,13 @@ set -euo pipefail
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
-# Pass extra Compose options, such as --env-file or additional -f files.
-compose=(docker compose -f deployment/compose.production.yaml "$@")
+if [[ ! -f compose.yaml ]]; then
+  echo 'Create compose.yaml from compose.example.yaml and choose your hardware settings first.' >&2
+  exit 1
+fi
+
+# Use the selected local instance; pass options such as --env-file or --profile.
+compose=(docker compose -f compose.yaml "$@")
 "${compose[@]}" build app parser db
 "${compose[@]}" up -d --wait
 "${compose[@]}" ps

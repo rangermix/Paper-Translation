@@ -2,8 +2,10 @@
 
 if __package__:
     from ._project import ROOT, artifact_path, output_path
+    from ._compose import write_offline_override
 else:
     from _project import ROOT, artifact_path, output_path
+    from _compose import write_offline_override
 import json
 import os
 from pathlib import Path
@@ -18,11 +20,12 @@ def main():
     project = 'bilingual-upload-batch-' + suffix
     output = ROOT / '.agent/tmp/evidence/upload-batch' / suffix
     output.mkdir(parents=True)
+    offline_override = write_offline_override(output)
     override = output / 'override.json'
     override.write_text(json.dumps({'services': {'app': {'volumes': [
         str(ROOT / 'tests/fixtures').replace('\\', '/') + ':/batch-fixtures:ro',
         str(output).replace('\\', '/') + ':/batch-evidence']}}}), encoding='utf-8')
-    env = {**os.environ, 'PORT': '18087',
+    env = {**os.environ, "COMPOSE_PROFILES": "", 'PORT': '18087',
         'APP_IMAGE': os.environ.get('ACCEPTANCE_APP_IMAGE', 'bilingual-personal-pdf-app:acceptance-candidate'),
         'PARSER_IMAGE': os.environ.get('ACCEPTANCE_PARSER_IMAGE', 'bilingual-personal-pdf-parser:acceptance-candidate'),
         'DATABASE_IMAGE': os.environ.get('ACCEPTANCE_DATABASE_IMAGE', 'bilingual-personal-pdf-db:acceptance-candidate')}
@@ -39,7 +42,7 @@ def main():
         assert record.get('exit_code') == 0, str(record)[-3000:]
         return record['stdout']
     def compose(*args):
-        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', 'tests/compose.offline.yaml',
+        return call(['docker', 'compose', '-f', 'compose.example.yaml', '-f', str(offline_override),
             '-f', str(override), '-p', project, *args])
     try:
         call(['docker', 'image', 'inspect', env['APP_IMAGE'], env['PARSER_IMAGE'], env['DATABASE_IMAGE']])

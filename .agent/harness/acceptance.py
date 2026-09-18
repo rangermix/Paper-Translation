@@ -63,7 +63,7 @@ def fingerprint(root=ROOT):
         if (lowered.startswith(excluded)
                 or relative.name == "IMPLEMENTATION_STATUS.md" or lowered in {"apps/web/work_log.md", "src/apps/web/work_log.md", "compose.yaml"}):
             continue
-        if lowered.startswith('deployment/provider_key.') and lowered != 'deployment/provider_key.empty':
+        if lowered.startswith('deployment/provider_key.'):
             continue
         if relative.name == '.env' or (relative.name.startswith('.env.') and relative.name != '.env.example'):
             continue

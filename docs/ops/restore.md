@@ -1,14 +1,15 @@
 # Backup, restore and upgrades
 
-Use the same Compose project, environment and overlays as the instance being
-maintained. These examples use the shared definition; substitute the ignored local
-`compose.yaml` only when that is your actual deployment configuration.
+Run from the repository root using the instance's ignored local `compose.yaml`.
+Keep the same project name, environment file, enabled profiles and any local
+overrides used to start that instance. Add those same Compose options to each
+command below; do not substitute the shared template for the instance's settings.
 
 ## Back up and verify
 
 ```sh
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance backup
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance verify-backup --backup-id BACKUP_ID
+docker compose run --rm --no-deps maintenance python -m packages.maintenance backup
+docker compose run --rm --no-deps maintenance python -m packages.maintenance verify-backup --backup-id BACKUP_ID
 ```
 
 Replace `BACKUP_ID` with the printed identifier. A backup includes a PostgreSQL
@@ -25,8 +26,8 @@ copying database and file state. Backup, restore and retention use the same lock
 ## Restore
 
 ```sh
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance restore --backup-id BACKUP_ID --replace
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance verify
+docker compose run --rm --no-deps maintenance python -m packages.maintenance restore --backup-id BACKUP_ID --replace
+docker compose run --rm --no-deps maintenance python -m packages.maintenance verify
 ```
 
 `--replace` explicitly permits replacement of nonempty managed data/upload volumes
@@ -38,7 +39,7 @@ Successful backup and restore also leave maintenance on and external dispatch of
 Inspect documents, original PDFs, publication pointers and uncertain attempts, then:
 
 ```sh
-docker compose -f deployment/compose.production.yaml run --rm --no-deps maintenance python -m packages.maintenance maintenance-off
+docker compose run --rm --no-deps maintenance python -m packages.maintenance maintenance-off
 ```
 
 This reopens ordinary writes only. Enable model dispatch separately in Settings.
@@ -66,5 +67,6 @@ with the schema they operate on.
 not a backup or upgrade procedure. Disposable restore tests must use their own
 project, ports and volumes. The optional offline harness in
 [`.agent/harness/offline_compose_roundtrip.py`](../../.agent/harness/offline_compose_roundtrip.py)
-uses [`tests/compose.offline.yaml`](../../tests/compose.offline.yaml); read its explicit
-candidate/image requirements before running it.
+uses [`compose.example.yaml`](../../compose.example.yaml) with generated overrides
+inside its own unique run directory. Read its explicit candidate/image requirements
+before running it; its disposable projects are separate from the local instance.

@@ -1,4 +1,4 @@
-# Current source handoff · 2026-09-17
+# Current source handoff · 2026-09-18
 
 This describes the checkout, not a live instance. Inspect the selected deployment
 before runtime claims or service changes. Work from the repository root and commit
@@ -10,10 +10,10 @@ and push completed, verified checkpoints to the configured branch/remote.
   `PYTHONPATH=src`; pytest and containers configure it already.
 - `res/`: the runtime render-input schema and frozen reader/controlled seed assets.
   Their persisted format/template identities remain compatible.
-- `tests/`: regression code, authored fixtures, shared test/check Dockerfile and
-  Compose definitions. Test corpora are absent from production images.
-- `deployment/`: production Compose, hardware/local-model overlays, product recipes,
-  backend payload sources, locked models/dependencies and required empty config inputs.
+- `tests/`: regression code, authored fixtures and the shared test/check Dockerfile.
+  Test corpora are absent from production images.
+- `deployment/`: product image recipes, backend payload sources and locked
+  models/dependencies. Compose services are consolidated in the root template.
 - `docs/`: current product, architecture, workflow, API and operations guides.
   Completed plans, duplicate schemas and obsolete milestone registries were removed.
 
@@ -29,17 +29,24 @@ remain available. MLX uses Docker Model Runner with deployment-specific verifica
 Local translation models prepare only on explicit use; startup/settings reads do
 not download them. Source-only results are not translated results.
 
-`compose.example.yaml` is the shared standalone template. Root `compose.yaml` and
-machine editor settings are ignored local files. Preserve their project name,
-image pins, model settings and overlays. `deployment/compose.production.yaml` is
-the shared composable entry point.
+`compose.example.yaml` is the only tracked Compose template. CPU is the default;
+choose CUDA/MLX by editing the commented mode blocks in the local copy. It also
+contains `maintenance`, `local-translation`, `model-tools`, `tests` and `checks`
+profiles. Root `compose.yaml` and machine editor settings are ignored local files.
+Preserve the instance's project name, image pins, model settings and local overrides.
+`deploy.sh` requires that local file; it does not fall back to a production template.
+Provider configuration and keys are saved through app settings in the existing
+managed `provider_config` volume, without provider profile/key bind files.
 
 ## Verification and evidence
 
-Use [tests/README.md](../../tests/README.md) and current docs. `tests/compose.yaml`
-provides isolated repository checks and a Linux/PostgreSQL suite. The optional
-[harness](../harness/README.md) captures source-bound execution/review evidence;
+Use [tests/README.md](../../tests/README.md) and current docs. Run the template's
+`checks`/`tests` services with explicit separate projects and `-f compose.example.yaml`.
+The test service depends only on `test-db`; `TEST_DB_PORT` defaults to 55439.
+Do not use profile-wide `up` for tests, which also starts default product services.
+The optional [harness](../harness/README.md) captures source-bound execution/review evidence;
 it does not maintain a retired milestone-completion catalog.
+Disposable offline probes generate their overrides inside unique run directories.
 
 Test doubles, static checks and historical hardware/model runs have limited scopes.
 Real API keys require explicit test budget and content-egress authorization.

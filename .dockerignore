@@ -20,5 +20,4 @@ provider_config
 **/*.tsbuildinfo
 **/*.log
 deployment/provider_key.*
-!deployment/provider_key.empty
 deployment/.env

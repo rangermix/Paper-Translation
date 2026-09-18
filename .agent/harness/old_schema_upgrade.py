@@ -28,8 +28,8 @@ def main():
     for port in (18089, 18090):
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', port))
-    env = {**os.environ, 'APP_IMAGE': OLD, 'PARSER_IMAGE': PARSER, 'DATABASE_IMAGE': DATABASE,
-        'PORT': '18089', 'PROVIDER_KEY_FILE': str(ROOT/'deployment/provider_key.empty')}
+    env = {**os.environ, "COMPOSE_PROFILES": "", 'APP_IMAGE': OLD, 'PARSER_IMAGE': PARSER, 'DATABASE_IMAGE': DATABASE,
+        'PORT': '18089'}
     commands = []
     def call(argv, timeout=180):
         return run_recorded_command(argv, env=env, commands=commands, evidence_path=output/'commands.json', timeout=timeout)
@@ -42,7 +42,7 @@ def main():
     restore_override = output/'restore-backup-volume.json'
     restore_override.write_text(json.dumps({'volumes': {'backups': {'external': True, 'name': old_project+'_backups'}}}))
     def compose(project, *args):
-        argv = ['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', str(override)]
+        argv = ['docker', 'compose', '-f', 'compose.example.yaml', '-f', str(override)]
         if project == new_project:
             argv += ['-f', str(restore_override)]
         return call([*argv, '-p', project, *args])

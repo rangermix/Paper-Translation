@@ -3,7 +3,8 @@
 The application consists of an HTTP app, a durable worker, an isolated PDF parser
 and PostgreSQL. Compose also provides volume initialization, migrations and an
 explicit maintenance service. The optional local translation service shares the
-Docker-managed MLX backend. See the [Compose definitions](../deployment/compose.production.yaml).
+Docker-managed MLX backend. See the [single Compose template](../compose.example.yaml);
+each deployed instance uses its preserved local `compose.yaml`.
 
 ## Source and process boundaries
 

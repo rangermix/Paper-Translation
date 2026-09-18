@@ -2,8 +2,10 @@
 
 if __package__:
     from ._project import ROOT, artifact_path, output_path
+    from ._compose import provider_override
 else:
     from _project import ROOT, artifact_path, output_path
+    from _compose import provider_override
 from datetime import datetime, timezone
 import json
 import os
@@ -24,24 +26,21 @@ def main():
     output.mkdir(parents=True)
     with socket.socket() as listener:
         listener.bind(('127.0.0.1', 18088))
-    empty = ROOT / 'deployment/provider_key.empty'
-    if empty.read_bytes():
-        raise RuntimeError('This matrix only allows a deliberately empty key file')
     profile_file = output / 'public-profile.json'
     profile_file.write_text('{}', encoding='utf-8')
-    env = {**os.environ, **images, 'PORT': '18088', 'PROVIDER_KEY_FILE': str(empty)}
+    env = {**os.environ, "COMPOSE_PROFILES": "", **images, 'PORT': '18088'}
     override = output / 'override.json'
-    override.write_text(json.dumps({'services': {
-        'app': {'volumes': [str(ROOT / '.agent/harness') + ':/harness:ro',
+    injection = provider_override(profile_file)
+    injection['services']['app']['volumes'] += [str(ROOT / '.agent/harness') + ':/harness:ro',
             str(ROOT / 'tests/fixtures/live-provider') + ':/no-provider-fixtures:ro',
-            str(output) + ':/no-provider-evidence', str(profile_file) + ':/config/provider-profile.json:ro']},
-        'worker': {'volumes': [str(profile_file) + ':/config/provider-profile.json:ro']}
-    }, 'networks': {'http': {'internal': True}, 'provider_egress': {'internal': True}}}, indent=2), encoding='utf-8')
+            str(output) + ':/no-provider-evidence']
+    injection['networks'] = {'http': {'internal': True}, 'provider_egress': {'internal': True}}
+    override.write_text(json.dumps(injection, indent=2), encoding='utf-8')
     commands = []
     def call(argv, timeout=240):
         return run_recorded_command(argv, env=env, commands=commands, evidence_path=output / 'commands.json', timeout=timeout)
     def compose(*args):
-        return call(['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', str(override), '-p', project, *args])
+        return call(['docker', 'compose', '-f', 'compose.example.yaml', '-f', str(override), '-p', project, *args])
     result = {'status': 'running', 'project': project, 'images': images,
         'scope': 'Actual offline HTTP/worker/parser; no Provider transport and no translation quality claim.',
         'started_at': datetime.now(timezone.utc).isoformat()}
@@ -55,9 +54,10 @@ def main():
         if parser['HostConfig']['NetworkMode'] != 'none':
             raise RuntimeError('Parser requires network none')
         worker = json.loads(call(['docker', 'inspect', compose('ps', '-q', 'worker').strip()]))[0]
-        secret = next(m for m in worker['Mounts'] if m['Destination'] == '/run/secrets/provider_key')
-        if secret['RW'] or not secret['Source'].replace('\\', '/').endswith('/deployment/provider_key.empty'):
-            raise RuntimeError('Worker key must be the inspected empty read-only file')
+        if any(m['Destination'].startswith('/run/secrets/') for m in worker['Mounts']):
+            raise RuntimeError('No Provider secret may be mounted in this offline probe')
+        compose('exec', '-T', 'worker', 'python', '-c',
+            "from pathlib import Path; assert not Path('/run/secrets/provider_key').exists(); assert not Path('/provider_config/current.json').exists()")
         compose('exec', '-T', 'app', 'python', '/harness/no_provider_product.py', 'no-price')
         profile = {'configured': True, 'provider': 'openai', 'model_id': 'offline-no-key-fixture',
             'profile_revision': 'offline-no-key-v1', 'prompt_version': 'translate-v1', 'privacy_revision': 'offline-v1',
@@ -69,7 +69,7 @@ def main():
         profile_file.write_text(json.dumps(profile, indent=2), encoding='utf-8')
         compose('exec', '-T', 'app', 'python', '/harness/no_provider_product.py', 'no-key')
         result.update(status='passed', all_networks_internal=True, parser_network_none=True,
-            empty_key_read_only=True, external_provider_requests=0,
+            provider_secret_absent=True, external_provider_requests=0,
             no_price=json.loads((output / 'no-price.json').read_text('utf-8')),
             no_key=json.loads((output / 'no-key.json').read_text('utf-8')))
     except BaseException as error:

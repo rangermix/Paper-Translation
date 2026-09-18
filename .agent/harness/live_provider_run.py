@@ -2,8 +2,10 @@
 
 if __package__:
     from ._project import ROOT, artifact_path, output_path
+    from ._compose import provider_override
 else:
     from _project import ROOT, artifact_path, output_path
+    from _compose import provider_override
 import argparse
 import hashlib
 import json
@@ -116,18 +118,18 @@ def main():
     frozen_profile.write_bytes(profile_bytes)
     (output / 'authorization-scope.json').write_text(json.dumps(public, indent=2))
     override = output / 'override.json'
-    mounts = [str(frozen_profile).replace('\\', '/') + ':/config/provider-profile.json:ro']
-    override.write_text(json.dumps({'services': {'app': {'volumes': mounts + [
+    injection = provider_override(frozen_profile, key=key_path)
+    injection['services']['app']['volumes'] += [
         str(ROOT / '.agent/harness').replace('\\', '/') + ':/harness:ro',
         str(ROOT / 'tests/fixtures/live-provider').replace('\\', '/') + ':/controlled:ro',
-        str(output).replace('\\', '/') + ':/live-evidence']}, 'worker': {'volumes': mounts}}}, indent=2))
-    env = {**os.environ, 'PORT': '18088', 'APP_ORIGINS': 'http://127.0.0.1:18088,http://localhost:18088',
+        str(output).replace('\\', '/') + ':/live-evidence']
+    override.write_text(json.dumps(injection, indent=2))
+    env = {**os.environ, "COMPOSE_PROFILES": "", 'PORT': '18088', 'APP_ORIGINS': 'http://127.0.0.1:18088,http://localhost:18088',
         'APP_IMAGE': os.environ.get('ACCEPTANCE_APP_IMAGE', 'bilingual-personal-pdf-app:acceptance-candidate'),
-        'PARSER_IMAGE': os.environ.get('ACCEPTANCE_PARSER_IMAGE', 'bilingual-personal-pdf-parser:acceptance-candidate'),
-        'PROVIDER_KEY_FILE': str(key_path)}
+        'PARSER_IMAGE': os.environ.get('ACCEPTANCE_PARSER_IMAGE', 'bilingual-personal-pdf-parser:acceptance-candidate')}
     commands = []
     def call(*arguments):
-        argv = ['docker', 'compose', '-f', 'deployment/compose.production.yaml', '-f', str(override), '-p', project, *arguments]
+        argv = ['docker', 'compose', '-f', 'compose.example.yaml', '-f', str(override), '-p', project, *arguments]
         return run_recorded_command(argv, env=env, commands=commands, evidence_path=output / 'commands.json')
     try:
         call('up', '-d', '--wait', '--no-build', '--pull', 'never')

@@ -272,4 +272,7 @@ def recover_items(items, pages, *, local_reparse=None, remaining_seconds=None):
             result.insert(0, _item('nb-navigation-title', 'title', '', [0, 0, 0, 0], pages[0], _nb_navigation_title=True))
     # Keep stable page order without changing unaffected within-page model order.
     result.sort(key=lambda row: min((p['page_no'] for p in row.get('prov', [])), default=0))
+    from .layout_recovery import recover_layout
+    result, layout_audit = recover_layout(result, pages)
+    audit.extend(layout_audit)
     return result, audit

@@ -12,6 +12,12 @@ as source text or page images. Recovery tasks expose before/after comparisons.
 Source-only results provide an explicit continuation action; translation uses the
 saved source rather than implying parsing already produced a translation.
 
+Native page/column edges can join a continuing sentence across a floating figure
+or footnote when the original glyphs support both ends. Complete sentences and
+intervening headings remain separate. Same-baseline equation numbers and nearby
+subfigure labels stay with their equations/figures. These repairs retain the PDF
+locators and before/after audit; they affect new source revisions only.
+
 Translation requires a complete saved profile, content/destination confirmation,
 enabled dispatch and a budget when cost control is enabled. Confirmations bind the
 source, profile revision/hash and current generation. Changing them requires a new
@@ -35,6 +41,14 @@ They are retained once, with their original links and formatting, in bilingual,
 source-only and target-only readers and exports. The detector does not rewrite
 source text or retroactively change existing sealed translations/publications.
 Retained content is neither a translation failure nor a human-review claim.
+
+Pure numeric table cells are also retained once. Complete author-year citations
+and delimited inline TeX are protected before translation. Explicit numeric scales
+use exact target formatting for Chinese (for example, `8.3 billion` becomes
+`83亿`); source text and quantity values remain unchanged. Abbreviated `M`/`B`
+scales require parameter/model context, so byte units and identifiers are not
+treated as model sizes. Numeric equivalence never exempts missing citations or
+formulas from quality checks.
 
 ## Editing, languages and history
 

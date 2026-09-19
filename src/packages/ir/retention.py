@@ -126,6 +126,9 @@ def original_only_blocks(source):
             front = True
             bibliography = False
             continue
+        if kind == 'table_cell' and re.search(r'\d', text) and re.fullmatch(r'[\d\s.,+−\-±%‰()/×÷<>≤≥=]+(?:[eE][+\-]?\d+)?', text):
+            reasons[bid] = 'original_numeric_cell'
+            continue
         root = block.get('owner_id') is None
         if root and kind in {'heading', 'paragraph'} and _heading_label(text) in REFERENCE_HEADINGS:
             reasons[bid] = 'original_bibliography_heading'

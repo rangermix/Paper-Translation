@@ -15,7 +15,7 @@ from packages.storage import read_snapshot, write_snapshot
 from packages.editorial.numbers import compare_numbers
 
 
-RULE_VERSION = 'quality-v5-original-only'
+RULE_VERSION = 'quality-v6-academic-quantities'
 QUALITY_MESSAGES = {
     'MISSING_TRANSLATION': '此段暂无译文，保留原文供阅读。',
     'TARGET_UNAVAILABLE': '此段译文无法安全展示，已保留原文。',
@@ -279,8 +279,8 @@ def _run_quality(session, config, draft):
             issue('TARGET_UNAVAILABLE', block['id'], 'hard', {'fallback': 'source_text'})
             continue
         src, target = block['normalized_text'], flatten_inline(segment.target_inline, source['protected_atoms'])
-        src_refs = Counter(n['ref'] for n in block['source_inline'] if n['type'] == 'protected_ref')
-        trg_refs = Counter(n['ref'] for n in segment.target_inline if n['type'] == 'protected_ref')
+        from packages.ir.quantities import protected_counts
+        src_refs, trg_refs = protected_counts(block['source_inline'], segment.target_inline, source['protected_atoms'], edition.target_locale)
         if src_refs != trg_refs:
             issue('PROTECTED_MISMATCH', block['id'], 'hard', {'source': dict(src_refs), 'target': dict(trg_refs)})
         numbers = compare_numbers(src, target)

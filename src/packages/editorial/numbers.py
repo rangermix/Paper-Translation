@@ -14,9 +14,9 @@ _SCALES = {
     'thousand': 3, 'million': 6, 'billion': 9, 'trillion': 12,
     '万亿': 12, '萬億': 12, '十亿': 9, '十億': 9, '亿': 8, '億': 8,
     '千万': 7, '千萬': 7, '百万': 6, '百萬': 6, '十万': 5, '十萬': 5,
-    '万': 4, '萬': 4,
+    '万': 4, '萬': 4, 'b': 9, 'm': 6,
 }
-_SCALE_PATTERN = '|'.join(_SCALES)
+_SCALE_PATTERN = '|'.join(re.escape(s) for s in _SCALES if s not in {'b', 'm'}) + r'|[BM](?=\s+(?:parameters?|models?)\b)'
 _NUMBER = re.compile(
     rf'(?<![A-Za-z0-9_])(?P<number>[+\-−]?(?:\d{{1,3}}(?:,\d{{3}})+(?!\d)|\d+)'
     rf'(?:(?:\.|{_SPACE}+\.{_SPACE}+)\d+)?(?:[eE][+\-]?\d+)?)'

@@ -5,7 +5,7 @@ from packages.ir.retention import original_only_blocks
 from packages.billing.price import validate_profile
 from .languages import check_language_policy
 
-PLANNER_VERSION='protected-codepoints-original-only-v2'
+PLANNER_VERSION='protected-academic-quantities-v3'
 
 
 def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
@@ -33,6 +33,11 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
             if node['type']=='text':normalized.append({'type':'text','text':node['text']})
             elif node['type']=='protected_ref':
                 normalized.append(deepcopy(node));local_atoms[node['ref']]=deepcopy(atoms[node['ref']])
+                from packages.ir.quantities import localize_quantity
+                atom = atoms[node['ref']]
+                localized = localize_quantity(atom['value'], target_locale) if atom['kind'] == 'number' else None
+                if localized:
+                    restore[node['ref']] = {'type': 'text', 'text': localized}
             else:
                 ref=f'link-{node_index}';value=node.get('text',node.get('label',''))
                 normalized.append({'type':'protected_ref','ref':ref});local_atoms[ref]={'kind':'citation','value':value};restore[ref]=deepcopy(node)

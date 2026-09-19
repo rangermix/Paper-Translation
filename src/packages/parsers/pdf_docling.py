@@ -229,7 +229,8 @@ def _source_nodes(text, block_id, atoms, kind):
     nodes, end = [], 0
     # CJK words legitimately touch numeric quantities ("包含64个"). ASCII
     # identifier boundaries protect those values while keeping abc64x intact.
-    for index,match in enumerate(re.finditer(r'https?://[^\s<>"\x00-\x20]+|−→|[←→⇒⇐↔≤≥≠≈√∞]|(?<![A-Za-z0-9_])(?:\d+(?:[.,]\d+)*%?)(?![A-Za-z0-9_])',text)):
+    from .inline import tokens
+    for index,match in enumerate(tokens(text)):
         if match.start() > end: nodes.append({'type':'text','text':text[end:match.start()]})
         if match.group().startswith(('https://','http://')):
             url=match.group().rstrip('.,;')
@@ -242,7 +243,8 @@ def _source_nodes(text, block_id, atoms, kind):
                 nodes.append({'type':'link','href':url,'text':url});end=match.start()+len(url);continue
             nodes.append({'type':'text','text':match.group()});end=match.end();continue
         atom_id = f'{block_id}-n{index}'
-        atoms[atom_id] = {'kind':'number' if match.group()[0].isdigit() else 'math','value':match.group()}
+        atom_kind = 'citation' if match.lastgroup == 'citation' else 'number' if match.lastgroup == 'quantity' or match.lastgroup == 'scalar' and match.group()[0].isdigit() else 'math'
+        atoms[atom_id] = {'kind':atom_kind,'value':match.group()}
         nodes.append({'type':'protected_ref','ref':atom_id}); end = match.end()
     if end < len(text): nodes.append({'type':'text','text':text[end:]})
     return nodes
@@ -389,11 +391,20 @@ class DoclingParser:
                 if owner is None:source['reading_order'].append(bid)
                 return block
             def crop(locs,bid):
-                loc = locs[0]; scale = 1.5
-                box = tuple(round(v*scale) for v in loc['bbox'])
-                image = page_images[loc['page']].crop(box)
+                loc = locs[0]; scale = 3
+                left, top, right, bottom = loc['bbox']
+                width, height = loc['page_size']
+                if (right-left)*(bottom-top)*scale*scale > 40_000_000:
+                    scale = 1.5
+                page = pdf[loc['page']-1]
+                try:
+                    bitmap = page.render(scale=scale, crop=(left,height-bottom,width-right,top))
+                    image = bitmap.to_pil().copy(); bitmap.close()
+                finally:
+                    page.close()
                 if image.width*image.height <= 0: raise PDFError('SOURCE_PARSE_REVIEW','Empty figure crop')
                 file = output/f'assets/{bid}.png'; file.parent.mkdir(exist_ok=True); image.save(file,format='PNG')
+                image.close()
                 aid = 'asset-'+bid
                 assets.append({'id':aid,'media_type':'image/png','sha256':digest(file.read_bytes()),'byte_size':file.stat().st_size,'storage_key':file.relative_to(output).as_posix()})
                 if len(assets)>501 or sum(a['byte_size'] for a in assets[1:])>200*1024*1024: raise PDFError('PDF_ASSET_LIMIT')
@@ -423,6 +434,8 @@ class DoclingParser:
                     text=recognized_text
                     attrs['representation']='latex' if kind=='math' else 'plain'
                     if kind=='code' and recognized_item.get('code_language'):attrs['code_language']=recognized_item['code_language']
+                if kind == 'math' and item.get('_equation_number'):
+                    attrs['equation_number'] = item['_equation_number']
                 if not text and kind not in {'figure','table','math','code'} and not item.get('_nb_navigation_title'):continue
                 block = make(kind,text,locs,attrs)
                 if item.get('_nb_navigation_title'):

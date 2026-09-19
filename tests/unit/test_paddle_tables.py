@@ -126,7 +126,7 @@ def test_adapter_to_translation_to_static_reader(tmp_path):
     assert blank['translatable'] is False
     units = plan_units(source, 'zh-Hans', profile())
     owners = {u['owner_block_id'] for u in units}
-    assert owners == {b['id'] for b in source['blocks'] if b['translatable']}
+    assert owners == {b['id'] for b in source['blocks'] if b['translatable'] and b['normalized_text'] != '64'}
     assert blank['id'] not in owners and table['id'] not in owners
     assert all(b['provenance'] == table['provenance'] for b in cells)  # Honest region-level locator.
     ir = as_ir(source)
@@ -173,3 +173,15 @@ def test_generated_table_in_empty_region_cannot_bypass_native_check():
     table = {'id': 't', 'kind': 'table', 'attributes': {'representation': 'structured'}, 'provenance': [loc]}
     cell = {'id': 'c', 'owner_id': 't', 'kind': 'table_cell', 'raw_text': 'Invented 64', 'provenance': [loc]}
     assert vlm_text_issues(pages, [table, cell])[0]['code'] == 'SOURCE_PARSE_REVIEW'
+
+
+def test_pdf_resource_crops_are_large_enough_for_reader_figures(tmp_path):
+    from PIL import Image
+    result=adapt_table(tmp_path)
+    source=result['source_revision']
+    table=next(b for b in source['blocks'] if b['kind']=='table')
+    asset=next(a for a in source['assets'] if a['id']==table['attributes']['asset_id'])
+    box=table['provenance'][0]['bbox']
+    with Image.open(tmp_path/'parsed'/asset['storage_key']) as image:
+        assert image.width >= int((box[2]-box[0])*3)-1
+        assert image.height >= int((box[3]-box[1])*3)-1

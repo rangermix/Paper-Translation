@@ -264,6 +264,9 @@ def validate_ir(value, asset_root=None):
                 if nonblocking:
                     require(set(b) <= set(a), 'target invents a source link or reference', path)
                     continue
+                if node_type == 'protected_ref':
+                    from .quantities import protected_counts
+                    a, b = protected_counts(block['source_inline'], result['target_inline'], atoms, translation['target_language'])
                 require(a == b, f'{node_type} multiplicity mismatch', path)
         else:
             require(not result['target_inline'] and bool(result['reason'].strip()), 'invalid retained result', path)

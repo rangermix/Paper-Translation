@@ -50,6 +50,15 @@ scales require parameter/model context, so byte units and identifiers are not
 treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
+New publications use `reader-v4`: figures fill the reading column within the
+viewport height, tables stack source and target text in compact cells with one
+original-table comparison, and contiguous reference entries share one bibliography
+block while retaining their individual anchors. Inline and display TeX use bundled
+KaTeX with native MathML output, bounded expansion and untrusted-input settings;
+invalid formulas retain readable text and PDF comparison. Both ZIP and single-HTML
+exports include the math runtime and work offline. Older templates/artifacts remain
+available unchanged.
+
 ## Editing, languages and history
 
 Segment edits, selected translation candidates, source corrections and optional

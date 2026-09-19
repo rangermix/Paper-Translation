@@ -1,0 +1,10 @@
+{
+  "package": "katex",
+  "version": "0.18.7",
+  "registry": "https://registry.npmjs.org/katex/0.18.7",
+  "integrity": "sha512-h+UCwkZ+4Jz8WQ7MLGfj7UVFrRCizGb912fwF4luGdYsC5paYG1vx+jy+KRcC/XkpjGva/P7nAWuxNnPzRvzHw==",
+  "files": {
+    "LICENSE": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3",
+    "katex.min.js": "10a91b479cd927446ceb60409fb0d72b5d0d05eaf446c9e52fafd64058c84540"
+  }
+}

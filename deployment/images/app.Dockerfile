@@ -37,6 +37,7 @@ COPY src/workers/ /app/src/workers/
 COPY res/schemas/ /app/res/schemas/
 COPY deployment/parser-models.lock.json /app/deployment/parser-models.lock.json
 COPY res/reference/ /app/res/reference/
+COPY res/vendor/ /app/res/vendor/
 COPY pyproject.toml uv.lock /app/
 COPY --from=frontend /web/dist/ /app/src/apps/web/dist/
 RUN python -c "from importlib.metadata import distributions; import json; from pathlib import Path; Path('/app/release/python-packages.json').write_text(json.dumps(sorted([{'name': d.metadata['Name'], 'version': d.version, 'license': d.metadata.get('License-Expression') or d.metadata.get('License', 'UNKNOWN')} for d in distributions()], key=lambda x:x['name']), indent=2))"

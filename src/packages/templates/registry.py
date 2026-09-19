@@ -25,10 +25,17 @@ def list_templates():
     v3 = {**v2, 'id': 'reader-v3', 'version': '3', 'css_path': 'src/packages/templates/reader-v3.css',
         'js_path': 'src/packages/templates/reader-v3.js', 'css_sha256': V3_CSS_HASH, 'js_sha256': V3_JS_HASH,
         'safety_review': 'docs/workflows.md'}
-    for entry in (v1, v2, v3):
+    v4 = {**v3, 'id': 'reader-v4', 'version': '4', 'css_path': 'src/packages/templates/reader-v4.css',
+        'js_path': 'src/packages/templates/reader-v4.js',
+        'css_sha256': '9d77a9e5ef0c9d74469416859168785bb32ccb92d518b921a5900620e4427cca', 'js_sha256': 'a31b109bcf2930a667721d6c9d0d333ca570fb6408c1ce017dca3830b5c08a13',
+        'extra_assets': [
+            {'source': 'res/vendor/katex-0.18.7/katex.min.js', 'path': 'math.js', 'media_type': 'text/javascript', 'sha256': '10a91b479cd927446ceb60409fb0d72b5d0d05eaf446c9e52fafd64058c84540'},
+            {'source': 'res/vendor/katex-0.18.7/LICENSE', 'path': 'math-LICENSE.txt', 'media_type': 'text/plain', 'sha256': '766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3'},
+        ]}
+    for entry in (v1, v2, v3, v4):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3]
+    return [v1, v2, v3, v4]
 
 
 def get_template(template_id):

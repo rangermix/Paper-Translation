@@ -4,9 +4,11 @@ import time
 
 import httpx
 
-from packages.ir import canonical_bytes, digest, strict_loads
+from packages.ir import canonical_bytes, strict_loads
 from packages.local_models.catalog import ENDPOINT, get_model
 from .contract import ProviderFailure, normalize_request_id
+
+REQUEST_FORMAT_VERSION = 'local-translation-v2'
 
 LANGUAGES = dict(zip(
     'ar az bg bn ca cs da de el en es fa fi fr he hi hr hu id it ja kk km ko lo ms my no nl pl pt ro ru sk sl sv ta th tl tr ur uz vi yue'.split(),
@@ -28,9 +30,15 @@ def language_name(locale):
 
 
 def source_text(unit):
-    prefix = '__PT_' + digest(unit)[:16] + '_'
     refs = list(dict.fromkeys(n['ref'] for n in unit['source_inline'] if n['type'] == 'protected_ref'))
-    markers = {ref: f'{prefix}{i}__' for i, ref in enumerate(refs)}
+    literal = ''.join(n['text'] for n in unit['source_inline'] if n['type'] == 'text')
+    namespace = 0
+    while True:
+        prefix = 'PT' if namespace == 0 else f'PT{namespace}_'
+        markers = {ref: '{{' + prefix + str(i) + '}}' for i, ref in enumerate(refs)}
+        if not any(marker in literal or marker[:-1] in literal for marker in markers.values()):
+            break
+        namespace += 1
     text = ''.join(n['text'] if n['type'] == 'text' else markers[n['ref']] for n in unit['source_inline'])
     return text, {marker: ref for ref, marker in markers.items()}
 
@@ -44,20 +52,24 @@ def request_body(units, profile, glossary, *, review=False):
     unit = units[0]
     source, markers = source_text(unit)
     origin, target = language_name(unit['source_language']), language_name(unit['target_locale'])
-    prefix = ''
-    if markers:
-        prefix += 'Keep every __PT_ placeholder unchanged, including repetitions. '
-    if glossary:
-        prefix += 'Use these translation terms: ' + canonical_bytes(glossary).decode() + '\n'
-    context = unit.get('context', {})
-    if any(context.values()) and model['family'] == 'hy':
-        bounded_context = {key: str(context.get(key, ''))[:100] for key in ('heading', 'previous', 'next')}
-        prefix += 'Context for reference only (do not translate it): ' + canonical_bytes(bounded_context).decode() + '\n'
+    keep_markers = ('Preserve every ' + next(iter(markers)) + '-style variable exactly, including repetitions. ') if markers else ''
+    terms = 'Use these translation terms: ' + canonical_bytes(glossary).decode() + '\n' if glossary else ''
     if model['family'] == 'milmmt':
-        prompt = prefix + f'Translate this from {origin} to {target}:\n{origin}: {source}\n{target}:'
+        prompt = keep_markers + terms + f'Translate this from {origin} to {target}:\n{origin}: {source}\n{target}:'
         body = {'prompt': prompt, 'add_special_tokens': False}
     else:
-        prompt = prefix + f'Translate the following segment into {target}, without additional explanation.\n\n{source}'
+        # Hy-MT2's native background/source sections keep instructions and
+        # neighbouring text out of the segment the translation model renders.
+        context = unit.get('context', {})
+        background = '\n'.join(key.title() + ': ' + str(context[key])[:100]
+            for key in ('heading', 'previous', 'next') if context.get(key))
+        if terms:
+            background = background + '\n' + terms if background else terms
+        prefix = '[Background Information]\n' + background + '\n\n' if background else ''
+        consideration = ', taking the provided background information into consideration' if background else ''
+        prompt = (prefix + f'Please translate the following text into {target}{consideration}. '
+            'Output only the translated text, without any additional explanation. ' + keep_markers
+            + '\n[Source Text]\n' + source)
         body = {'messages': [{'role': 'user', 'content': prompt}]}
     # UTF-8 byte count bounds token count conservatively; reserve output and template overhead.
     limit = min(profile['max_input_tokens'], model['context_size'] - min(profile['max_output_tokens'], 2048))
@@ -71,6 +83,10 @@ def target_inline(text, unit):
     _, markers = source_text(unit)
     if not markers:
         return [{'type': 'text', 'text': text}]
+    # A missing final brace leaves an unambiguous known variable identity.
+    # Restore only that exact spelling; unknown IDs remain visible to QA.
+    for marker in markers:
+        text = re.sub(re.escape(marker[:-1]) + r'(?!\})', lambda _: marker, text)
     parts = re.split('(' + '|'.join(re.escape(m) for m in markers) + ')', text)
     return [{'type': 'protected_ref', 'ref': markers[p]} if p in markers else {'type': 'text', 'text': p}
             for p in parts if p]

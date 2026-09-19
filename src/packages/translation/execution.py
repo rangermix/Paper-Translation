@@ -182,7 +182,7 @@ def wait_without_dispatch(db,lease,code):
         job.error={'code':code};emit(session,job)
 
 
-def commit_unit(db,cfg,lease,unit,nodes,key,profile,cache_hit=False,origin_attempt_id=None):
+def commit_unit(db,cfg,lease,unit,nodes,key,profile,cache_hit=False,origin_attempt_id=None,cacheable=True):
     with db.transaction() as session:
         # A sibling's retry/capacity wait is a scheduling change, not a user
         # cancellation. The original lease and control epoch still fence writes.
@@ -190,7 +190,7 @@ def commit_unit(db,cfg,lease,unit,nodes,key,profile,cache_hit=False,origin_attem
         draft=get_entity(session,Draft,draft.id,lock=True)
         expected_glossary=job.payload.get('base_glossary_revision',job.payload.get('glossary_revision','empty-v1')) if lease.kind=='candidate' else job.payload.get('glossary_revision','empty-v1')
         require(draft.glossary_revision==expected_glossary,'GLOSSARY_STALE')
-        if not cache_hit:
+        if not cache_hit and cacheable:
             session.execute(insert(TranslationCache).values(key=key,document_id=job.document_id,value={'target_inline':cache_encode(unit,nodes),'provider':profile['provider'],'model_id':profile['model_id']}).on_conflict_do_nothing(index_elements=['key']))
         progress=dict(job.progress);progress['verified_units']=progress.get('verified_units',0)+1
         progress['cache_hits']=progress.get('cache_hits',0)+int(cache_hit);job.progress=progress
@@ -239,7 +239,7 @@ def execute_translation(db,cfg,lease,provider=None):
                     if evidence.get('kind')=='validated_unit' and evidence.get('unit_hash')==digest(unit):
                         candidate_nodes=evidence['target_inline']
                         validate_output({'results':[{'unit_id':unit['unit_id'],'target_inline':candidate_nodes}]},[unit],nonblocking=True)
-                        checkpoint=(candidate_nodes,old_attempt.id)
+                        checkpoint=(candidate_nodes,old_attempt.id,evidence.get('cache_key')==key)
                         break
                 if checkpoint:break
         if cache and lease.kind!='semantic_review':
@@ -252,7 +252,9 @@ def execute_translation(db,cfg,lease,provider=None):
     if cached_nodes is not None:
         commit_unit(db,cfg,lease,unit,cached_nodes,key,profile,cache_hit=True);return
     if checkpoint is not None:
-        commit_unit(db,cfg,lease,unit,checkpoint[0],key,profile,origin_attempt_id=checkpoint[1]);return
+        # Replay paid results even across adapter upgrades, but do not promote
+        # legacy output into a cache for a different request format.
+        commit_unit(db,cfg,lease,unit,checkpoint[0],key,profile,origin_attempt_id=checkpoint[1],cacheable=checkpoint[2]);return
     managed_provider = provider is None
     if provider is None:
         # Deployment changes invalidate the confirmed profile; a test double must be injected explicitly.
@@ -340,7 +342,7 @@ def execute_translation(db,cfg,lease,provider=None):
             # late checkpoint that resurrects source or target content.
             return
         attempt=session.get(Attempt,lease.attempt_id);attempt.output_hash=digest(nodes)
-        attempt.evidence=attempt.evidence+[{'kind':'validated_unit','unit_hash':digest(unit),'target_inline':nodes}]
+        attempt.evidence=attempt.evidence+[{'kind':'validated_unit','unit_hash':digest(unit),'target_inline':nodes,'cache_key':key}]
     try:commit_unit(db,cfg,lease,unit,nodes,key,profile)
     except DomainError as exc:
         if exc.code not in {'CONTROL_CHANGED','FENCE_EXPIRED','DOCUMENT_DELETED','MAINTENANCE'}:raise

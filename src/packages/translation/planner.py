@@ -1,4 +1,5 @@
 from copy import deepcopy
+import re
 from packages.ir import canonical_bytes,digest,flatten_inline
 from packages.ir.retention import original_only_blocks
 from packages.billing.price import validate_profile
@@ -51,7 +52,17 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
                 while text:
                     free=limit-size
                     if free==0:batches.append(current);current=[];size=0;free=limit
-                    piece,text=text[:free],text[free:];current.append({'type':'text','text':piece});size+=len(piece)
+                    cut=free
+                    if (profile.get('api_protocol') == 'local_translation' and len(text)>free
+                            and all(c.isascii() and c.isalnum() for c in (text[free-1],text[free]))):
+                        boundaries=list(re.finditer(r'\s+',text[:free]))
+                        if boundaries:cut=boundaries[-1].end()
+                        elif current:
+                            batches.append(current);current=[];size=0
+                            continue
+                    piece,text=text[:cut],text[cut:];current.append({'type':'text','text':piece});size+=len(piece)
+                    if cut<free:
+                        batches.append(current);current=[];size=0
         if current:batches.append(current)
         for ordinal,nodes in enumerate(batches):
             refs={n['ref'] for n in nodes if n['type']=='protected_ref'}
@@ -83,8 +94,12 @@ def cache_shape(unit):
 
 def cache_key(unit,profile,glossary_revision):
     normalized,_=cache_shape(unit)
+    protocol={}
+    if profile.get('api_protocol') == 'local_translation':
+        from packages.providers.local_translation import REQUEST_FORMAT_VERSION
+        protocol={'request_format_version':REQUEST_FORMAT_VERSION}
     return digest({'unit':normalized,'context_hash':unit['context_hash'],'locale':unit['target_locale'],'source_language':unit['source_language'],
-        'profile':profile,'glossary_revision':glossary_revision,'normalization_version':unit['normalization_version'],'planner_version':PLANNER_VERSION})
+        'profile':profile,'glossary_revision':glossary_revision,'normalization_version':unit['normalization_version'],'planner_version':PLANNER_VERSION,**protocol})
 
 
 def cache_encode(unit,nodes):

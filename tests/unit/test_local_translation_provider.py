@@ -25,6 +25,58 @@ def test_native_milmmt_prompt_does_not_request_json():
     assert 'response_format' not in body
 
 
+def test_hy_context_and_instructions_are_outside_the_source_section():
+    from packages.providers.local_translation import request_body
+    unit = {**TEST_UNIT, 'context': {'heading': 'Abstract', 'previous': 'Earlier context.', 'next': 'Introduction'}}
+    prompt = request_body([unit], profile(), [])['messages'][0]['content']
+    instructions, source = prompt.split('[Source Text]\n', 1)
+    assert source == 'Hello.'
+    assert instructions.startswith('[Background Information]\n')
+    assert 'Heading: Abstract' in instructions
+    assert 'Previous: Earlier context.' in instructions
+    assert 'Next: Introduction' in instructions
+    assert 'without any additional explanation' in instructions
+    assert '"heading"' not in prompt
+
+
+def test_local_markers_are_short_collision_free_and_restore_repetitions():
+    from packages.providers.local_translation import source_text, target_inline
+    unit = {**TEST_UNIT, 'source_inline': [{'type': 'text', 'text': 'Literal {{PT0}}; '},
+        {'type': 'protected_ref', 'ref': 'n'}, {'type': 'text', 'text': ' and '},
+        {'type': 'protected_ref', 'ref': 'n'}], 'protected_atoms': {'n': {'kind': 'number', 'value': '64'}}}
+    before = json.dumps(unit)
+    source, markers = source_text(unit)
+    marker, ref = next(iter(markers.items()))
+    assert len(marker) <= 16
+    assert marker != '{{PT0}}' and ref == 'n'
+    assert source.count(marker) == 2
+    restored = target_inline('保留 {{PT0}}，数值 ' + marker + ' 和 ' + marker, unit)
+    assert [node['ref'] for node in restored if node['type'] == 'protected_ref'] == ['n', 'n']
+    assert '{{PT0}}' in ''.join(node.get('text', '') for node in restored)
+    assert json.dumps(unit) == before
+
+
+def test_local_output_restores_only_known_markers_with_a_missing_closing_brace():
+    from packages.providers.local_translation import source_text, target_inline
+    unit = {**TEST_UNIT, 'source_inline': [{'type': 'protected_ref', 'ref': 'n'}],
+            'protected_atoms': {'n': {'kind': 'number', 'value': '64'}}}
+    _, markers = source_text(unit)
+    marker = next(iter(markers))
+    nodes = target_inline('值 ' + marker[:-1] + '，原样 {{PT999}}', unit)
+    assert [n['ref'] for n in nodes if n['type'] == 'protected_ref'] == ['n']
+    assert '{{PT999}}' in ''.join(n.get('text', '') for n in nodes)
+
+
+def test_local_request_format_version_invalidates_translation_cache(monkeypatch):
+    from packages.providers import local_translation
+    from packages.translation.planner import cache_key
+    unit = {**TEST_UNIT, 'context_hash': 'context', 'normalization_version': 'test-v1'}
+    p = profile()
+    before = cache_key(unit, p, 'empty-v1')
+    monkeypatch.setattr(local_translation, 'REQUEST_FORMAT_VERSION', 'next-format', raising=False)
+    assert before != cache_key(unit, p, 'empty-v1')
+
+
 def test_local_output_restores_repeated_protected_references_without_changing_source():
     from packages.providers.local_translation import LocalTranslation, request_body
     unit = {**TEST_UNIT, 'source_inline': [{'type': 'text', 'text': 'Value '},
@@ -37,7 +89,7 @@ def test_local_output_restores_repeated_protected_references_without_changing_so
         assert 'authorization' not in request.headers
         prompt = body['messages'][0]['content']
         import re
-        marker = re.search(r'__PT_[a-f0-9]+_0__', prompt)[0]
+        marker = re.search(r'\{\{PT\d+\}\}', prompt)[0]
         return httpx.Response(200, json={'model': p['model_id'], 'choices': [{'text': f'值 {marker} 和 {marker}', 'finish_reason': 'stop'}],
             'usage': {'prompt_tokens': 20, 'completion_tokens': 10}})
     result = LocalTranslation(transport=httpx.MockTransport(handle)).translate([unit], p, [])
@@ -135,3 +187,18 @@ def test_planner_fits_dense_references_and_multibyte_context():
     units = plan_units(source, 'en', profile(), nonblocking=True)
     for unit in units:
         request_body([unit], profile(), [])
+
+
+def test_local_planner_keeps_words_whole_and_source_text_unchanged():
+    from pathlib import Path
+    from packages.translation.planner import plan_units
+    source = json.loads(Path('tests/fixtures/sample-document.json').read_text())['source_revision']
+    block = next(b for b in source['blocks'] if b['translatable'])
+    text = 'transformer ' * 220
+    block.update(parent_id=None, normalized_text=text, source_inline=[{'type': 'text', 'text': text}])
+    source['blocks'] = [block]
+    units = plan_units(source, 'zh-Hans', profile(), nonblocking=True)
+    parts = [''.join(node['text'] for node in unit['source_inline']) for unit in units]
+    assert len(parts) > 1
+    assert ''.join(parts) == text
+    assert all(part[-1].isspace() or parts[index + 1][0].isspace() for index, part in enumerate(parts[:-1]))

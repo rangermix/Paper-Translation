@@ -125,7 +125,10 @@ def test_optional_semantic_review_never_changes_target(database):
         assert session.get(Job,'job').progress['accuracy_certified'] is False
 
 
-def test_pause_return_resume_reuses_paid_validated_checkpoint(database):
+@pytest.mark.parametrize('checkpoint_cache', ['same', 'changed', 'legacy'])
+def test_pause_return_resume_reuses_paid_validated_checkpoint(database,monkeypatch,checkpoint_cache):
+    import packages.translation.execution as execution
+    from packages.domain.models import Attempt, TranslationCache
     db,cfg=database;setup_library(db,cfg)
     execute_translation(db,cfg,claim(db),FakeProvider())
     lease=claim(db)
@@ -139,13 +142,20 @@ def test_pause_return_resume_reuses_paid_validated_checkpoint(database):
         assert session.scalar(select(func.count()).select_from(SegmentVersion))==0
         assert session.scalar(select(Permit)).state=='settled'
         session.get(Task,lease.task_id).lease_expires=now()-timedelta(seconds=1)
+        if checkpoint_cache=='legacy':
+            attempt=session.get(Attempt,lease.attempt_id)
+            attempt.evidence=[{k:v for k,v in item.items() if k!='cache_key'} for item in attempt.evidence]
+    if checkpoint_cache=='changed':
+        monkeypatch.setattr(execution,'cache_key',lambda *args:'f'*64)
     recover_expired(db)
     with db.transaction() as session:session.get(Job,'job').status='pending'
     resumed=claim(db)
     assert resumed.task_id==lease.task_id and resumed.fence>lease.fence
     execute_translation(db,cfg,resumed,provider)
     assert len(provider.calls)==1
-    with db.transaction() as session:assert session.scalar(select(func.count()).select_from(SegmentVersion))==1
+    with db.transaction() as session:
+        assert session.scalar(select(func.count()).select_from(SegmentVersion))==1
+        assert session.scalar(select(func.count()).select_from(TranslationCache))==int(checkpoint_cache=='same')
 
 
 def test_sibling_retry_does_not_discard_successful_inflight_translation(database):

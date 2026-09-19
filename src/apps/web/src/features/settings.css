@@ -1,0 +1,103 @@
+.settings-page .page-head { margin-bottom: 18px; }
+.settings-page .page-head h1 { margin: 0; font-size: 32px; }
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+.settings-aside { display: grid; gap: 18px; min-width: 0; }
+.settings-page .panel { padding: 20px; border-radius: 11px; }
+.settings-page .panel h2 { margin: 0 0 14px; font-size: 21px; line-height: 1.4; }
+.settings-page .provider-panel { margin: 0; }
+.settings-page .provider-form { max-width: none; }
+.settings-page .provider-state { margin: -5px 0 14px; font-size: 12px; line-height: 1.5; }
+.settings-page .provider-ready { color: var(--accent); }
+.settings-unsaved { color: var(--warn); }
+.settings-page .field { min-width: 0; margin: 0 0 14px; font-size: 13px; }
+.settings-page .field > label { margin-bottom: 5px; }
+.settings-page label.field input,
+.settings-page label.field select { margin-top: 5px; }
+.settings-page .input,
+.settings-page .field select { width: 100%; min-height: 38px; padding: 8px 10px; border-radius: 7px; font-size: 13px; line-height: 1.5; }
+.settings-page .two-cols { gap: 12px; }
+.settings-page .check { font-size: 12px; line-height: 1.6; }
+.settings-page .check input { margin-top: 2px; }
+.settings-page .btn { min-height: 38px; padding: 8px 12px; border-radius: 7px; }
+.settings-page .btn.sm { min-height: 32px; padding: 5px 9px; }
+.settings-page .loading { padding: 12px 0; font-size: 13px; }
+.settings-page .notice,
+.settings-page .field-note { margin: 10px 0; padding: 9px 11px; font-size: 12px; line-height: 1.65; }
+.settings-hint { margin: 6px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.6; font-weight: 400; }
+.provider-key-state { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin: -4px 0 14px; }
+.provider-key-state .small { font-size: 12px; }
+.provider-cost { padding: 14px 0 0; margin-top: 14px; border-top: 1px solid var(--line); }
+.provider-cost .settings-hint { margin: 4px 0 14px 25px; }
+.settings-page .settings-details,
+.settings-page .provider-advanced {
+  margin: 12px 0;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 3%, var(--paper));
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-page .settings-details > summary,
+.settings-page .provider-advanced > summary { padding: 10px 0; color: var(--ink); font-size: 12px; font-weight: 550; }
+.settings-page .settings-details[open] > summary,
+.settings-page .provider-advanced[open] > summary { margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.settings-page .settings-details p { margin: 10px 0; line-height: 1.65; }
+.settings-page .settings-details .btn { margin-bottom: 8px; }
+.settings-page .provider-advanced .two-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settings-page .provider-advanced .field { font-size: 12px; color: var(--ink); }
+.settings-page .provider-advanced .check { margin-bottom: 14px; color: var(--ink); }
+.settings-page .provider-actions { gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.settings-page .provider-connection > .notice,
+.settings-page .provider-connection > .field-note { order: 2; }
+.settings-page .provider-reload { margin-left: auto; color: var(--muted); }
+.settings-actions { display: flex; margin-top: 18px; }
+.settings-aside .settings-actions > .btn { width: 100%; }
+.settings-page .preferences-panel .field:last-of-type { margin-bottom: 0; }
+.settings-page .provider-dispatch { max-width: none; margin: 12px 0; padding: 12px; }
+.settings-page .provider-dispatch .field { margin-top: 10px; }
+.settings-page .local-model-status { margin: 0 0 12px; color: var(--accent); font-size: 12px; }
+.settings-page .local-model-settings > .stack { margin-bottom: 14px; }
+.settings-page .parser-runtime-fields { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 10px; }
+.settings-page .parser-runtime-fields .field { margin-bottom: 0; }
+.settings-page .parser-details { margin-top: 14px; }
+
+@media (max-width: 1180px) and (min-width: 941px) {
+  .settings-layout { grid-template-columns: minmax(0, 1.35fr) minmax(290px, 1fr); gap: 14px; }
+  .settings-page .panel { padding: 16px; }
+  .settings-page .provider-actions .btn { padding-inline: 9px; font-size: 12px; }
+  .settings-page .provider-reload { margin-left: 0; }
+  .settings-page .provider-fields > .two-cols { grid-template-columns: 1fr; gap: 0; }
+  .settings-page .parser-runtime-fields { grid-template-columns: 1fr; }
+}
+@media (max-width: 940px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-page .provider-form { max-width: none; }
+}
+@media (max-width: 760px) {
+  .settings-page .page-head { margin-bottom: 16px; }
+  .settings-page .page-head h1 { font-size: 28px; }
+  .settings-page .panel { padding: 16px; }
+  .settings-page .panel h2 { font-size: 20px; }
+  .settings-page .input,
+  .settings-page .field select { min-height: 42px; font-size: 16px; }
+  .settings-page .two-cols { grid-template-columns: 1fr; gap: 0; }
+  .settings-page .provider-advanced .two-cols { grid-template-columns: 1fr; }
+  .settings-page .provider-actions { align-items: stretch; }
+  .settings-page .provider-actions > .btn,
+  .settings-page .provider-connection > .btn { flex: 1 1 auto; }
+  .settings-page .provider-reload { margin-left: 0; }
+  .settings-page .parser-runtime-fields { grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); gap: 10px; }
+  .settings-page .parser-runtime-fields select { font-size: 14px; }
+  .settings-page .provider-dispatch .btn { white-space: normal; }
+}
+@media (max-width: 359px) {
+  .settings-page .parser-runtime-fields { grid-template-columns: 1fr; gap: 14px; }
+  .settings-page .provider-actions > .btn,
+  .settings-page .provider-connection > .btn { flex-basis: 100%; }
+}

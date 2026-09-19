@@ -155,6 +155,7 @@ test('environment expiry disables explicit choices until refresh recovers', asyn
   await expect(panel).toContainText('解析环境暂不可用');
   await expect(devices.locator('option[value="cpu"]')).toBeDisabled();
   online = true;
+  await panel.getByText('设备与解析说明', { exact: true }).click();
   await panel.getByRole('button', { name: '刷新环境' }).click();
   await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
 });
@@ -168,6 +169,7 @@ test('failed environment refresh revokes previously available options', async ({
   await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
   await devices.selectOption('cpu');
   await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: 'Environment unavailable' } } }));
+  await panel.getByText('设备与解析说明', { exact: true }).click();
   await panel.getByRole('button', { name: '刷新环境' }).click();
   await expect(panel).toContainText('解析环境暂不可用');
   await expect(devices.locator('option[value="cpu"]')).toBeDisabled();

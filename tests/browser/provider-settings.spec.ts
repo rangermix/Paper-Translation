@@ -111,7 +111,7 @@ test('clearing a key is explicit and does not silently select unauthenticated mo
   expect(writes[0].body.clear_api_key).toBe(true);
   expect(writes[0].body.api_key).toBeUndefined();
   expect(writes[0].body.profile.auth_mode).toBe('bearer');
-  await expect(page.locator('.provider-state .pill')).toHaveText('等待配置');
+  await expect(page.getByRole('region', { name: 'AI 服务', exact: true }).getByText('等待配置', { exact: true })).toBeVisible();
 });
 
 test('changing the destination cannot silently rebind an existing key', async ({ page }) => {

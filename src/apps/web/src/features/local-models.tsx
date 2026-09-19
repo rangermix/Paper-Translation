@@ -33,17 +33,20 @@ export function LocalModels({ value, onChange }: { value: string; onChange: (mod
     catch (reason) { setError(reason as Error); }
     finally { setPending(false); }
   }
-  return <section aria-label="本地翻译模型">
+  return <section className="local-model-settings" aria-label="本地翻译模型">
     <label className="field">本地翻译模型<select value={value} onChange={event => onChange(event.target.value)}>
       <option value="">请选择模型</option>
       {models.map(model => <option key={model.id} value={model.model_id}>{model.label}</option>)}
     </select></label>
-    <p className="field-note">Apple Silicon 使用 MLX 量化权重与 GPU，通过 Docker Model Runner 在本机翻译。首次使用只下载选中的模型，之后复用本地缓存。无需 API 密钥。</p>
-    {selected && <><p role="status">{labels[selected.status ?? 'unavailable'] ?? '状态待刷新'} · MLX {selected.bits} bit · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
+    {selected && <><p className="local-model-status" role="status">{labels[selected.status ?? 'unavailable'] ?? '状态待刷新'} · MLX {selected.bits} bit · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
       {selected.status === 'downloading' && selected.total_bytes ? <progress aria-label="模型下载进度" value={selected.downloaded_bytes ?? 0} max={selected.total_bytes}/> : null}
       <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={pending || ['downloading', 'loading'].includes(selected.status ?? '')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>
-      <details><summary>模型来源</summary><p className="small">{selected.repo}<br/>{selected.revision}</p></details></>}
-    <p className="field-note">较大的模型需要更多统一内存。资源不足会显示失败；不会自动换模型或转用云端。此类模型只用于翻译，不执行语义评审。</p>
+      </>}
+    <details className="settings-details"><summary>本地模型说明</summary>
+      <p>通过 Docker Model Runner 在本机翻译，无需密钥。首次使用或准备时下载所选模型。</p>
+      <p>较大模型需要更多统一内存；资源不足时不会自动换模型或转用云端。本地模型不执行语义评审。</p>
+      {selected && <p className="mono">{selected.repo}<br/>{selected.revision}</p>}
+    </details>
     <ErrorNotice error={error}/>
   </section>;
 }

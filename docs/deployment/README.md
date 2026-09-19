@@ -72,11 +72,14 @@ prepared only on explicit use. Image inventories and locks are described in
 The complete default stack starts without a translation profile or key.
 `/health/ready` still requires the worker and parser to be running with fresh
 heartbeats, alongside its database and storage checks. In Settings, save the
-service endpoint, protocol, model and optional credential, enable translation
-dispatch, and confirm the content/destination for a job. Saving settings makes no
+service endpoint, protocol, model and optional credential, then confirm the
+content/destination for a job. New instances allow model requests without a
+separate enable switch; each connection test and translation still requires
+confirmation. Existing dispatch pauses are preserved and show a recovery action
+in Settings. Saving settings makes no
 inference request. Settings and keys persist in the managed `provider_config`
 volume; no provider profile or key bind files are needed. Preserve that volume
-when updating. The dispatch switch does not disable DOI metadata lookup or explicit
+when updating. Dispatch pauses do not disable DOI metadata lookup or explicit
 model preparation.
 
 Default CPU/CUDA parser processes have no network, database or provider secrets.

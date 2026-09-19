@@ -24,7 +24,7 @@ const explanations: Record<string, string> = {
   PROVIDER_TEST_INTERRUPTED: '测试被中断，未自动重新发送。请检查任务状态后再手动测试。',
   DUPLICATE_CHARGE_CONFIRMATION_REQUIRED: '上次测试结果未知。请读取最新配置并确认重复计费风险。',
   BUDGET_PAUSED: '测试预算或实例剩余额度不足。请核对预算与费率。',
-  DISPATCH_DISABLED: '实例已暂停外部请求。请在本页“外部 API 请求”中开启“允许外部 API 请求”并保存，再测试连接。',
+  DISPATCH_DISABLED: '模型请求已暂停，请刷新本页，在暂停提示中恢复模型请求后再测试连接。',
   MAINTENANCE: '实例正在维护，暂不能发送测试。',
   INSTANCE_CONCURRENCY_LIMIT: '实例正在处理其他请求。请稍后手动测试。',
   USAGE_MISSING: '服务已响应，但用量无法核算。请核对服务商记录。',
@@ -49,7 +49,6 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
   onResultRef.current = onResult;
   const active = !!result && activeStates.includes(result.status);
   const local = provider.api_protocol === 'local_translation';
-  const describe = (code?: string | null) => local && code === 'DISPATCH_DISABLED' ? '模型请求已暂停，请启用本页的模型请求开关并保存。' : description(code);
   const controlled = costControlEnabled(provider);
   const unknown = result?.status === 'outcome_unknown';
   const riskRequired = unknown || provider.connection_test_has_unknown === true;
@@ -101,8 +100,8 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
       <strong>{result.status === 'succeeded' ? '连接测试通过：服务已接受请求并返回有效结果。'
         : active ? '正在测试已保存的配置，请稍候…'
         : unknown ? '测试结果未知，可能已计费；不会自动重试。'
-        : result.status === 'cancelled' ? '测试已取消。已发送的请求仍可能计费。' : describe(result.code)}</strong>
-      {unknown && result.code && result.code !== 'OUTCOME_UNKNOWN' && <p>{describe(result.code)}</p>}
+        : result.status === 'cancelled' ? '测试已取消。已发送的请求仍可能计费。' : description(result.code)}</strong>
+      {unknown && result.code && result.code !== 'OUTCOME_UNKNOWN' && <p>{description(result.code)}</p>}
       {result.completed_at && <p className="small muted">上次测试：{new Date(result.completed_at).toLocaleString()}{result.elapsed_ms != null ? ` · ${(result.elapsed_ms / 1000).toFixed(2)} 秒` : ''}</p>}
       {!active && <p className="small muted">费用：{result.actual_micro == null || unknown ? '未计算' : `USD ${(result.actual_micro / 1_000_000).toFixed(6)}`}</p>}
       <a className="small" href={`#/jobs/${encodeURIComponent(result.id)}`}>查看测试任务</a>

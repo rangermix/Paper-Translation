@@ -81,7 +81,7 @@ class Database:
         self.session_factory.configure(info={'nb_history_enabled': target >= 12})
         with self.transaction() as session:
             if session.get(Settings, 'singleton') is None:
-                session.add(Settings(id='singleton', preferences={'locale': 'zh-Hans', 'publish_policy': 'auto_publish'}, dispatch_disabled=True))
+                session.add(Settings(id='singleton', preferences={'locale': 'zh-Hans', 'publish_policy': 'auto_publish'}, dispatch_disabled=False))
 
     def ready(self):
         with self.engine.connect() as conn:

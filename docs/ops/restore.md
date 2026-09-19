@@ -42,7 +42,8 @@ Inspect documents, original PDFs, publication pointers and uncertain attempts, t
 docker compose run --rm --no-deps maintenance python -m packages.maintenance maintenance-off
 ```
 
-This reopens ordinary writes only. Enable model dispatch separately in Settings.
+This reopens ordinary writes only. Use the pause notice in Settings to recover
+model requests separately.
 Unknown requests retain their accounting risk; acknowledgment does not prove a
 request was free or automatically resume it. Retrying an unknown task requires its
 own explicit risk action.

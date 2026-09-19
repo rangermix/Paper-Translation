@@ -272,7 +272,7 @@ class Settings(Versioned, Base):
     preferences: Mapped[dict] = mapped_column(JSONB, default=dict)
     instance_budget_micro: Mapped[int] = mapped_column(BigInteger, default=0)
     maintenance: Mapped[bool] = mapped_column(Boolean, default=False)
-    dispatch_disabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    dispatch_disabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Idempotency(Base):

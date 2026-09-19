@@ -70,12 +70,12 @@ test('paused model requests explain the block and refresh without submitting tra
   await page.goto('/#/preflight/parsed');
   await page.getByRole('button', { name: /开始翻译/ }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText('模型请求已暂停，请在设置中开启请求后刷新状态。')).toBeVisible();
+  await expect(dialog.getByText('模型请求已暂停，请在设置的暂停提示中恢复模型请求后刷新状态。')).toBeVisible();
   await dialog.getByRole('checkbox').check();
   await expect(dialog.getByRole('button', { name: '开始翻译未完成内容' })).toBeDisabled();
   paused = false;
   await dialog.getByRole('button', { name: '刷新状态' }).click();
-  await expect(dialog.getByText('模型请求已暂停，请在设置中开启请求后刷新状态。')).toHaveCount(0);
+  await expect(dialog.getByText('模型请求已暂停，请在设置的暂停提示中恢复模型请求后刷新状态。')).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: '开始翻译未完成内容' })).toBeEnabled();
   expect(submitted).toBe(0);
 });

@@ -5,7 +5,7 @@ import type { Provider, ProviderPrice } from '../types';
 import { costControlEnabled, defaultTokenLimits } from './cost-control';
 import { providerProtocols } from './provider-protocol';
 import { ProviderConnection } from './provider-connection';
-import { DispatchSettings } from './dispatch-settings';
+import { DispatchRecovery } from './dispatch-settings';
 import { LocalModels } from './local-models';
 
 type Fields = {
@@ -67,7 +67,7 @@ export function ProviderSettings({ provider, loading, error, reload, onSaved, on
   return <section className="panel provider-panel" aria-labelledby="provider-title">
     <div className="stack between"><h2 id="provider-title">AI 服务</h2><span className="pill">兼容与原生接口</span></div>
     <p className="muted">选择本地翻译模型或配置 API 服务。保存只更新配置；模型在开始翻译或准备模型时按需下载。</p>
-    <DispatchSettings onSaved={onDispatchSaved} local={provider?.api_protocol === 'local_translation'}/>
+    <DispatchRecovery onSaved={onDispatchSaved}/>
     <ErrorNotice error={error} retry={reload}/>
     {loading && <Loading/>}
     {provider && !error && <ProviderForm initial={provider} onSaved={onSaved}/>}

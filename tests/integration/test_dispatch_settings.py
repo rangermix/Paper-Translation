@@ -1,4 +1,4 @@
-"""Settings-page dispatch controls, backed by PostgreSQL; never calls a model."""
+"""Default dispatch and pause recovery, backed by PostgreSQL; never calls a model."""
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
@@ -26,7 +26,7 @@ def test_state_persists_recreate_without_env_or_changing_provider(client, databa
     saved = put(client, complete(cost_control_enabled=False), 'SYNTHETIC_KEY').json()
     before = client.get('/api/v1/settings/dispatch')
     assert before.status_code == 200
-    assert before.json()['dispatch_disabled'] is True
+    assert before.json()['dispatch_disabled'] is False
     monkeypatch.setenv('DISPATCH_DISABLED', 'true')  # Old environment is intentionally ignored.
     enabled = update(client, before.json(), False)
     assert enabled.status_code == 200, enabled.text
@@ -41,6 +41,9 @@ def test_state_persists_recreate_without_env_or_changing_provider(client, databa
         assert provider['credential_revision'] == saved['credential_revision']
     paused = update(client, enabled.json(), True, key='pause')
     assert paused.json()['dispatch_disabled'] is True
+    db.migrate()
+    with TestClient(create_app(cfg, db)) as recreated:
+        assert recreated.get('/api/v1/settings/dispatch').json()['dispatch_disabled'] is True
     assert client.get('/api/v1/settings/preferences').json()['generation'] == paused.json()['generation']
     with db.transaction() as session:
         assert session.scalar(select(func.count()).select_from(Job)) == 0
@@ -139,8 +142,21 @@ def test_automatic_billing_pause_invalidates_old_page_version(client, database):
     assert update(client, state, False, key='stale-enabled').status_code == 412
 
 
-def test_page_switch_unblocks_connection_test_creation_without_calling_model(client, database, settings_store):
+def test_new_instance_needs_only_request_confirmation_without_calling_model(client, database, settings_store):
     saved = put(client, complete(cost_control_enabled=False), 'SYNTHETIC_KEY').json()
+    def test_request(confirmed):
+        return client.post('/api/v1/settings/provider/test', json={'profile_hash': saved['profile_hash'], 'external_processing_confirmed': confirmed},
+            headers={'If-Match': f'"{saved["generation"]}"', 'Idempotency-Key': f'confirmed-{confirmed}'})
+    assert test_request(False).json()['error']['code'] == 'EXTERNAL_PROCESSING_UNCONFIRMED'
+    assert test_request(True).status_code == 202
+    with database[0].transaction() as session:
+        assert session.scalar(select(func.count()).select_from(Permit)) == 0
+
+
+def test_pause_recovery_unblocks_connection_test_creation_without_calling_model(client, database, settings_store):
+    saved = put(client, complete(cost_control_enabled=False), 'SYNTHETIC_KEY').json()
+    state = client.get('/api/v1/settings/dispatch').json()
+    assert update(client, state, True, key='pause').status_code == 200
     def test_request(key):
         return client.post('/api/v1/settings/provider/test', json={'profile_hash': saved['profile_hash'], 'external_processing_confirmed': True},
             headers={'If-Match': f'"{saved["generation"]}"', 'Idempotency-Key': key})

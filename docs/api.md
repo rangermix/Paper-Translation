@@ -31,7 +31,7 @@ are UTC; monetary amounts use integer micro-units or `null` when unknown.
 | `/drafts`, `/candidates`, `/sources` | [editorial.py](../src/apps/api/editorial.py), [candidates.py](../src/apps/api/candidates.py), [sources.py](../src/apps/api/sources.py): edits, review and source revision operations |
 | `/templates`, `/editions`, `/artifacts`, `/exports` | [catalog.py](../src/apps/api/catalog.py), [artifacts.py](../src/apps/api/artifacts.py): template selection, publication, history and downloads |
 | `/settings/provider`, `/settings/local-models` | [provider_settings.py](../src/apps/api/provider_settings.py): saved profiles, explicit tests and local model preparation |
-| `/settings/preferences`, `/settings/parser-environment`, `/settings/dispatch` | [catalog.py](../src/apps/api/catalog.py): current preferences, detected parser capabilities and dispatch state |
+| `/settings/preferences`, `/settings/parser-environment`, `/settings/dispatch` | [catalog.py](../src/apps/api/catalog.py): current preferences, Compose-owned parser device/capabilities and dispatch state; preferences do not accept a device override |
 | `/glossaries`, `/translation-memory`, `/search`, `/reading-position` | [knowledge.py](../src/apps/api/knowledge.py) and [catalog.py](../src/apps/api/catalog.py) |
 
 Quality findings are descriptive and nonblocking. Confirmation bodies still bind

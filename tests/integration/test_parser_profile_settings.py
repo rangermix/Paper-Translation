@@ -88,63 +88,67 @@ def test_unknown_profile_cannot_enqueue(client, database):
     assert rejected.status_code == 422
 
 
-def environment_report(cfg, cuda_profiles=()):
+def environment_report(cfg, cuda_profiles=(), mlx_profiles=(), device='cpu'):
     import time
     from packages.ir import canonical_bytes
     body = {'timestamp': time.time(), 'models_verified': True, 'environment': {
         'detected_at': time.time(), 'system': 'Linux', 'architecture': 'x86_64',
-        'cpu_count': 4, 'memory_bytes': 8 * 1024 ** 3, 'default': 'cpu',
+        'cpu_count': 4, 'memory_bytes': 8 * 1024 ** 3, 'default': device,
         'options': [{'id': 'cpu', 'profiles': ['docling-v1', 'granite-docling-v1', 'paddleocr-vl-1.6-v1']},
-            {'id': 'cuda', 'profiles': list(cuda_profiles)}, {'id': 'mlx', 'profiles': []}]}}
+            {'id': 'cuda', 'profiles': list(cuda_profiles)}, {'id': 'mlx', 'profiles': list(mlx_profiles)}]}}
     (cfg.parser_outputs / 'heartbeat.json').write_bytes(canonical_bytes(body))
 
 
-def test_environment_selection_persists_and_rejects_unavailable_runtime(client, database):
-    _, cfg = database
+def test_device_is_deployment_owned_and_legacy_override_is_retired(client, database):
+    db, cfg = database
     environment_report(cfg, ['docling-v1'])
     detected = client.get('/api/v1/settings/parser-environment')
     assert detected.status_code == 200
     assert detected.json()['online'] is True
     assert detected.json()['memory_bytes'] == 8 * 1024 ** 3
+    with db.transaction() as session:
+        settings = session.get(Settings, 'singleton')
+        settings.preferences = {**settings.preferences, 'parser_accelerator': 'cuda'}
     before = client.get('/api/v1/settings/preferences')
-    for choice, status in [('cuda', 409), ('mlx', 409), ('arbitrary', 422)]:
+    assert 'parser_accelerator' not in before.json()
+    with db.transaction() as session:
+        assert session.get(Settings, 'singleton').preferences['parser_accelerator'] == 'cuda'
+    for choice in ('deployment', 'cpu', 'cuda', 'mlx', 'arbitrary'):
         result = client.patch('/api/v1/settings/preferences', json={'parser_accelerator': choice},
             headers={'If-Match': before.headers['etag']})
-        assert result.status_code == status, result.text
+        assert result.status_code == 422, result.text
         assert client.get('/api/v1/settings/preferences').json() == before.json()
-    saved = client.patch('/api/v1/settings/preferences', json={'parser_accelerator': 'cuda', 'parser_profile_revision': 'docling-v1'},
+    saved = client.patch('/api/v1/settings/preferences', json={'parser_profile_revision': 'paddleocr-vl-1.6-v1'},
         headers={'If-Match': before.headers['etag']})
     assert saved.status_code == 200, saved.text
-    assert client.get('/api/v1/settings/preferences').json()['parser_accelerator'] == 'cuda'
-    assert client.patch('/api/v1/settings/preferences', json={'parser_profile_revision': 'paddleocr-vl-1.6-v1'},
-        headers={'If-Match': saved.headers['etag']}).status_code == 409
-    assert client.patch('/api/v1/settings/preferences', json={'parser_accelerator': 'cpu'},
+    assert 'parser_accelerator' not in saved.json()
+    with db.transaction() as session:
+        assert 'parser_accelerator' not in session.get(Settings, 'singleton').preferences
+    assert client.patch('/api/v1/settings/preferences', json={'parser_timeout_seconds': 60},
         headers={'If-Match': before.headers['etag']}).status_code == 412
     (cfg.parser_outputs / 'heartbeat.json').unlink()
     assert client.get('/api/v1/settings/parser-environment').json()['online'] is False
-    assert client.patch('/api/v1/settings/preferences', json={'parser_accelerator': 'cpu'},
-        headers={'If-Match': saved.headers['etag']}).status_code == 409
+    assert client.patch('/api/v1/settings/preferences', json={'parser_timeout_seconds': 60},
+        headers={'If-Match': saved.headers['etag']}).status_code == 200
 
 
-@pytest.mark.parametrize('choice', ['deployment', 'cpu'])
-def test_runtime_is_frozen_through_queue_and_spool(client, database, monkeypatch, choice):
+@pytest.mark.parametrize('device,legacy_choice', [('cpu', 'cuda'), ('cuda', 'cpu'), ('mlx', 'cpu')])
+def test_compose_runtime_ignores_legacy_preferences_and_is_frozen_through_queue_and_spool(client, database, monkeypatch, device, legacy_choice):
     db, cfg = database
     seed_editor(db, cfg)
-    environment_report(cfg, ['docling-v1'])
-    prefs = client.get('/api/v1/settings/preferences')
-    saved = client.patch('/api/v1/settings/preferences', json={'parser_accelerator': choice, 'parser_profile_revision': 'docling-v1'},
-        headers={'If-Match': prefs.headers['etag']})
-    assert saved.status_code == 200, saved.text
+    environment_report(cfg, ['paddleocr-vl-1.6-v1'], ['paddleocr-vl-1.6-v1'], device=device)
+    with db.transaction() as session:
+        settings = session.get(Settings, 'singleton')
+        settings.preferences = {**settings.preferences, 'parser_accelerator': legacy_choice}
     parsed = client.post('/api/v1/documents/doc_fixture/parse', json={'source_asset_id': 'source_pdf'},
         headers={'If-Match': '"1"', 'Idempotency-Key': 'runtime-choice'})
     assert parsed.status_code == 202, parsed.text
-    assert client.get('/api/v1/jobs/' + parsed.json()['job_id']).json()['config_snapshot']['parser_accelerator'] == 'cpu'
-    changed = client.patch('/api/v1/settings/preferences', json={'parser_accelerator': 'cuda'},
-        headers={'If-Match': saved.headers['etag']})
-    assert changed.status_code == 200, changed.text
+    assert client.get('/api/v1/jobs/' + parsed.json()['job_id']).json()['config_snapshot']['parser_accelerator'] == device
+    # A later deployment change cannot rewrite an already queued task.
+    environment_report(cfg, ['paddleocr-vl-1.6-v1'], device='cuda' if device == 'cpu' else 'cpu')
     with db.transaction() as session:
         task = session.scalar(select(Task).where(Task.job_id == parsed.json()['job_id']))
-        assert task.payload['parser_accelerator'] == 'cpu'
+        assert task.payload['parser_accelerator'] == device
     from packages.jobs.queue import claim
     from workers.main import parse_spool
     lease = claim(db)
@@ -155,4 +159,22 @@ def test_runtime_is_frozen_through_queue_and_spool(client, database, monkeypatch
     monkeypatch.setattr('workers.main.write_request', stop_at_spool)
     with pytest.raises(RuntimeError, match='Captured before inference'):
         parse_spool(db, cfg, lease)
-    assert captured['accelerator'] == 'cpu'
+    assert captured['accelerator'] == device
+
+
+def test_unavailable_compose_device_cannot_be_overridden_by_saved_cpu_preference(client, database):
+    db, cfg = database
+    seed_editor(db, cfg)
+    environment_report(cfg, ['docling-v1'], device='cuda')
+    with db.transaction() as session:
+        settings = session.get(Settings, 'singleton')
+        settings.preferences = {**settings.preferences, 'parser_accelerator': 'cpu'}
+    before = client.get('/api/v1/settings/preferences')
+    saved = client.patch('/api/v1/settings/preferences', json={'parser_profile_revision': 'paddleocr-vl-1.6-v1'},
+        headers={'If-Match': before.headers['etag']})
+    assert saved.status_code == 409, saved.text
+    assert client.get('/api/v1/settings/preferences').json() == before.json()
+    parsed = client.post('/api/v1/documents/doc_fixture/parse', json={'source_asset_id': 'source_pdf'},
+        headers={'If-Match': '"1"', 'Idempotency-Key': 'unavailable-runtime'})
+    assert parsed.status_code == 409, parsed.text
+    assert parsed.json()['error']['code'] == 'PARSER_ACCELERATOR_UNAVAILABLE'

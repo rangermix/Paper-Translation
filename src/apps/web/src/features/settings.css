@@ -63,8 +63,7 @@
 .settings-page .provider-dispatch .field { margin-top: 10px; }
 .settings-page .local-model-status { margin: 0 0 12px; color: var(--accent); font-size: 12px; }
 .settings-page .local-model-settings > .stack { margin-bottom: 14px; }
-.settings-page .parser-runtime-fields { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 10px; }
-.settings-page .parser-runtime-fields .field { margin-bottom: 0; }
+.settings-page .parser-device { margin: -5px 0 14px; }
 .settings-page .parser-details { margin-top: 14px; }
 
 @media (max-width: 1180px) and (min-width: 941px) {
@@ -73,7 +72,6 @@
   .settings-page .provider-actions .btn { padding-inline: 9px; font-size: 12px; }
   .settings-page .provider-reload { margin-left: 0; }
   .settings-page .provider-fields > .two-cols { grid-template-columns: 1fr; gap: 0; }
-  .settings-page .parser-runtime-fields { grid-template-columns: 1fr; }
 }
 @media (max-width: 940px) {
   .settings-layout { grid-template-columns: 1fr; }
@@ -92,12 +90,9 @@
   .settings-page .provider-actions > .btn,
   .settings-page .provider-connection > .btn { flex: 1 1 auto; }
   .settings-page .provider-reload { margin-left: 0; }
-  .settings-page .parser-runtime-fields { grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); gap: 10px; }
-  .settings-page .parser-runtime-fields select { font-size: 14px; }
   .settings-page .provider-dispatch .btn { white-space: normal; }
 }
 @media (max-width: 359px) {
-  .settings-page .parser-runtime-fields { grid-template-columns: 1fr; gap: 14px; }
   .settings-page .provider-actions > .btn,
   .settings-page .provider-connection > .btn { flex-basis: 100%; }
 }

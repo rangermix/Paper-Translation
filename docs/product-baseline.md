@@ -10,8 +10,8 @@ the instance; the default published address is loopback.
 - Upload, inspect and store PDFs; browse, search, tag, star and archive documents.
   Defaults are 50 MiB per PDF, 200 pages and ten files per upload batch.
 - Parse with PaddleOCR-VL-1.6 (the default for new preferences), Docling or Granite.
-  Select an available CPU/CUDA/MLX runtime and a bounded parsing timeout. Queued jobs
-  keep their chosen model, device and timeout.
+  The active CPU/CUDA/MLX mode in Compose determines the device. Settings controls
+  the model and parsing timeout; queued jobs keep their recorded model, device and timeout.
 - Recover extraction gaps using original-PDF evidence, show unresolved content
   beside page images, and expose saved parse results for later translation.
 - Translate through a saved API service or the optional local MLX service.

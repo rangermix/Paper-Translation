@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .profiles import DOCLING_PROFILE, GRANITE_PROFILE, PADDLE_PROFILE
 
-ACCELERATORS = ('deployment', 'cpu', 'cuda', 'mlx')
+ACCELERATORS = ('cpu', 'cuda', 'mlx')
 
 
 def cuda_probe(executable, framework):
@@ -93,9 +93,9 @@ def read_environment(root=None):
         env = body['environment']
         if (body.get('models_verified') is not True or not 0 <= time.time() - body['timestamp'] < 90
                 or not 0 <= time.time() - env['detected_at'] < 180
-                or env.get('default') not in ACCELERATORS[1:]
+                or env.get('default') not in ACCELERATORS
                 or not isinstance(env['options'], list)
-                or any(not isinstance(option, dict) or option.get('id') not in ACCELERATORS[1:]
+                or any(not isinstance(option, dict) or option.get('id') not in ACCELERATORS
                     or not isinstance(option.get('profiles'), list)
                     or any(profile not in (DOCLING_PROFILE, GRANITE_PROFILE, PADDLE_PROFILE) for profile in option['profiles'])
                     for option in env['options'])
@@ -108,17 +108,14 @@ def read_environment(root=None):
         return offline
 
 
-def resolve_accelerator(preferences, profile, root=None):
-    choice = preferences.get('parser_accelerator', 'deployment')
-    if choice not in ACCELERATORS:
-        raise ValueError('PARSER_ACCELERATOR_INVALID')
+def resolve_accelerator(profile, root=None):
+    """Resolve the parser's Compose mode, never a saved user device override."""
     env = read_environment(root)
-    if choice == 'deployment':
-        if not env['online']:
-            return None  # Compatibility with existing deployments/queued jobs.
-        choice = env.get('default', 'cpu')
-        if choice == 'mlx' and profile != PADDLE_PROFILE:
-            choice = 'cpu'
+    if not env['online']:
+        return None  # The parser applies its Compose configuration when available.
+    choice = env['default']
+    if choice == 'mlx' and profile != PADDLE_PROFILE:
+        choice = 'cpu'
     if not any(option['id'] == choice and profile in option['profiles'] for option in env['options']):
         raise ValueError('PARSER_ACCELERATOR_UNAVAILABLE')
     return choice

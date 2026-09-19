@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
-async function setup(page: Page, stale = false) {
-  let preferences = { generation: 3, locale: 'zh-Hans', publish_policy: 'manual_approval', theme: 'light', parser_profile_revision: 'docling-v1', parser_timeout_seconds: 7200 };
+async function setup(page: Page, stale = false, legacyPreferences = {}) {
+  let preferences = { generation: 3, locale: 'zh-Hans', publish_policy: 'manual_approval', theme: 'light', parser_profile_revision: 'docling-v1', parser_timeout_seconds: 7200, ...legacyPreferences };
   const writes: any[] = [], errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/api/v1/**', async route => {
@@ -121,76 +121,90 @@ test('new default is Paddle when a legacy preferences response omits parser sele
 });
 
 
-test('detected environment offers available runtimes and persists the choice', async ({ page }) => {
-  const { writes, errors } = await setup(page);
+test('Compose device is read-only and legacy preferences cannot override or resave it', async ({ page }) => {
+  const { writes, errors } = await setup(page, false, { parser_accelerator: 'cpu' });
+  await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ json: {
+    online: true, system: 'Linux', architecture: 'x86_64', cpu_count: 4, memory_bytes: 8 * 1024 ** 3,
+    default: 'cuda', options: [{ id: 'cuda', profiles: ['docling-v1', 'paddleocr-vl-1.6-v1'] }],
+  } }));
   await page.goto('/#/settings');
   const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
-  await expect(panel).toContainText('Linux · x86_64 · 4 核 CPU · 内存上限 8.0 GiB');
-  const devices = panel.getByLabel('运行设备', { exact: true });
-  await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
-  await expect(devices.locator('option[value="cuda"]')).toBeDisabled();
-  await expect(devices.locator('option[value="mlx"]')).toBeDisabled();
-  await expect(panel).toContainText('当前部署没有可用的 Docker MLX 图像推理后端');
-  await devices.selectOption('cpu');
+  await expect(panel.getByText('运行设备：NVIDIA CUDA · Compose', { exact: true })).toBeVisible();
+  await expect(panel.getByRole('combobox')).toHaveCount(1);
+  await panel.getByLabel('解析超时（分钟）').fill('180');
   await panel.getByRole('button', { name: '保存解析设置' }).click();
   await expect(panel).toContainText('解析设置已保存');
-  expect(writes[0]).toMatchObject({ body: { parser_accelerator: 'cpu' }, headers: { 'if-match': '"3"' } });
+  expect(writes[0].body).toEqual({ parser_profile_revision: 'docling-v1', parser_timeout_seconds: 10800 });
+  expect(writes[0].headers['if-match']).toBe('"3"');
   await page.reload();
-  await expect(devices).toHaveValue('cpu');
+  await expect(panel.getByText('运行设备：NVIDIA CUDA · Compose', { exact: true })).toBeVisible();
+  await expect(panel.getByLabel('解析超时（分钟）')).toHaveValue('180');
   await panel.getByLabel('默认 PDF 解析方案').selectOption('paddleocr-vl-1.6-v1');
   await expect(panel).toContainText('当前内存较低');
+  await panel.getByText('设备与解析说明', { exact: true }).click();
+  await expect(panel.getByText('Linux · x86_64 · 4 核 CPU · 内存上限 8.0 GiB', { exact: true })).toBeVisible();
+  await expect(panel.getByRole('button', { name: '刷新环境' })).toHaveCount(0);
   await panel.screenshot({ path: outputDirectory('environment-settings.png') });
   expect(errors).toEqual([]);
 });
 
-test('environment expiry disables explicit choices until refresh recovers', async ({ page }) => {
+test('environment is read when settings opens without periodic refreshes', async ({ page }) => {
   await setup(page);
-  let online = false;
-  await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ json: {
-    online, default: 'cpu', options: online ? [{ id: 'cpu', profiles: ['docling-v1'] }] : [],
-  } }));
+  await page.clock.install();
+  let reads = 0;
+  let device = 'cpu';
+  await page.route('**/api/v1/settings/parser-environment', route => {
+    reads++;
+    return route.fulfill({ json: { online: true, default: device, options: [{ id: device, profiles: ['docling-v1'] }] } });
+  });
   await page.goto('/#/settings');
   const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
-  const devices = panel.getByLabel('运行设备', { exact: true });
-  await expect(panel).toContainText('解析环境暂不可用');
-  await expect(devices.locator('option[value="cpu"]')).toBeDisabled();
-  online = true;
+  await expect(panel.getByText('运行设备：CPU · Compose', { exact: true })).toBeVisible();
+  const initialReads = reads;
+  expect(initialReads).toBeGreaterThan(0);
+  device = 'cuda';
+  await page.clock.runFor(45000);
   await panel.getByText('设备与解析说明', { exact: true }).click();
-  await panel.getByRole('button', { name: '刷新环境' }).click();
-  await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
+  expect(reads).toBe(initialReads);
+  await expect(panel.getByText('运行设备：CPU · Compose', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: '文档库', exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  await page.getByRole('link', { name: '设置', exact: true }).click();
+  await expect(panel.getByText('运行设备：NVIDIA CUDA · Compose', { exact: true })).toBeVisible();
+  expect(reads).toBeGreaterThan(initialReads);
 });
 
+for (const status of [200, 503]) {
+  test(`unavailable environment (${status}) still allows editing parser preferences`, async ({ page }) => {
+    const { writes } = await setup(page);
+    await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ status,
+      json: status === 200 ? { online: false, options: [] } : { error: { code: 'UNAVAILABLE', message: 'Environment unavailable' } },
+    }));
+    await page.goto('/#/settings');
+    const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+    await expect(panel).toContainText('解析环境暂不可用，请检查解析服务');
+    await panel.getByLabel('解析超时（分钟）').fill('180');
+    await panel.getByRole('button', { name: '保存解析设置' }).click();
+    await expect(panel).toContainText('解析设置已保存');
+    expect(writes[0].body).toEqual({ parser_profile_revision: 'docling-v1', parser_timeout_seconds: 10800 });
+  });
+}
 
-test('failed environment refresh revokes previously available options', async ({ page }) => {
-  await setup(page);
-  await page.goto('/#/settings');
-  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
-  const devices = panel.getByLabel('运行设备', { exact: true });
-  await expect(devices.locator('option[value="cpu"]')).toBeEnabled();
-  await devices.selectOption('cpu');
-  await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: 'Environment unavailable' } } }));
-  await panel.getByText('设备与解析说明', { exact: true }).click();
-  await panel.getByRole('button', { name: '刷新环境' }).click();
-  await expect(panel).toContainText('解析环境暂不可用');
-  await expect(devices.locator('option[value="cpu"]')).toBeDisabled();
-  await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeDisabled();
-});
 
-
-test('unsupported deployment default requires an available runtime choice', async ({ page }) => {
+test('MLX mode preserves Compose profile engines and cannot silently bypass an unavailable device', async ({ page }) => {
   await setup(page);
   await page.route('**/api/v1/settings/parser-environment', route => route.fulfill({ json: {
     online: true, default: 'mlx', options: [{ id: 'cpu', profiles: ['docling-v1', 'paddleocr-vl-1.6-v1'] }, { id: 'mlx', profiles: [], reason: 'MLX_IMAGE_BACKEND_UNAVAILABLE' }],
   } }));
   await page.goto('/#/settings');
   const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
-  const devices = panel.getByLabel('运行设备', { exact: true });
   // Non-Paddle profiles explicitly use CPU in the MLX deployment.
-  await expect(devices.locator('option[value="deployment"]')).toHaveText('部署默认（CPU）');
+  await expect(panel.getByText('运行设备：CPU · Compose', { exact: true })).toBeVisible();
   await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeEnabled();
   await panel.getByLabel('默认 PDF 解析方案').selectOption('paddleocr-vl-1.6-v1');
-  await expect(devices.locator('option[value="deployment"]')).toBeDisabled();
+  await expect(panel.getByText('运行设备：Apple MLX · Compose', { exact: true })).toBeVisible();
+  await expect(panel.getByRole('alert')).toContainText('请检查部署配置或选择兼容的解析方案');
   await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeDisabled();
-  await devices.selectOption('cpu');
+  await panel.getByLabel('默认 PDF 解析方案').selectOption('docling-v1');
   await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeEnabled();
 });

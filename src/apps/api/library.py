@@ -32,11 +32,11 @@ router = APIRouter(prefix='/api/v1')
 Session = Depends(session_dependency, scope='function')
 
 
-def frozen_parser_runtime(preferences, profile):
+def frozen_parser_runtime(profile):
     try:
-        choice = resolve_accelerator(preferences, profile)
+        choice = resolve_accelerator(profile)
     except ValueError:
-        require(False, 'PARSER_ACCELERATOR_UNAVAILABLE', '所选运行设备当前不可用，请刷新解析环境后重新选择。')
+        require(False, 'PARSER_ACCELERATOR_UNAVAILABLE', 'Compose 配置的解析设备当前不可用，请检查部署配置和解析服务。')
     return {'parser_accelerator': choice} if choice else {}
 
 
@@ -247,7 +247,7 @@ def create_import(body: ImportCreate, request: Request, session=Session):
         if body.workflow:
             preferences = session.get(Settings, 'singleton').preferences
             job = enqueue(session, 'parse', {'source_asset_id': doc.source_asset_id,
-                **frozen_parser_runtime(preferences, body.parser_profile_revision or preferred_profile(preferences)),
+                **frozen_parser_runtime(body.parser_profile_revision or preferred_profile(preferences)),
                 'parser_profile_revision': body.parser_profile_revision or preferred_profile(preferences),
                 'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
                 'source_language': doc.source_language, 'document_generation': doc.generation,
@@ -386,7 +386,7 @@ def parse(document_id: str, body: ParseRequest, request: Request, session=Sessio
         pending = session.scalar(select(Job).where(Job.document_id == doc.id, Job.stage == 'parse', Job.status.in_(['pending', 'running'])))
         require(pending is None, 'PARSE_IN_PROGRESS')
         job = enqueue(session, 'parse', {**body.model_dump(), 'parser_profile_revision': selection, 'document_generation': doc.generation,
-            **frozen_parser_runtime(preferences, selection),
+            **frozen_parser_runtime(selection),
             'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
             'source_language': doc.source_language,
             'workflow': freeze_pipeline(body.workflow, doc.source_asset_id) if body.workflow else None}, doc.id)

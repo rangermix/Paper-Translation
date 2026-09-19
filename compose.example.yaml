@@ -4,6 +4,7 @@
 # Existing instances: check the backup/upgrade instructions in docs/ops/restore.md first.
 # Keep exactly ONE mode block active: CPU (default), CUDA, or MLX.
 # To switch, comment the active block and uncomment the chosen block.
+# The active mode determines the parser device; Settings has no device override.
 # The shared services and persistent volumes below stay the same.
 # See docs/ops/restore.md for upgrades and docs/deployment/extraction-acceleration.md
 # for GPU prerequisites and MLX model packaging/verification.

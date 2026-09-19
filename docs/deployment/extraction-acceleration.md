@@ -2,9 +2,12 @@
 
 New preferences default to PaddleOCR-VL-1.6. Saved preferences and queued jobs
 retain their selected profile; legacy tasks without a profile keep their existing
-Docling behavior. Settings lists only the runtimes reported by the deployed parser,
-including unavailable reasons. A new job freezes its resolved model, device and
-timeout instead of rereading preferences during execution.
+Docling behavior. The active mode in Compose determines the device; saved device
+overrides from older settings are ignored. Settings shows the effective device
+and reads the parser environment when opened, without polling or a refresh button.
+A new job freezes its resolved model, device and timeout when the parser environment
+is available. If the parser is offline, it applies its Compose mode when execution
+starts. Existing queued devices are not rewritten.
 
 | Deployment | Build/runtime | Paddle recognition and layout | Docling / Granite |
 | --- | --- | --- | --- |

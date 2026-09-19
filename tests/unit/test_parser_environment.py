@@ -16,23 +16,39 @@ def test_detection_distinguishes_installed_image_and_attached_gpu(monkeypatch):
     assert result['options'][2]['profiles'] == []
 
 
-def test_report_expires_and_selection_fails_closed(tmp_path):
+def test_report_expires_and_unavailable_compose_device_fails_closed(tmp_path):
     from packages.parsers.environment import read_environment, resolve_accelerator
     report = {'detected_at': time.time(), 'default': 'cpu', 'options': [
         {'id': 'cpu', 'profiles': [PADDLE_PROFILE]}, {'id': 'cuda', 'profiles': []}]}
     heartbeat = {'timestamp': time.time(), 'models_verified': True, 'environment': report}
     (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(heartbeat))
     assert read_environment(tmp_path)['online'] is True
-    assert resolve_accelerator({'parser_accelerator': 'cpu'}, PADDLE_PROFILE, tmp_path) == 'cpu'
+    assert resolve_accelerator(PADDLE_PROFILE, tmp_path) == 'cpu'
+    report['default'] = 'cuda'
+    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(heartbeat))
     with pytest.raises(ValueError, match='PARSER_ACCELERATOR_UNAVAILABLE'):
-        resolve_accelerator({'parser_accelerator': 'cuda'}, PADDLE_PROFILE, tmp_path)
+        resolve_accelerator(PADDLE_PROFILE, tmp_path)
     heartbeat['timestamp'] -= 91
     (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(heartbeat))
     assert read_environment(tmp_path)['online'] is False
-    with pytest.raises(ValueError):
-        resolve_accelerator({'parser_accelerator': 'cpu'}, PADDLE_PROFILE, tmp_path)
-    # Old deployments without reports preserve their default until upgraded.
-    assert resolve_accelerator({}, PADDLE_PROFILE, tmp_path) is None
+    # Without a current report, the parser applies its Compose configuration.
+    assert resolve_accelerator(PADDLE_PROFILE, tmp_path) is None
+
+
+@pytest.mark.parametrize('device,profile,expected', [
+    ('cpu', PADDLE_PROFILE, 'cpu'), ('cuda', PADDLE_PROFILE, 'cuda'),
+    ('mlx', PADDLE_PROFILE, 'mlx'), ('mlx', 'docling-v1', 'cpu'),
+    ('mlx', 'granite-docling-v1', 'cpu'),
+])
+def test_runtime_uses_compose_mode_and_its_supported_profile_engines(tmp_path, device, profile, expected):
+    from packages.parsers.environment import resolve_accelerator
+    body = {'timestamp': time.time(), 'models_verified': True, 'environment': {
+        'detected_at': time.time(), 'default': device, 'options': [
+            {'id': 'cpu', 'profiles': ['docling-v1', 'granite-docling-v1', PADDLE_PROFILE]},
+            {'id': 'cuda', 'profiles': [PADDLE_PROFILE]},
+            {'id': 'mlx', 'profiles': [PADDLE_PROFILE]}]}}
+    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(body))
+    assert resolve_accelerator(profile, tmp_path) == expected
 
 
 def test_job_runtime_override_does_not_mutate_parent_environment(monkeypatch):

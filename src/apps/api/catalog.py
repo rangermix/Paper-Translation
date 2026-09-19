@@ -53,11 +53,18 @@ def provider_view(session, profile):
 
 @router.get('/settings/preferences')
 def preferences(session=Session):
-    settings = session.get(Settings, 'singleton')
-    return response({'generation': settings.generation, 'theme': 'system', **settings.preferences,
-        'parser_accelerator': settings.preferences.get('parser_accelerator', 'deployment'),
+    return response(preferences_view(session.get(Settings, 'singleton')))
+
+
+def preferences_view(settings):
+    return {'generation': settings.generation, 'theme': 'system', **editable_preferences(settings),
         'parser_profile_revision': preferred_profile(settings.preferences),
-        'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)})
+        'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)}
+
+
+def editable_preferences(settings):
+    # Older installations may retain this key; Compose now owns the device.
+    return {key: value for key, value in settings.preferences.items() if key != 'parser_accelerator'}
 
 
 @router.get('/settings/dispatch')
@@ -85,7 +92,6 @@ def patch_dispatch_settings(body: DispatchSettings, request: Request, session=Se
 
 
 class Preferences(StrictModel):
-    parser_accelerator: Literal['deployment', 'cpu', 'cuda', 'mlx'] | None = None
     parser_profile_revision: ParserProfile | None = None
     parser_timeout_seconds: int | None = Field(None, strict=True,
         ge=MIN_PARSE_TIMEOUT_SECONDS, le=MAX_PARSE_TIMEOUT_SECONDS, multiple_of=60)
@@ -105,15 +111,12 @@ def patch_preferences(body: Preferences, request: Request, session=Session):
     writable(session)
     settings = session.scalar(select(Settings).where(Settings.id == 'singleton').with_for_update().execution_options(populate_existing=True))
     match_generation(settings, request.headers.get('If-Match'))
-    merged = {**settings.preferences, **body.model_dump(exclude_none=True)}
-    if body.parser_accelerator is not None or (body.parser_profile_revision is not None and merged.get('parser_accelerator', 'deployment') != 'deployment'):
-        frozen_parser_runtime(merged, preferred_profile(merged))
-    settings.preferences = {**settings.preferences, **body.model_dump(exclude_none=True)}
+    merged = {**editable_preferences(settings), **body.model_dump(exclude_none=True)}
+    if body.parser_profile_revision is not None:
+        frozen_parser_runtime(preferred_profile(merged))
+    settings.preferences = merged
     settings.generation += 1
-    return response({'generation': settings.generation, 'theme': 'system', **settings.preferences,
-        'parser_accelerator': settings.preferences.get('parser_accelerator', 'deployment'),
-        'parser_profile_revision': preferred_profile(settings.preferences),
-        'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)})
+    return response(preferences_view(settings))
 
 
 @router.get('/templates')

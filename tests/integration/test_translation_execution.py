@@ -62,8 +62,8 @@ def test_commit_unit_refreshes_draft_after_concurrent_snapshot_change(database,m
     lease=claim(db)
     with db.transaction() as session:unit=copy.deepcopy(session.get(Task,lease.task_id).payload['unit'])
     original_snapshot=execution.snapshot
-    def concurrent_snapshot(session,config,current_lease):
-        result=original_snapshot(session,config,current_lease)
+    def concurrent_snapshot(session,config,current_lease,**kwargs):
+        result=original_snapshot(session,config,current_lease,**kwargs)
         # The request has loaded Draft in its identity map. A different
         # transaction commits an editorial generation before its row lock.
         assert result[2].generation==1
@@ -146,3 +146,46 @@ def test_pause_return_resume_reuses_paid_validated_checkpoint(database):
     execute_translation(db,cfg,resumed,provider)
     assert len(provider.calls)==1
     with db.transaction() as session:assert session.scalar(select(func.count()).select_from(SegmentVersion))==1
+
+
+def test_sibling_retry_does_not_discard_successful_inflight_translation(database):
+    db,cfg=database;setup_library(db,cfg)
+    execute_translation(db,cfg,claim(db),FakeProvider())
+    lease=claim(db)
+    def sibling_retries(units):
+        with db.transaction() as session:session.get(Job,'job').status='pending'
+        return {'results':[{'unit_id':u['unit_id'],'target_inline':u['source_inline']} for u in units]}
+    provider=FakeProvider([sibling_retries])
+    execute_translation(db,cfg,lease,provider)
+    with db.transaction() as session:
+        assert session.get(Task,lease.task_id).status=='succeeded'
+        assert session.scalar(select(func.count()).select_from(SegmentVersion))==1
+    assert len(provider.calls)==1
+
+
+def test_third_attempt_checkpoint_survives_pause_and_expiry_without_resending(database):
+    db,cfg=database;setup_library(db,cfg)
+    execute_translation(db,cfg,claim(db),FakeProvider())
+    lease=claim(db)
+    with db.transaction() as session:session.get(Task,lease.task_id).attempts=3
+    def pause_during_call(units):
+        with db.transaction() as session:
+            job=session.get(Job,'job');job.status='paused';job.control_epoch+=1
+        return {'results':[{'unit_id':u['unit_id'],'target_inline':u['source_inline']} for u in units]}
+    provider=FakeProvider([pause_during_call])
+    execute_translation(db,cfg,lease,provider)
+    with db.transaction() as session:
+        assert session.scalar(select(func.count()).select_from(SegmentVersion))==0
+        session.get(Task,lease.task_id).lease_expires=now()-timedelta(seconds=1)
+    recover_expired(db)
+    with db.transaction() as session:
+        assert session.get(Job,'job').status=='paused'
+        assert session.get(Task,lease.task_id).status=='pending'
+        session.get(Job,'job').status='pending'
+    resumed=claim(db)
+    assert resumed.task_id==lease.task_id
+    execute_translation(db,cfg,resumed,provider)
+    assert len(provider.calls)==1
+    with db.transaction() as session:
+        assert session.get(Task,lease.task_id).status=='succeeded'
+        assert session.scalar(select(func.count()).select_from(SegmentVersion))==1

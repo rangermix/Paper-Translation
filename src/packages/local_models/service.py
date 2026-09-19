@@ -110,6 +110,16 @@ class Manager:
             existing = self.states.get(model['id'], {})
             if existing.get('status') in ('downloading', 'loading'):
                 return dict(existing)
+            if existing.get('status') == 'ready':
+                try:
+                    # Every unit prepares, including while another is inferring.
+                    # Revalidate DMR's effective configuration without taking a
+                    # working model offline or queueing behind inference.
+                    self.backend()
+                    if self.installed(model) and self.configuration_matches(model):
+                        return dict(existing)
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+                    pass
             self.states[model['id']] = {'status': 'downloading', 'downloaded_bytes': 0,
                                       'total_bytes': sum(f['size'] for f in model['files'])}
             threading.Thread(target=self._prepare, args=(model,), daemon=True).start()

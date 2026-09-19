@@ -18,7 +18,7 @@ from packages.domain.models import (Attempt, Document, Draft, Edition, Event, Jo
 from packages.editorial.drafts import create_draft
 from packages.ir import block_hash, digest, validate_source
 from packages.jobs.queue import emit
-from packages.jobs.history import log_view, time_view
+from packages.jobs.history import effective_log_level, log_view, time_view
 from packages.jobs.visibility import clearable_history, visible_history
 from packages.storage import read_snapshot, write_snapshot
 from packages.translation.languages import canonical_locale, translation_profile
@@ -225,7 +225,7 @@ def job_logs(job_id: str, cursor: int | None = Query(None, ge=0), limit: int = Q
     if cursor is not None:
         query = query.where(TaskLog.sequence > cursor)
     if level:
-        query = query.where(TaskLog.level == level)
+        query = query.where(effective_log_level() == level)
     if stage:
         query = query.where(TaskLog.stage == stage)
     rows = list(session.scalars(query.order_by(TaskLog.sequence).limit(limit + 1)))

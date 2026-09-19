@@ -141,3 +141,26 @@ def test_gpu_handoff_does_not_proceed_when_model_became_active(tmp_path):
         return httpx.Response(200, json=[{'backend_name':'vllm','model_name':other}] if request.method=='GET' else {'unloaded_runners':0})
     with pytest.raises(ValueError, match='LOCAL_MODEL_BUSY'):
         Manager(tmp_path,httpx.MockTransport(handle)).reserve_gpu(models()[0])
+
+
+def test_prepare_ready_model_does_not_interrupt_concurrent_inference(tmp_path):
+    from packages.local_models.service import Manager, RUNTIME_FLAGS
+    model = models()[0]; ident = artifact(model)['id']; calls = []
+    def handle(request):
+        calls.append(request)
+        if request.url.path == '/models': return httpx.Response(200, json=[{'id': ident}])
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'vllm': 'Running: vllm-metal test'})
+        if request.url.path == '/engines/_configure':
+            return httpx.Response(200, json=[{'Backend': 'vllm', 'ModelID': ident,
+                'Config': {'context-size': model['context_size'], 'runtime-flags': RUNTIME_FLAGS}}])
+        raise AssertionError(request.url.path)
+    manager = Manager(tmp_path, httpx.MockTransport(handle))
+    manager.states[model['id']] = {'status': 'ready'}
+    # An active inference owns this lock. Same-model preparation must leave
+    # readiness intact and must not enqueue another configuration operation.
+    with manager.inference_lock:
+        assert manager.prepare(model)['status'] == 'ready'
+        assert manager.state(model)['status'] == 'ready'
+    assert all(request.method == 'GET' for request in calls)
+    assert any(request.url.path == '/engines/_configure' for request in calls)

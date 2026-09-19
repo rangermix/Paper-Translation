@@ -7,6 +7,7 @@ from sqlalchemy import exists, func, select, text
 from packages.domain.db import get_document, lock_lifecycle, writable
 from packages.domain.errors import require
 from packages.domain.models import Attempt, Event, Job, Permit, Settings, Task, new_id, now
+from packages.ir import digest
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,7 @@ def claim(db, lease_seconds=60):
         return Lease(task.id, job.id, attempt.id, task.fence, job.control_epoch, task.kind, job.document_id, task.payload)
 
 
-def assert_current(session, lease, *, allow_paused=False):
+def assert_current(session, lease, *, allow_paused=False, allow_pending=False):
     # Includes index/cache FK insertion: it can implicitly lock Document even
     # when no explicit get_document(lock=True) appears in the worker code.
     lock_lifecycle(session)
@@ -82,7 +83,8 @@ def assert_current(session, lease, *, allow_paused=False):
     identity = (lease.job_id, lease.task_id, lease.attempt_id, lease.fence, lease.control_epoch)
     require(job and task and task.fence == lease.fence and task.status == 'leased'
         and (identity in checked or task.lease_expires > now()), 'FENCE_EXPIRED')
-    require(job.control_epoch == lease.control_epoch and job.status in (('running', 'paused') if allow_paused else ('running',)), 'CONTROL_CHANGED')
+    allowed = {'running'} | ({'paused'} if allow_paused else set()) | ({'pending'} if allow_pending else set())
+    require(job.control_epoch == lease.control_epoch and job.status in allowed, 'CONTROL_CHANGED')
     if job.document_id and task.kind != 'cleanup':
         get_document(session, job.document_id)
     checked.add(identity)
@@ -106,7 +108,7 @@ def renew(db, lease, lease_seconds=60):
 
 
 def finish(session, lease, result=None, status='succeeded'):
-    job, task = assert_current(session, lease)
+    job, task = assert_current(session, lease, allow_pending=True)
     task.status, task.result = 'succeeded', result or {}
     attempt = session.get(Attempt, lease.attempt_id)
     attempt.finished_at = now()
@@ -118,6 +120,16 @@ def finish(session, lease, result=None, status='succeeded'):
         job.status = status
     emit(session, job)
     return job
+
+
+def has_validated_checkpoint(session, task):
+    if task.kind not in {'translate', 'candidate'} or 'unit' not in task.payload:
+        return False
+    unit = task.payload['unit'] | ({'repair_reason': task.payload['repair_reason']} if task.payload.get('repair_reason') else {})
+    unit_hash = digest(unit)
+    return any(evidence.get('kind') == 'validated_unit' and evidence.get('unit_hash') == unit_hash
+        for attempt in session.scalars(select(Attempt).where(Attempt.task_id == task.id, Attempt.state == 'settled'))
+        for evidence in attempt.evidence)
 
 
 def recover_expired(db):
@@ -145,6 +157,12 @@ def recover_expired(db):
                     # settled response lost before finish must never be resent.
                     task.status, job.status = 'failed', 'failed'
                     job.error = {'code': 'PROVIDER_TEST_INTERRUPTED'}
+                elif has_validated_checkpoint(session, task):
+                    # Finishing a durably validated response requires no new
+                    # inference. Keep user pauses and uncertain outcomes intact.
+                    task.status = 'pending'
+                    if job.status == 'running':
+                        job.status = 'pending'
                 elif task.attempts >= 3:
                     task.status, job.status = 'failed', 'failed'
                     job.error = {'code': 'ATTEMPT_LIMIT'}

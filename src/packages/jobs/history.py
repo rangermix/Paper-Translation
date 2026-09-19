@@ -3,13 +3,16 @@ import copy
 import re
 from urllib.parse import urlsplit, urlunsplit
 
-from sqlalchemy import inspect, select
+from sqlalchemy import and_, case, inspect, select
 from sqlalchemy.dialects.postgresql import insert
 
 from packages.domain.models import Attempt, Document, Job, Task, TaskLog, Upload, new_id, now
 from packages.domain.workflow import ModelIdentity, TERMINAL_STATES
 
 MODEL_TASKS = {'parse', 'recovery', 'translate', 'candidate', 'semantic_review', 'provider_test'}
+LIFECYCLE_OPERATIONS = {'created', 'started', 'finished', 'state_changed'}
+LIFECYCLE_LEVELS = {'failed': 'error', 'known_failed': 'error', 'outcome_unknown': 'warning',
+    'waiting_config': 'warning', 'waiting_budget': 'warning'}
 MESSAGES = {
     'created': '任务已创建', 'started': '开始执行', 'finished': '执行结束',
     'state_changed': '任务状态已更新', 'lease_expired': '执行租约已到期',
@@ -21,6 +24,20 @@ MESSAGES = {
     'progress': '执行进度已更新',
     'history_backfill': '已从原有记录补全文档和任务信息',
 }
+
+
+def lifecycle_level(operation, details):
+    if operation in LIFECYCLE_OPERATIONS and (details or {}).get('kind') in {'Job', 'Task', 'Attempt'}:
+        return LIFECYCLE_LEVELS.get(details.get('status'), 'info')
+    return 'info'
+
+
+def effective_log_level():
+    """Read old lifecycle receipts correctly without rewriting their history."""
+    return case(*[(and_(TaskLog.level == 'info', TaskLog.operation.in_(LIFECYCLE_OPERATIONS),
+        TaskLog.details['kind'].as_string().in_({'Job', 'Task', 'Attempt'}),
+        TaskLog.details['status'].as_string() == status), level)
+        for status, level in LIFECYCLE_LEVELS.items()], else_=TaskLog.level)
 
 
 def safe_details(details):
@@ -37,9 +54,11 @@ def safe_details(details):
     return result
 
 
-def _log_values(job, operation, *, event_key, level='info', task_id=None, attempt_id=None,
+def _log_values(job, operation, *, event_key, level=None, task_id=None, attempt_id=None,
                 page=None, unit_id=None, details=None, at=None):
     operation = operation if operation in MESSAGES else 'progress'
+    if level is None:
+        level = lifecycle_level(operation, details)
     return dict(job_id=job.id, event_key=event_key, at=at or now(), level=level if level in {'info', 'warning', 'error'} else 'info',
         stage=job.stage, operation=operation, task_id=task_id, attempt_id=attempt_id, page=page,
         unit_id=unit_id, message=MESSAGES[operation], details=safe_details(details))
@@ -177,6 +196,8 @@ def time_view(entity):
 def log_view(entry, *, content_deleted=False):
     view = {key: getattr(entry, key) for key in ('sequence', 'at', 'level', 'stage', 'operation',
         'task_id', 'attempt_id', 'page', 'unit_id', 'message', 'details')}
+    if view['level'] == 'info':
+        view['level'] = lifecycle_level(entry.operation, entry.details)
     if content_deleted:
         view['unit_id'] = None
     return view

@@ -26,8 +26,8 @@ from .planner import plan_units,restore_inline,cache_key,cache_encode,cache_deco
 from .languages import check_language_policy, public_profile
 
 
-def snapshot(session,cfg,lease):
-    job,task=assert_current(session,lease)
+def snapshot(session,cfg,lease,*,allow_pending=False):
+    job,task=assert_current(session,lease,allow_pending=allow_pending)
     payload=job.payload
     draft=get_entity(session,Draft,payload['draft_id'])
     source_entity=get_entity(session,SourceRevision,draft.source_revision_id)
@@ -184,7 +184,9 @@ def wait_without_dispatch(db,lease,code):
 
 def commit_unit(db,cfg,lease,unit,nodes,key,profile,cache_hit=False,origin_attempt_id=None):
     with db.transaction() as session:
-        job,task,draft,source=snapshot(session,cfg,lease)
+        # A sibling's retry/capacity wait is a scheduling change, not a user
+        # cancellation. The original lease and control epoch still fence writes.
+        job,task,draft,source=snapshot(session,cfg,lease,allow_pending=True)
         draft=get_entity(session,Draft,draft.id,lock=True)
         expected_glossary=job.payload.get('base_glossary_revision',job.payload.get('glossary_revision','empty-v1')) if lease.kind=='candidate' else job.payload.get('glossary_revision','empty-v1')
         require(draft.glossary_revision==expected_glossary,'GLOSSARY_STALE')

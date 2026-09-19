@@ -86,3 +86,38 @@ def test_actual_model_does_not_come_from_current_settings(database, client):
     assert detail['config_snapshot']['model_id'] == 'selected-model'
     assert detail['actual_model']['model_id'] == 'returned-model'
     assert detail['attempts'][0]['actual_model']['model_id'] == 'returned-model'
+
+
+def test_failed_lifecycle_is_visible_in_error_filter(database, client):
+    from packages.domain.models import TaskLog
+    db, _ = database
+    with db.transaction() as session:
+        job = enqueue(session, 'translate', {})
+        identifier = job.id
+    with db.transaction() as session:
+        job = session.get(Job, identifier)
+        job.status = 'failed'; job.error = {'code': 'ATTEMPT_LIMIT'}
+    errors = client.get(f'/api/v1/jobs/{identifier}/logs?level=error').json()['items']
+    assert any(row['details'].get('code') == 'ATTEMPT_LIMIT' for row in errors)
+    with db.transaction() as session:
+        assert session.scalar(select(TaskLog).where(TaskLog.job_id == identifier,
+            TaskLog.details['status'].as_string() == 'failed')).level == 'error'
+
+
+def test_historical_info_failures_filter_and_download_consistently_without_rewrite(database, client):
+    from packages.domain.models import TaskLog
+    db, _ = database
+    with db.transaction() as session:
+        identifier = enqueue(session, 'translate', {}).id
+        session.add(TaskLog(job_id=identifier, event_key='historical-failure', at=now(),
+            level='info', stage='translate', operation='finished', message='执行结束',
+            details={'kind': 'Job', 'status': 'failed', 'code': 'ATTEMPT_LIMIT'}))
+    errors = client.get(f'/api/v1/jobs/{identifier}/logs?level=error&limit=1').json()['items']
+    assert len(errors) == 1 and errors[0]['level'] == 'error'
+    info = client.get(f'/api/v1/jobs/{identifier}/logs?level=info').json()['items']
+    assert not any(row['details'].get('status') == 'failed' for row in info)
+    exported = [json.loads(line) for line in client.get(f'/api/v1/jobs/{identifier}/logs/download').text.splitlines()]
+    assert next(row for row in exported if row['details'].get('status') == 'failed')['level'] == 'error'
+    with db.transaction() as session:
+        assert session.scalar(select(TaskLog).where(TaskLog.job_id == identifier,
+            TaskLog.event_key == 'historical-failure')).level == 'info'

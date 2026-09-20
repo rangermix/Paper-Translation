@@ -24,6 +24,9 @@ also correct one misrecognized word; conflicting evidence stays visible.
 Native evidence also repairs unambiguous same-column ordering and split
 references. Reference numbers and author characters are corrected only when
 complete native lines and the unchanged citation body identify the same entry.
+An unknown native glyph can be reconciled only when its embedded font encoding
+and an independent extraction agree at the same position; genuine question marks
+and ambiguous mappings stay unchanged.
 
 Translation requires a complete saved profile, content/destination confirmation,
 enabled dispatch and a budget when cost control is enabled. Confirmations bind the
@@ -53,7 +56,12 @@ Numeric and math-only table cells, model identifiers and isolated identifier
 subcaptions are retained once. Known full names from confirmed author/affiliation
 metadata stay literal inside translated prose. Complete numeric and author-year
 citations, including their original brackets/separators, and delimited inline TeX
-are protected before translation. Local translation requests contain only their
+are protected before translation. Short unambiguous numeric citations remain
+visible to local translation models; equivalent output typography restores their
+exact source spelling, while missing or changed numbers remain quality findings.
+Distinctive system identifiers explicitly named before a title colon remain
+literal in table cells, while surrounding header prose stays translatable.
+Local translation requests contain only their
 source unit and translation instructions, so neighbouring paragraphs cannot be
 translated in place of the requested text. Explicit numeric scales
 use exact target formatting for Chinese (for example, `8.3 billion` becomes

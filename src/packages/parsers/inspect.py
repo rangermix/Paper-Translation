@@ -65,6 +65,7 @@ def inspect_pdf(path, limits=None):
                 report_progress('page_started', page=index + 1, phase='inspection')
                 page = pdf[index]
                 try:
+                    source_page = reader.pages[index]
                     width,height = page.get_size()
                     if not all(math.isfinite(x) and 0 < x <= limits['max_page_points'] for x in (width,height)):
                         raise PDFError('PDF_RESOURCE_LIMIT','Invalid/oversized page geometry')
@@ -82,7 +83,15 @@ def inspect_pdf(path, limits=None):
                             if not cp:continue
                             if cp>0x10ffff or 0xd800<=cp<=0xdfff:cp=0xfffd
                             cl,cb,cr,ct=textpage.get_charbox(char_index)
-                            native_characters.append({'index':char_index,'bbox':pdf_box_to_display(page,(cl,cb,cr,ct)),'text':chr(cp)})
+                            character={'index':char_index,'bbox':pdf_box_to_display(page,(cl,cb,cr,ct)),'text':chr(cp)}
+                            if cp == ord('?'):
+                                x,y=ctypes.c_double(),ctypes.c_double();flags=ctypes.c_int()
+                                length=pdfium.raw.FPDFText_GetFontInfo(textpage,char_index,None,0,ctypes.byref(flags))
+                                if 0 < length <= 1024 and pdfium.raw.FPDFText_GetCharOrigin(textpage,char_index,ctypes.byref(x),ctypes.byref(y)):
+                                    font=ctypes.create_string_buffer(length)
+                                    pdfium.raw.FPDFText_GetFontInfo(textpage,char_index,font,length,ctypes.byref(flags))
+                                    character.update(font=font.value.decode('utf-8',errors='replace'),origin=[x.value,y.value])
+                            native_characters.append(character)
                         # PDFium rectangle grouping provides native text coverage independently of Docling.
                         rect_count = textpage.count_rects()
                         for rect_index in range(rect_count):
@@ -91,11 +100,11 @@ def inspect_pdf(path, limits=None):
                             if clipped[0] > clipped[2] or clipped[1] > clipped[3]:
                                 continue
                             rectangles.append(clipped)
-                        from .glyphs import native_regions
-                        regions,glyph_reconciliations=native_regions(native_characters,rectangles)
+                        from .glyphs import embedded_symbol_evidence, native_regions
+                        symbols=embedded_symbol_evidence(source_page) if any(g.get('font') for g in native_characters) else []
+                        regions,glyph_reconciliations=native_regions(native_characters,rectangles,symbol_evidence=symbols)
                     finally:
                         textpage.close()
-                    source_page = reader.pages[index]
                     image_areas, image_regions, graphic_regions = [], [], []
                     objects=list(page.get_objects())
                     # PDFium 153 reports un-clipped form content bounds. The

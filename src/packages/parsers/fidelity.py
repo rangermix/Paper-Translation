@@ -272,7 +272,8 @@ def reconcile_items(original,pages):
         for p in item.get('prov',[]):
             b=box(p,pages);regions=pages[p['page_no']-1].get('text_regions',[])
             chunks.append(region_text([r for r in regions if overlap(r['bbox'],b)>=.8]))
-            proven_accents|=any(overlap(a['base']['bbox'],b)>=.8 for a in pages[p['page_no']-1].get('glyph_reconciliations',[]))
+            proven_accents|=any(a.get('action')=='native_latin_accent_composition' and overlap(a['base']['bbox'],b)>=.8
+                               for a in pages[p['page_no']-1].get('glyph_reconciliations',[]))
         before=item.get('orig',item.get('text','')) or '';native=' '.join(chunks)
         fixed=recover_native_text(before,native,proven_accents=proven_accents)
         if fixed and fixed!=before:

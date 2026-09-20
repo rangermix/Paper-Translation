@@ -8,7 +8,40 @@ from packages.ir import canonical_bytes, strict_loads
 from packages.local_models.catalog import ENDPOINT, get_model
 from .contract import ProviderFailure, normalize_request_id
 
-REQUEST_FORMAT_VERSION = 'local-translation-v3'
+REQUEST_FORMAT_VERSION = 'local-translation-v4'
+
+_NUMERIC_CITATION = re.compile(
+    r'[\[［【]\s*[0-9]+[a-z]?(?:\s*[,，、;；\-–—−]\s*[0-9]+[a-z]?)*\s*[\]］】]')
+_CITATION_BRACKETS = {'[': ']', '［': '］', '【': '】'}
+_CITATION_SEPARATORS = str.maketrans('，、；–—−', ',,;---')
+
+
+def _citation_signature(value):
+    """Ignore typography only; keep digit order and list/range semantics."""
+    if not _NUMERIC_CITATION.fullmatch(value) or _CITATION_BRACKETS[value[0]] != value[-1]:
+        return None
+    return re.sub(r'\s+', '', value[1:-1]).translate(_CITATION_SEPARATORS)
+
+
+def _literal_citations(unit, refs, literal):
+    # Literal transport gives the translation model the meaning of a citation.
+    # An ambiguous spelling stays opaque so restoration cannot pick another ref
+    # or replace text that was never a protected citation.
+    text_signatures = {_citation_signature(m[0]) for m in _NUMERIC_CITATION.finditer(literal)}
+    owners = {}
+    candidates = {}
+    for ref in refs:
+        atom = unit['protected_atoms'][ref]
+        value = atom['value']
+        for match in _NUMERIC_CITATION.finditer(value):
+            signature = _citation_signature(match[0])
+            if signature is not None:
+                owners.setdefault(signature, set()).add(ref)
+        signature = _citation_signature(value)
+        if atom['kind'] == 'citation' and len(value) <= 64 and signature is not None:
+            candidates[ref] = (value, signature)
+    return {ref: value for ref, (value, signature) in candidates.items()
+            if signature not in text_signatures and owners[signature] == {ref}}
 
 LANGUAGES = dict(zip(
     'ar az bg bn ca cs da de el en es fa fi fr he hi hr hu id it ja kk km ko lo ms my no nl pl pt ro ru sk sl sv ta th tl tr ur uz vi yue'.split(),
@@ -32,13 +65,15 @@ def language_name(locale):
 def source_text(unit):
     refs = list(dict.fromkeys(n['ref'] for n in unit['source_inline'] if n['type'] == 'protected_ref'))
     literal = ''.join(n['text'] for n in unit['source_inline'] if n['type'] == 'text')
+    citations = _literal_citations(unit, refs, literal)
     namespace = 0
     while True:
         prefix = 'PT' if namespace == 0 else f'PT{namespace}_'
-        markers = {ref: '{{' + prefix + str(i) + '}}' for i, ref in enumerate(refs)}
+        markers = {ref: '{{' + prefix + str(i) + '}}' for i, ref in enumerate(refs) if ref not in citations}
         if not any(marker in literal or marker[:-1] in literal for marker in markers.values()):
             break
         namespace += 1
+    markers.update(citations)
     text = ''.join(n['text'] if n['type'] == 'text' else markers[n['ref']] for n in unit['source_inline'])
     return text, {marker: ref for ref, marker in markers.items()}
 
@@ -52,7 +87,10 @@ def request_body(units, profile, glossary, *, review=False):
     unit = units[0]
     source, markers = source_text(unit)
     origin, target = language_name(unit['source_language']), language_name(unit['target_locale'])
-    keep_markers = ('Preserve every ' + next(iter(markers)) + '-style variable exactly, including repetitions. ') if markers else ''
+    opaque_markers = [marker for marker in markers if _citation_signature(marker) is None]
+    keep_markers = ('Preserve every ' + opaque_markers[0] + '-style variable exactly, including repetitions. ') if opaque_markers else ''
+    if len(opaque_markers) != len(markers):
+        keep_markers += 'Copy every numeric citation exactly, including brackets, separators, and repetitions. '
     terms = 'Use these translation terms: ' + canonical_bytes(glossary).decode() + '\n' if glossary else ''
     if model['family'] == 'milmmt':
         prompt = keep_markers + terms + f'Translate this from {origin} to {target}:\n{origin}: {source}\n{target}:'
@@ -77,13 +115,27 @@ def target_inline(text, unit):
     _, markers = source_text(unit)
     if not markers:
         return [{'type': 'text', 'text': text}]
+    opaque_markers = {marker: ref for marker, ref in markers.items() if _citation_signature(marker) is None}
+    citations = {_citation_signature(marker): ref for marker, ref in markers.items() if marker not in opaque_markers}
     # A missing final brace leaves an unambiguous known variable identity.
     # Restore only that exact spelling; unknown IDs remain visible to QA.
-    for marker in markers:
+    for marker in opaque_markers:
         text = re.sub(re.escape(marker[:-1]) + r'(?!\})', lambda _: marker, text)
-    parts = re.split('(' + '|'.join(re.escape(m) for m in markers) + ')', text)
-    return [{'type': 'protected_ref', 'ref': markers[p]} if p in markers else {'type': 'text', 'text': p}
-            for p in parts if p]
+    patterns = [re.escape(marker) for marker in opaque_markers]
+    if citations:
+        patterns.append(_NUMERIC_CITATION.pattern)
+    nodes, start = [], 0
+    for match in re.finditer('|'.join(patterns), text):
+        ref = opaque_markers.get(match[0]) or citations.get(_citation_signature(match[0]))
+        if ref is None:
+            continue
+        if match.start() > start:
+            nodes.append({'type': 'text', 'text': text[start:match.start()]})
+        nodes.append({'type': 'protected_ref', 'ref': ref})
+        start = match.end()
+    if start < len(text):
+        nodes.append({'type': 'text', 'text': text[start:]})
+    return nodes
 
 
 class LocalTranslation:

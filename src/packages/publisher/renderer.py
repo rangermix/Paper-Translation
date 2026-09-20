@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-4.0.0'
+RENDERER_VERSION = 'reader-python-5.0.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -55,7 +55,7 @@ def inline(nodes, atoms, *, typeset=False):
     return ''.join(out)
 
 
-def render_toc(source, blocks):
+def render_toc(source, blocks, *, original_labels=False):
     tree, stack = [], []
     for bid in source['reading_order']:
         block = blocks[bid]
@@ -69,9 +69,11 @@ def render_toc(source, blocks):
     def render(nodes):
         if not nodes:
             return ''
-        return '<ol>' + ''.join('<li><a href="#b-' + esc(node['id']) + '">' + esc(node['label']) + '</a>'
-            + render(node['children']) + '</li>' for node in nodes) + '</ol>'
-    return render(tree)
+        tag = 'ul' if original_labels else 'ol'
+        return f'<{tag}>' + ''.join('<li><a href="#b-' + esc(node['id']) + '">' + esc(node['label']) + '</a>'
+            + render(node['children']) + '</li>' for node in nodes) + f'</{tag}>'
+    rendered = render(tree)
+    return '<nav class="toc-sections" aria-label="原文章节">' + rendered + '</nav>' if original_labels else rendered
 
 
 def render_html(ir, asset_paths, *, include_source=False):
@@ -80,7 +82,8 @@ def render_html(ir, asset_paths, *, include_source=False):
     blocks = {b['id']:b for b in source['blocks']}
     results = {r['block_id']:r for r in tr['results']}
     atoms = source['protected_atoms']
-    enhanced = ir['render']['template_id'] == 'reader-v4'
+    margins = ir['render']['template_id'] == 'reader-v5'
+    enhanced = margins or ir['render']['template_id'] == 'reader-v4'
     modern = enhanced or ir['render']['template_id'] == 'reader-v3'
     from packages.ir.retention import original_only_blocks
     retained = original_only_blocks(source) if enhanced else {}
@@ -129,13 +132,21 @@ def render_html(ir, asset_paths, *, include_source=False):
         if block['kind'] == 'table_cell' and not block['normalized_text'].strip():
             return ''  # The table-level original supplies comparison for empty cells.
         notes = block['warnings'] + results[block['id']]['warnings']
-        if enhanced and block['kind'] == 'table':
+        if enhanced and (block['kind'] == 'table' or margins and block['kind'] == 'figure'):
             notes = list(dict.fromkeys(notes + [note for child in blocks.values() if child['owner_id'] == block['id']
                 for note in child['warnings'] + results[child['id']]['warnings']]))
         rendered = ''.join(f'<p class="note">{esc(note)}</p>' for note in notes)
         if modern and notes:
             rendered = f'<details class="block-notes"><summary>{len(notes)} 项内容提示</summary>{rendered}</details>'
         return rendered + (comparison(block) if include_comparison else '')
+    def margin_notes(content):
+        return '<aside class="reader-notes" aria-label="内容提示与原文对照">' + content + '</aside>' if content else ''
+    def frame(block, content, *, tag='section', css='pair', notes=None):
+        attrs = f'id="b-{esc(block["id"])}" data-block-id="{esc(block["id"])}" data-kind="{block["kind"]}"'
+        notes = warnings(block) if notes is None else notes
+        if margins:
+            return f'<div class="reader-block"><{tag} class="{css}" {attrs}>{content}</{tag}>' + margin_notes(notes) + '</div>'
+        return f'<{tag} class="{css}" {attrs}>{content}{notes}</{tag}>'
     def render(bid):
         block = blocks[bid]; kind = block['kind']; a = block['attributes']
         attrs = f'id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="{kind}"'
@@ -143,13 +154,13 @@ def render_html(ir, asset_paths, *, include_source=False):
             level = max(2,min(6,a['level']))
             result = results[bid]
             if result['status'] == 'retained':
-                return f'<section class="section-heading" {attrs}><h{level}><span class="en-title" data-original-only="{esc(result["reason"])}" lang="{esc(block["language"])}">{inline(block["source_inline"],atoms)}</span></h{level}>{warnings(block)}</section>'
+                return frame(block, f'<h{level}><span class="en-title" data-original-only="{esc(result["reason"])}" lang="{esc(block["language"])}">{inline(block["source_inline"],atoms)}</span></h{level}>', css='section-heading')
             target = inline(result['target_inline'],atoms) if result['status'] == 'translated' else ''
             if result['status'] == 'fallback':
                 target = inline(block['source_inline'],atoms) + '<small class="fallback-label">（原文，暂无译文）</small>'
-            return f'<section class="section-heading" {attrs}><h{level}><span class="en-title" data-language="source">{inline(block["source_inline"],atoms)}</span><span class="zh-title" data-language="target">{target}</span></h{level}>{warnings(block)}</section>'
+            return frame(block, f'<h{level}><span class="en-title" data-language="source">{inline(block["source_inline"],atoms)}</span><span class="zh-title" data-language="target">{target}</span></h{level}>', css='section-heading')
         if kind in {'figure','table'}:
-            captions = ''.join(f'<div class="pair" id="b-{esc(cid)}" data-block-id="{esc(cid)}" data-kind="caption">{pair(blocks[cid])}{warnings(blocks[cid],include_comparison=not enhanced)}</div>' for cid in a.get('caption_block_ids',[]))
+            captions = ''.join(f'<div class="pair" id="b-{esc(cid)}" data-block-id="{esc(cid)}" data-kind="caption">{pair(blocks[cid])}{"" if margins else warnings(blocks[cid],include_comparison=not enhanced)}</div>' for cid in a.get('caption_block_ids',[]))
             if kind == 'figure' or a['representation'] == 'image':
                 inner = original_image(block, a['asset_id'], alternative=a.get('comparison_asset_id'),figure=True)
             else:
@@ -169,15 +180,20 @@ def render_html(ir, asset_paths, *, include_source=False):
                     inner = '<p class="table-key">原文在上 · 译文在下 · 数值保留原文</p>' + inner
                 if a.get('asset_id') and not enhanced:
                     inner += '<details><summary>查看原 PDF 表格</summary>' + original_image(block, a['asset_id'], alternative=a.get('comparison_asset_id')) + '</details>'
-            return f'<figure class="pair" {attrs}>{inner}<figcaption>{captions}</figcaption>{warnings(block)}</figure>'
+            return frame(block, f'{inner}<figcaption>{captions}</figcaption>', tag='figure')
         if kind in {'code','math'}:
+            auxiliary = ''
             if enhanced and kind == 'math' and a.get('representation') == 'latex':
                 number = f'<span class="equation-number">{esc(a["equation_number"])}</span>' if a.get('equation_number') else ''
-                return f'<section class="pair" {attrs}><div class="equation-row">{math_markup(block["normalized_text"],display=True)}{number}</div>{warnings(block)}</section>'
+                return frame(block, f'<div class="equation-row">{math_markup(block["normalized_text"],display=True)}{number}</div>')
             if modern and (a.get('asset_id') or a.get('comparison_asset_id')):
                 inner = original_image(block,a.get('asset_id'),alternative=a.get('comparison_asset_id'))
                 if block['normalized_text']:
-                    inner += f'<details><summary>识别文字（仅供辅助对照）</summary><pre><code>{esc(block["normalized_text"])}</code></pre></details>'
+                    recognized = f'<details><summary>识别文字（仅供辅助对照）</summary><pre><code>{esc(block["normalized_text"])}</code></pre></details>'
+                    if margins:
+                        auxiliary = recognized
+                    else:
+                        inner += recognized
             elif a.get('representation') == 'image':
                 inner = original_image(block, a['asset_id'])
             else:
@@ -185,7 +201,7 @@ def render_html(ir, asset_paths, *, include_source=False):
             if not modern and a.get('recognition') and a.get('asset_id'):
                 inner += '<details><summary>查看原PDF裁图</summary>' + original_image(block, a['asset_id']) + '</details>'
             note = '<p class="meta">本地识别的 LaTeX 表示。</p>' if kind == 'math' and a.get('recognition') else '<p class="meta">保留原式，未推测或重写数学表示。</p>' if kind == 'math' else ''
-            return f'<section class="pair" {attrs}><div class="para en">{inner}{note}</div>{warnings(block)}</section>'
+            return frame(block, f'<div class="para en">{inner}{note}</div>', notes=warnings(block) + auxiliary if margins else None)
         backlinks = ''
         if kind == 'footnote':
             origins = [b['id'] for b in blocks.values() if any(n['type']=='xref' and n['target_block_id']==bid for n in b['source_inline'])]
@@ -194,11 +210,36 @@ def render_html(ir, asset_paths, *, include_source=False):
             tag = 'ol' if a['list_ordered'] else 'ul'
             start = f' start="{max(1,a.get("list_index",1))}"' if tag == 'ol' else ''
             return f'<{tag}{start}><li class="pair" {attrs}>{pair(block)}{warnings(block)}</li></{tag}>'
-        return f'<section class="pair" {attrs}>{pair(block)}{backlinks}{warnings(block)}</section>'
+        return frame(block, pair(block) + backlinks)
     title = source['title_block_id']
-    toc = render_toc(source, blocks)
+    toc = render_toc(source, blocks, original_labels=margins)
+    metadata = []
+    if margins:
+        for bid in source['reading_order'][source['reading_order'].index(title) + 1:]:
+            reason = retained.get(bid) or (results[bid]['reason'] if results[bid]['status'] == 'retained' else '')
+            if reason not in {'original_author_list', 'original_affiliation', 'original_contact', 'original_identifier'}:
+                break
+            metadata.append(bid)
+    title_metadata = '<div class="title-metadata">' + ''.join(
+        f'<div id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="{blocks[bid]["kind"]}" data-original-only="{esc(retained.get(bid) or results[bid]["reason"])}" lang="{esc(blocks[bid]["language"])}">{rich(blocks[bid]["source_inline"])}</div>'
+        for bid in metadata) + '</div>' if metadata else ''
     if enhanced:
-        sections, bibliography = [], []
+        sections, bibliography, list_items = [], [], []
+        def list_entry(bid):
+            block = blocks[bid]
+            marker = r'^\s*(?:(?:\d+|[A-Za-z])[.)]|\(\d+\))\s+' if block['attributes']['list_ordered'] else r'^\s*[-*•·▪]\s+'
+            cls = ' class="list-literal-marker"' if re.match(marker, block['normalized_text']) else ''
+            return f'<li{cls} id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="list_item">{pair(block)}</li>'
+        def flush_list():
+            if not list_items:
+                return
+            first = blocks[list_items[0]]
+            tag = 'ol' if first['attributes']['list_ordered'] else 'ul'
+            start = f' start="{max(1, first["attributes"].get("list_index", 1))}"' if tag == 'ol' else ''
+            items = ''.join(list_entry(bid) for bid in list_items)
+            notes = ''.join(dict.fromkeys(warnings(blocks[bid]) for bid in list_items))
+            sections.append(f'<div class="reader-block"><section class="pair reader-list"><{tag}{start}>{items}</{tag}></section>' + margin_notes(notes) + '</div>')
+            list_items.clear()
         def flush_references():
             if not bibliography:
                 return
@@ -211,17 +252,31 @@ def render_html(ir, asset_paths, *, include_source=False):
                     comparisons.setdefault(aid, block)
             proof = ''.join(original_image(block, aid) for aid,block in comparisons.items())
             details = '<details class="original-comparison"><summary>查看参考文献原页</summary>' + proof + '</details>' if proof else ''
-            sections.append('<section class="bibliography" aria-label="参考文献">' + entries + details + '</section>')
+            content = '<section class="bibliography" aria-label="参考文献">' + entries + ('' if margins else details) + '</section>'
+            sections.append('<div class="reader-block">' + content + margin_notes(details) + '</div>' if margins else content)
             bibliography.clear()
         for bid in source['reading_order']:
-            if bid == title:
+            if bid == title or bid in metadata:
                 continue
             if retained.get(bid) == 'original_reference':
+                flush_list()
                 bibliography.append(bid)
             else:
                 flush_references()
-                sections.append(render(bid))
+                block = blocks[bid]
+                if margins and block['kind'] == 'list_item':
+                    previous = blocks[list_items[-1]] if list_items else None
+                    if previous and (previous['parent_id'] != block['parent_id']
+                            or previous['attributes']['list_ordered'] != block['attributes']['list_ordered']
+                            or block['attributes'].get('list_ordered') and 'list_index' in block['attributes']
+                            and block['attributes']['list_index'] != previous['attributes'].get('list_index', 1) + 1):
+                        flush_list()
+                    list_items.append(bid)
+                else:
+                    flush_list()
+                    sections.append(render(bid))
         flush_references()
+        flush_list()
         body = ''.join(sections)
     else:
         body = ''.join(render(bid) for bid in source['reading_order'] if bid != title)
@@ -248,13 +303,17 @@ def render_html(ir, asset_paths, *, include_source=False):
             panel += '<div class="issue-filters"><label>重要性<select data-issue-filter="severity"><option value="">全部</option><option value="important">重要</option><option value="general">一般</option></select></label><label>页码<select data-issue-filter="page"><option value="">全部页</option>'+options(str(x[1]) for x in findings if x[1])+'</select></label><label>类型<select data-issue-filter="category"><option value="">全部类型</option>'+options(x[3] for x in findings)+'</select></label></div><ul>'+items+'</ul><p data-issue-empty hidden>此筛选下没有提示。</p>'
         else: panel += '<p>未发现需要提示的内容差异。</p>'
         panel += '</section>'
+    title_notes = ''
+    if margins:
+        overview = '<details class="reader-guide"><summary>内容提示' + (f' · {len(findings)} 块' if findings else '') + '</summary>' + panel + '</details>'
+        title_notes = margin_notes(overview + warnings(blocks[title]) + ''.join(warnings(blocks[bid]) for bid in metadata))
     return ('<!doctype html>\n<html lang="'+esc(tr['target_language'])+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' data:; style-src \'self\' \'unsafe-inline\'; script-src \'self\'; connect-src \'none\'; base-uri \'none\'; form-action \'none\'; object-src \'none\'">'
             '<title>'+esc(display_title)+'</title><link rel="stylesheet" href="reader.css">'+('<script src="math.js" defer></script>' if enhanced else '')+'<script src="reader.js" defer></script></head><body style="overflow-wrap:anywhere">'
-            '<nav class="toolbar" aria-label="阅读设置"><button data-action="both" data-view aria-pressed="true">双语</button><button data-action="source" data-view aria-pressed="false">原文</button><button data-action="target" data-view aria-pressed="false">译文</button><button data-action="smaller" aria-label="减小字号">A−</button><button data-action="larger" aria-label="增大字号">A＋</button><button data-action="theme">切换主题</button>'+original+'</nav>'
+            '<nav class="toolbar" aria-label="阅读设置"><button data-action="both" data-view aria-pressed="true">双语</button><button data-action="source" data-view aria-pressed="false">原文</button><button data-action="target" data-view aria-pressed="false">译文</button><button data-action="smaller" aria-label="减小字号">A−</button><button data-action="larger" aria-label="增大字号">A＋</button><button data-action="theme">切换主题</button>'+original+'</nav>'+('<div class="reader-header">' if margins else '')+
             '<header class="hero" id="b-'+esc(title)+'" data-block-id="'+esc(title)+'" data-kind="heading"><div class="kicker">对照文库 · '+esc(language_name(source['language']))+' / '+esc(language_name(tr['target_language']))+'</div>'
-            '<h1 data-language="target">'+esc(display_title)+'</h1><p class="original-title" data-language="source">'+esc(ir['document']['title'])+'</p><p class="note">'+esc(ir['document']['notice'])+'</p>'+draft_notice+warnings(blocks[title])+'</header>'
-            '<p id="reader-storage-notice" class="note" hidden>浏览器存储不可用；正文仍可完整阅读。</p><div class="layout"><aside class="toc" aria-label="文章目录"><h2>目录</h2>'+toc+panel+'</aside><article>'+body+'</article></div></body></html>\n').encode('utf-8')
+            '<h1 data-language="target">'+esc(display_title)+'</h1><p class="original-title" data-language="source">'+esc(ir['document']['title'])+'</p>'+title_metadata+'<p class="note">'+esc(ir['document']['notice'])+'</p>'+draft_notice+('' if margins else warnings(blocks[title]))+'</header>'+(title_notes+'</div>' if margins else '')+
+            '<p id="reader-storage-notice" class="note" hidden>浏览器存储不可用；正文仍可完整阅读。</p><div class="layout"><aside class="toc" aria-label="文章目录"><h2>目录</h2>'+toc+('' if margins else panel)+'</aside><article>'+body+'</article></div></body></html>\n').encode('utf-8')
 
 
 class Publisher:

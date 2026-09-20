@@ -17,6 +17,10 @@ or footnote when the original glyphs support both ends. Complete sentences and
 intervening headings remain separate. Same-baseline equation numbers and nearby
 subfigure labels stay with their equations/figures. These repairs retain the PDF
 locators and before/after audit; they affect new source revisions only.
+Native margin evidence excludes folios and arXiv stamps. Sequential numbered
+items with hanging indents form lists, and native table rows distinguish actual
+line breaks from literal code escapes. A narrowly matched native paragraph can
+also correct one misrecognized word; conflicting evidence stays visible.
 
 Translation requires a complete saved profile, content/destination confirmation,
 enabled dispatch and a budget when cost control is enabled. Confirmations bind the
@@ -42,15 +46,23 @@ source-only and target-only readers and exports. The detector does not rewrite
 source text or retroactively change existing sealed translations/publications.
 Retained content is neither a translation failure nor a human-review claim.
 
-Pure numeric table cells are also retained once. Complete author-year citations
-and delimited inline TeX are protected before translation. Explicit numeric scales
+Numeric and math-only table cells, model identifiers and isolated identifier
+subcaptions are retained once. Known full names from confirmed author/affiliation
+metadata stay literal inside translated prose. Complete numeric and author-year
+citations, including their original brackets/separators, and delimited inline TeX
+are protected before translation. Local translation requests contain only their
+source unit and translation instructions, so neighbouring paragraphs cannot be
+translated in place of the requested text. Explicit numeric scales
 use exact target formatting for Chinese (for example, `8.3 billion` becomes
 `83亿`); source text and quantity values remain unchanged. Abbreviated `M`/`B`
 scales require parameter/model context, so byte units and identifiers are not
 treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
-New publications use `reader-v4`: figures fill the reading column within the
+New publications use `reader-v5`: the TOC uses the original section labels,
+author/affiliation lines share the title area, and adjacent list items share a
+block. On wide screens, content hints and original-page comparisons open beside
+the reading column; compact screens keep them inline. Figures fill the column within the
 viewport height, tables stack source and target text in compact cells with one
 original-table comparison, and contiguous reference entries share one bibliography
 block while retaining their individual anchors. Inline and display TeX use bundled

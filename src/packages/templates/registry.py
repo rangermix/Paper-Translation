@@ -32,10 +32,14 @@ def list_templates():
             {'source': 'res/vendor/katex-0.18.7/katex.min.js', 'path': 'math.js', 'media_type': 'text/javascript', 'sha256': '10a91b479cd927446ceb60409fb0d72b5d0d05eaf446c9e52fafd64058c84540'},
             {'source': 'res/vendor/katex-0.18.7/LICENSE', 'path': 'math-LICENSE.txt', 'media_type': 'text/plain', 'sha256': '766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3'},
         ]}
-    for entry in (v1, v2, v3, v4):
+    v5 = {**v4, 'id': 'reader-v5', 'version': '5', 'css_path': 'src/packages/templates/reader-v5.css',
+        'js_path': 'src/packages/templates/reader-v5.js',
+        'css_sha256': 'ff43a09d9badb0c1cc3ac420c32dd3b4bde1eadadf34fc8ed9cbdb2a5de226e9',
+        'js_sha256': '031cd44b8752e056a543470a7379c720f769f6d7071d45fdf271bab61f623b1a'}
+    for entry in (v1, v2, v3, v4, v5):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4]
+    return [v1, v2, v3, v4, v5]
 
 
 def get_template(template_id):

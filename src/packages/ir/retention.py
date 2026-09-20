@@ -37,6 +37,8 @@ _PROSE = re.compile(
 _BODY_LABEL = re.compile(r'(?:^|\n)\s*(?:abstract|summary|keywords?|introduction|acknowledg(?:e)?ments|摘要|关键词|關鍵詞)\b', re.I)
 _CONNECTORS = {'of', 'the', 'for', 'and', 'in', 'at', 'de', 'des', 'del', 'der', 'für', 'y', 'et', 'du', 'la', 'di', 'da', 'do', 'dos', 'und'}
 _COMPANY = re.compile(r'\b(?:research|labs?|ai|deepmind|openai|inc|ltd|llc|corp)\b', re.I)
+_TEX_AFFILIATION_MARKER = re.compile(
+    r'\$\s*\^\s*\{(?:\\(?:dagger|ddagger|ast|star)\b|[\d\s,*†‡§¶✉])+\}\s*\$')
 
 
 def _text(block):
@@ -72,7 +74,10 @@ def _identifier_reason(text):
 
 
 def _affiliation(text, *, after_author=False):
-    if len(text) > 500 or _PROSE.search(text) or _BODY_LABEL.search(text) or re.search('[。！？]', text):
+    if len(text) > 500:
+        return False
+    text = _TEX_AFFILIATION_MARKER.sub(' ', text)
+    if _PROSE.search(text) or _BODY_LABEL.search(text) or re.search('[。！？]', text):
         return False
     if re.match(r'^(?:affiliations?|institutions?|organizations?|organisations?|作者单位|作者單位)\s*[:：]\s*\S', text, re.I):
         return True
@@ -90,6 +95,9 @@ def _name_count(text):
         return 0
     explicit = bool(_AUTHOR_LABEL.match(text))
     text = _AUTHOR_LABEL.sub('', text)
+    # Superscript affiliation markers also delimit names in a typeset byline.
+    # Restrict this to marker syntax; ordinary mathematical text is not a name.
+    text = _TEX_AFFILIATION_MARKER.sub(';', text)
     text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*†‡§¶✉]', '', text)
     names = [part.strip() for part in re.split(r'\s+(?:and|und|et|y)\s+|[,;，；、&\n]', text) if part.strip()]
     for name in names:
@@ -103,6 +111,24 @@ def _name_count(text):
             if not letters.isalpha() or not (explicit or letters[0].isupper() or word in {'de', 'del', 'van', 'von', 'der', 'da', 'dos', 'di', 'la'}):
                 return 0
     return max(len(names), 2) if explicit and names else len(names)
+
+
+def _table_cell_reason(block, text, atoms):
+    if re.search(r'\d', text) and (re.fullmatch(r'[\d\s.,+−\-±%‰()/×÷<>≤≥=]+(?:[eE][+\-]?\d+)?', text)
+            or re.fullmatch(r'\d+\s*\([A-Z]\)', text)):
+        return 'original_numeric_cell'
+    nodes = block.get('source_inline', [])
+    if (any(node['type'] == 'protected_ref' for node in nodes)
+            and all(node['type'] == 'text' and not node['text'].strip()
+                or node['type'] == 'protected_ref' and atoms.get(node['ref'], {}).get('kind') == 'math'
+                for node in nodes)):
+        return 'original_math_cell'
+    # Single alphanumeric identifiers such as VGG16 and Inception-v3 carry no
+    # translatable prose. Whitespace, units and descriptions remain eligible.
+    if (len(text) <= 80 and re.search(r'\d', text)
+            and re.fullmatch(r'[A-Za-z][A-Za-z0-9]*(?:[-_.][A-Za-z0-9]+)*', text)):
+        return 'original_identifier_cell'
+    return None
 
 
 def original_only_blocks(source):
@@ -126,9 +152,11 @@ def original_only_blocks(source):
             front = True
             bibliography = False
             continue
-        if kind == 'table_cell' and re.search(r'\d', text) and re.fullmatch(r'[\d\s.,+−\-±%‰()/×÷<>≤≥=]+(?:[eE][+\-]?\d+)?', text):
-            reasons[bid] = 'original_numeric_cell'
-            continue
+        if kind == 'table_cell':
+            cell_reason = _table_cell_reason(block, text, source.get('protected_atoms', {}))
+            if cell_reason:
+                reasons[bid] = cell_reason
+                continue
         root = block.get('owner_id') is None
         if root and kind in {'heading', 'paragraph'} and _heading_label(text) in REFERENCE_HEADINGS:
             reasons[bid] = 'original_bibliography_heading'
@@ -165,7 +193,7 @@ def original_only_blocks(source):
         adjacent_metadata = (following is not None and following['kind'] in TEXT_KINDS
             and following.get('owner_id') is None and (_affiliation(_text(following), after_author=True)
                 or _identifier_reason(_text(following))))
-        author_markers = bool(re.search(r'[\w][\d*†‡§¶]', text))
+        author_markers = bool(re.search(r'[\w][\d*†‡§¶]', text) or _TEX_AFFILIATION_MARKER.search(text))
         if names and (adjacent_metadata or after_author or _AUTHOR_LABEL.match(text) or author_markers):
             reasons[bid] = 'original_author_list'
             after_author = True

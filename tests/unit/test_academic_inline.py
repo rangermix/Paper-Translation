@@ -34,6 +34,25 @@ def test_narrative_citation_is_preserved_but_ordinary_parentheses_are_prose():
     assert not any(a['kind']=='citation' and 'studied' in a['value'] for a in atoms)
 
 
+@pytest.mark.parametrize('citation', ['[16, 17, 21, 22, 44]', '[10, 25, 7]', '[36]', '[1–3, 7]', '[2-4; 9]'])
+def test_numeric_citations_keep_the_entire_original_bracket_and_separator_format(citation):
+    from packages.providers.local_translation import source_text, target_inline
+    src, block = parsed(f'Prior work {citation} supports the result.')
+    unit = plan_units(src, 'zh-Hans', profile(), [block['id']])[0]
+    atoms = list(unit['protected_atoms'].values())
+    assert atoms == [{'kind': 'citation', 'value': citation}]
+    _, markers = source_text(unit)
+    translated = target_inline('此前的研究' + next(iter(markers)) + '支持这一结果。', unit)
+    assert flatten_inline(restore_inline(unit, translated), src['protected_atoms']) == f'此前的研究{citation}支持这一结果。'
+    assert flatten_inline(block['source_inline'], src['protected_atoms']) == block['normalized_text']
+
+
+def test_bracketed_prose_is_not_mistaken_for_a_numeric_citation():
+    src, block = parsed('Keep [see 16 and 17] readable and translate [a short note].')
+    assert not any(src['protected_atoms'][n['ref']]['kind'] == 'citation'
+                   for n in block['source_inline'] if n['type'] == 'protected_ref')
+
+
 @pytest.mark.parametrize('original,target', [('8.3 billion','83亿'),('3.9B','39亿'),('355M','3.55亿'),('1.2 billion','12亿')])
 def test_chinese_quantities_restore_exact_values_without_mutating_source(original,target):
     src,block=parsed(f'A model with {original} parameters.')

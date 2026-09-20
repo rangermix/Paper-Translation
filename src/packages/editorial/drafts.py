@@ -15,11 +15,12 @@ from packages.storage import read_snapshot, write_snapshot
 from packages.editorial.numbers import compare_numbers
 
 
-RULE_VERSION = 'quality-v6-academic-quantities'
+RULE_VERSION = 'quality-v7-translation-scripts'
 QUALITY_MESSAGES = {
     'MISSING_TRANSLATION': '此段暂无译文，保留原文供阅读。',
     'TARGET_UNAVAILABLE': '此段译文无法安全展示，已保留原文。',
     'NUMBER_MISMATCH': '译文中的数字与原文存在差异，可查看原 PDF 对照。',
+    'UNEXPECTED_SCRIPT': '译文出现原文和术语表中没有的其他语言文字，可对照原文检查。',
     'PROTECTED_MISMATCH': '公式、数字或引用的识别结果存在差异。',
     'SEMANTIC_RISK': '此段包含条件、否定或数量关系，可按需对照原文。',
     'TERM_REQUIRED': '此段用词与术语表不一致。', 'TERM_PREFERRED': '可考虑使用术语表中的推荐用词。',
@@ -292,9 +293,15 @@ def _run_quality(session, config, draft):
         if not target.strip():
             issue('EMPTY_TRANSLATION', block['id'], 'hard', {})
         from packages.glossaries import term_matches
-        for term in segment.provenance_json.get('glossary_entries', draft.profile.get('glossary_entries', [])):
-            if not term_matches(src, term):
-                continue
+        terms = [term for term in segment.provenance_json.get('glossary_entries', draft.profile.get('glossary_entries', []))
+                 if term_matches(src, term)]
+        from packages.quality.scripts import unexpected_scripts
+        allowed_literals = [word for term in terms if term['mode'] != 'forbidden'
+                            for word in [term['source'] if term['mode'] == 'retain' else term['target'], *term.get('variants', [])]]
+        scripts = unexpected_scripts(src, target, edition.target_locale, allowed_literals=allowed_literals)
+        if scripts:
+            issue('UNEXPECTED_SCRIPT', block['id'], 'high', {'target_locale': edition.target_locale, 'scripts': scripts})
+        for term in terms:
             allowed = [term['source'] if term['mode'] == 'retain' else term['target'], *term.get('variants', [])]
             present = any(word and word in target for word in allowed)
             if term['mode'] == 'forbidden' and term['target'] in target:

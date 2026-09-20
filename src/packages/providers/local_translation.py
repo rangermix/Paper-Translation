@@ -8,7 +8,7 @@ from packages.ir import canonical_bytes, strict_loads
 from packages.local_models.catalog import ENDPOINT, get_model
 from .contract import ProviderFailure, normalize_request_id
 
-REQUEST_FORMAT_VERSION = 'local-translation-v4'
+REQUEST_FORMAT_VERSION = 'local-translation-v5'
 
 _NUMERIC_CITATION = re.compile(
     r'[\[［【]\s*[0-9]+[a-z]?(?:\s*[,，、;；\-–—−]\s*[0-9]+[a-z]?)*\s*[\]］】]')
@@ -101,6 +101,7 @@ def request_body(units, profile, glossary, *, review=False):
         # unit's text; preserve contextual cache identity for other providers.
         prompt = (terms + f'Please translate the following text into {target}. '
             'Output only the translated text, without any additional explanation. ' + keep_markers
+            + f'Translate all ordinary prose and number words into {target}.'
             + '\n[Source Text]\n' + source)
         body = {'messages': [{'role': 'user', 'content': prompt}]}
     # UTF-8 byte count bounds token count conservatively; reserve output and template overhead.

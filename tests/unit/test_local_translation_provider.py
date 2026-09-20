@@ -49,6 +49,18 @@ def test_hy_glossary_instructions_do_not_reintroduce_neighbouring_prose():
     assert source == 'Hello.'
 
 
+@pytest.mark.parametrize('locale,language', [('zh-Hans', 'Chinese (Simplified)'),
+    ('zh-Hant', 'Chinese (Traditional)'), ('ko', 'Korean'), ('ja', 'Japanese')])
+def test_hy_number_word_instruction_uses_the_requested_locale_and_preserves_input(locale, language):
+    from packages.providers.local_translation import request_body
+    unit = {**TEST_UNIT, 'target_locale': locale,
+        'source_inline': [{'type': 'text', 'text': 'Only one minibatch is active.'}]}
+    prompt = request_body([unit], profile(), [])['messages'][0]['content']
+    instructions, source = prompt.split('[Source Text]\n', 1)
+    assert f'Translate all ordinary prose and number words into {language}.' in instructions
+    assert source == 'Only one minibatch is active.'
+
+
 def test_local_markers_are_short_collision_free_and_restore_repetitions():
     from packages.providers.local_translation import source_text, target_inline
     unit = {**TEST_UNIT, 'source_inline': [{'type': 'text', 'text': 'Literal {{PT0}}; '},

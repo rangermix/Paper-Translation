@@ -37,6 +37,14 @@ unavailable for these translation-only models. Existing quality warnings,
 immutable history, dispatch controls and handling of uncertain requests remain
 in effect. Task records include the returned artifact ID and pinned revision.
 
+Hy prompts explicitly translate ordinary prose and spelled-out numbers into the
+requested language. A nonblocking quality check reports newly introduced Hangul
+or kana when that script is unexpected for the target locale and absent from the
+source and applicable glossary terms. It preserves legitimate Korean/Japanese
+targets, source names and quotations. This is a narrow script check, not a
+translation-accuracy certificate; it neither substitutes words nor retries a
+model request automatically. Prompt changes invalidate cached local translations.
+
 ## Compose deployment
 
 The `local-translation` profile is included in

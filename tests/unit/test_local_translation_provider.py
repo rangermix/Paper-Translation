@@ -212,3 +212,19 @@ def test_local_planner_keeps_words_whole_and_source_text_unchanged():
     assert len(parts) > 1
     assert ''.join(parts) == text
     assert all(part[-1].isspace() or parts[index + 1][0].isspace() for index, part in enumerate(parts[:-1]))
+
+
+def test_local_planner_keeps_a_complete_paragraph_when_its_bytes_fit_the_request():
+    from pathlib import Path
+    from packages.translation.planner import plan_units
+    from packages.providers.local_translation import request_body
+    source = json.loads(Path('tests/fixtures/sample-document.json').read_text())['source_revision']
+    block = next(b for b in source['blocks'] if b['translatable'])
+    text = 'Each layer computes an output for the next layer. ' * 26
+    block.update(parent_id=None, normalized_text=text, source_inline=[{'type': 'text', 'text': text}])
+    source['blocks'] = [block]
+    p = profile() | {'max_input_tokens': 6144, 'max_unit_characters': 1500}
+    units = plan_units(source, 'zh-Hans', p, nonblocking=True)
+    assert len(units) == 1
+    assert units[0]['source_inline'] == block['source_inline']
+    request_body(units, p, [])

@@ -5,7 +5,7 @@ from packages.ir.retention import original_only_blocks
 from packages.billing.price import validate_profile
 from .languages import check_language_policy
 
-PLANNER_VERSION='protected-academic-quantities-v3'
+PLANNER_VERSION='protected-academic-quantities-v4'
 
 
 def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
@@ -45,18 +45,28 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
             # Never split or rewrite an indivisible source atom to satisfy a
             # provider limit. Other blocks proceed; this one retains its source.
             continue
+        # Preserve a complete paragraph when its actual UTF-8 source plus
+        # marker/instruction allowance fits. The four-byte character bound
+        # above otherwise splits ordinary English well below the saved limit.
+        block_limit = limit
+        if profile.get('api_protocol') == 'local_translation':
+            widths = [len(n['text']) if n['type'] == 'text' else atom_size(local_atoms[n['ref']]) for n in normalized]
+            byte_width = sum(len(n['text'].encode()) if n['type'] == 'text' else
+                             max(len(local_atoms[n['ref']]['value'].encode()), 32) for n in normalized)
+            if sum(widths) <= profile.get('max_unit_characters', 2000) and byte_width + 2048 <= available:
+                block_limit = max(limit, sum(widths))
         batches=[];current=[];size=0
         for node in normalized:
             text=node.get('text') if node['type']=='text' else local_atoms[node['ref']]['value']
             if node['type']=='protected_ref':
                 width=atom_size(local_atoms[node['ref']])
-                if width>limit:raise ValueError('UNIT_TOO_LARGE')
-                if current and size+width>limit:batches.append(current);current=[];size=0
+                if width>block_limit:raise ValueError('UNIT_TOO_LARGE')
+                if current and size+width>block_limit:batches.append(current);current=[];size=0
                 current.append(node);size+=width
             else:
                 while text:
-                    free=limit-size
-                    if free==0:batches.append(current);current=[];size=0;free=limit
+                    free=block_limit-size
+                    if free==0:batches.append(current);current=[];size=0;free=block_limit
                     cut=free
                     if (profile.get('api_protocol') == 'local_translation' and len(text)>free
                             and all(c.isascii() and c.isalnum() for c in (text[free-1],text[free]))):

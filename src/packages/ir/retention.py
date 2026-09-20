@@ -38,7 +38,7 @@ _BODY_LABEL = re.compile(r'(?:^|\n)\s*(?:abstract|summary|keywords?|introduction
 _CONNECTORS = {'of', 'the', 'for', 'and', 'in', 'at', 'de', 'des', 'del', 'der', 'für', 'y', 'et', 'du', 'la', 'di', 'da', 'do', 'dos', 'und'}
 _COMPANY = re.compile(r'\b(?:research|labs?|ai|deepmind|openai|inc|ltd|llc|corp)\b', re.I)
 _TEX_AFFILIATION_MARKER = re.compile(
-    r'\$\s*\^\s*\{(?:\\(?:dagger|ddagger|ast|star)\b|[\d\s,*†‡§¶✉])+\}\s*\$')
+    r'\$\s*\^\s*\{(?:\\(?:dagger|ddagger|ast|star)\b|[\d\s,*⋆∗†‡§¶✉])+\}\s*\$')
 
 
 def _text(block):
@@ -98,7 +98,7 @@ def _name_count(text):
     # Superscript affiliation markers also delimit names in a typeset byline.
     # Restrict this to marker syntax; ordinary mathematical text is not a name.
     text = _TEX_AFFILIATION_MARKER.sub(';', text)
-    text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*†‡§¶✉]', '', text)
+    text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*⋆∗†‡§¶✉]', '', text)
     names = [part.strip() for part in re.split(r'\s+(?:and|und|et|y)\s+|[,;，；、&\n]', text) if part.strip()]
     for name in names:
         if re.fullmatch(r'[\u3400-\u9fff]{2,4}', name):
@@ -202,7 +202,7 @@ def original_only_blocks(source):
         adjacent_metadata = (following is not None and following['kind'] in TEXT_KINDS
             and following.get('owner_id') is None and (_affiliation(_text(following), after_author=True)
                 or _identifier_reason(_text(following))))
-        author_markers = bool(re.search(r'[\w][\d*†‡§¶]', text) or _TEX_AFFILIATION_MARKER.search(text))
+        author_markers = bool(re.search(r'[\w][\d*⋆∗†‡§¶]', text) or _TEX_AFFILIATION_MARKER.search(text))
         if names and (adjacent_metadata or after_author or _AUTHOR_LABEL.match(text) or author_markers):
             reasons[bid] = 'original_author_list'
             after_author = True
@@ -232,7 +232,7 @@ def metadata_literals(source, reasons=None):
         text = _TEX_AFFILIATION_MARKER.sub(';', text)
         if reason == 'original_author_list':
             text = _AUTHOR_LABEL.sub('', text)
-            text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*†‡§¶✉⁰¹²³⁴⁵⁶⁷⁸⁹]+', ';', text)
+            text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*⋆∗†‡§¶✉⁰¹²³⁴⁵⁶⁷⁸⁹]+', ';', text)
             parts = re.split(r'\s+(?:and|und|et|y)\s+|[,;，；、&\n]', text)
             for part in parts:
                 literal = part.strip()
@@ -241,7 +241,7 @@ def metadata_literals(source, reasons=None):
                     literals.add(literal)
         else:
             text = re.sub(r'^(?:affiliations?|institutions?|organizations?|organisations?|作者单位|作者單位)\s*[:：]\s*', '', text, flags=re.I)
-            text = re.sub(r'[*†‡§¶✉⁰¹²³⁴⁵⁶⁷⁸⁹]+', ';', text)
+            text = re.sub(r'[*⋆∗†‡§¶✉⁰¹²³⁴⁵⁶⁷⁸⁹]+', ';', text)
             for part in re.split(r'[,;，；\n]', text):
                 literal = re.sub(r'^\d+(?:,\d+)*\s+', '', part.strip(' \t?'))
                 candidate = unicodedata.normalize('NFKC', literal)
@@ -253,3 +253,23 @@ def metadata_literals(source, reasons=None):
                 if named and _affiliation(candidate, after_author=True):
                     literals.add(literal)
     return tuple(sorted(literals, key=lambda value: (-len(value), value)))
+
+
+def title_identifier_literals(source):
+    """Exact identifier prefix explicitly introduced by the document title.
+
+    A colon alone is not name evidence: require a single identifier with internal
+    capitals or digits, followed by a subtitle. Ordinary title prose stays
+    translatable. Callers decide the narrow contexts in which to protect it.
+    """
+    title = next((b for b in source.get('blocks', []) if b['id'] == source.get('title_block_id')), {})
+    text = title.get('normalized_text', '')
+    if len(text) > 1000:
+        return ()
+    match = re.match(r'^\s*([A-Za-z][A-Za-z0-9]*(?:[-_.][A-Za-z0-9]+)*)\s*[:：]\s*\S', text)
+    if not match:
+        return ()
+    literal = match[1]
+    if len(literal) <= 80 and (re.search(r'[a-z][A-Z]', literal) or _alphanumeric_identifier(literal)):
+        return (literal,)
+    return ()

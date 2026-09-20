@@ -197,3 +197,26 @@ def test_metadata_literals_keep_confirmed_uncased_names_and_organisations():
     src = paper([('authors', 'paragraph', '张三，李四'),
         ('org', 'paragraph', '北京示例大学计算机学院')])
     assert set(metadata_literals(src)) == {'张三', '李四', '北京示例大学计算机学院'}
+
+
+@pytest.mark.parametrize('marker', ['⋆', '∗'])
+def test_native_star_affiliation_markers_preserve_exact_names_and_organisations(marker):
+    from packages.ir.retention import metadata_literals
+    src = paper([
+        ('authors', 'paragraph', f'Alice Smith†{marker}\nBob Jones‡{marker}'),
+        ('orgs', 'paragraph', f'{marker}Microsoft Research † Example University'),
+        ('abstract', 'heading', 'Abstract'),
+    ])
+    before = deepcopy(src)
+    assert original_only_blocks(src) == {'authors': 'original_author_list', 'orgs': 'original_affiliation'}
+    assert set(metadata_literals(src)) == {'Alice Smith', 'Bob Jones', 'Microsoft Research', 'Example University'}
+    assert src == before
+
+
+def test_typeset_star_markers_are_affiliation_syntax_not_part_of_a_name():
+    from packages.ir.retention import metadata_literals
+    src = paper([
+        ('authors', 'paragraph', r'Alice Smith $^{†⋆}$ Bob Jones $^{‡∗}$'),
+        ('orgs', 'paragraph', r'$^{⋆}$ Microsoft Research; $^{∗}$ Example University'),
+    ])
+    assert set(metadata_literals(src)) == {'Alice Smith', 'Bob Jones', 'Microsoft Research', 'Example University'}

@@ -1,4 +1,4 @@
-"""Language contamination is diagnosed without rewriting or blocking publication."""
+"""Persist script diagnostics without rewriting or blocking publication."""
 import json
 from pathlib import Path
 

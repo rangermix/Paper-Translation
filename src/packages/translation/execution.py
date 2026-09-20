@@ -72,7 +72,7 @@ def finalize_translation(session,cfg,job,draft,source,kind):
             payload={'translation_revision_id':revision.id,'result_status':job.status},quality_summary=job.quality_summary)
         session.add(child);session.flush()
         session.add(Task(id=new_id('task'),job_id=child.id,kind='publish',payload={'translation_revision_id':revision.id,
-            'edition_id':edition.id,'template_id':'reader-v7','artifact_id':new_id('artifact'),'expected_generation':edition.generation}))
+            'edition_id':edition.id,'template_id':'reader-v8','artifact_id':new_id('artifact'),'expected_generation':edition.generation}))
         job.progress=job.progress|{'publication_job_id':child.id,'translation_revision_id':revision.id}
 
 

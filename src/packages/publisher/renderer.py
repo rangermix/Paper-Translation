@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-7.0.0'
+RENDERER_VERSION = 'reader-python-8.0.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -34,7 +34,18 @@ def math_markup(value, *, display=False):
     return f'<span class="{cls}" data-tex="{esc(tex)}" data-display="{str(display).lower()}">{esc(value)}</span>'
 
 
-def inline(nodes, atoms, *, typeset=False):
+def inline(nodes, atoms, *, typeset=False, references=None, note_links=None):
+    def reference_link(content, targets):
+        return (f'<a class="reference-link" href="#b-{esc(targets[0])}" '
+            f'data-reference-targets="{esc(" ".join(targets))}">{content}</a>')
+
+    if references:
+        pieces = []
+        for segment, targets in references.segments(nodes, atoms):
+            content = inline(segment, atoms, typeset=typeset, note_links=note_links)
+            pieces.append(reference_link(content, targets) if targets else content)
+        return ''.join(pieces)
+
     out = []
     for node in nodes:
         kind = node['type']
@@ -51,7 +62,12 @@ def inline(nodes, atoms, *, typeset=False):
         elif kind == 'link':
             out.append(f'<a href="{esc(node["href"])}" rel="noreferrer noopener">{esc(node["text"])}</a>')
         elif kind == 'xref':
-            out.append(f'<a href="#b-{esc(node["target_block_id"])}">{esc(node["label"])}</a>')
+            target = node['target_block_id']
+            if note_links and target in note_links:
+                marker = ' data-footnote-marker' if re.fullmatch(r'[0-9]{1,3}|[*†‡§¶]', node['label']) else ''
+                out.append(f'<a class="footnote-link" href="#{esc(note_links[target])}" role="doc-noteref"{marker}>{esc(node["label"])}</a>')
+            else:
+                out.append(f'<a href="#b-{esc(target)}">{esc(node["label"])}</a>')
     return ''.join(out)
 
 
@@ -82,15 +98,40 @@ def render_html(ir, asset_paths, *, include_source=False):
     blocks = {b['id']:b for b in source['blocks']}
     results = {r['block_id']:r for r in tr['results']}
     atoms = source['protected_atoms']
-    named_fonts = ir['render']['template_id'] == 'reader-v7'
+    sidenotes = ir['render']['template_id'] == 'reader-v8'
+    named_fonts = sidenotes or ir['render']['template_id'] == 'reader-v7'
     font_selection = named_fonts or ir['render']['template_id'] == 'reader-v6'
     margins = font_selection or ir['render']['template_id'] == 'reader-v5'
     enhanced = margins or ir['render']['template_id'] == 'reader-v4'
     modern = enhanced or ir['render']['template_id'] == 'reader-v3'
     from packages.ir.retention import original_only_blocks
     retained = original_only_blocks(source) if enhanced else {}
-    def rich(nodes):
-        return inline(nodes, atoms, typeset=enhanced)
+    references, markers, footnotes, note_links, children = None, None, {}, {}, {}
+    if sidenotes:
+        from packages.publisher.references import ReferenceIndex
+        from packages.publisher.footnotes import FootnoteIndex
+        references = ReferenceIndex(source['blocks'], retained)
+        markers = FootnoteIndex(source['blocks'], retained)
+        note_serial = 0
+        for block in sorted(blocks.values(), key=lambda block: block['order']):
+            if block['owner_id']:
+                children.setdefault(block['owner_id'], []).append(block['id'])
+            if block['kind'] in {'footnote', 'reference', 'code', 'math'} or retained.get(block['id']) == 'original_reference':
+                continue
+            for node in markers.annotate(block['source_inline'], block['id']):
+                if node['type'] == 'xref' and blocks[node['target_block_id']]['kind'] == 'footnote':
+                    target = node['target_block_id']
+                    origins = footnotes.setdefault(target, {})
+                    if block['id'] not in origins:
+                        note_serial += 1
+                        anchor = 'b-' + target if not origins else f'note-{note_serial}'
+                        origins[block['id']] = (anchor, node['label'])
+                        note_links.setdefault(block['id'], {})[target] = anchor
+
+    def rich(nodes, bid=None):
+        return inline(markers.annotate(nodes, bid) if markers else nodes, atoms, typeset=enhanced,
+            references=references if bid not in retained else None,
+            note_links=note_links.get(bid))
     def original_image(block, asset_id, *, alternative=None, figure=False):
         path = asset_paths.get(asset_id) or asset_paths.get(alternative)
         if path:
@@ -113,18 +154,18 @@ def render_html(ir, asset_paths, *, include_source=False):
     def pair(block):
         if block['kind'] == 'table_cell' and not block['normalized_text'].strip(): return ''
         result = results[block['id']]
-        src = rich(block['source_inline'])
+        src = rich(block['source_inline'], block['id'])
         if enhanced and block['kind'] == 'table_cell':
             reason = retained.get(block['id']) or (result['reason'] if result['status'] == 'retained' else '')
             if reason:
                 return f'<div class="cell-original" data-original-only="{esc(reason)}">{src}</div>'
-            target = rich(result['target_inline']) if result['status'] == 'translated' else '此格暂无译文，保留原文：' + src
+            target = rich(result['target_inline'], block['id']) if result['status'] == 'translated' else '此格暂无译文，保留原文：' + src
             return f'<div class="cell-source" data-language="source">{src}</div><div class="cell-target" data-language="target">{target}</div>'
         if result['status'] == 'retained':
             return f'<div class="para en original-only" data-original-only="{esc(result["reason"])}" lang="{esc(block["language"])}" style="grid-column:1 / -1"><span class="label">原文</span>{src}</div>'
         content = f'<div class="para en" data-language="source" lang="{esc(block["language"])}"><span class="label">原文</span>{src}</div>'
         if result['status'] == 'translated':
-            content += f'<div class="para zh" data-language="target" lang="{esc(tr["target_language"])}"><span class="label">译文</span>{rich(result["target_inline"])}</div>'
+            content += f'<div class="para zh" data-language="target" lang="{esc(tr["target_language"])}"><span class="label">译文</span>{rich(result["target_inline"], block["id"])}</div>'
         elif result['status'] == 'unresolved':
             content += '<div class="para zh" data-language="target"><strong>DRAFT — 此块译文未完成</strong></div>'
         elif result['status'] == 'fallback':
@@ -142,10 +183,22 @@ def render_html(ir, asset_paths, *, include_source=False):
             rendered = f'<details class="block-notes"><summary>{len(notes)} 项内容提示</summary>{rendered}</details>'
         return rendered + (comparison(block) if include_comparison else '')
     def margin_notes(content):
-        return '<aside class="reader-notes" aria-label="内容提示与原文对照">' + content + '</aside>' if content else ''
+        label = '脚注、参考文献与内容提示' if sidenotes else '内容提示与原文对照'
+        return f'<aside class="reader-notes" aria-label="{label}">' + content + '</aside>' if content else ''
+    def block_footnotes(bid):
+        content = []
+        for target, anchor in note_links.get(bid, {}).items():
+            label = footnotes[target][bid][1]
+            attrs = f' data-block-id="{esc(target)}" data-kind="footnote"' if anchor == 'b-' + target else ''
+            content.append(f'<section class="footnote-card" id="{esc(anchor)}" data-note-target="{esc(target)}"{attrs} role="doc-footnote" tabindex="-1">'
+                f'<div class="sidenote-heading">脚注 · {esc(label)} <a href="#b-{esc(bid)}" aria-label="返回引用位置">↩</a></div>'
+                + pair(blocks[target]) + warnings(blocks[target]) + '</section>')
+        return ''.join(content)
     def frame(block, content, *, tag='section', css='pair', notes=None):
         attrs = f'id="b-{esc(block["id"])}" data-block-id="{esc(block["id"])}" data-kind="{block["kind"]}"'
         notes = warnings(block) if notes is None else notes
+        if sidenotes:
+            notes = block_footnotes(block['id']) + ''.join(block_footnotes(cid) for cid in children.get(block['id'], [])) + notes
         if margins:
             return f'<div class="reader-block"><{tag} class="{css}" {attrs}>{content}</{tag}>' + margin_notes(notes) + '</div>'
         return f'<{tag} class="{css}" {attrs}>{content}{notes}</{tag}>'
@@ -157,10 +210,10 @@ def render_html(ir, asset_paths, *, include_source=False):
             result = results[bid]
             if result['status'] == 'retained':
                 return frame(block, f'<h{level}><span class="en-title" data-original-only="{esc(result["reason"])}" lang="{esc(block["language"])}">{inline(block["source_inline"],atoms)}</span></h{level}>', css='section-heading')
-            target = inline(result['target_inline'],atoms) if result['status'] == 'translated' else ''
+            target = (rich(result['target_inline'], bid) if sidenotes else inline(result['target_inline'],atoms)) if result['status'] == 'translated' else ''
             if result['status'] == 'fallback':
                 target = inline(block['source_inline'],atoms) + '<small class="fallback-label">（原文，暂无译文）</small>'
-            return frame(block, f'<h{level}><span class="en-title" data-language="source">{inline(block["source_inline"],atoms)}</span><span class="zh-title" data-language="target">{target}</span></h{level}>', css='section-heading')
+            return frame(block, f'<h{level}><span class="en-title" data-language="source">{rich(block["source_inline"], bid) if sidenotes else inline(block["source_inline"],atoms)}</span><span class="zh-title" data-language="target">{target}</span></h{level}>', css='section-heading')
         if kind in {'figure','table'}:
             captions = ''.join(f'<div class="pair" id="b-{esc(cid)}" data-block-id="{esc(cid)}" data-kind="caption">{pair(blocks[cid])}{"" if margins else warnings(blocks[cid],include_comparison=not enhanced)}</div>' for cid in a.get('caption_block_ids',[]))
             if kind == 'figure' or a['representation'] == 'image':
@@ -223,7 +276,7 @@ def render_html(ir, asset_paths, *, include_source=False):
                 break
             metadata.append(bid)
     title_metadata = '<div class="title-metadata">' + ''.join(
-        f'<div id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="{blocks[bid]["kind"]}" data-original-only="{esc(retained.get(bid) or results[bid]["reason"])}" lang="{esc(blocks[bid]["language"])}">{rich(blocks[bid]["source_inline"])}</div>'
+        f'<div id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="{blocks[bid]["kind"]}" data-original-only="{esc(retained.get(bid) or results[bid]["reason"])}" lang="{esc(blocks[bid]["language"])}">{rich(blocks[bid]["source_inline"], bid)}</div>'
         for bid in metadata) + '</div>' if metadata else ''
     if enhanced:
         sections, bibliography, list_items = [], [], []
@@ -231,6 +284,10 @@ def render_html(ir, asset_paths, *, include_source=False):
             block = blocks[bid]
             marker = r'^\s*(?:(?:\d+|[A-Za-z])[.)]|\(\d+\))\s+' if block['attributes']['list_ordered'] else r'^\s*[-*•·▪]\s+'
             cls = ' class="list-literal-marker"' if re.match(marker, block['normalized_text']) else ''
+            if sidenotes:
+                return (f'<li{cls} id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="list_item">'
+                    f'<div class="reader-block"><div class="pair">{pair(block)}</div>'
+                    + margin_notes(block_footnotes(bid) + warnings(block)) + '</div></li>')
             return f'<li{cls} id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="list_item">{pair(block)}</li>'
         def flush_list():
             if not list_items:
@@ -240,12 +297,15 @@ def render_html(ir, asset_paths, *, include_source=False):
             start = f' start="{max(1, first["attributes"].get("list_index", 1))}"' if tag == 'ol' else ''
             items = ''.join(list_entry(bid) for bid in list_items)
             notes = ''.join(dict.fromkeys(warnings(blocks[bid]) for bid in list_items))
-            sections.append(f'<div class="reader-block"><section class="pair reader-list"><{tag}{start}>{items}</{tag}></section>' + margin_notes(notes) + '</div>')
+            if sidenotes:
+                sections.append(f'<section class="reader-list sidenote-list"><{tag}{start}>{items}</{tag}></section>')
+            else:
+                sections.append(f'<div class="reader-block"><section class="pair reader-list"><{tag}{start}>{items}</{tag}></section>' + margin_notes(notes) + '</div>')
             list_items.clear()
         def flush_references():
             if not bibliography:
                 return
-            entries = ''.join(f'<div class="reference-entry" id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="reference" data-original-only="original_reference">{rich(blocks[bid]["source_inline"])}</div>' for bid in bibliography)
+            entries = ''.join(f'<div class="reference-entry" id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="reference" data-original-only="original_reference">{rich(blocks[bid]["source_inline"], bid)}</div>' for bid in bibliography)
             comparisons = {}
             for bid in bibliography:
                 block = blocks[bid]
@@ -258,7 +318,7 @@ def render_html(ir, asset_paths, *, include_source=False):
             sections.append('<div class="reader-block">' + content + margin_notes(details) + '</div>' if margins else content)
             bibliography.clear()
         for bid in source['reading_order']:
-            if bid == title or bid in metadata:
+            if bid == title or bid in metadata or sidenotes and bid in footnotes:
                 continue
             if retained.get(bid) == 'original_reference':
                 flush_list()
@@ -287,6 +347,11 @@ def render_html(ir, asset_paths, *, include_source=False):
     draft_notice = f'<p class="note" role="status">DRAFT — 未完成草稿，缺失 {draft} 块译文</p>' if ir['render']['mode']=='draft' else ''
     display_title = 'DRAFT — 标题译文未完成' if ir['render']['mode'] == 'draft' and results[title]['status'] == 'unresolved' else tr['title']
     display_title = display_title or '原 PDF'
+    title_markup, source_title_markup = esc(display_title), esc(ir['document']['title'])
+    if sidenotes:
+        source_title_markup = rich(blocks[title]['source_inline'], title)
+        if results[title]['status'] == 'translated':
+            title_markup = rich(results[title]['target_inline'], title)
     panel = ''
     if modern:
         findings = []
@@ -308,7 +373,8 @@ def render_html(ir, asset_paths, *, include_source=False):
     title_notes = ''
     if margins:
         overview = '<details class="reader-guide"><summary>内容提示' + (f' · {len(findings)} 块' if findings else '') + '</summary>' + panel + '</details>'
-        title_notes = margin_notes(overview + warnings(blocks[title]) + ''.join(warnings(blocks[bid]) for bid in metadata))
+        title_notes = margin_notes(block_footnotes(title) + ''.join(block_footnotes(bid) for bid in metadata)
+            + overview + warnings(blocks[title]) + ''.join(warnings(blocks[bid]) for bid in metadata))
     font_controls = '<button data-action="smaller" aria-label="减小字号">A−</button><button data-action="larger" aria-label="增大字号">A＋</button>'
     if font_selection:
         font_options = ''
@@ -329,7 +395,7 @@ def render_html(ir, asset_paths, *, include_source=False):
             '<title>'+esc(display_title)+'</title><link rel="stylesheet" href="reader.css">'+('<script src="math.js" defer></script>' if enhanced else '')+'<script src="reader.js" defer></script></head><body style="overflow-wrap:anywhere">'
             '<nav class="toolbar" aria-label="阅读设置"><button data-action="both" data-view aria-pressed="true">双语</button><button data-action="source" data-view aria-pressed="false">原文</button><button data-action="target" data-view aria-pressed="false">译文</button>'+font_controls+'<button data-action="theme">切换主题</button>'+original+'</nav>'+('<div class="reader-header">' if margins else '')+
             '<header class="hero" id="b-'+esc(title)+'" data-block-id="'+esc(title)+'" data-kind="heading"><div class="kicker">对照文库 · '+esc(language_name(source['language']))+' / '+esc(language_name(tr['target_language']))+'</div>'
-            '<h1 data-language="target">'+esc(display_title)+'</h1><p class="original-title" data-language="source">'+esc(ir['document']['title'])+'</p>'+title_metadata+'<p class="note">'+esc(ir['document']['notice'])+'</p>'+draft_notice+('' if margins else warnings(blocks[title]))+'</header>'+(title_notes+'</div>' if margins else '')+
+            '<h1 data-language="target">'+title_markup+'</h1><p class="original-title" data-language="source">'+source_title_markup+'</p>'+title_metadata+'<p class="note">'+esc(ir['document']['notice'])+'</p>'+draft_notice+('' if margins else warnings(blocks[title]))+'</header>'+(title_notes+'</div>' if margins else '')+
             '<p id="reader-storage-notice" class="note" hidden>浏览器存储不可用；正文仍可完整阅读。</p><div class="layout"><aside class="toc" aria-label="文章目录"><h2>目录</h2>'+toc+('' if margins else panel)+'</aside><article>'+body+'</article></div></body></html>\n').encode('utf-8')
 
 

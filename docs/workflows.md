@@ -70,7 +70,7 @@ scales require parameter/model context, so byte units and identifiers are not
 treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
-New publications use `reader-v7`: a font selector beside the size buttons offers
+New publications and draft exports use `reader-v8`: a font selector beside the size buttons offers
 default, serif, sans-serif, monospace, 方正宋体, 方正黑体, 思源宋体, 思源黑体,
 MiSans, 鸿蒙黑体 and Noto Sans Simplified Chinese. The choice is saved in browser
 storage. Named fonts use installed local copies, with local fallbacks when missing;
@@ -78,8 +78,17 @@ the selector tooltip explains this, and exports work offline without downloading
 The Noto choice uses the [Noto Sans SC family](https://github.com/google/fonts/blob/main/ofl/notosanssc/METADATA.pb).
 The TOC uses the original section labels,
 author/affiliation lines share the title area, and adjacent list items share a
-block. On wide screens, content hints and original-page comparisons open beside
-the reading column; compact screens keep them inline. Figures fill the column within the
+list. Footnotes with an explicit source cross-reference appear beside each citing
+block, including repeated citations. Clear superscript or symbol markers also
+link to a uniquely labelled footnote on the same page; unlinked notes remain in the reading flow.
+Inline numeric and author–year citations open the matching original bibliography
+entries in that block's margin. Matching uses only unique labels or author/year
+evidence in the saved document; unresolved or ambiguous citations stay readable
+without a guessed link. Reference cards close with their button or Escape and
+return focus to the citation. Without JavaScript, citation links lead to the
+bibliography. At widths of 1200px and above, notes, references, content hints and
+original-page comparisons occupy the side column; compact screens place them
+below the citing block. Footnotes remain visible when printing. Figures fill the column within the
 viewport height, tables stack source and target text in compact cells with one
 original-table comparison, and contiguous reference entries share one bibliography
 block while retaining their individual anchors. Inline and display TeX use bundled

@@ -51,6 +51,7 @@ or invalid artifact remains a failure.
 | `LIBRARY_ENLARGEMENT_EVIDENCE` | Directory with `reader-v1.html` and `reader-v2.html` for the authored long-code corpus |
 | `LIBRARY_COMPLEX_EVIDENCE` | Directory containing the independently authored complex export evidence |
 | `LIBRARY_READER_FONT_EVIDENCE` | Directory with `single.html` and `bundle/index.html` generated using `reader-v7` and the authored fixture in `tests/unit/test_reader_v5.py` |
+| `LIBRARY_READER_SIDENOTES_EVIDENCE` | Directory with `single.html`, `bundle/index.html` and `table.html` generated using `reader-v8`, `sidenote_fixture()` and `table_reference_fixture()` in `tests/unit/test_reader_sidenotes.py`; covers contextual notes/references, offline exports, keyboard, mobile, print and no-JavaScript fallback |
 | `LIBRARY_DRAFT_HTML` | The actual worker-generated unfinished-draft HTML file |
 | `ORIGINAL_ONLY_READER_ROOT` | Directory containing `reading.html` and `artifact/index.html` for the source-only workflow |
 

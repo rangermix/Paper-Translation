@@ -42,10 +42,13 @@ def list_templates():
     v7 = {**v6, 'id': 'reader-v7', 'version': '7', 'css_path': 'src/packages/templates/reader-v7.css',
         'js_path': 'src/packages/templates/reader-v7.js',
         'css_sha256': 'c893cc66b5d1f0a8f27f79aff0db1b282d2371ad5192e59db9b09eadc1fd8803', 'js_sha256': '6325ec57e43b7c09e4c67af01c3701e1c12e8aea2d9abca3f62af7fd669a5166'}
-    for entry in (v1, v2, v3, v4, v5, v6, v7):
+    v8 = {**v7, 'id': 'reader-v8', 'version': '8', 'css_path': 'src/packages/templates/reader-v8.css',
+        'js_path': 'src/packages/templates/reader-v8.js',
+        'css_sha256': '5ed924407dc38d6f8e029cbb648875d7c5c32134b2f0045f93acf05a359eac74', 'js_sha256': 'd9c098ae5884cb498a093dae44d2b52400ef1d095c47b04d4314e68298b5b40a'}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7]
+    return [v1, v2, v3, v4, v5, v6, v7, v8]
 
 
 def get_template(template_id):

@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-6.0.0'
+RENDERER_VERSION = 'reader-python-7.0.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -82,7 +82,8 @@ def render_html(ir, asset_paths, *, include_source=False):
     blocks = {b['id']:b for b in source['blocks']}
     results = {r['block_id']:r for r in tr['results']}
     atoms = source['protected_atoms']
-    font_selection = ir['render']['template_id'] == 'reader-v6'
+    named_fonts = ir['render']['template_id'] == 'reader-v7'
+    font_selection = named_fonts or ir['render']['template_id'] == 'reader-v6'
     margins = font_selection or ir['render']['template_id'] == 'reader-v5'
     enhanced = margins or ir['render']['template_id'] == 'reader-v4'
     modern = enhanced or ir['render']['template_id'] == 'reader-v3'
@@ -310,10 +311,18 @@ def render_html(ir, asset_paths, *, include_source=False):
         title_notes = margin_notes(overview + warnings(blocks[title]) + ''.join(warnings(blocks[bid]) for bid in metadata))
     font_controls = '<button data-action="smaller" aria-label="减小字号">A−</button><button data-action="larger" aria-label="增大字号">A＋</button>'
     if font_selection:
+        font_options = ''
+        font_hint = ''
+        if named_fonts:
+            font_options = ('<option value="fz-song">方正宋体</option><option value="fz-hei">方正黑体</option>'
+                '<option value="source-han-serif">思源宋体</option><option value="source-han-sans">思源黑体</option>'
+                '<option value="misans">MiSans</option><option value="harmonyos-sans">鸿蒙黑体</option>'
+                '<option value="noto-sans-sc">Noto Sans Simplified Chinese</option>')
+            font_hint = ' title="使用本机字体；未安装时使用备用字体。"'
         font_controls = ('<div class="font-controls" role="group" aria-label="字体与字号">'
-            '<label class="font-picker">字体<select data-font-select>'
+            '<label class="font-picker">字体<select data-font-select' + font_hint + '>'
             '<option value="default">默认</option><option value="serif">衬线</option>'
-            '<option value="sans">无衬线</option><option value="monospace">等宽</option>'
+            '<option value="sans">无衬线</option><option value="monospace">等宽</option>' + font_options +
             '</select></label>' + font_controls + '</div>')
     return ('<!doctype html>\n<html lang="'+esc(tr['target_language'])+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' data:; style-src \'self\' \'unsafe-inline\'; script-src \'self\'; connect-src \'none\'; base-uri \'none\'; form-action \'none\'; object-src \'none\'">'

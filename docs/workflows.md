@@ -70,9 +70,13 @@ scales require parameter/model context, so byte units and identifiers are not
 treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
-New publications use `reader-v6`: a font selector beside the size buttons offers
-default, serif, sans-serif and monospace text. The choice is saved in browser
-storage; fonts use local fallbacks and work offline. The TOC uses the original section labels,
+New publications use `reader-v7`: a font selector beside the size buttons offers
+default, serif, sans-serif, monospace, 方正宋体, 方正黑体, 思源宋体, 思源黑体,
+MiSans, 鸿蒙黑体 and Noto Sans Simplified Chinese. The choice is saved in browser
+storage. Named fonts use installed local copies, with local fallbacks when missing;
+the selector tooltip explains this, and exports work offline without downloading fonts.
+The Noto choice uses the [Noto Sans SC family](https://github.com/google/fonts/blob/main/ofl/notosanssc/METADATA.pb).
+The TOC uses the original section labels,
 author/affiliation lines share the title area, and adjacent list items share a
 block. On wide screens, content hints and original-page comparisons open beside
 the reading column; compact screens keep them inline. Figures fill the column within the

@@ -25,5 +25,5 @@ print(json.dumps({"seeds": len(checked_release()["documents"]),
         env=environment, text=True, capture_output=True, check=True)
     data = json.loads(result.stdout)
     assert data['seeds'] == 2
-    assert data['templates'] == ['reader-v1', 'reader-v2', 'reader-v3', 'reader-v4', 'reader-v5', 'reader-v6']
+    assert data['templates'] == ['reader-v1', 'reader-v2', 'reader-v3', 'reader-v4', 'reader-v5', 'reader-v6', 'reader-v7']
     assert data['parser_version']

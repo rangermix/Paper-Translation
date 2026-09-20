@@ -69,7 +69,7 @@ def create_draft_export(draft_id: str, body: DraftExportBody, request: Request, 
         match_generation(draft, request.headers.get('If-Match'))
         source = read_snapshot(request.app.state.config.data, get_entity(session, SourceRevision, draft.source_revision_id))
         translation = translation_snapshot(session, request.app.state.config, draft, draft_mode=True)
-        snapshot = render_input(draft.document_id, source, translation, template_id='reader-v8', mode='draft')
+        snapshot = render_input(draft.document_id, source, translation, template_id='reader-v9', mode='draft')
         validate_ir(snapshot, request.app.state.config.data)
         export_id = new_id('export')
         key = f'exports/{export_id}/draft.json'
@@ -116,7 +116,7 @@ def download_export(export_id: str, request: Request, session=Session):
 
 class PublishBody(StrictModel):
     translation_revision_id: str
-    template_id: str = 'reader-v8'
+    template_id: str = 'reader-v9'
     expected_generation: int = Field(ge=1)
 
 

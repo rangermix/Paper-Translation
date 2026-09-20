@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-8.0.0'
+RENDERER_VERSION = 'reader-python-9.0.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -98,7 +98,7 @@ def render_html(ir, asset_paths, *, include_source=False):
     blocks = {b['id']:b for b in source['blocks']}
     results = {r['block_id']:r for r in tr['results']}
     atoms = source['protected_atoms']
-    sidenotes = ir['render']['template_id'] == 'reader-v8'
+    sidenotes = ir['render']['template_id'] in {'reader-v8', 'reader-v9'}
     named_fonts = sidenotes or ir['render']['template_id'] == 'reader-v7'
     font_selection = named_fonts or ir['render']['template_id'] == 'reader-v6'
     margins = font_selection or ir['render']['template_id'] == 'reader-v5'

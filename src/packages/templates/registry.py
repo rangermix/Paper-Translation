@@ -45,10 +45,12 @@ def list_templates():
     v8 = {**v7, 'id': 'reader-v8', 'version': '8', 'css_path': 'src/packages/templates/reader-v8.css',
         'js_path': 'src/packages/templates/reader-v8.js',
         'css_sha256': '5ed924407dc38d6f8e029cbb648875d7c5c32134b2f0045f93acf05a359eac74', 'js_sha256': 'd9c098ae5884cb498a093dae44d2b52400ef1d095c47b04d4314e68298b5b40a'}
-    for entry in (v1, v2, v3, v4, v5, v6, v7, v8):
+    v9 = {**v8, 'id': 'reader-v9', 'version': '9', 'css_path': 'src/packages/templates/reader-v9.css',
+        'css_sha256': '48229339217f22424dfe8957c8259fa80c384b59a46258d6f5b11149036833a1'}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7, v8]
+    return [v1, v2, v3, v4, v5, v6, v7, v8, v9]
 
 
 def get_template(template_id):

@@ -70,7 +70,10 @@ scales require parameter/model context, so byte units and identifiers are not
 treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
-New publications and draft exports use `reader-v8`: a font selector beside the size buttons offers
+Reader blocks use tighter padding and gaps, smaller corners, softer borders and backgrounds,
+and no card shadows. Body font sizes and line spacing remain unchanged.
+
+New publications and draft exports use `reader-v9`: a font selector beside the size buttons offers
 default, serif, sans-serif, monospace, 方正宋体, 方正黑体, 思源宋体, 思源黑体,
 MiSans, 鸿蒙黑体 and Noto Sans Simplified Chinese. The choice is saved in browser
 storage. Named fonts use installed local copies, with local fallbacks when missing;

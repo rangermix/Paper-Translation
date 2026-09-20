@@ -2,8 +2,41 @@
 from html.parser import HTMLParser
 import re
 
-TABLE_HTML_VERSION = 'paddle-table-html-v1'
+TABLE_HTML_VERSION = 'paddle-table-html-v2'
 MAX_SLOTS = 10000
+
+
+def recover_cell_line_breaks(value, native_lines):
+    """Decode model escape sequences only when nearby PDF lines prove them."""
+    if '\\n' not in value or any(value in line['text'] for line in native_lines):
+        return None
+    parts = value.split('\\n')
+    if len(parts) > 8 or any(not part.strip() for part in parts):
+        return None
+    patterns = [r'(?<!\w)' + r'\s+'.join(re.escape(word) for word in part.split()) + r'(?!\w)' for part in parts]
+    if any('\\n' in line['text'] and any(re.search(pattern, line['text']) for pattern in patterns) for line in native_lines):
+        return None  # A matching printed escape vetoes guesses from other cells.
+    chains = [[]]
+    for pattern in patterns:
+        # A printed escape may occupy only one wrapped part of the cell. Such
+        # a line cannot be evidence that the model invented the backslash.
+        candidates = [line for line in native_lines if '\\n' not in line['text'] and re.search(pattern, line['text'])]
+        following = []
+        for chain in chains:
+            for line in candidates:
+                if chain:
+                    a, b = chain[-1]['bbox'], line['bbox']
+                    height = max(a[3] - a[1], b[3] - b[1])
+                    aligned = min(a[2], b[2]) - max(a[0], b[0]) >= min(a[2] - a[0], b[2] - b[0]) * .5
+                    if not aligned or not 0 <= b[1] - a[3] <= height * 2:
+                        continue
+                following.append([*chain, line])
+                if len(following) > 100:
+                    return None
+        chains = following
+    if len(chains) == 1:
+        return '\n'.join(parts), chains[0]
+    return None
 
 
 class _TableParser(HTMLParser):

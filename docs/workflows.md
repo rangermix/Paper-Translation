@@ -21,6 +21,9 @@ Native margin evidence excludes folios and arXiv stamps. Sequential numbered
 items with hanging indents form lists, and native table rows distinguish actual
 line breaks from literal code escapes. A narrowly matched native paragraph can
 also correct one misrecognized word; conflicting evidence stays visible.
+Native evidence also repairs unambiguous same-column ordering and split
+references. Reference numbers and author characters are corrected only when
+complete native lines and the unchanged citation body identify the same entry.
 
 Translation requires a complete saved profile, content/destination confirmation,
 enabled dispatch and a budget when cost control is enabled. Confirmations bind the

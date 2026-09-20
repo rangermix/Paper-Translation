@@ -423,7 +423,10 @@ class DoclingParser:
                     continue
                 kind = {'title':'heading','section_header':'heading','list_item':'list_item','code':'code','formula':'math','picture':'figure','table':'table','caption':'caption','footnote':'footnote','reference':'reference'}.get(label,'paragraph')
                 if kind == 'heading': attrs = {'level':1 if not source['title_block_id'] else min(6,max(2,int(item.get('level',2))))}
-                elif kind == 'list_item': attrs = {'list_ordered':bool(item.get('enumerated',False))}
+                elif kind == 'list_item':
+                    attrs = {'list_ordered':bool(item.get('enumerated',False))}
+                    if isinstance(item.get('list_index'), int) and item['list_index'] >= 0:
+                        attrs['list_index'] = item['list_index']
                 elif kind in {'math','code'}: attrs = {'representation':'image'} if len(locs)==1 else {}
                 elif kind in {'figure','table'}:attrs = {'caption_block_ids':[]}
                 else:attrs = {}

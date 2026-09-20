@@ -7,10 +7,11 @@ import time
 
 from packages.quality.issues import comparison_text
 from .progress import report_progress
+from .table_html import recover_cell_line_breaks
 
 PROSE_LABELS = {'text', 'paragraph', 'list_item'}
 COMPLEX_LABELS = {'table', 'picture', 'formula', 'code'}
-RULE_VERSION = 'native-paragraph-recovery-v2'
+RULE_VERSION = 'native-paragraph-recovery-v3'
 
 
 def _bounds(item, page):
@@ -51,6 +52,23 @@ def _matches(region, row):
 def _union(boxes):
     return [min(b[0] for b in boxes), min(b[1] for b in boxes),
             max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def _furniture_label(text, bounds, page):
+    """Recognize narrow metadata patterns only in their original PDF margins."""
+    width, height = page['page_size']
+    text = text.strip()
+    if re.fullmatch(r'[0-9]{1,4}', text):
+        if bounds[1] >= height * .94:
+            return 'page_footer'
+        if bounds[3] <= height * .06:
+            return 'page_header'
+    side_margin = bounds[2] <= width * .08 or bounds[0] >= width * .92
+    if side_margin and re.fullmatch(
+            r'arXiv:\s*(?:\d{4}\.\d{4,5}|[A-Za-z.-]+/\d{7})(?:v\d+)?'
+            r'(?:\s*\[[\w.-]+\])?(?:\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4})?', text):
+        return 'page_header'
+    return None
 
 
 def _has_columns(regions, page_width):
@@ -98,13 +116,63 @@ def _native_lines(regions, page_width=None):
 
 
 def _paragraph_text(lines):
-    return comparison_text('\n'.join(line['text'] for line in lines))
+    native = '\n'.join(line['text'] for line in lines)
+    native = re.sub(r'(?<=[^\W\d_])[\x02\u00ad]\s*\n\s*(?=[^\W\d_])', '', native)
+    return comparison_text(native)
+
+
+def _complete_native_coverage(lines, bounds):
+    """Require text to cover the paragraph without room for a missing baseline."""
+    if len(lines) < 2:
+        return False
+    height = max(line['bbox'][3] - line['bbox'][1] for line in lines)
+    return (lines[0]['bbox'][1] - bounds[1] <= height * .75 and
+            bounds[3] - lines[-1]['bbox'][3] <= height * .75 and
+            all(b['bbox'][1] - a['bbox'][3] <= height * .75 for a, b in zip(lines, lines[1:])))
+
+
+def _repair_reference_metadata(original, native_lines, bounds):
+    if not _complete_native_coverage(native_lines, bounds):
+        return None
+    native = _paragraph_text(native_lines)
+    markers = [re.match(r'^\[(\d{1,4})\]\s+', value) for value in (original, native)]
+    # Initials contain a single letter; a full name followed by a capitalized
+    # title bounds the author list in this numbered bibliography format.
+    ends = [re.search(r'[A-Za-z][A-Za-z-]{1,}\.\s+(?=[A-Z])', value) for value in (original, native)]
+    if not all(markers) or not all(ends):
+        return None
+    def core(value):
+        return ''.join(c for c in value if c.isalnum())
+    bodies = [core(value[end.end():]) for value, end in zip((original, native), ends)]
+    if len(bodies[0]) < 80 or bodies[0] != bodies[1]:
+        return None
+    positions = [[index for index, c in enumerate(value) if c.isalnum()] for value in (original, native)]
+    changes = [entry for entry in SequenceMatcher(None, core(original), core(native), autojunk=False).get_opcodes()
+               if entry[0] != 'equal']
+    if not 1 <= len(changes) <= 2:
+        return None
+    corrected = list(original)
+    for tag, a, b, c, d in changes:
+        if tag != 'replace' or b - a != 1 or d - c != 1:
+            return None
+        left, right = positions[0][a], positions[1][c]
+        if left >= ends[0].end() or right >= ends[1].end():
+            return None
+        old, new = original[left], native[right]
+        numeral = (old.isdigit() and new.isdigit() and
+                   markers[0].start(1) <= left < markers[0].end(1) and
+                   markers[1].start(1) <= right < markers[1].end(1))
+        if not numeral and not (old.isalpha() and new.isalpha()):
+            return None
+        corrected[left] = new
+    return ''.join(corrected)
 
 
 def _repair_text(row, regions, page):
     if _has_columns(regions, page['page_size'][0]):
         return None  # A broad model box is not proof of a single paragraph.
-    candidate = _paragraph_text(_native_lines(regions))
+    native_lines = _native_lines(regions)
+    candidate = _paragraph_text(native_lines)
     original = row.get('orig', row.get('text', ''))
     changes = SequenceMatcher(None, original.split(), candidate.split(), autojunk=False).get_opcodes()
     # Native extraction is often less faithful for math, font runs and PDF
@@ -112,6 +180,27 @@ def _repair_text(row, regions, page):
     # order; substitutions/deletions remain visible quality diagnostics.
     if original.strip() and any(tag == 'insert' for tag, *_ in changes) and all(tag in {'equal', 'insert'} for tag, *_ in changes):
         return candidate
+    # A long paragraph with one closely related wrong word can be corrected
+    # mechanically. Keep every other model token (including its formatting),
+    # and reject math, sparse evidence and unrelated lexical substitutions.
+    replacements = [change for change in changes if change[0] != 'equal']
+    tokens = list(re.finditer(r'\S+', original))
+    if (len(tokens) >= 12 and len(replacements) == 1 and not re.search(r'[$\\^_=<>]', original + candidate)
+            and _complete_native_coverage(native_lines, _bounds(row, page))):
+        tag, a, b, c, d = replacements[0]
+        if tag == 'replace' and b - a == d - c == 1:
+            old, new = tokens[a][0], candidate.split()[c]
+            prefix = 0
+            for left, right in zip(old, new):
+                if left != right:
+                    break
+                prefix += 1
+            letters = [change for change in SequenceMatcher(None, old, new, autojunk=False).get_opcodes() if change[0] != 'equal']
+            one_extra = (len(letters) == 1 and letters[0][0] in {'insert', 'delete'} and
+                         max(letters[0][2] - letters[0][1], letters[0][4] - letters[0][3]) == 1)
+            if (re.fullmatch(r'[A-Za-z]{7,}', old) and re.fullmatch(r'[A-Za-z]{7,}', new) and
+                    prefix >= 6 and (prefix >= max(len(old), len(new)) * .7 or one_extra)):
+                return original[:tokens[a].start()] + new + original[tokens[a].end():]
     return None
 
 
@@ -171,16 +260,59 @@ def recover_items(items, pages, *, local_reparse=None, remaining_seconds=None):
                 'action': action, 'before': before, 'after': after, 'started_at': at,
                 'finished_at': datetime.now(timezone.utc).isoformat(), 'elapsed_ms': int((time.monotonic() - started) * 1000),
                 'model': None, **extra})
+        # Paddle may call folios and rotated arXiv stamps ordinary text. Keep
+        # their original region as furniture so the independent coverage ledger
+        # can justify the exclusion, rather than dropping the PDF evidence.
+        for row in local:
+            if row.get('label') not in {'text', 'paragraph'} or len(row.get('prov', [])) != 1:
+                continue
+            bounds = _bounds(row, page)
+            text = row.get('orig', row.get('text', ''))
+            label = _furniture_label(text, bounds, page)
+            proof = [r for r in native if _overlap(r['bbox'], bounds) >= .6]
+            if label and proof and _compact(' '.join(r['text'] for r in proof)) == _compact(text):
+                row['label'] = label
+                record('native_page_furniture', text, [], item_ref=row.get('self_ref'),
+                       label=label, native_evidence=proof)
+        # Native recovery must not reinsert furniture omitted by the model.
+        for line in _native_lines(native, page['page_size'][0]):
+            label = _furniture_label(line['text'], line['bbox'], page)
+            if not label or any(_overlap(line['bbox'], _bounds(row, page)) >= .6 for row in local):
+                continue
+            row = _item(f'nb-furniture-{number}-{len(local)}', label, line['text'], line['bbox'], page)
+            result.append(row)
+            local.append(row)
+            record('native_page_furniture', line['text'], [], item_ref=row['self_ref'],
+                   label=label, native_evidence=[line])
+        for row in local:
+            if row.get('label') != 'reference' or len(row.get('prov', [])) != 1:
+                continue
+            bounds = _bounds(row, page)
+            proof = [r for r in native if _overlap(r['bbox'], bounds) >= .6]
+            original = row.get('orig', row.get('text', ''))
+            repaired = _repair_reference_metadata(original, _native_lines(proof), bounds)
+            if repaired is not None:
+                row['orig'] = row['text'] = repaired
+                record('native_reference_metadata', original, repaired, item_ref=row.get('self_ref'),
+                       native_evidence=proof)
         # A configuration-like token is corrected only against a unique native
         # token in this original table. Do not guess decimal values or words.
         for row in local:
             if row.get('label') != 'table':
                 continue
             bounds = _bounds(row, page)
-            original = ' '.join(r['text'] for r in native if _overlap(r['bbox'], bounds) >= .6)
+            table_native = [r for r in native if _overlap(r['bbox'], bounds) >= .6]
+            original = ' '.join(r['text'] for r in table_native)
+            table_lines = _native_lines(table_native)
             tokens = set(re.findall(r'(?<![\w.])\d+(?:[-.]\d+){2,}(?![\w.])', original))
             for cell in row.get('data', {}).get('table_cells', []):
                 before = cell.get('text', '')
+                line_breaks = recover_cell_line_breaks(before, table_lines)
+                if line_breaks:
+                    cell['text'], proof = line_breaks
+                    record('native_table_linebreak', before, cell['text'],
+                           item_ref=row.get('self_ref'), native_evidence=proof)
+                    before = cell['text']
                 matches = [t for t in tokens if re.sub(r'[-.]', '', t) == re.sub(r'[-.]', '', before)]
                 if len(matches) == 1 and before != matches[0] and re.fullmatch(r'\d+(?:[-.]\d+){2,}', before):
                     cell['text'] = matches[0]
@@ -225,6 +357,11 @@ def recover_items(items, pages, *, local_reparse=None, remaining_seconds=None):
                 # Preserve this parser paragraph's identity and geometry.
                 # Full native evidence within it replaces only this paragraph.
                 if text is not None:
+                    original = row.get('orig', row.get('text', ''))
+                    changes = SequenceMatcher(None, original.split(), text.split(), autojunk=False).get_opcodes()
+                    if any(tag == 'replace' for tag, *_ in changes):
+                        record('native_prose_token', original, text, item_ref=row.get('self_ref'),
+                               native_evidence=assigned[row['self_ref']])
                     row['orig'] = row['text'] = text
             replacement = _new_paragraphs(outside, page)
             result.extend(replacement)

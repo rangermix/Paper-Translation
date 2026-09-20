@@ -25,7 +25,9 @@ the instance; the default published address is loopback.
   clearly preserve missing translations as original content.
 - Keep task stages, actual model identities, timings, redacted logs, attempts and
   uncertain outcomes. Clearing finished task history changes list visibility only.
-- Discover DOI metadata asynchronously, retaining the filename when lookup fails.
+- Query Crossref asynchronously during upload for paper titles, authors and
+  publication details, using a DOI or a conservatively matched title/author query.
+  Retain the filename when lookup fails and preserve user-edited titles.
   Back up, restore, verify and clean storage through the maintenance service.
 
 ## Content and execution

@@ -5,7 +5,7 @@ import re
 import unicodedata
 from urllib.parse import quote
 
-from .discovery import normalize_doi
+from .discovery import bibliographic_title, normalize_doi
 
 VERSION = 'bibliography-v1'
 
@@ -64,11 +64,56 @@ def words(value):
     return re.findall(r'[^\W_]+', unicodedata.normalize('NFKC', value or '').casefold())
 
 
+def search_terms(discovery):
+    title = bibliographic_title(clean(discovery.get('title_hint')))
+    if not title: return None
+    author = clean(discovery.get('author_hint'), 200)
+    return {'title': title, **({'author': author} if author else {})}
+
+
+def _matches_author(entry, hint):
+    given, family = words(entry.get('given')), words(entry.get('family'))
+    def given_match(left, right):
+        return len(left) == len(right) and all(a == b or min(len(a), len(b)) == 1 and a[0] == b[0]
+            for a, b in zip(left, right))
+    for segment in re.split(r';|\band\b|&|、', hint, flags=re.I):
+        parts = segment.split(',')
+        # Support a single inverted name without joining two different authors.
+        if given and family and len(parts) == 2 and words(parts[0]) == family and given_match(words(parts[1]), given):
+            return True
+        for part in parts:
+            tokens = words(part)
+            if given and family:
+                length = len(given) + len(family)
+                for start in range(len(tokens) - length + 1):
+                    if tokens[start + len(given):start + length] == family and given_match(tokens[start:start + len(given)], given):
+                        return True
+            else:
+                name = words(entry['name'])
+                if name and (tokens == name or len(name) >= 2 and any(
+                        tokens[start:start + len(name)] == name for start in range(len(tokens) - len(name) + 1))):
+                    return True
+    return False
+
+
+def matches_search(value, search):
+    if not search or words(value['title']) != words(search['title']): return False
+    title = words(search['title'])
+    if search.get('author'):
+        return any(_matches_author(entry, search['author']) for entry in value['authors'])
+    # Short generic titles need author corroboration; distinctive exact titles
+    # can match when the PDF has no embedded author field (including CJK titles).
+    return len(set(title)) >= 5 or len(re.findall(r'[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]', search['title'])) >= 12
+
+
 def matches_paper(value, discovery):
     selected = discovery.get('selected')
+    if not selected: return matches_search(value, search_terms(discovery))
     if selected != value['doi']: return False
     if any(c['doi'] == selected and c['method'] == 'manual' for c in discovery.get('candidates', [])):
         return True
+    if any(c['doi'] == selected and c['method'] == 'crossref_search' for c in discovery.get('candidates', [])):
+        return matches_search(value, search_terms(discovery))
     title = words(value['title'])
     hint = words(discovery.get('title_hint'))
     header = words(discovery.get('header_text'))

@@ -7,13 +7,16 @@ import type { Document } from '../types';
 
 const statuses: Record<string, string> = {
   pending: '正在查询文献信息', retrying: '查询暂时受限，稍后重试', succeeded: '文献信息已匹配',
-  not_found: '暂未查到文献信息', no_doi: '未发现明确 DOI', ambiguous: '发现多个 DOI，尚未确认本篇标识',
+  not_found: '暂未查到文献信息', no_doi: '未发现明确 DOI 或可用标题', ambiguous: '发现多个可能的文献，尚未确认本篇',
   failed: '文献信息查询未完成', unverified: '返回信息与本篇内容不一致',
 };
-export function BibliographyLine({ doc }: { doc: Document }) {
+export function metadataStatusLabel(status?: string | null) {
+  return statuses[status ?? ''] ?? '文献信息待查询';
+}
+export function BibliographyLine({ doc }: { doc: Pick<Document, 'bibliography' | 'metadata_status'> }) {
   const data = doc.bibliography;
   if (!data) return doc.metadata_status && !['no_doi', 'not_found'].includes(doc.metadata_status)
-    ? <p className="small muted">{statuses[doc.metadata_status] ?? '文献信息待查询'}</p> : null;
+    ? <p className="small muted">{metadataStatusLabel(doc.metadata_status)}</p> : null;
   const authors = data.authors.slice(0, 3).map(author => author.name).join('、') + (data.authors.length > 3 ? ' 等' : '');
   const text = [authors, data.year, data.container].filter(value => value != null && value !== '').join(' · ');
   return text ? <p className="bibliography-line">{text}</p> : null;

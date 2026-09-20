@@ -1,3 +1,5 @@
+import pytest
+
 from packages.metadata.discovery import discover_doi, normalize_doi
 
 
@@ -37,3 +39,51 @@ def test_embedded_doi_and_xmp_are_discovered_without_full_vlm_parse():
     assert found['selected'] == '10.1234/embedded'
     assert found['title_hint'] == 'A Controlled Research Paper'
     assert found['candidates'][0]['method'] == 'xmp'
+
+
+def test_first_page_prominent_title_is_available_without_embedded_metadata():
+    regions = [
+        {'text': 'A Controlled Research Paper', 'bbox': [40, 60, 550, 80]},
+        {'text': 'about Reliable Metadata', 'bbox': [40, 89, 550, 104]},
+        {'text': 'Alice Example', 'bbox': [40, 120, 300, 130]},
+        {'text': 'Abstract', 'bbox': [40, 160, 200, 172]},
+        {'text': 'Private body text must not become search terms.', 'bbox': [40, 180, 550, 192]},
+    ]
+    found = discover_doi({'/Title': 'main.pdf'}, [{'page': 1, 'page_size': [600, 800],
+        'text_regions': regions, 'links': []}])
+    assert found['selected'] is None
+    assert found['title_hint'] == 'A Controlled Research Paper about Reliable Metadata'
+    assert found['title_method'] == 'first_page_heading'
+
+
+def test_body_and_reference_pages_are_not_guessed_as_titles():
+    found = discover_doi({}, [page('Abstract\nPrivate study contents\nReferences\nA Cited Paper')])
+    assert not found['title_hint']
+
+
+@pytest.mark.parametrize('first,last', [('Learning to Represent', 'Networks'),
+    ('Learning', 'Representations of Complex Networks')])
+def test_short_lines_are_preserved_in_a_wrapped_paper_title(first, last):
+    found = discover_doi({}, [{'page': 1, 'page_size': [600, 800], 'text_regions': [
+        {'text': first, 'bbox': [40, 60, 550, 80]},
+        {'text': last, 'bbox': [40, 84, 550, 104]},
+        {'text': 'Alice Example', 'bbox': [40, 120, 300, 130]},
+        {'text': 'Abstract', 'bbox': [40, 160, 200, 172]},
+        {'text': 'Body text follows.', 'bbox': [40, 180, 550, 192]},
+    ]}])
+    assert found['title_hint'] == first + ' ' + last
+
+
+@pytest.mark.parametrize('title', ['Abstract Interpretation: A Unified Lattice Model for Static Analysis',
+    'Introduction to Quantum Information Theory'])
+def test_titles_starting_with_section_words_are_kept(title):
+    assert discover_doi({'/Title': title}, [])['title_hint'] == title
+    found = discover_doi({}, [{'page': 1, 'page_size': [600, 800], 'text_regions': [
+        {'text': title, 'bbox': [40, 60, 550, 80]},
+        {'text': 'Alice Example', 'bbox': [40, 120, 300, 130]},
+        {'text': 'Abstract', 'bbox': [40, 160, 200, 172]},
+        {'text': 'Body text follows.', 'bbox': [40, 180, 550, 192]},
+    ]}])
+    assert found['title_hint'] == title
+    found = discover_doi({}, [page('A title on page two', number=2)])
+    assert not found['title_hint']

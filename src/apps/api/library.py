@@ -44,7 +44,8 @@ def upload_view(session, upload):
     asset = session.get(SourceAsset, upload.source_asset_id) if upload.source_asset_id else None
     duplicates = list(session.scalars(select(Document).where(Document.source_asset_id == asset.id, Document.deleted_at.is_(None)))) if asset else []
     return {'id': upload.id, 'upload_id': upload.id, 'filename': upload.filename, 'byte_size': upload.byte_size,
-        'doi_discovery': upload.doi_discovery, 'metadata_status': asset.metadata_status if asset else None,
+        'doi_discovery': asset.doi_discovery if asset else upload.doi_discovery,
+        'metadata_status': asset.metadata_status if asset else None, 'bibliography': asset.bibliography if asset else None,
         'received_bytes': upload.received_bytes, 'status': upload.status, 'generation': upload.generation,
         'sha256': upload.sha256, 'page_count': asset.page_count if asset else None, 'error': upload.error,
         'expires_at': upload.expires_at, 'job_id': upload.job_id, 'source_asset_id': upload.source_asset_id,
@@ -320,7 +321,9 @@ def refresh_metadata(document_id: str, body: MetadataRefresh, request: Request, 
             require(identifier, 'DOI_INVALID', status=422)
             asset.doi_discovery = {'version': VERSION, 'status': 'found', 'selected': identifier,
                 'candidates': [{'doi': identifier, 'method': 'manual', 'confidence': 100, 'reference': False}]}
-        if asset.doi_discovery:
+        from packages.metadata.discovery import VERSION as DISCOVERY_VERSION
+        discovery = asset.doi_discovery or {}
+        if discovery and (discovery.get('selected') or discovery.get('version') == DISCOVERY_VERSION):
             from packages.metadata.execution import enqueue_metadata
             job = enqueue_metadata(session, asset, document_id=doc.id, force=True)
         else:

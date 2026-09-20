@@ -43,3 +43,34 @@ or download local models.
 `/health/live` reports HTTP liveness. `/health/ready` checks the database schema,
 storage integrity, bundled templates, frontend and current worker/parser heartbeats.
 A liveness response alone does not establish readiness or successful inference.
+
+## Upload metadata
+
+Native PDF inspection queues an independent `metadata_lookup` job before the full
+parse. The worker queries Crossref first by DOI, with DOI Citation Formatter as a
+fallback for identifiers not available there. Without a selected DOI, it searches
+Crossref using the PDF's embedded title/author or a prominent first-page heading.
+Filename-like and missing titles are skipped. Only the DOI or bounded title/author
+fields leave the instance; the metadata lookup sends no PDF, body text or provider
+credentials. The parser itself does not make network requests.
+
+Title searches inspect up to five results and require an exact normalized title.
+An available author hint must corroborate a full author name, allowing initials;
+without authors, only distinctive titles can match. Multiple matching DOIs remain
+ambiguous. Crossref ranking alone never selects a paper. Matching metadata includes
+title, authors, publication date/year, journal or proceedings, publisher and DOI.
+
+`GET /uploads/{id}` exposes `metadata_status`, `bibliography` and the latest
+`doi_discovery`, allowing the upload page to show results without waiting to import.
+Metadata arriving before import is applied when the document is created; later
+results update its catalog entry unless the user has renamed it. Missing or
+unverified results and lookup failures preserve the upload and filename. Immutable
+source revisions and published resources are unchanged.
+
+Requests have bounded time and response size; temporary failures and rate limits
+receive at most three background attempts. Verified results are cached by DOI.
+`POST /documents/{id}/metadata/refresh` retries a lookup or accepts an explicit
+`doi`; it re-inspects old, unselected discovery evidence when necessary. Reuploading
+the same PDF can also refresh old discovery evidence while retaining selected DOIs.
+
+Endpoint and query behavior follow the [Crossref REST API guidance](https://www.crossref.org/documentation/retrieve-metadata/rest-api/tips-for-using-the-crossref-rest-api/).

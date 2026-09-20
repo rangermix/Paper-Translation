@@ -1,1 +1,1 @@
-"""DOI-only bibliographic enrichment; never uses translation credentials."""
+"""Crossref DOI/title bibliographic enrichment; never uses translation credentials."""

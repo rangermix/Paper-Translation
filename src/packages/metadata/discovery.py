@@ -1,10 +1,58 @@
 """Bounded DOI evidence from embedded metadata and the first two PDF pages."""
 import re
+from statistics import median
 from urllib.parse import unquote
 
-VERSION = 'doi-discovery-v1'
+VERSION = 'doi-discovery-v2'
 DOI = re.compile(r'10\.\d{4,9}/[^\s<>"\u201c\u201d]+', re.I)
 REFERENCES = re.compile(r'(?im)^\s*(?:references|bibliography|参考文献)\s*:?\s*$')
+BODY_START = re.compile(r'(?im)^\s*(?:abstract|introduction|摘要|references|bibliography|参考文献)\s*[:：]?\s*$')
+
+
+def bibliographic_title(value):
+    """Accept a bounded title, never a filename, URL, placeholder or paragraph."""
+    if not isinstance(value, str): return None
+    value = ' '.join(value.split())
+    if not 12 <= len(value) <= 500 or not any(c.isalpha() for c in value): return None
+    if re.search(r'https?://|@|\.(?:pdf|docx?|tex)\b|^(?:untitled|microsoft word|manuscript|document)\s*$', value, re.I):
+        return None
+    if BODY_START.match(value): return None
+    return value
+
+
+def _page_title(page):
+    """Use a prominent heading before the abstract, with smaller text as evidence."""
+    rows = sorted(page.get('text_regions', []), key=lambda row: (row['bbox'][1], row['bbox'][0]))
+    heights = [(row['bbox'][3] - row['bbox'][1]) / max(1, len(row.get('text', '').splitlines()))
+        for row in rows if row.get('text', '').strip()]
+    if not heights: return None
+    candidates = []
+    page_height = page.get('page_size', [600, 800])[1]
+    for row in rows:
+        if BODY_START.search(row.get('text', '')): break
+        lines = row.get('text', '').splitlines()
+        height = (row['bbox'][3] - row['bbox'][1]) / max(1, len(lines))
+        if row['bbox'][1] > page_height * .45 or not 10 <= height <= 48: continue
+        value = ' '.join(row.get('text', '').split())
+        # Individual wrapped lines may be short; validate the complete heading.
+        if value and len(value) <= 500 and any(c.isalpha() for c in value):
+            candidates.append((row, value, height))
+    if not candidates: return None
+    largest = max(height for _, _, height in candidates)
+    if largest < median(heights) * 1.2: return None
+    heading = []
+    bottom = None
+    for row, value, height in candidates:
+        # Native bounds measure the letters, not the font em: a line without
+        # descenders can be roughly a quarter shorter in the very same font.
+        if height < max(largest * .72, median(heights) * 1.2):
+            if heading: break
+            continue
+        if bottom is not None and row['bbox'][1] - bottom > largest * 1.5: break
+        heading.append(value)
+        bottom = row['bbox'][3]
+        if len(heading) == 4: break
+    return bibliographic_title(' '.join(heading))
 
 
 def normalize_doi(value):
@@ -35,7 +83,8 @@ def _matches(text):
 
 def discover_doi(metadata, pages, *, xmp=''):
     candidates = []
-    title_hint = str(metadata.get('/Title') or '')[:2000]
+    title_hint = bibliographic_title(metadata.get('/Title'))
+    title_method = 'embedded_metadata' if title_hint else None
     author_hint = str(metadata.get('/Author') or '')[:2000]
     def add(doi, method, confidence, *, page=None, bbox=None, reference=False):
         if len(candidates) >= 100: return
@@ -51,6 +100,9 @@ def discover_doi(metadata, pages, *, xmp=''):
         add(doi, 'xmp', 100)
     headers = []
     for page in pages[:2]:
+        if page['page'] == 1 and not title_hint:
+            title_hint = _page_title(page)
+            title_method = 'first_page_heading' if title_hint else None
         regions = sorted(page.get('text_regions', []), key=lambda row: (row['bbox'][1], row['bbox'][0]))
         joined = '\n'.join(row.get('text', '') for row in regions)[:50000]
         reference_start = REFERENCES.search(joined)
@@ -79,4 +131,4 @@ def discover_doi(metadata, pages, *, xmp=''):
     selected = next(iter(embedded)) if len(embedded) == 1 else next(iter(strong)) if len(strong) == 1 else None
     return {'version': VERSION, 'status': 'found' if selected else 'ambiguous' if len(strong) > 1 else 'no_doi',
         'selected': selected, 'candidates': candidates, 'title_hint': title_hint or None,
-        'author_hint': author_hint or None, 'header_text': '\n'.join(headers)}
+        'title_method': title_method, 'author_hint': author_hint or None, 'header_text': '\n'.join(headers)}

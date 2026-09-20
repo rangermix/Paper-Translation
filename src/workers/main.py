@@ -111,7 +111,11 @@ def parse_spool(db, cfg, lease):
                 asset = SourceAsset(id=asset_id, sha256=sha, byte_size=payload['byte_size'], page_count=payload['page_count'], storage_key=key)
                 session.add(asset)
                 session.flush()
-            if not asset.doi_discovery:
+            from packages.metadata.discovery import VERSION as DISCOVERY_VERSION
+            previous = asset.doi_discovery or {}
+            fresh = payload.get('doi_discovery') or {}
+            if not previous or (not previous.get('selected') and previous.get('version') != DISCOVERY_VERSION
+                    and fresh.get('version') == DISCOVERY_VERSION):
                 asset.doi_discovery = payload.get('doi_discovery') or {'status': 'no_doi', 'selected': None, 'candidates': []}
             if upload:
                 upload.source_asset_id, upload.status = asset.id, 'verified'

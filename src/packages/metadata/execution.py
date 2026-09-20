@@ -1,17 +1,17 @@
-"""DOI metadata jobs retain snapshots and fence stale asynchronous results."""
+"""Crossref metadata jobs retain snapshots and fence stale asynchronous results."""
 from datetime import timedelta
 
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from packages.domain.db import get_document
-from packages.domain.models import Document, Job, MetadataCache, SourceAsset, Task, Upload, now, new_id
+from packages.domain.models import Document, Job, MetadataCache, SourceAsset, Task, now, new_id
 from packages.domain.errors import require
 from packages.ir import digest
 from packages.jobs.queue import assert_current, finish, emit
 from packages.jobs.history import record_log
 from .client import lookup, LookupResult
-from .mapping import VERSION, matches_paper
+from .mapping import VERSION, matches_paper, search_terms
 
 
 def cache_key(doi, service):
@@ -20,18 +20,23 @@ def cache_key(doi, service):
 
 def enqueue_metadata(session, asset, *, parent_job_id=None, document_id=None, force=False):
     discovery = asset.doi_discovery or {}
-    if not discovery.get('selected'):
+    doi = discovery.get('selected')
+    search = search_terms(discovery) if not doi else None
+    if not doi and not search:
         asset.metadata_status = discovery.get('status', 'no_doi')
         return None
     if not force:
         pending = session.scalar(select(Job).where(Job.stage == 'metadata_lookup',
-            Job.payload['source_asset_id'].astext == asset.id, Job.status.in_(['pending', 'running'])).limit(1))
-        if pending: return pending
+            Job.payload['source_asset_id'].astext == asset.id,
+            Job.payload['metadata_generation'].as_integer() == (asset.metadata_generation or 0),
+            Job.status.in_(['pending', 'running'])).limit(1))
+        if pending and pending.payload.get('doi') == doi and pending.payload.get('search') == search:
+            return pending
     asset.metadata_generation = (asset.metadata_generation or 0) + 1
     asset.metadata_status = 'pending'
     job = Job(id=new_id('job'), document_id=document_id, parent_job_id=parent_job_id, stage='metadata_lookup',
         payload={'source_asset_id': asset.id, 'metadata_generation': asset.metadata_generation,
-            'doi': discovery['selected'], 'force': force})
+            'doi': doi, 'force': force, **({'search': search} if search else {})})
     session.add(job); session.flush()
     session.add(Task(id=new_id('task'), job_id=job.id, kind='metadata_lookup', payload=job.payload))
     return job
@@ -57,7 +62,7 @@ def execute_metadata(db, cfg, lease, *, client=None):
         doi, generation = payload['doi'], payload['metadata_generation']
         discovery = asset.doi_discovery
         result = None
-        if not payload.get('force'):
+        if doi and not payload.get('force'):
             for service in ('crossref', 'doi'):
                 cached = session.get(MetadataCache, cache_key(doi, service))
                 if cached and cached.expires_at > now():
@@ -66,7 +71,7 @@ def execute_metadata(db, cfg, lease, *, client=None):
                     if service == 'doi' and cached.status == 'not_found':
                         result = LookupResult('not_found', service, code='METADATA_NOT_FOUND')
         record_log(session, job, event_key=f'lookup:{lease.attempt_id}', operation='metadata_lookup', task_id=task.id, attempt_id=lease.attempt_id)
-    result = result or lookup(doi, client=client)
+    result = result or lookup(doi, search=payload.get('search'), client=client)
     with db.transaction() as session:
         # Same lifecycle lock order as import and last-reference cleanup.
         from packages.domain.db import lock_lifecycle
@@ -87,17 +92,24 @@ def execute_metadata(db, cfg, lease, *, client=None):
             job.error = {'code': result.code}
             asset.metadata_status = 'retrying'
             emit(session, job); return
-        if result.status in {'succeeded', 'not_found'}:
+        if result.status == 'succeeded' and not matches_paper(result.value, discovery):
+            result = LookupResult('unverified', result.service, code='METADATA_PAPER_MISMATCH')
+        resolved_doi = result.value['doi'] if result.value else doi
+        if resolved_doi and result.status in {'succeeded', 'not_found'}:
             at = now()
-            values = dict(key=cache_key(doi, result.service), doi=doi, service=result.service, mapping_version=VERSION,
+            values = dict(key=cache_key(resolved_doi, result.service), doi=resolved_doi, service=result.service, mapping_version=VERSION,
                 status=result.status, fetched_at=at, expires_at=at+timedelta(days=30 if result.status=='succeeded' else 1),
                 value=result.value, response_snapshot=result.response)
             session.execute(insert(MetadataCache).values(**values).on_conflict_do_update(index_elements=['key'], set_=values))
-        if result.status == 'succeeded' and not matches_paper(result.value, discovery):
-            result = LookupResult('unverified', result.service, code='METADATA_PAPER_MISMATCH')
         asset.metadata_status = result.status
         if result.status == 'succeeded':
-            asset.bibliography = result.value | {'fetched_at': now().isoformat(), 'match': 'doi_and_document_evidence'}
+            match = 'doi_and_document_evidence'
+            if not doi:
+                match = 'crossref_title_and_author' if (payload.get('search') or {}).get('author') else 'crossref_title'
+                asset.doi_discovery = discovery | {'selected': resolved_doi, 'status': 'found',
+                    'candidates': [*discovery.get('candidates', [])[:100], {'doi': resolved_doi,
+                        'method': 'crossref_search', 'confidence': 95, 'reference': False}]}
+            asset.bibliography = result.value | {'fetched_at': now().isoformat(), 'match': match}
             for document in session.scalars(select(Document).where(Document.source_asset_id == asset.id,
                     Document.deleted_at.is_(None)).with_for_update()):
                 before = document.title
@@ -105,4 +117,4 @@ def execute_metadata(db, cfg, lease, *, client=None):
                 if document.title != before: document.generation += 1
         job.error = {'code': result.code} if result.code else None
         finish(session, lease, {'metadata_status': result.status}, status='succeeded' if result.status == 'succeeded' else
-            'completed_with_warnings' if result.status in {'not_found', 'unverified'} else 'failed')
+            'completed_with_warnings' if result.status in {'not_found', 'unverified', 'ambiguous', 'no_doi'} else 'failed')

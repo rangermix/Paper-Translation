@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-5.0.0'
+RENDERER_VERSION = 'reader-python-6.0.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -82,7 +82,8 @@ def render_html(ir, asset_paths, *, include_source=False):
     blocks = {b['id']:b for b in source['blocks']}
     results = {r['block_id']:r for r in tr['results']}
     atoms = source['protected_atoms']
-    margins = ir['render']['template_id'] == 'reader-v5'
+    font_selection = ir['render']['template_id'] == 'reader-v6'
+    margins = font_selection or ir['render']['template_id'] == 'reader-v5'
     enhanced = margins or ir['render']['template_id'] == 'reader-v4'
     modern = enhanced or ir['render']['template_id'] == 'reader-v3'
     from packages.ir.retention import original_only_blocks
@@ -307,10 +308,17 @@ def render_html(ir, asset_paths, *, include_source=False):
     if margins:
         overview = '<details class="reader-guide"><summary>内容提示' + (f' · {len(findings)} 块' if findings else '') + '</summary>' + panel + '</details>'
         title_notes = margin_notes(overview + warnings(blocks[title]) + ''.join(warnings(blocks[bid]) for bid in metadata))
+    font_controls = '<button data-action="smaller" aria-label="减小字号">A−</button><button data-action="larger" aria-label="增大字号">A＋</button>'
+    if font_selection:
+        font_controls = ('<div class="font-controls" role="group" aria-label="字体与字号">'
+            '<label class="font-picker">字体<select data-font-select>'
+            '<option value="default">默认</option><option value="serif">衬线</option>'
+            '<option value="sans">无衬线</option><option value="monospace">等宽</option>'
+            '</select></label>' + font_controls + '</div>')
     return ('<!doctype html>\n<html lang="'+esc(tr['target_language'])+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' data:; style-src \'self\' \'unsafe-inline\'; script-src \'self\'; connect-src \'none\'; base-uri \'none\'; form-action \'none\'; object-src \'none\'">'
             '<title>'+esc(display_title)+'</title><link rel="stylesheet" href="reader.css">'+('<script src="math.js" defer></script>' if enhanced else '')+'<script src="reader.js" defer></script></head><body style="overflow-wrap:anywhere">'
-            '<nav class="toolbar" aria-label="阅读设置"><button data-action="both" data-view aria-pressed="true">双语</button><button data-action="source" data-view aria-pressed="false">原文</button><button data-action="target" data-view aria-pressed="false">译文</button><button data-action="smaller" aria-label="减小字号">A−</button><button data-action="larger" aria-label="增大字号">A＋</button><button data-action="theme">切换主题</button>'+original+'</nav>'+('<div class="reader-header">' if margins else '')+
+            '<nav class="toolbar" aria-label="阅读设置"><button data-action="both" data-view aria-pressed="true">双语</button><button data-action="source" data-view aria-pressed="false">原文</button><button data-action="target" data-view aria-pressed="false">译文</button>'+font_controls+'<button data-action="theme">切换主题</button>'+original+'</nav>'+('<div class="reader-header">' if margins else '')+
             '<header class="hero" id="b-'+esc(title)+'" data-block-id="'+esc(title)+'" data-kind="heading"><div class="kicker">对照文库 · '+esc(language_name(source['language']))+' / '+esc(language_name(tr['target_language']))+'</div>'
             '<h1 data-language="target">'+esc(display_title)+'</h1><p class="original-title" data-language="source">'+esc(ir['document']['title'])+'</p>'+title_metadata+'<p class="note">'+esc(ir['document']['notice'])+'</p>'+draft_notice+('' if margins else warnings(blocks[title]))+'</header>'+(title_notes+'</div>' if margins else '')+
             '<p id="reader-storage-notice" class="note" hidden>浏览器存储不可用；正文仍可完整阅读。</p><div class="layout"><aside class="toc" aria-label="文章目录"><h2>目录</h2>'+toc+('' if margins else panel)+'</aside><article>'+body+'</article></div></body></html>\n').encode('utf-8')

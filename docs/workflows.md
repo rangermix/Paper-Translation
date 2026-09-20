@@ -70,7 +70,9 @@ scales require parameter/model context, so byte units and identifiers are not
 treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
-New publications use `reader-v5`: the TOC uses the original section labels,
+New publications use `reader-v6`: a font selector beside the size buttons offers
+default, serif, sans-serif and monospace text. The choice is saved in browser
+storage; fonts use local fallbacks and work offline. The TOC uses the original section labels,
 author/affiliation lines share the title area, and adjacent list items share a
 block. On wide screens, content hints and original-page comparisons open beside
 the reading column; compact screens keep them inline. Figures fill the column within the

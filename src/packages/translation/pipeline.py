@@ -91,7 +91,7 @@ def advance_parse(session, cfg, source_draft, parent):
             stage='publish', payload=payload, quality_summary=quality_summary(qa))
         session.add(local); session.flush()
         session.add(Task(id=new_id('task'), job_id=local.id, kind='publish', payload={
-            'translation_revision_id': revision_tr.id, 'edition_id': edition.id, 'template_id': 'reader-v5',
+            'translation_revision_id': revision_tr.id, 'edition_id': edition.id, 'template_id': 'reader-v6',
             'artifact_id': new_id('artifact'), 'expected_generation': edition.generation,
             'preview_only': options['publish_policy'] == 'manual_approval'}))
         parent.progress = parent.progress | {'publication_job_id': local.id}

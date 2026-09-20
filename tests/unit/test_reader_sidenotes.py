@@ -95,6 +95,24 @@ def table_reference_fixture():
     return refresh(ir)
 
 
+def native_sidenote_fixture(tmp_path):
+    from packages.editorial.drafts import context_hash, render_input
+    from test_native_footnote_links import adapt
+    source, inspection = adapt(tmp_path, second_reference=True)
+    translation = deepcopy(sidenote_fixture()['translation_revision'])
+    row = deepcopy(next(row for row in translation['results'] if row['block_id'] == 'p1'))
+    translation.update(source_revision_id=source['id'], title='Footnote paper', results=[])
+    for block in source['blocks']:
+        assert block['translatable']  # This authored PDF contains prose only.
+        result = deepcopy(row)
+        result.update(block_id=block['id'], source_hash=block['source_hash'],
+            context_hash=context_hash(source, block['id']), status='fallback', target_inline=[],
+            reason='translation_unavailable', fallback={'mode': 'source_text'}, warnings=[],
+            review_state='not_reviewed', review_record=None)
+        translation['results'].append(result)
+    return render_input('native-footnotes', source, translation, 'reader-v9'), inspection
+
+
 def markup(ir):
     return ReaderMarkup(render_html(ir, {'figure_png': 'figure.png'}).decode())
 
@@ -201,14 +219,13 @@ def test_words_in_reference_titles_are_not_treated_as_secondary_authors():
     assert not markup(refresh(ir)).by_id('p2').findall('.//a[@data-reference-targets]')
 
 
-def test_source_superscript_footnote_markers_link_by_unique_page_and_label():
+def test_unproven_superscript_footnote_markers_are_preserved_without_guessing():
     ir = sidenote_fixture()
     set_inline(ir, 'p2', [{'type': 'text', 'text': 'A parsed footnote¹ appears here.'}])
     set_inline(ir, 'fn1', [{'type': 'text', 'text': '1 Details from the original footnote.'}])
     tree = markup(refresh(ir))
-    note = margin(tree, 'p2')
-    assert note is not None and note.find('.//*[@data-note-target="fn1"]') is not None
-    assert tree.by_id('p2').find('.//a[@role="doc-noteref"]') is not None
+    assert tree.by_id('p2').find('.//a[@role="doc-noteref"]') is None
+    assert 'footnote¹' in ''.join(tree.by_id('p2').itertext())
 
 
 def test_same_footnote_marker_on_another_page_is_not_guessed():
@@ -230,13 +247,36 @@ def test_title_footnotes_have_clickable_markers_and_a_title_margin():
     assert margin(tree, 'title').find('.//*[@data-note-target="fn1"]') is not None
 
 
-@pytest.mark.parametrize('text', ['The value of x² is 9.', 'Plain code¹ is literal.'])
+@pytest.mark.parametrize('text', ['The value of x² is 9.', '25 cm² was used.', 'log² in this notation.', 'Plain code¹ is literal.'])
 def test_math_exponents_and_code_marks_are_not_guessed_as_footnote_citations(text):
     ir = sidenote_fixture()
     nodes = [{'type': 'text', 'text': text, **({'marks': ['code']} if 'code' in text else {})}]
     set_inline(ir, 'p2', nodes)
     set_inline(ir, 'fn1', [{'type': 'text', 'text': ('1' if 'code' in text else '2') + ' Details.'}])
     assert markup(refresh(ir)).by_id('p2').find('.//a[@role="doc-noteref"]') is None
+
+
+@pytest.mark.parametrize('text', [
+    '[1] Alice Smith. Forecasting through 2030. Technical report, n.d.',
+    '[1] Smith, J. Forecasting through 2030. Technical report, n.d.',
+])
+def test_a_sole_year_in_a_title_is_not_assumed_to_be_a_publication_date(text):
+    ir = sidenote_fixture()
+    ref = next(block for block in ir['source_revision']['blocks'] if block['id'] == 'ref1')
+    ref.update(raw_text=text, normalized_text=text, source_inline=[{'type': 'text', 'text': text}])
+    set_inline(ir, 'p2', [{'type': 'text', 'text': '(Smith, 2030)'}])
+    assert not markup(refresh(ir)).by_id('p2').findall('.//a[@data-reference-targets]')
+
+
+@pytest.mark.parametrize('authors', ['Alice Q. Smith, Bob Jones.', 'Smith, A. Q., Jones, B.', 'Alice Smith and Bob Jones'])
+def test_author_lists_with_initials_resolve_both_named_authors(authors):
+    ir = sidenote_fixture()
+    ref = next(block for block in ir['source_revision']['blocks'] if block['id'] == 'ref1')
+    text = f'[1] {authors} (2020). A useful result.'
+    ref.update(raw_text=text, normalized_text=text, source_inline=[{'type': 'text', 'text': text}])
+    set_inline(ir, 'p2', [{'type': 'text', 'text': '(Smith & Jones, 2020)'}])
+    link = markup(refresh(ir)).by_id('p2').find('.//a[@data-reference-targets]')
+    assert link is not None and link.get('data-reference-targets') == 'ref1'
 
 
 def test_existing_templates_keep_footnotes_in_the_main_flow():
@@ -255,3 +295,23 @@ def test_new_reader_is_registered_and_exports_offline(tmp_path):
     single = export_single_html(tmp_path / 'bundle', tmp_path / 'single.html', include_source=True).read_text()
     assert 'data-reference-targets' in single
     assert '<script src=' not in single
+
+
+def test_native_pdf_markers_publish_beside_each_citing_block(tmp_path):
+    ir, inspection = native_sidenote_fixture(tmp_path)
+    source = ir['source_revision']
+    before = deepcopy(source)
+    Publisher().build(ir, tmp_path / 'output', tmp_path / 'bundle', include_source=True)
+    single = export_single_html(tmp_path / 'bundle', tmp_path / 'single.html', include_source=True).read_text()
+    tree = ReaderMarkup(single)
+    note = next(block for block in source['blocks'] if block['kind'] == 'footnote')
+    bodies = [block for block in source['blocks'] if block['kind'] == 'paragraph']
+    assert len(bodies) == len(inspection['footnote_links']) == 2
+    for block in bodies:
+        content = tree.by_id(block['id'])
+        assert content.find('.//a[@role="doc-noteref"]').text == '1'
+        assert content.find('.//span[@data-kind="number"]').text == '1'
+        card = margin(tree, block['id']).find('.//*[@data-note-target="' + note['id'] + '"]')
+        assert card is not None and 'Supporting detail.' in ''.join(card.itertext())
+    assert len(tree.root.findall('.//*[@id="b-' + note['id'] + '"]')) == 1
+    assert source == before

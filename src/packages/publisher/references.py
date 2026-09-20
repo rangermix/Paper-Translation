@@ -9,42 +9,32 @@ YEAR = re.compile(r'\b(?:19|20)\d{2}[a-z]?\b')
 NUMBER = re.compile(r'^\s*(?:\[(\d+[a-z]?)\]|(\d+[a-z]?)[.)])\s*')
 
 
-def first_author(text):
-    # Support both "Smith, J." and "Jane Q. Smith, ...". Stop before the
-    # title, but keep initials. Unrecognized bibliography styles stay unlinked.
-    first = re.split(r',|\s+(?:and|&|et al\.)\s*', text, maxsplit=1)[0]
-    first = re.split(r'(?<!\b[A-Z])\.\s', first, maxsplit=1)[0].strip(' .(')
-    words = first.split()
-    if not words or len(words) > 6:
-        return None
-    surname = words[-1].rstrip('.')
-    if not surname or not surname[0].isupper() or not all(c.isalpha() or c in "-'’" for c in surname):
-        return None
-    return surname.casefold()
-
-
 def author_names(prefix):
-    """Read only the author sentence, never search the paper title for names."""
-    authors = re.split(r'(?<!\b[A-Z])\.\s', prefix, maxsplit=1)[0]
-    fields = [field.strip(' .') for field in re.split(r',|\s+(?:and|&)\s+', authors)]
-    primary = first_author(prefix)
-    names = {primary} if primary else set()
-    if len(fields[0].split()) > 1:
-        # Given-name-first author lists: each field must look like a name.
-        for field in fields:
-            words = field.split()
-            if 2 <= len(words) <= 5 and all(word[0].isupper() or word in {'de', 'van', 'von'} for word in words):
-                candidate = first_author(field)
-                if candidate:
-                    names.add(candidate)
-    elif len(fields) % 2 == 0:
-        # Surname, initials pairs; a title after an initial is not an author.
-        for surname, initials in zip(fields[::2], fields[1::2]):
-            if re.fullmatch(r'(?:[A-Z]\.?(?:\s+|$))+', initials):
-                candidate = first_author(surname)
-                if candidate:
-                    names.add(candidate)
-    return names
+    """Accept a complete author list before the date, never a title or venue."""
+    prefix = re.sub(r'\s+et al\.?$', '', prefix)
+    fields = [field.strip() for field in re.split(r',\s*(?:and\s+|&\s*)?|\s+(?:and|&)\s+', prefix)]
+
+    def surname(field):
+        words = field.split()
+        if not 1 <= len(words) <= 5:
+            return None
+        for word in words:
+            if word in {'de', 'van', 'von'} or re.fullmatch(r'[A-Z]\.', word):
+                continue
+            if not word[0].isupper() or not all(c.isalpha() or c in "-'’" for c in word):
+                return None
+        last = words[-1]
+        return last.casefold() if len(last) > 1 and not last.endswith('.') else None
+
+    # "Smith, J. Q., Jones, A." uses surname/initial pairs.
+    if len(fields) % 2 == 0 and all(re.fullmatch(r'(?:[A-Z]\.?(?:\s+|$))+', field)
+            for field in fields[1::2]):
+        names = [surname(field) for field in fields[::2]]
+    else:
+        # "Jane Q. Smith, Alice Jones". A period after a full word inside
+        # this prefix signals a title/venue, so the whole identity is rejected.
+        names = [surname(field) for field in fields]
+    return names if names and all(names) else []
 
 
 class ReferenceIndex:
@@ -70,9 +60,9 @@ class ReferenceIndex:
                 if tail and tail[0] not in '.,;:)':
                     continue
                 prefix = text[:year.start()].strip(' .(')
-                author = first_author(prefix)
-                if author:
-                    self.authors[author, year[0]].append((block['id'], author_names(prefix)))
+                authors = author_names(prefix)
+                if authors:
+                    self.authors[authors[0], year[0]].append((block['id'], set(authors)))
 
     def resolve(self, label):
         if label not in self.cache:

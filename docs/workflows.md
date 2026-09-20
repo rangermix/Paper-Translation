@@ -82,11 +82,14 @@ The Noto choice uses the [Noto Sans SC family](https://github.com/google/fonts/b
 The TOC uses the original section labels,
 author/affiliation lines share the title area, and adjacent list items share a
 list. Footnotes with an explicit source cross-reference appear beside each citing
-block, including repeated citations. Clear superscript or symbol markers also
-link to a uniquely labelled footnote on the same page; unlinked notes remain in the reading flow.
+block, including repeated citations. Fresh parses can create these links for
+small, raised numeric markers after sentence-ending periods or question marks
+when native PDF glyphs, source text and a unique same-page footnote label agree.
+Word-attached superscripts remain ambiguous. Existing snapshots and uncertain markers stay
+unchanged; unlinked notes remain in the reading flow.
 Inline numeric and author–year citations open the matching original bibliography
-entries in that block's margin. Matching uses only unique labels or author/year
-evidence in the saved document; unresolved or ambiguous citations stay readable
+entries in that block's margin. Matching uses only unique labels or a recognized
+author list immediately before the year in the saved document; unresolved or ambiguous citations stay readable
 without a guessed link. Reference cards close with their button or Escape and
 return focus to the citation. Without JavaScript, citation links lead to the
 bibliography. At widths of 1200px and above, notes, references, content hints and

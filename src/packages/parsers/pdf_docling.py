@@ -536,6 +536,8 @@ class DoclingParser:
                 else:
                     block['parent_id']=headings[-1]['id'] if headings else source['title_block_id'] or None
                     if bibliography and block['kind']=='paragraph':block['kind']='reference';block['translatable']=False
+            from .footnotes import link_native_footnotes
+            inspection['footnote_links'] = link_native_footnotes(source, inspection)
             for block in blocks:
                 if block['provenance'] and (block['kind'] in {'math', 'code', 'table', 'table_cell'} or any(
                         n['type'] == 'protected_ref' and atoms[n['ref']]['kind'] == 'number' for n in block['source_inline'])):

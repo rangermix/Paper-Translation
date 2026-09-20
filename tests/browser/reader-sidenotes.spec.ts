@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 const supplied = process.env.LIBRARY_READER_SIDENOTES_EVIDENCE;
 const folder = supplied ? inputPath(supplied) : '';
-test.beforeEach(() => test.skip(!supplied, 'Set LIBRARY_READER_SIDENOTES_EVIDENCE to the generated reader-v8 fixture directory.'));
+test.beforeEach(() => test.skip(!supplied, 'Set LIBRARY_READER_SIDENOTES_EVIDENCE to the generated reader fixture directory.'));
 
 for (const format of ['single.html', 'bundle/index.html']) {
   test(`${format} shows contextual footnotes and opens references without leaving the block`, async ({ page, context }, testInfo) => {
@@ -132,4 +132,38 @@ test('references extracted into table cells open in the citing margin', async ({
   await expect(card).toContainText('A bibliography entry extracted into a table.');
   expect(page.url()).toBe(url);
   await expect(card.locator('td')).toHaveCount(0);
+});
+
+test('native PDF footnotes appear beside both citing paragraphs', async ({ page, context }, testInfo) => {
+  await context.setOffline(true);
+  await page.goto(pathToFileURL(resolve(folder, 'native.html')).href);
+  const blocks = page.locator('[data-kind="paragraph"]');
+  await expect(blocks).toHaveCount(2);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const block of await blocks.all()) {
+      const link = block.locator('[data-language="source"] .footnote-link');
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveText('1');
+      await expect(block.locator('[data-language="source"] [data-kind="number"]')).toHaveText('1');
+      const card = block.locator('..').locator(':scope > .reader-notes .footnote-card');
+      await expect(card).toContainText('Supporting detail.');
+      const body = await block.boundingBox(), note = await card.boundingBox();
+      expect(body).not.toBeNull();
+      expect(note).not.toBeNull();
+      if (width > 1200) {
+        expect(note!.x).toBeGreaterThan(body!.x + body!.width);
+        expect(Math.abs(note!.y - body!.y)).toBeLessThan(3);
+      } else {
+        expect(note!.y).toBeGreaterThanOrEqual(body!.y + body!.height);
+      }
+      await link.click();
+      await expect(card).toBeInViewport();
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    await blocks.first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`native-footnotes-${width}.png`) });
+  }
+  const ids = await page.locator('[id]').evaluateAll(nodes => nodes.map(node => node.id));
+  expect(new Set(ids).size).toBe(ids.length);
 });

@@ -84,13 +84,17 @@ def inspect_pdf(path, limits=None):
                             if cp>0x10ffff or 0xd800<=cp<=0xdfff:cp=0xfffd
                             cl,cb,cr,ct=textpage.get_charbox(char_index)
                             character={'index':char_index,'bbox':pdf_box_to_display(page,(cl,cb,cr,ct)),'text':chr(cp)}
+                            character['font_size']=pdfium.raw.FPDFText_GetFontSize(textpage,char_index)
+                            x,y=ctypes.c_double(),ctypes.c_double()
+                            if pdfium.raw.FPDFText_GetCharOrigin(textpage,char_index,ctypes.byref(x),ctypes.byref(y)):
+                                character['origin']=[x.value,y.value]
                             if cp == ord('?'):
-                                x,y=ctypes.c_double(),ctypes.c_double();flags=ctypes.c_int()
+                                flags=ctypes.c_int()
                                 length=pdfium.raw.FPDFText_GetFontInfo(textpage,char_index,None,0,ctypes.byref(flags))
-                                if 0 < length <= 1024 and pdfium.raw.FPDFText_GetCharOrigin(textpage,char_index,ctypes.byref(x),ctypes.byref(y)):
+                                if 0 < length <= 1024 and 'origin' in character:
                                     font=ctypes.create_string_buffer(length)
                                     pdfium.raw.FPDFText_GetFontInfo(textpage,char_index,font,length,ctypes.byref(flags))
-                                    character.update(font=font.value.decode('utf-8',errors='replace'),origin=[x.value,y.value])
+                                    character['font']=font.value.decode('utf-8',errors='replace')
                             native_characters.append(character)
                         # PDFium rectangle grouping provides native text coverage independently of Docling.
                         rect_count = textpage.count_rects()
@@ -103,6 +107,8 @@ def inspect_pdf(path, limits=None):
                         from .glyphs import embedded_symbol_evidence, native_regions
                         symbols=embedded_symbol_evidence(source_page) if any(g.get('font') for g in native_characters) else []
                         regions,glyph_reconciliations=native_regions(native_characters,rectangles,symbol_evidence=symbols)
+                        from .footnotes import native_footnote_markers
+                        footnote_markers=native_footnote_markers(native_characters)
                     finally:
                         textpage.close()
                     image_areas, image_regions, graphic_regions = [], [], []
@@ -158,7 +164,8 @@ def inspect_pdf(path, limits=None):
                         'crop_box':[float(x) for x in source_page.cropbox],
                         'rotation':int(source_page.get('/Rotate',0)) % 360,
                         'coordinate_system':'top-left-points','text_characters':visible,
-                        'text_regions':regions,'glyph_reconciliations':glyph_reconciliations,'scan_suspected':scan,'image_area_fractions':image_areas,
+                        'text_regions':regions,'glyph_reconciliations':glyph_reconciliations,'footnote_markers':footnote_markers,
+                        'scan_suspected':scan,'image_area_fractions':image_areas,
                         'image_regions':image_regions,'graphic_regions':graphic_regions,'links':links})
                 finally:
                     page.close()

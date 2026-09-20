@@ -106,19 +106,17 @@ def render_html(ir, asset_paths, *, include_source=False):
     modern = enhanced or ir['render']['template_id'] == 'reader-v3'
     from packages.ir.retention import original_only_blocks
     retained = original_only_blocks(source) if enhanced else {}
-    references, markers, footnotes, note_links, children = None, None, {}, {}, {}
+    references, footnotes, note_links, children = None, {}, {}, {}
     if sidenotes:
         from packages.publisher.references import ReferenceIndex
-        from packages.publisher.footnotes import FootnoteIndex
         references = ReferenceIndex(source['blocks'], retained)
-        markers = FootnoteIndex(source['blocks'], retained)
         note_serial = 0
         for block in sorted(blocks.values(), key=lambda block: block['order']):
             if block['owner_id']:
                 children.setdefault(block['owner_id'], []).append(block['id'])
             if block['kind'] in {'footnote', 'reference', 'code', 'math'} or retained.get(block['id']) == 'original_reference':
                 continue
-            for node in markers.annotate(block['source_inline'], block['id']):
+            for node in block['source_inline']:
                 if node['type'] == 'xref' and blocks[node['target_block_id']]['kind'] == 'footnote':
                     target = node['target_block_id']
                     origins = footnotes.setdefault(target, {})
@@ -129,7 +127,7 @@ def render_html(ir, asset_paths, *, include_source=False):
                         note_links.setdefault(block['id'], {})[target] = anchor
 
     def rich(nodes, bid=None):
-        return inline(markers.annotate(nodes, bid) if markers else nodes, atoms, typeset=enhanced,
+        return inline(nodes, atoms, typeset=enhanced,
             references=references if bid not in retained else None,
             note_links=note_links.get(bid))
     def original_image(block, asset_id, *, alternative=None, figure=False):

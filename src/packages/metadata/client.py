@@ -38,8 +38,8 @@ def lookup(doi, *, client=None):
     deadline = time.monotonic() + TOTAL_SECONDS
     outcome = LookupResult('not_found', 'doi', code='METADATA_NOT_FOUND')
     try:
-        for service, url in [('doi', 'https://citation.doi.org/metadata?' + urlencode({'doi': doi})),
-                             ('crossref', 'https://api.crossref.org/works/' + quote(doi, safe=''))]:
+        for service, url in [('crossref', 'https://api.crossref.org/works/' + quote(doi, safe='')),
+                             ('doi', 'https://citation.doi.org/metadata?' + urlencode({'doi': doi}))]:
             if time.monotonic() >= deadline:
                 return LookupResult('failed', service, code='METADATA_TIMEOUT', retry_after=2)
             try:

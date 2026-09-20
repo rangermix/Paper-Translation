@@ -2,18 +2,30 @@ import httpx
 from packages.metadata.client import lookup, MAX_BYTES
 
 
-def test_only_fixed_doi_endpoints_receive_encoded_identifier():
+def test_crossref_is_first_and_receives_only_encoded_identifier():
     seen = []
     def respond(request):
         seen.append(request)
-        if request.url.host == 'citation.doi.org': return httpx.Response(404)
         return httpx.Response(200, json={'status': 'ok', 'message': {'DOI': '10.1234/a(b)', 'title': ['Controlled title']}})
     with httpx.Client(transport=httpx.MockTransport(respond)) as client:
         result = lookup('10.1234/a(b)', client=client)
     assert result.status == 'succeeded' and result.service == 'crossref'
-    assert [request.url.host for request in seen] == ['citation.doi.org', 'api.crossref.org']
+    assert [request.url.host for request in seen] == ['api.crossref.org']
     assert all(not request.content and 'authorization' not in request.headers for request in seen)
-    assert seen[0].url.params['doi'] == '10.1234/a(b)'
+    assert seen[0].url.raw_path.endswith(b'10.1234%2Fa%28b%29')
+
+
+def test_doi_formatter_remains_a_fallback_for_other_registration_agencies():
+    seen = []
+    def respond(request):
+        seen.append(request)
+        if request.url.host == 'api.crossref.org': return httpx.Response(404)
+        return httpx.Response(200, json={'DOI': '10.1234/example', 'title': 'Controlled title'})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        result = lookup('10.1234/example', client=client)
+    assert result.status == 'succeeded' and result.service == 'doi'
+    assert [request.url.host for request in seen] == ['api.crossref.org', 'citation.doi.org']
+    assert seen[-1].url.params['doi'] == '10.1234/example'
 
 
 def test_retry_after_is_preserved_and_redirect_is_not_followed():

@@ -20,7 +20,8 @@ def prepare(database):
 def transport(callback=None):
     def respond(request):
         if callback: callback()
-        return httpx.Response(200, json={'DOI': '10.1234/x', 'title': 'A Controlled Paper', 'author': [{'given': 'Alice', 'family': 'Example'}], 'issued': {'date-parts': [[2020]]}})
+        data = {'DOI': '10.1234/x', 'title': ['A Controlled Paper'], 'author': [{'given': 'Alice', 'family': 'Example'}], 'issued': {'date-parts': [[2020]]}}
+        return httpx.Response(200, json={'status': 'ok', 'message': data})
     return httpx.Client(transport=httpx.MockTransport(respond))
 
 
@@ -33,6 +34,7 @@ def test_success_updates_catalog_and_cache_but_keeps_filename_and_job_snapshot(d
     doc = client.get('/api/v1/documents/doc_fixture').json()
     assert doc['title'] == 'A Controlled Paper' and doc['original_filename'] == 'uploaded.pdf'
     assert doc['bibliography']['year'] == 2020 and doc['metadata_status'] == 'succeeded'
+    assert doc['bibliography']['service'] == 'crossref'
     with db.transaction() as session:
         assert session.get(Job, identifier).title_snapshot == 'Publication fixture'
         assert session.scalar(select(MetadataCache)).response_snapshot['DOI'] == '10.1234/x'

@@ -58,12 +58,12 @@ def execute_metadata(db, cfg, lease, *, client=None):
         discovery = asset.doi_discovery
         result = None
         if not payload.get('force'):
-            for service in ('doi', 'crossref'):
+            for service in ('crossref', 'doi'):
                 cached = session.get(MetadataCache, cache_key(doi, service))
                 if cached and cached.expires_at > now():
                     if cached.status == 'succeeded':
                         result = LookupResult(cached.status, service, value=cached.value, response=cached.response_snapshot); break
-                    if service == 'crossref' and cached.status == 'not_found':
+                    if service == 'doi' and cached.status == 'not_found':
                         result = LookupResult('not_found', service, code='METADATA_NOT_FOUND')
         record_log(session, job, event_key=f'lookup:{lease.attempt_id}', operation='metadata_lookup', task_id=task.id, attempt_id=lease.attempt_id)
     result = result or lookup(doi, client=client)

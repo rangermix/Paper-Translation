@@ -8,7 +8,7 @@ from packages.ir import canonical_bytes, strict_loads
 from packages.local_models.catalog import ENDPOINT, get_model
 from .contract import ProviderFailure, normalize_request_id
 
-REQUEST_FORMAT_VERSION = 'local-translation-v2'
+REQUEST_FORMAT_VERSION = 'local-translation-v3'
 
 LANGUAGES = dict(zip(
     'ar az bg bn ca cs da de el en es fa fi fr he hi hr hu id it ja kk km ko lo ms my no nl pl pt ro ru sk sl sv ta th tl tr ur uz vi yue'.split(),
@@ -58,16 +58,10 @@ def request_body(units, profile, glossary, *, review=False):
         prompt = keep_markers + terms + f'Translate this from {origin} to {target}:\n{origin}: {source}\n{target}:'
         body = {'prompt': prompt, 'add_special_tokens': False}
     else:
-        # Hy-MT2's native background/source sections keep instructions and
-        # neighbouring text out of the segment the translation model renders.
-        context = unit.get('context', {})
-        background = '\n'.join(key.title() + ': ' + str(context[key])[:100]
-            for key in ('heading', 'previous', 'next') if context.get(key))
-        if terms:
-            background = background + '\n' + terms if background else terms
-        prefix = '[Background Information]\n' + background + '\n\n' if background else ''
-        consideration = ', taking the provided background information into consideration' if background else ''
-        prompt = (prefix + f'Please translate the following text into {target}{consideration}. '
+        # This translation-only model can render background instead of the
+        # requested source even with separate section labels. Send only this
+        # unit's text; preserve contextual cache identity for other providers.
+        prompt = (terms + f'Please translate the following text into {target}. '
             'Output only the translated text, without any additional explanation. ' + keep_markers
             + '\n[Source Text]\n' + source)
         body = {'messages': [{'role': 'user', 'content': prompt}]}

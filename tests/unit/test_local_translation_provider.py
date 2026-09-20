@@ -25,18 +25,28 @@ def test_native_milmmt_prompt_does_not_request_json():
     assert 'response_format' not in body
 
 
-def test_hy_context_and_instructions_are_outside_the_source_section():
+def test_hy_prompt_does_not_send_neighbouring_text_that_the_model_can_translate():
     from packages.providers.local_translation import request_body
     unit = {**TEST_UNIT, 'context': {'heading': 'Abstract', 'previous': 'Earlier context.', 'next': 'Introduction'}}
     prompt = request_body([unit], profile(), [])['messages'][0]['content']
     instructions, source = prompt.split('[Source Text]\n', 1)
     assert source == 'Hello.'
-    assert instructions.startswith('[Background Information]\n')
-    assert 'Heading: Abstract' in instructions
-    assert 'Previous: Earlier context.' in instructions
-    assert 'Next: Introduction' in instructions
+    assert '[Background Information]' not in prompt
+    assert 'Abstract' not in prompt
+    assert 'Earlier context.' not in prompt
+    assert 'Introduction' not in prompt
     assert 'without any additional explanation' in instructions
     assert '"heading"' not in prompt
+
+
+def test_hy_glossary_instructions_do_not_reintroduce_neighbouring_prose():
+    from packages.providers.local_translation import request_body
+    unit = {**TEST_UNIT, 'context': {'previous': 'Unrelated paragraph'}}
+    prompt = request_body([unit], profile(), [{'source': 'Hello', 'target': '你好'}])['messages'][0]['content']
+    instructions, source = prompt.split('[Source Text]\n', 1)
+    assert '你好' in instructions
+    assert 'Unrelated paragraph' not in prompt
+    assert source == 'Hello.'
 
 
 def test_local_markers_are_short_collision_free_and_restore_repetitions():

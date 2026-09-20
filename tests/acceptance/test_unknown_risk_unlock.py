@@ -16,6 +16,7 @@ def test_risk_ack_preserves_unknown_and_only_allows_other_work_within_remaining_
     db,_=database
     with db.transaction() as session:
         settings=session.get(Settings,'singleton');settings.instance_budget_micro=100
+        settings.dispatch_disabled=True
         session.add(Job(id='old_uncertain',stage='translate',status='outcome_unknown',budget_micro=100));session.flush()
         session.add(Task(id='old_task',job_id='old_uncertain',kind='translate',status='outcome_unknown',attempts=1,fence=1));session.flush()
         session.add(Attempt(id='old_attempt',task_id='old_task',job_id='old_uncertain',fence=1,control_epoch=0,state='outcome_unknown'));session.flush()

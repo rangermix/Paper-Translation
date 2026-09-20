@@ -17,7 +17,8 @@ from tests.integration.test_budget import PRICE
 pytestmark = pytest.mark.postgres
 
 
-def test_m1_frozen_schema_upgrades_without_losing_source_or_unknown_risk(database, monkeypatch):
+@pytest.mark.parametrize('dispatch_disabled', [False, True])
+def test_m1_frozen_schema_upgrades_without_losing_source_or_unknown_risk(database, monkeypatch, dispatch_disabled):
     admin, cfg = database
     schema = 'library_test_' + uuid.uuid4().hex
     with admin.engine.begin() as connection:
@@ -31,6 +32,7 @@ def test_m1_frozen_schema_upgrades_without_losing_source_or_unknown_risk(databas
             assert connection.scalar(text("SELECT to_regclass(:name)"), {'name': schema + '.translation_memory'}) is None
         seed_editor(db, cfg, legacy_schema=True)
         with db.transaction() as session:
+            session.get(Settings, 'singleton').dispatch_disabled = dispatch_disabled
             source = session.get(SourceRevision, 'src_fixture')
             before = file_hash(cfg.data / source.storage_key)
             legacy_insert(session, Job, id='uncertain_job', document_id='doc_fixture', stage='translate', status='outcome_unknown', budget_micro=100)
@@ -47,7 +49,7 @@ def test_m1_frozen_schema_upgrades_without_losing_source_or_unknown_risk(databas
         with db.transaction() as session:
             assert file_hash(cfg.data / session.get(SourceRevision, 'src_fixture').storage_key) == before
             assert budget_totals(session) == {'actual_micro': 0, 'reserved_micro': 0, 'unknown_micro': 80}
-            assert session.get(Settings, 'singleton').dispatch_disabled
+            assert session.get(Settings, 'singleton').dispatch_disabled is dispatch_disabled
         with pytest.raises(DomainError, match='Unresolved billing risk'):
             enable_dispatch(db)
         acknowledged = enable_dispatch(db, accept_unknown_risk=True, reason='Inspected fixed request evidence; retain conservative unknown budget')

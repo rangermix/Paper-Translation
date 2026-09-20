@@ -95,3 +95,105 @@ def test_table_headers_and_prose_still_translate(text):
 def test_model_identifier_in_body_remains_translatable():
     src, block = parsed('VGG16')
     assert block['id'] not in original_only_blocks(src)
+
+
+@pytest.mark.parametrize('text', ['(a) VGG16', '(b) Inception-v3', '(A) ResNet-50', 'S2VT'])
+def test_isolated_model_subcaptions_are_retained_without_source_edits(text):
+    src, block = parsed(text, 'caption')
+    before = deepcopy(src)
+    assert original_only_blocks(src).get(block['id']) == 'original_identifier_label'
+    assert plan_units(src, 'zh-Hans', profile(), [block['id']]) == []
+    assert src == before
+
+
+@pytest.mark.parametrize('text', [
+    '(a) VGG16 accuracy', 'Figure 10: VGG16', '(a) DNN Training', '8 GPUs',
+    '(a) Inception-v3 outperforms VGG16', 'A model with 2 layers',
+])
+def test_prose_captions_with_identifiers_still_translate(text):
+    src, block = parsed(text, 'caption')
+    assert block['id'] not in original_only_blocks(src)
+    assert plan_units(src, 'zh-Hans', profile(), [block['id']])
+
+
+def test_prose_footnote_with_an_organisation_is_not_retained_as_a_whole():
+    src, block = parsed('Work started as part of an internship at Microsoft Research.', 'footnote')
+    assert block['id'] not in original_only_blocks(src)
+    assert plan_units(src, 'zh-Hans', profile(), [block['id']])
+
+
+def test_retained_caption_still_ends_the_contiguous_author_front_matter():
+    src = paper([
+        ('label', 'caption', '(a) VGG16'),
+        ('names', 'paragraph', 'Alice Smith, Bob Jones'),
+        ('org', 'paragraph', 'Example University'),
+    ])
+    assert original_only_blocks(src) == {'label': 'original_identifier_label'}
+    assert {'names', 'org'} <= planned_ids(src)
+
+
+def test_metadata_literals_extract_full_marked_names_and_organisations():
+    from packages.ir.retention import metadata_literals
+    src = paper([
+        ('authors', 'paragraph', r'Aaron Harlap $^{\dagger*}$ Deepak Narayanan $^{\ddagger*}$'),
+        ('more_authors', 'paragraph', r'Amar Phanishayee $^{*}$ Vivek Seshadri $^{*}$ '
+            r'Nikhil Devanur $^{*}$ Greg Ganger $^{\dagger}$ Phil Gibbons $^{\dagger}$'),
+        ('orgs', 'paragraph', '?Microsoft Research † Carnegie Mellon University ‡ Stanford University'),
+        ('abstract', 'heading', 'Abstract'),
+        ('body', 'paragraph', 'Carol Lee at Other University proposed the idea.'),
+    ])
+    before = deepcopy(src)
+    expected = {'Aaron Harlap', 'Deepak Narayanan', 'Amar Phanishayee', 'Vivek Seshadri',
+        'Nikhil Devanur', 'Greg Ganger', 'Phil Gibbons', 'Microsoft Research',
+        'Carnegie Mellon University', 'Stanford University'}
+    assert metadata_literals(src) == tuple(sorted(expected, key=lambda value: (-len(value), value)))
+    assert metadata_literals(src, original_only_blocks(src)) == metadata_literals(src)
+    assert src == before
+
+
+def test_metadata_literals_exclude_generic_affiliation_and_address_fragments():
+    from packages.ir.retention import metadata_literals
+    src = paper([
+        ('authors', 'paragraph', 'Alice Smith¹, Bob Jones²'),
+        ('org', 'paragraph', 'Affiliations: Department of Computing, Example University; '
+            'Research; Research Centre; University of; Department of; Institute of; AI; Sydney; Australia'),
+    ])
+    assert metadata_literals(src) == (
+        'Department of Computing', 'Example University', 'Alice Smith', 'Bob Jones',
+    )
+
+
+def test_metadata_literals_keep_exact_unicode_spelling_and_deduplicate():
+    from packages.ir.retention import metadata_literals
+    name = 'Jose\u0301 Garci\u0301a'
+    src = paper([
+        ('authors', 'paragraph', f'{name}¹, {name}²'),
+        ('org', 'paragraph', '¹ Example University; ² Example University'),
+    ])
+    assert metadata_literals(src) == ('Example University', name)
+
+
+def test_metadata_literals_do_not_infer_names_from_body_or_bibliography():
+    from packages.ir.retention import metadata_literals
+    src = paper([
+        ('intro', 'heading', 'Introduction'),
+        ('names', 'paragraph', 'Alice Smith, Bob Jones'),
+        ('org', 'paragraph', 'Example University'),
+        ('refs', 'heading', 'References'),
+        ('ref', 'paragraph', '[1] Carol Lee. Research at Another University, 2025.'),
+    ])
+    assert metadata_literals(src) == ()
+
+
+def test_explicit_lowercase_author_names_remain_exact_full_phrases():
+    from packages.ir.retention import metadata_literals
+    src = paper([('authors', 'paragraph', 'Authors: alice smith and bob jones'),
+        ('org', 'paragraph', 'OpenAI')])
+    assert metadata_literals(src) == ('alice smith', 'bob jones', 'OpenAI')
+
+
+def test_metadata_literals_keep_confirmed_uncased_names_and_organisations():
+    from packages.ir.retention import metadata_literals
+    src = paper([('authors', 'paragraph', '张三，李四'),
+        ('org', 'paragraph', '北京示例大学计算机学院')])
+    assert set(metadata_literals(src)) == {'张三', '李四', '北京示例大学计算机学院'}

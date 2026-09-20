@@ -113,6 +113,11 @@ def _name_count(text):
     return max(len(names), 2) if explicit and names else len(names)
 
 
+def _alphanumeric_identifier(text):
+    return (len(text) <= 80 and re.search(r'\d', text)
+        and re.fullmatch(r'[A-Za-z][A-Za-z0-9]*(?:[-_.][A-Za-z0-9]+)*', text))
+
+
 def _table_cell_reason(block, text, atoms):
     if re.search(r'\d', text) and (re.fullmatch(r'[\d\s.,+−\-±%‰()/×÷<>≤≥=]+(?:[eE][+\-]?\d+)?', text)
             or re.fullmatch(r'\d+\s*\([A-Z]\)', text)):
@@ -125,8 +130,7 @@ def _table_cell_reason(block, text, atoms):
         return 'original_math_cell'
     # Single alphanumeric identifiers such as VGG16 and Inception-v3 carry no
     # translatable prose. Whitespace, units and descriptions remain eligible.
-    if (len(text) <= 80 and re.search(r'\d', text)
-            and re.fullmatch(r'[A-Za-z][A-Za-z0-9]*(?:[-_.][A-Za-z0-9]+)*', text)):
+    if _alphanumeric_identifier(text):
         return 'original_identifier_cell'
     return None
 
@@ -136,7 +140,8 @@ def original_only_blocks(source):
 
     References use section boundaries; bylines and affiliations use the contiguous
     front matter after the title on its page. Pure contact/identifier lines need
-    no positional inference. Titles, captions and ordinary footnotes stay prose.
+    no positional inference. Isolated identifier captions stay original; titles,
+    prose captions and ordinary footnotes remain eligible for translation.
     """
     blocks = sorted(source.get('blocks', []), key=lambda b: b['order'])
     title_id = source.get('title_block_id')
@@ -151,6 +156,10 @@ def original_only_blocks(source):
         if bid == title_id:
             front = True
             bibliography = False
+            continue
+        if kind == 'caption' and _alphanumeric_identifier(re.sub(r'^\([A-Za-z]\)\s+', '', text)):
+            reasons[bid] = 'original_identifier_label'
+            front = False
             continue
         if kind == 'table_cell':
             cell_reason = _table_cell_reason(block, text, source.get('protected_atoms', {}))
@@ -200,3 +209,47 @@ def original_only_blocks(source):
         else:
             front = False
     return reasons
+
+
+def metadata_literals(source, reasons=None):
+    """Exact full names from confirmed metadata, longest first for inline matching.
+
+    The optional reasons map is the caller's precomputed original_only_blocks
+    result. Detection may normalize a candidate; returned literals preserve the
+    persisted spelling and never alter source text, atoms, or history.
+    """
+    if reasons is None:
+        reasons = original_only_blocks(source)
+    literals = set()
+    for block in source.get('blocks', []):
+        reason = reasons.get(block['id'])
+        if reason not in {'original_author_list', 'original_affiliation'}:
+            continue
+        text = block.get('normalized_text', '').strip()
+        if len(text) > 1000:
+            continue
+        explicit_author = bool(_AUTHOR_LABEL.match(text))
+        text = _TEX_AFFILIATION_MARKER.sub(';', text)
+        if reason == 'original_author_list':
+            text = _AUTHOR_LABEL.sub('', text)
+            text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*†‡§¶✉⁰¹²³⁴⁵⁶⁷⁸⁹]+', ';', text)
+            parts = re.split(r'\s+(?:and|und|et|y)\s+|[,;，；、&\n]', text)
+            for part in parts:
+                literal = part.strip()
+                candidate = unicodedata.normalize('NFKC', literal)
+                if _name_count(('Authors: ' if explicit_author else '') + candidate):
+                    literals.add(literal)
+        else:
+            text = re.sub(r'^(?:affiliations?|institutions?|organizations?|organisations?|作者单位|作者單位)\s*[:：]\s*', '', text, flags=re.I)
+            text = re.sub(r'[*†‡§¶✉⁰¹²³⁴⁵⁶⁷⁸⁹]+', ';', text)
+            for part in re.split(r'[,;，；\n]', text):
+                literal = re.sub(r'^\d+(?:,\d+)*\s+', '', part.strip(' \t?'))
+                candidate = unicodedata.normalize('NFKC', literal)
+                words = re.findall(r'[^\W\d_]+', candidate)
+                distinctive = any(word.casefold() not in _CONNECTORS | {'centre', 'center'}
+                    and not _ORGANISATION.fullmatch(word) and not _COMPANY.fullmatch(word) for word in words)
+                named = (len(words) >= 2 and distinctive or candidate.casefold() in {'openai', 'deepmind'}
+                    or len(candidate) >= 4 and any(c.isalpha() and c.lower() == c.upper() for c in candidate))
+                if named and _affiliation(candidate, after_author=True):
+                    literals.add(literal)
+    return tuple(sorted(literals, key=lambda value: (-len(value), value)))

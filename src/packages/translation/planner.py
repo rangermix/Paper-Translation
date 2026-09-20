@@ -1,11 +1,11 @@
 from copy import deepcopy
 import re
 from packages.ir import canonical_bytes,digest,flatten_inline
-from packages.ir.retention import original_only_blocks
+from packages.ir.retention import metadata_literals, original_only_blocks
 from packages.billing.price import validate_profile
 from .languages import check_language_policy
 
-PLANNER_VERSION='protected-academic-quantities-v4'
+PLANNER_VERSION='protected-academic-quantities-v5'
 
 
 def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
@@ -14,6 +14,8 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
     selected=set(block_ids) if block_ids else None
     all_blocks=source['blocks'];by={b['id']:b for b in all_blocks};atoms=source['protected_atoms'];units=[]
     original_only=original_only_blocks(source)
+    names = metadata_literals(source, original_only)
+    name_pattern = re.compile(r'(?<!\w)(?:' + '|'.join(re.escape(name) for name in names) + r')(?!\w)') if names else None
     limit=profile.get('max_unit_characters',2000)
     if profile.get('api_protocol') == 'local_translation':
         from packages.local_models.catalog import get_model
@@ -30,7 +32,20 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
             'next':all_blocks[index+1]['normalized_text'][:500] if index+1<len(all_blocks) and all_blocks[index+1]['id'] not in original_only else ''}
         context_hash=digest(context);normalized=[];local_atoms={};restore={}
         for node_index,node in enumerate(block['source_inline']):
-            if node['type']=='text':normalized.append({'type':'text','text':node['text']})
+            if node['type']=='text':
+                offset = 0
+                for match in name_pattern.finditer(node['text']) if name_pattern else ():
+                    if match.start() > offset:
+                        normalized.append({'type': 'text', 'text': node['text'][offset:match.start()]})
+                    ref = f'metadata-{node_index}-{match.start()}'
+                    while ref in atoms or ref in local_atoms:
+                        ref += '-literal'
+                    local_atoms[ref] = {'kind': 'variable', 'value': match[0]}
+                    restore[ref] = {'type': 'text', 'text': match[0]}
+                    normalized.append({'type': 'protected_ref', 'ref': ref})
+                    offset = match.end()
+                if offset < len(node['text']):
+                    normalized.append({'type':'text','text':node['text'][offset:]})
             elif node['type']=='protected_ref':
                 normalized.append(deepcopy(node));local_atoms[node['ref']]=deepcopy(atoms[node['ref']])
                 from packages.ir.quantities import localize_quantity

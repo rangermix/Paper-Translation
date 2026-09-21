@@ -158,3 +158,54 @@ def test_second_page_doi_does_not_override_the_arxiv_stamp():
 def test_arxiv_stamp_after_a_title_starting_with_section_words_is_kept(title):
     found = discover_doi({'/Title': title}, [page(title + '\nAlice Example\narXiv:2301.12345v1\nAbstract')])
     assert found['selected'] == '10.48550/arxiv.2301.12345'
+
+
+def margin_page(bbox, *, stamp='arXiv:1909.08053v4 [cs.CL] 13 Mar 2020', number=1):
+    return {'page': number, 'page_size': [612, 792], 'text_regions': [
+        {'text': 'Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism',
+            'bbox': [50, 50, 560, 80]},
+        {'text': 'Mohammad Shoeybi', 'bbox': [50, 130, 200, 140]},
+        {'text': 'Abstract', 'bbox': [150, 204, 195, 213]},
+        {'text': '1. Introduction', 'bbox': [308, 204, 384, 213]},
+        {'text': stamp, 'bbox': bbox},
+        {'text': 'We compare related work.', 'bbox': [308, 250, 560, 265]},
+    ], 'links': []}
+
+
+@pytest.mark.parametrize('bbox', [[18.34, 210.52, 35.1, 559.26], [580, 210.52, 596.76, 559.26]])
+def test_vertical_arxiv_margin_stamp_is_found_below_the_abstract_heading(bbox):
+    found = discover_doi({}, [margin_page(bbox)])
+    assert found['selected'] == '10.48550/arxiv.1909.08053'
+    assert found['candidates'][0]['method'] == 'arxiv_margin'
+    assert found['candidates'][0]['bbox'] == bbox
+
+
+@pytest.mark.parametrize('bbox,stamp,number', [
+    ([80, 250, 450, 266], 'arXiv:1909.08053v4 [cs.CL] 13 Mar 2020', 1),
+    ([200, 250, 217, 600], 'arXiv:1909.08053v4 [cs.CL] 13 Mar 2020', 1),
+    ([18, 250, 35, 600], 'arXiv:1909.08053', 1),
+    ([18, 250, 35, 600], 'arXiv:1909.08053v4 [cs.CL] 13 Mar 2020\nOther citation', 1),
+    ([18, 250, 35, 600], 'arXiv:1909.08053v4 [cs.CL] 13 Mar 2020', 2),
+])
+def test_body_text_and_partial_or_later_page_margin_identifiers_are_not_stamps(bbox, stamp, number):
+    found = discover_doi({}, [margin_page(bbox, stamp=stamp, number=number)])
+    assert found['selected'] is None
+
+
+def test_body_doi_citation_does_not_override_a_margin_stamp():
+    first = margin_page([18.34, 210.52, 35.1, 559.26])
+    first['text_regions'].append({'text': 'We compare doi:10.1234/cited', 'bbox': [80, 400, 450, 416]})
+    assert discover_doi({}, [first])['selected'] == '10.48550/arxiv.1909.08053'
+
+
+def test_explicit_header_doi_still_takes_precedence_over_a_margin_stamp():
+    first = margin_page([18.34, 210.52, 35.1, 559.26])
+    first['text_regions'].append({'text': 'doi:10.1234/published', 'bbox': [80, 160, 450, 176]})
+    assert discover_doi({}, [first])['selected'] == '10.1234/published'
+
+
+def test_conflicting_margin_and_header_stamps_remain_ambiguous():
+    first = margin_page([18.34, 210.52, 35.1, 559.26])
+    first['text_regions'].append({'text': 'arXiv:1806.03377v1', 'bbox': [80, 160, 450, 176]})
+    found = discover_doi({}, [first])
+    assert found['status'] == 'ambiguous' and found['selected'] is None

@@ -189,7 +189,7 @@ def test_upload_enriches_before_or_after_import_without_waiting_for_full_parse(
     assert state['doi_discovery']['selected'] == RECORD['DOI']
 
 
-@pytest.mark.parametrize('version', ['doi-discovery-v1', 'doi-discovery-v2'])
+@pytest.mark.parametrize('version', ['doi-discovery-v1', 'doi-discovery-v2', 'doi-discovery-v3'])
 def test_refresh_reinspects_old_discovery_without_a_usable_doi(database, client, version):
     db, cfg = database
     seed_editor(db, cfg)
@@ -205,7 +205,11 @@ def test_refresh_reinspects_old_discovery_without_a_usable_doi(database, client,
 
 
 @pytest.mark.parser_container
-def test_refresh_recovers_arxiv_preprint_from_native_pdf_stamp(database, client, monkeypatch):
+@pytest.mark.parametrize('stamp_y,old_version,method', [
+    (360, 'doi-discovery-v2', 'arxiv_header'),
+    (200, 'doi-discovery-v3', 'arxiv_margin'),
+])
+def test_refresh_recovers_arxiv_preprint_from_native_pdf_stamp(database, client, monkeypatch, stamp_y, old_version, method):
     import workers.main as worker
     from workers.parser.main import run_once
     from pypdf import PdfReader, PdfWriter
@@ -218,7 +222,7 @@ def test_refresh_recovers_arxiv_preprint_from_native_pdf_stamp(database, client,
     stream.set_data(b'BT /F1 20 Tf 40 720 Td (PipeDream: Fast and Efficient) Tj '
         b'0 -24 Td (Pipeline Parallel DNN Training) Tj /F1 10 Tf 0 -30 Td (Amar Phanishayee) Tj '
         b'/F1 12 Tf 0 -140 Td (Abstract) Tj 0 -20 Td (Training contents.) Tj ET '
-        b'BT /F1 12 Tf 0 1 -1 0 30 360 Tm (arXiv:1806.03377v1 [cs.DC] 8 Jun 2018) Tj ET')
+        + f'BT /F1 12 Tf 0 1 -1 0 30 {stamp_y} Tm (arXiv:1806.03377v1 [cs.DC] 8 Jun 2018) Tj ET'.encode())
     writer.pages[0][NameObject('/Contents')] = writer._add_object(stream)
     writer.add_metadata({'/Title': title + ' -0.22in', '/Author': 'Amar Phanishayee'})
     output = BytesIO()
@@ -233,7 +237,7 @@ def test_refresh_recovers_arxiv_preprint_from_native_pdf_stamp(database, client,
         asset = session.get(SourceAsset, doc.source_asset_id)
         (cfg.data / asset.storage_key).write_bytes(content)
         asset.sha256, asset.byte_size = digest(content), len(content)
-        asset.doi_discovery = {'version': 'doi-discovery-v2', 'status': 'no_doi',
+        asset.doi_discovery = {'version': old_version, 'status': 'no_doi',
             'selected': None, 'candidates': [], 'title_hint': title + ' -0.22in'}
         asset.metadata_status = 'unverified'
     original_write = worker.write_request
@@ -271,4 +275,4 @@ def test_refresh_recovers_arxiv_preprint_from_native_pdf_stamp(database, client,
     assert result['bibliography']['year'] == 2018
     assert result['bibliography']['service'] == 'doi'
     assert result['doi_discovery']['version'] == VERSION
-    assert result['doi_discovery']['candidates'][0]['method'] == 'arxiv_header'
+    assert result['doi_discovery']['candidates'][0]['method'] == method

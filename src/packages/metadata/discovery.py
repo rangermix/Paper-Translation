@@ -3,7 +3,7 @@ import re
 from statistics import median
 from urllib.parse import unquote
 
-VERSION = 'doi-discovery-v3'
+VERSION = 'doi-discovery-v4'
 DOI = re.compile(r'10\.\d{4,9}/[^\s<>"\u201c\u201d]+', re.I)
 SECTION_NUMBER = r'(?:(?:\d+(?:\.\d+)*|[ivxlcdm]+)[.)]?[ \t]+)?'
 REFERENCES = re.compile(r'(?im)^\s*' + SECTION_NUMBER + r'(?:references|bibliography|参考文献)\s*:?\s*$')
@@ -12,8 +12,8 @@ BODY_BOUNDARY = re.compile(r'(?im)^[ \t]*' + SECTION_NUMBER + r'(?:abstract|intr
 ARXIV_STAMP = re.compile(
     r'(?im)^[ \t]*arxiv[ \t]*:[ \t]*'
     r'(?P<id>\d{2}(?:0[1-9]|1[0-2])\.\d{4,5}|[a-z][a-z.-]*/\d{2}(?:0[1-9]|1[0-2])\d{3})'
-    r'(?:v[1-9]\d*)?(?:[ \t]+\[[a-z][a-z.-]*\])?'
-    r'(?:[ \t]+\d{1,2}[ \t]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ \t]+\d{4})?[ \t]*$')
+    r'(?P<version>v[1-9]\d*)?(?:[ \t]+\[[a-z][a-z.-]*\])?'
+    r'(?:[ \t]+(?P<date>\d{1,2}[ \t]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ \t]+\d{4}))?[ \t]*$')
 
 
 def bibliographic_title(value):
@@ -98,6 +98,12 @@ def discover_doi(metadata, pages, *, xmp=''):
         record = {'doi': doi, 'method': method, 'confidence': confidence, 'page': page,
             'bbox': bbox, 'reference': reference}
         if record not in candidates: candidates.append(record)
+    def add_arxiv(match, method, bbox):
+        arxiv_id = match['id'].casefold()
+        if '/' in arxiv_id:
+            archive, number = arxiv_id.split('/', 1)
+            arxiv_id = archive.split('.')[0] + '/' + number
+        add('10.48550/arxiv.' + arxiv_id, method, 85, page=1, bbox=bbox)
     for key, value in list(metadata.items())[:100]:
         if not isinstance(value, str): continue
         for doi, _, _ in _matches(value[:16000]):
@@ -127,17 +133,26 @@ def discover_doi(metadata, pages, *, xmp=''):
             headers.append(header[:12000])
             header_dois.update(doi for doi, _, _ in _matches(header[:12000]))
             # arXiv assigns a DataCite DOI to every paper (not each version).
-            # Only a standalone first-page stamp before the body is evidence;
-            # citations and arbitrary links must not identify the uploaded paper.
+            # A standalone first-page header or vertical page-margin stamp is
+            # evidence; ordinary body citations and links are not.
             # https://info.arxiv.org/help/doi.html
             for match in ARXIV_STAMP.finditer(header[:12000]):
-                arxiv_id = match['id'].casefold()
-                if '/' in arxiv_id:
-                    archive, number = arxiv_id.split('/', 1)
-                    arxiv_id = archive.split('.')[0] + '/' + number
-                identifier = '10.48550/arxiv.' + arxiv_id
                 boxes = [row['bbox'] for row in regions if match.group().strip() in row.get('text', '')]
-                add(identifier, 'arxiv_header', 85, page=1, bbox=boxes[0] if len(boxes) == 1 else None)
+                add_arxiv(match, 'arxiv_header', boxes[0] if len(boxes) == 1 else None)
+            page_width, page_height = page.get('page_size', [600, 800])
+            for row in regions:
+                text = row.get('text', '').strip()
+                if len(text) > 500 or text in header: continue
+                match = ARXIV_STAMP.fullmatch(text)
+                if not match or not match['version'] or not match['date']: continue
+                left, top, right, bottom = row['bbox']
+                width, height = right - left, bottom - top
+                # The arXiv sidebar can start below the abstract in reading
+                # order. Require a complete dated stamp and independent geometry.
+                if (0 <= left < right <= page_width and 0 <= top < bottom <= page_height
+                        and height >= max(80, 6 * width)
+                        and (right <= page_width * .1 or left >= page_width * .9)):
+                    add_arxiv(match, 'arxiv_margin', row['bbox'])
         # Split before unwrapping DOI lines: normalization changes offsets and
         # must never move a bibliography DOI into the paper header.
         for chunk, is_reference in ((joined[:reference_offset], False), (joined[reference_offset:], True)):
@@ -159,7 +174,7 @@ def discover_doi(metadata, pages, *, xmp=''):
     # A DOI cited in the abstract/body or on page two is not publication evidence.
     explicit = {entry['doi'] for entry in candidates if not entry['reference']
         and entry['confidence'] >= 70 and (entry['method'] in {'metadata', 'xmp'} or entry['doi'] in header_dois)}
-    arxiv = {entry['doi'] for entry in candidates if entry['method'] == 'arxiv_header'}
+    arxiv = {entry['doi'] for entry in candidates if entry['method'] in {'arxiv_header', 'arxiv_margin'}}
     if arxiv: strong = explicit or arxiv
     embedded = {entry['doi'] for entry in candidates if entry['method'] in {'metadata', 'xmp'}}
     selected = next(iter(embedded)) if len(embedded) == 1 else next(iter(strong)) if len(strong) == 1 else None

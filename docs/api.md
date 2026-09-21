@@ -54,9 +54,11 @@ Filename-like and missing titles are skipped. Only the DOI or bounded title/auth
 fields leave the instance; the metadata lookup sends no PDF, body text or provider
 credentials. The parser itself does not make network requests.
 
-A standalone arXiv stamp before the first-page body supplies the preprint's
-[arXiv-assigned DOI](https://info.arxiv.org/help/doi.html). Version suffixes do not
-change that DOI. An explicit DOI in metadata or the first-page header takes
+A standalone arXiv stamp before the first-page body, or a complete dated vertical
+stamp in either side margin of that page, supplies the preprint's
+[arXiv-assigned DOI](https://info.arxiv.org/help/doi.html). Margin detection checks
+the stamp's shape and position even when it starts below the abstract heading.
+Version suffixes do not change that DOI. An explicit DOI in metadata or the first-page header takes
 precedence; conflicting stamps remain ambiguous. Body citations and reference
 lists are not arXiv identity evidence.
 The preprint uses the same Crossref-first lookup and DOI fallback, retaining paper

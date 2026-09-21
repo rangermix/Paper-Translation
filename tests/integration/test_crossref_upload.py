@@ -189,11 +189,12 @@ def test_upload_enriches_before_or_after_import_without_waiting_for_full_parse(
     assert state['doi_discovery']['selected'] == RECORD['DOI']
 
 
-def test_refresh_reinspects_old_discovery_without_a_usable_doi(database, client):
+@pytest.mark.parametrize('version', ['doi-discovery-v1', 'doi-discovery-v2'])
+def test_refresh_reinspects_old_discovery_without_a_usable_doi(database, client, version):
     db, cfg = database
     seed_editor(db, cfg)
     with db.transaction() as session:
-        session.get(SourceAsset, 'source_pdf').doi_discovery = {'version': 'doi-discovery-v1',
+        session.get(SourceAsset, 'source_pdf').doi_discovery = {'version': version,
             'status': 'no_doi', 'selected': None, 'candidates': [], 'title_hint': 'main.pdf'}
     response = client.post('/api/v1/documents/doc_fixture/metadata/refresh', json={},
         headers={'If-Match': '"1"', 'Idempotency-Key': 'refresh-old-discovery'})
@@ -201,3 +202,73 @@ def test_refresh_reinspects_old_discovery_without_a_usable_doi(database, client)
     assert response.json()['job_id'] is not None
     with db.transaction() as session:
         assert session.get(Job, response.json()['job_id']).stage == 'inspect'
+
+
+@pytest.mark.parser_container
+def test_refresh_recovers_arxiv_preprint_from_native_pdf_stamp(database, client, monkeypatch):
+    import workers.main as worker
+    from workers.parser.main import run_once
+    from pypdf import PdfReader, PdfWriter
+    from pypdf.generic import DecodedStreamObject, NameObject
+    from packages.metadata.discovery import VERSION
+    title = 'PipeDream: Fast and Efficient Pipeline Parallel DNN Training'
+    doi = '10.48550/arxiv.1806.03377'
+    writer = PdfWriter(clone_from=PdfReader(BytesIO(paper_pdf(True))))
+    stream = DecodedStreamObject()
+    stream.set_data(b'BT /F1 20 Tf 40 720 Td (PipeDream: Fast and Efficient) Tj '
+        b'0 -24 Td (Pipeline Parallel DNN Training) Tj /F1 10 Tf 0 -30 Td (Amar Phanishayee) Tj '
+        b'/F1 12 Tf 0 -140 Td (Abstract) Tj 0 -20 Td (Training contents.) Tj ET '
+        b'BT /F1 12 Tf 0 1 -1 0 30 360 Tm (arXiv:1806.03377v1 [cs.DC] 8 Jun 2018) Tj ET')
+    writer.pages[0][NameObject('/Contents')] = writer._add_object(stream)
+    writer.add_metadata({'/Title': title + ' -0.22in', '/Author': 'Amar Phanishayee'})
+    output = BytesIO()
+    writer.write(output)
+    content = output.getvalue()
+    db, cfg = database
+    seed_editor(db, cfg)
+    with db.transaction() as session:
+        doc = session.get(Document, 'doc_fixture')
+        doc.title = 'Narayanan-et-al-2019-PipeDream-SOSP'
+        doc.title_user_edited = False
+        asset = session.get(SourceAsset, doc.source_asset_id)
+        (cfg.data / asset.storage_key).write_bytes(content)
+        asset.sha256, asset.byte_size = digest(content), len(content)
+        asset.doi_discovery = {'version': 'doi-discovery-v2', 'status': 'no_doi',
+            'selected': None, 'candidates': [], 'title_hint': title + ' -0.22in'}
+        asset.metadata_status = 'unverified'
+    original_write = worker.write_request
+    def inspect(input_root, request, pdf):
+        result = original_write(input_root, request, pdf)
+        assert request['operation'] == 'inspect'
+        assert run_once(cfg.parser_inputs, cfg.parser_outputs)
+        return result
+    monkeypatch.setattr(worker, 'write_request', inspect)
+    response = client.post('/api/v1/documents/doc_fixture/metadata/refresh', json={},
+        headers={'If-Match': '"1"', 'Idempotency-Key': 'refresh-preprint'})
+    assert response.status_code == 202
+    lease = claim(db)
+    assert lease.kind == 'inspect'
+    worker.execute(db, cfg, lease)
+    lease = claim(db)
+    assert lease.kind == 'metadata_lookup'
+    assert lease.payload['doi'] == doi
+    assert not lease.payload.get('search')
+    hosts = []
+    def respond(request):
+        hosts.append(request.url.host)
+        if request.url.host == 'api.crossref.org': return httpx.Response(404)
+        assert request.url.params['doi'] == doi
+        return httpx.Response(200, json={'DOI': doi, 'title': title,
+            'author': [{'given': 'Amar', 'family': 'Phanishayee'}],
+            'issued': {'date-parts': [[2018]]}, 'publisher': 'arXiv'})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as crossref:
+        execute_metadata(db, cfg, lease, client=crossref)
+    assert hosts == ['api.crossref.org', 'citation.doi.org']
+    result = client.get('/api/v1/documents/doc_fixture').json()
+    assert result['metadata_status'] == 'succeeded'
+    assert result['title'] == title
+    assert result['bibliography']['doi'] == doi
+    assert result['bibliography']['year'] == 2018
+    assert result['bibliography']['service'] == 'doi'
+    assert result['doi_discovery']['version'] == VERSION
+    assert result['doi_discovery']['candidates'][0]['method'] == 'arxiv_header'

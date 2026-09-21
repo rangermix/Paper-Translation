@@ -54,6 +54,14 @@ Filename-like and missing titles are skipped. Only the DOI or bounded title/auth
 fields leave the instance; the metadata lookup sends no PDF, body text or provider
 credentials. The parser itself does not make network requests.
 
+A standalone arXiv stamp before the first-page body supplies the preprint's
+[arXiv-assigned DOI](https://info.arxiv.org/help/doi.html). Version suffixes do not
+change that DOI. An explicit DOI in metadata or the first-page header takes
+precedence; conflicting stamps remain ambiguous. Body citations and reference
+lists are not arXiv identity evidence.
+The preprint uses the same Crossref-first lookup and DOI fallback, retaining paper
+matching checks instead of substituting a later conference publication.
+
 Title searches inspect up to five results and require an exact normalized title.
 An available author hint must corroborate a full author name, allowing initials;
 without authors, only distinctive titles can match. Multiple matching DOIs remain

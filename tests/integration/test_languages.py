@@ -3,12 +3,14 @@ import json
 import io
 import zipfile
 
+import httpx
 import pytest
 from sqlalchemy import func, select
 
 from packages.domain.models import Artifact, Draft, Edition, Job, SourceDraft, SourceRevision, Task, TranslationCache, TranslationRevision, Settings
 from packages.ir import digest
 from packages.jobs.queue import claim
+from packages.metadata.execution import execute_metadata
 from packages.providers.fake import FakeProvider
 from packages.storage import file_hash, read_snapshot
 from packages.translation.execution import execute_translation
@@ -55,6 +57,10 @@ def test_all_languages_reuse_source_and_publish_without_language_consent(client,
             headers={'If-Match': uploaded.headers['etag'], 'Idempotency-Key': 'renamed-finalize'})
         assert finalized.status_code == 202
         worker.execute(db, cfg, claim(db))
+        metadata = claim(db)
+        assert metadata.kind == 'metadata_lookup'
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(404))) as upstream:
+            execute_metadata(db, cfg, metadata, client=upstream)
         verified = client.get(route).json()
         assert verified['status'] == 'verified' and verified['source_asset_id'] == 'source_pdf'
         assert verified['duplicates'] == [{'id': 'doc_fixture', 'title': 'Publication fixture'}]

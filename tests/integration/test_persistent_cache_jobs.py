@@ -22,13 +22,14 @@ from tests.support import seed_editor
 pytestmark = pytest.mark.postgres
 
 
-def candidate_job(client, db, cfg, draft_id, document_id, profile, provider, key):
+def candidate_job(client, db, cfg, draft_id, document_id, profile, provider, key, *, preparation='off'):
     terms = client.get('/api/v1/glossaries/effective', params={'document_id': document_id,
         'source_language': 'en', 'target_language': 'zh-Hans'}).json()
     draft = client.get('/api/v1/drafts/' + draft_id)
     created = client.post('/api/v1/drafts/' + draft_id + '/candidates', json={
         'block_ids': ['p1'], 'profile_revision': profile['profile_revision'], 'profile_hash': digest(profile),
         'glossary_revision': terms['revision'], 'budget_micro': 1_000_000,
+        'preparation': {'mode': preparation},
         'external_processing_confirmed': True}, headers={'If-Match': draft.headers['etag'], 'Idempotency-Key': key})
     assert created.status_code == 202, created.text
     while lease := claim(db):
@@ -75,7 +76,8 @@ def clone_source(db, cfg, source, change):
 
 
 @pytest.mark.parametrize('change', ['equivalent', 'glossary', 'context', 'atoms', 'model', 'delete'])
-def test_new_job_cache_identity_and_deleted_origin(client, database, monkeypatch, tmp_path, change):
+@pytest.mark.parametrize('preparation', ['off', 'extractive'])
+def test_new_job_cache_identity_and_deleted_origin(client, database, monkeypatch, tmp_path, change, preparation):
     db, cfg = database
     source = seed_editor(db, cfg)['source_revision']
     profile = configure(monkeypatch, tmp_path)
@@ -83,7 +85,8 @@ def test_new_job_cache_identity_and_deleted_origin(client, database, monkeypatch
         settings = session.get(Settings, 'singleton')
         settings.dispatch_disabled, settings.instance_budget_micro = False, 10_000_000
     provider = FakeProvider()
-    first = candidate_job(client, db, cfg, 'draft_fixture', 'doc_fixture', profile, provider, 'cache-first')
+    first = candidate_job(client, db, cfg, 'draft_fixture', 'doc_fixture', profile, provider, 'cache-first',
+        preparation=preparation)
     assert len(provider.calls) == first['permits'] == 1 and first['progress']['cache_hits'] == 0
     with db.transaction() as session:
         saved = session.scalar(select(TranslationCache))
@@ -111,9 +114,12 @@ def test_new_job_cache_identity_and_deleted_origin(client, database, monkeypatch
             for job in session.scalars(select(Job).where(Job.stage == 'cleanup')):
                 job.status = 'paused'
             assert session.get(TranslationCache, original_key) is not None
-    second = candidate_job(client, db, cfg, 'cache_second_draft', 'cache_second', profile, provider, 'cache-second')
+    second = candidate_job(client, db, cfg, 'cache_second_draft', 'cache_second', profile, provider, 'cache-second',
+        preparation=preparation)
     assert not (first['tasks'] & second['tasks']) and first['job_id'] != second['job_id']
-    hit = change == 'equivalent'
+    # The legacy request can reuse identical content across documents. Prepared
+    # requests also bind the exact source revision and cannot reuse that pack.
+    hit = change == 'equivalent' and preparation == 'off'
     assert second['progress']['cache_hits'] == int(hit)
     assert second['permits'] == int(not hit) and len(provider.calls) == (1 if hit else 2)
     if hit:
@@ -134,3 +140,24 @@ def test_new_job_cache_identity_and_deleted_origin(client, database, monkeypatch
     else:
         with db.transaction() as session:
             assert session.get(TranslationCache, original_key).value == original_value
+
+
+def test_prepared_candidate_jobs_reuse_cache_for_the_same_source(client, database, monkeypatch, tmp_path):
+    db, cfg = database
+    seed_editor(db, cfg)
+    profile = configure(monkeypatch, tmp_path)
+    with db.transaction() as session:
+        settings = session.get(Settings, 'singleton')
+        settings.dispatch_disabled, settings.instance_budget_micro = False, 10_000_000
+    provider = FakeProvider()
+    first = candidate_job(client, db, cfg, 'draft_fixture', 'doc_fixture', profile, provider,
+        'prepared-cache-first', preparation='extractive')
+    second = candidate_job(client, db, cfg, 'draft_fixture', 'doc_fixture', profile, provider,
+        'prepared-cache-second', preparation='extractive')
+    assert first['job_id'] != second['job_id'] and not (first['tasks'] & second['tasks'])
+    assert first['permits'] == 1 and first['progress']['cache_hits'] == 0
+    assert second['permits'] == 0 and second['progress']['cache_hits'] == 1
+    assert len(provider.calls) == 1 and first['results'] == second['results']
+    with db.transaction() as session:
+        attempts = session.scalars(select(Attempt).where(Attempt.job_id == second['job_id'])).all()
+        assert all(a.usage is None and a.request_id is None for a in attempts)

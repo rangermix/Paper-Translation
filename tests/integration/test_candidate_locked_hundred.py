@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import select
 
 from packages.domain.models import (Candidate, Document, Draft, Edition, ReviewRecord,
-    SegmentVersion, Settings, SourceAsset, SourceRevision, new_id)
+    SegmentVersion, Settings, SourceAsset, SourceRevision, Task, new_id)
 from packages.editorial.drafts import context_hash, current_review, current_segments, segment_fingerprint
 from packages.ir import digest, validate_source
 from packages.jobs.queue import claim
@@ -105,7 +105,12 @@ def test_candidate_api_worker_accept_preserves_98_locked_blocks(client, database
         candidate = session.get(Candidate, started.json()['id'])
         assert set(candidate.results) == selected and candidate.status == 'ready'
         candidate_etag = f'"{candidate.generation}"'
-    assert {u['owner_block_id'] for call in provider.calls for u in call} == selected
+        tasks = list(session.scalars(select(Task).where(Task.job_id == candidate.job_id)))
+        assert {t.payload['unit']['owner_block_id'] for t in tasks if 'unit' in t.payload} == selected
+    # Identical source/context may reuse a validated cache entry. Neither a
+    # real dispatch nor a cache hit may touch the other 98 locked paragraphs.
+    sent = {u['owner_block_id'] for call in provider.calls for u in call}
+    assert sent and sent <= selected
     accepted = client.post('/api/v1/candidates/' + started.json()['id'] + '/accept', json={'block_ids': sorted(selected)},
         headers={'If-Match': candidate_etag, 'Idempotency-Key': 'hundred-explicit-accept'})
     assert accepted.status_code == 200, accepted.text

@@ -106,9 +106,12 @@ def test_force_confirm_unresolved_or_ocr_has_no_dispatch(client, database, monke
         assert session.scalar(select(func.count()).select_from(Permit)) == 0
 
 
-def test_confirmed_source_only_is_sent_by_production_adapter(client, database, monkeypatch, tmp_path):
+@pytest.mark.parametrize('preparation', ['off', 'extractive'])
+def test_confirmed_source_only_is_sent_by_production_adapter(client, database, monkeypatch, tmp_path, preparation):
     db, cfg = database
     _, profile, body, headers = preflight_fixture(client, database, monkeypatch, tmp_path)
+    if preparation == 'off':
+        body['preparation'] = {'mode': 'off'}
     confirmed = client.post('/api/v1/imports/literal_preflight/confirm', json=body, headers=headers)
     assert confirmed.status_code == 202, confirmed.text
     result = confirmed.json()
@@ -135,7 +138,20 @@ def test_confirmed_source_only_is_sent_by_production_adapter(client, database, m
         rows = []
         for actual in content['units']:
             expected_unit = expected[actual['unit_id']]
-            assert actual == {k: expected_unit[k] for k in ('unit_id', 'source_language', 'source_inline', 'protected_atoms', 'context')}
+            fields = ('unit_id', 'source_language', 'source_inline', 'protected_atoms')
+            assert set(actual) == {*fields, 'context'}
+            assert {k: actual[k] for k in fields} == {k: expected_unit[k] for k in fields}
+            if preparation == 'off':
+                assert actual['context'] == expected_unit['context']
+            else:
+                # Independently verify every transmitted quote against the
+                # authorized source, without using the context selector as an oracle.
+                blocks = {b['id']: b for b in approved['blocks']}
+                background = actual['context']['paper']
+                assert background['summary'] == []
+                for excerpt in background['evidence']:
+                    assert excerpt['quote'] in blocks[excerpt['block_id']]['normalized_text']
+                assert actual['context']['heading'] == expected_unit['context']['heading']
             sent.append(actual['unit_id'])
             rows.append({'unit_id': actual['unit_id'], 'target_inline': actual['source_inline']})
         return httpx.Response(200, headers={'x-request-id': 'scope-' + str(len(sent))}, json={
@@ -148,7 +164,13 @@ def test_confirmed_source_only_is_sent_by_production_adapter(client, database, m
         execute_translation(db, cfg, lease)
     assert sorted(sent) == sorted(expected)
     with db.transaction() as session:
-        assert session.get(Job, result['job_id']).payload == job_payload
+        final_payload = session.get(Job, result['job_id']).payload
+        assert {k: final_payload[k] for k in job_payload} == job_payload
+        if preparation == 'extractive':
+            assert final_payload['preparation']['source_hash'] == job_payload['source_hash']
+            assert final_payload['preparation']['source_revision_id'] == job_payload['source_revision_id']
+        else:
+            assert 'preparation' not in final_payload
         permits = list(session.scalars(select(Permit)))
         assert len(permits) == len(sent) and all(p.state == 'settled' for p in permits)
         assert all(session.get(Attempt, p.attempt_id).request_id.startswith('scope-') for p in permits)

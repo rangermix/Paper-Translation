@@ -108,6 +108,22 @@ def test_preparation_unknown_response_blocks_resend(database):
         assert session.scalar(select(Permit)).state == 'unknown'
 
 
+def test_unsupported_provider_contract_is_configuration_failure_not_content_fallback(database):
+    db, cfg = database
+    setup_library(db, cfg); enable(db, 'provider')
+    execute_translation(db, cfg, claim(db))
+    class Unsupported(Analyst):
+        def translate(self, units, profile, glossary):
+            return super().translate(units, profile, glossary) | {'status': 'unsupported',
+                'failure_code': 'PROVIDER_UNSUPPORTED_RESPONSE'}
+    execute_translation(db, cfg, claim(db), Unsupported())
+    with db.transaction() as session:
+        job = session.get(Job, 'job')
+        assert job.status == 'waiting_config' and job.error['code'] == 'PROVIDER_UNSUPPORTED_RESPONSE'
+        assert 'preparation' not in job.payload
+        assert session.scalar(select(Permit)).state == 'settled'
+
+
 def test_paid_preparation_checkpoint_survives_pause_without_resend(database):
     db, cfg = database
     setup_library(db, cfg); enable(db, 'provider')

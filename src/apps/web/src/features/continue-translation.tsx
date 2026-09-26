@@ -1,3 +1,4 @@
+import { PreparationControls, preparationAllowed } from './translation-preparation';
 import { useWorkflowPreferences } from './workflow-preferences';
 import { useEffect, useState } from 'react';
 import { api, etagFor } from '../api';
@@ -5,11 +6,11 @@ import { ActionFeedback, ErrorNotice, Loading, Modal } from '../components';
 import { resourceId } from '../domain';
 import { useAction, useResource } from '../hooks';
 import { languageName } from '../languages';
-import type { Provider } from '../types';
+import type { PreparationEstimates, PreparationMode, Provider } from '../types';
 import { CostControlNotice, budgetValid, costControlEnabled } from './cost-control';
 import { ProviderDestination } from './provider-destination';
 
-type Preflight = { generation: number; source_revision_id: string; source_hash: string; source_language: string;
+type Preflight = { preparation_estimates?: PreparationEstimates; generation: number; source_revision_id: string; source_hash: string; source_language: string;
   locale: string; profile: Provider; profile_hash: string; can_translate: boolean; blocked_reason?: string };
 const reasons: Record<string, string> = {
   PROVIDER_CONFIG: '请先在设置中完成 AI 服务配置。', JOB_ACTIVE: '还有任务正在执行或暂停，请先等待完成或取消。',
@@ -22,6 +23,7 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
   const { preferences, ready, policy, setPolicy } = useWorkflowPreferences();
   const action = useAction();
   const [consent, setConsent] = useState(false);
+  const [preparation, setPreparation] = useState<PreparationMode>('extractive');
   const [budget, setBudget] = useState('');
   const p = result.data, controlled = costControlEnabled(p?.profile);
   useEffect(() => setConsent(false), [p?.profile_hash, p?.source_hash, p?.generation]);
@@ -33,11 +35,11 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
         etag: etagFor(p), body: { source_revision_id: p.source_revision_id, source_hash: p.source_hash,
           profile_revision: p.profile.profile_revision, profile_hash: p.profile_hash,
           ...(controlled ? { budget_micro: Math.round(Number(budget) * 1_000_000) } : {}),
-          external_processing_confirmed: consent, publish_policy: policy } });
+          external_processing_confirmed: consent, publish_policy: policy, preparation: { mode: preparation } } });
       close(); location.hash = `/jobs/${job.job_id}`;
     }); }}>
       <p>{languageName(p.source_language)} → {languageName(p.locale)}</p>
-      <ProviderDestination profile={p.profile}/><CostControlNotice enabled={controlled}/>
+      <ProviderDestination profile={p.profile}/><PreparationControls value={preparation} onChange={mode => { setPreparation(mode); setConsent(false); }} profile={p.profile} estimates={p.preparation_estimates} disabled={action.pending}/><CostControlNotice enabled={controlled}/>
       {p.blocked_reason && <p className="notice">{reasons[p.blocked_reason] ?? '当前无法继续，请刷新页面查看最新状态。'}</p>}
       {controlled && <label className="field">本次任务预算（{p.profile.currency || 'USD'}）<input className="input" type="number"
         min="0.000001" step="0.000001" required value={budget} onChange={e => setBudget(e.target.value)}/></label>}
@@ -46,7 +48,7 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
         同意向上述服务发送必要源文、上下文和术语，{controlled ? '并在本次预算内翻译。' : '我了解未设置金额上限，服务仍可能收费。'}</label>
       <div className="dialog-actions"><a className="btn" href="#/settings" onClick={close}>AI 服务设置</a>
         <button className="btn" type="button" disabled={result.loading || action.pending} onClick={result.reload}>刷新状态</button>
-        <button className="btn primary" disabled={!ready || action.pending || !p.can_translate || !consent || controlled && !budgetValid(budget)}>开始翻译未完成内容</button></div>
+        <button className="btn primary" disabled={!ready || !preparationAllowed(preparation, p.profile) || action.pending || !p.can_translate || !consent || controlled && !budgetValid(budget)}>开始翻译未完成内容</button></div>
     </form>}
   </Modal>;
 }

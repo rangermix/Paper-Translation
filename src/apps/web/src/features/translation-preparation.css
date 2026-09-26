@@ -1,0 +1,25 @@
+.translation-preparation-controls { margin: 18px 0; }
+.translation-preparation-controls .field-note { margin: 8px 0; }
+.local-analyst { margin: 12px 0; }
+.local-analyst p { margin: 8px 0; }
+.preparation-content { padding-top: 12px; overflow-wrap: anywhere; }
+.preparation-content h3 { margin: 20px 0 12px; }
+.preparation-evidence { max-height: 360px; overflow: auto; border-block: 1px solid var(--line); }
+.preparation-evidence article { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.preparation-evidence article:last-child { border-bottom: 0; }
+.preparation-evidence blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--line); white-space: pre-wrap; }
+.preparation-references { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.preparation-content td { vertical-align: top; }
+.preparation-content .table-shell { margin-bottom: 16px; }
+.preparation-summary { padding-left: 24px; }
+.preparation-summary p { margin-bottom: 6px; }
+.preparation-job-progress { margin-block: 16px; }
+@media (max-width: 600px) {
+  .preparation-content .table-shell table { min-width: 0; }
+  .preparation-content thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .preparation-content tbody, .preparation-content tr, .preparation-content td { display: block; }
+  .preparation-content td { padding: 10px 14px; border-bottom: 0; }
+  .preparation-content td::before { content: attr(data-label); display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .preparation-content tr { border-bottom: 1px solid var(--line); }
+  .preparation-content tr:last-child { border-bottom: 0; }
+}

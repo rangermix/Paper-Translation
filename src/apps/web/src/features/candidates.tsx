@@ -4,9 +4,11 @@ import { ActionFeedback, Status } from '../components';
 import { inlineText, resourceId } from '../domain';
 import { useAction } from '../hooks';
 import type { CandidateGroup, Draft } from '../types';
+import { PreparationView } from './translation-preparation';
 
-export function CandidateGroupView({ candidate, draft, refresh, hasDirty }: {
+export function CandidateGroupView({ candidate, draft, refresh, hasDirty, navigate }: {
   candidate: CandidateGroup; draft: Draft; refresh: () => void; hasDirty: boolean;
+  navigate: (blockId: string) => void;
 }) {
   const action = useAction();
   const [unlock, setUnlock] = useState<Record<string, boolean>>({});
@@ -15,6 +17,8 @@ export function CandidateGroupView({ candidate, draft, refresh, hasDirty }: {
   return <article className="candidate">
     <div className="stack between"><strong>候选任务 {candidate.id}</strong><Status value={candidate.status}/></div>
     {candidate.job_id && <a href={`#/jobs/${candidate.job_id}`}>查看生成任务</a>}
+    <PreparationView draftId={draft.id} scope={{ kind: 'candidate', id: candidate.id }}
+      revision={`${candidate.generation}:${candidate.status}:${draft.source_hash}`} navigate={navigate}/>
     {Object.entries(candidate.base.segments).map(([blockId, base]) => {
       const segment = draft.segments.find(s => s.block_id === blockId);
       const target = candidate.results[blockId];

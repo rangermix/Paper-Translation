@@ -155,6 +155,9 @@ def execute_preparation(db, cfg, lease, provider=None):
             settle(session, lease.attempt_id, response.get('usage'), response.get('request_id'))
     except ValueError:
         retry_or_stop(db, lease, ProviderFailure('USAGE_MISSING', 'unknown'), cfg); return
+    if response.get('status') == 'unsupported' or response.get('failure_code') in {'PROVIDER_CONFIG', 'PROVIDER_UNSUPPORTED_RESPONSE'}:
+        retry_or_stop(db, lease, ProviderFailure(response.get('failure_code') or 'PROVIDER_UNSUPPORTED_RESPONSE'), cfg)
+        return
     try:
         if response.get('failure_code'):
             raise ProviderFailure(response['failure_code'])

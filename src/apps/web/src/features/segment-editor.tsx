@@ -5,6 +5,7 @@ import { inlineText, resourceId } from '../domain';
 import { useAction } from '../hooks';
 import { languageName } from '../languages';
 import type { Draft, Inline, Segment } from '../types';
+import { PreparationView } from './translation-preparation';
 
 function TargetFields({ nodes, atoms, change }: { nodes: Inline[]; atoms?: Record<string, string>; change: (nodes: Inline[]) => void }) {
   return <div className="target-fields">{nodes.map((node, index) => node.type === 'text'
@@ -14,10 +15,11 @@ function TargetFields({ nodes, atoms, change }: { nodes: Inline[]; atoms?: Recor
 }
 
 export function SegmentEditor({ segment, draft, refresh, selected, select, dirtyChanged, allowReviewedSelection,
-  expanded, toggle, hidden, blocked, stale }: {
+  expanded, toggle, hidden, blocked, stale, navigate }: {
   segment: Segment; draft: Draft; refresh: () => void; selected: boolean; select: (checked: boolean) => void;
   dirtyChanged: (dirty: boolean) => void; allowReviewedSelection: boolean;
   expanded: boolean; toggle: () => void; hidden: boolean; blocked: boolean; stale: boolean;
+  navigate: (blockId: string) => void;
 }) {
   const initial: Inline[] = segment.target_inline.length ? segment.target_inline : [{ type: 'text', text: '' }];
   const [nodes, setNodes] = useState<Inline[]>(initial), [baseline, setBaseline] = useState<Inline[]>(initial);
@@ -81,6 +83,8 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, dirty
         <ActionFeedback {...action}/>
         {dirty && segment.version !== baseVersion && <p className="notice error-notice">服务端已有新版本，本地未保存文字仍在。请比较后手动合并，保存将使用原基准版本进行冲突检查。</p>}
       </div></div>
+      {editable && <PreparationView draftId={draft.id} scope={{ kind: 'segment', id: segment.block_id }}
+        revision={`${draft.generation}:${segment.version}:${segment.context_hash ?? ''}`} navigate={navigate}/>}
       {segment.history?.length ? <details><summary>段落修改历史</summary>{segment.history.map(h => <div key={h.version}><strong>版本 {h.version} · {h.reason}</strong><p>{inlineText(h.target_inline, segment.protected_atoms)}</p></div>)}</details> : null}
     </div>
   </article>;

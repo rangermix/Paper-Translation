@@ -17,17 +17,14 @@ def request_body(units, profile, glossary, *, review=False):
     instructions = REVIEW_INSTRUCTIONS if review else INSTRUCTIONS
     if not review and any(unit.get('repair_reason') for unit in units):
         instructions += ' A previous response failed structural validation. This is the single allowed repair: return every requested ID exactly once, nonempty target text and exactly the original multiset of protected references.'
-    content = {'target_locale': units[0]['target_locale'], 'units': [{
-        'unit_id': unit['unit_id'], 'source_language': unit['source_language'],
-        'source_inline': unit['source_inline'], 'protected_atoms': unit['protected_atoms'],
-        'context': unit['context'], **({'target_text': unit['review_target_text']} if review else {})
-    } for unit in units], 'glossary': glossary}
+    from .content import request_content
+    content, instructions, output_schema = request_content(units, glossary, review, instructions, REVIEW_SCHEMA if review else OUTPUT_SCHEMA)
     body = {
         'model': profile['model_id'], 'max_tokens': profile['max_output_tokens'],
         'system': instructions,
         'messages': [{'role': 'user', 'content': canonical_bytes(content).decode('utf-8')}],
         'stream': False,
-        'output_config': {'format': {'type': 'json_schema', 'schema': deepcopy(REVIEW_SCHEMA if review else OUTPUT_SCHEMA)}},
+        'output_config': {'format': {'type': 'json_schema', 'schema': deepcopy(output_schema)}},
     }
     # Native Messages has no store flag. No tools/cache control/fallback are
     # requested. Default thinking is model-specific and shares max_tokens.

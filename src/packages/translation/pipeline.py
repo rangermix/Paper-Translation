@@ -13,6 +13,7 @@ from packages.editorial.drafts import create_draft, run_quality, seal, quality_s
 from packages.editorial.source_sealing import seal_source
 from packages.ir import digest
 from packages.translation.languages import canonical_locale, translation_profile
+from packages.preparation import PreparationOptions, freeze_options
 
 
 class PipelineOptions(BaseModel):
@@ -23,6 +24,7 @@ class PipelineOptions(BaseModel):
     external_processing_confirmed: bool = False
     profile_hash: str | None = Field(None, pattern='^[0-9a-f]{64}$')
     budget_micro: int | None = Field(None, gt=0)
+    preparation: PreparationOptions = Field(default_factory=PreparationOptions)
 
     @field_validator('target_locale')
     @classmethod
@@ -34,7 +36,8 @@ def freeze_pipeline(options, asset_id):
     profile = provider_profile()
     if options.translate and options.external_processing_confirmed:
         require(options.profile_hash == digest(profile), 'PROFILE_STALE')
-    return {**options.model_dump(), 'profile': copy.deepcopy(profile), 'source_asset_id': asset_id,
+    return {**options.model_dump(exclude={'preparation'}), **(freeze_options(options.preparation, profile) if options.translate else {}),
+        'profile': copy.deepcopy(profile), 'source_asset_id': asset_id,
         'confirmed_at': now().isoformat() if options.external_processing_confirmed else None,
         'origin': 'upload_workflow'}
 

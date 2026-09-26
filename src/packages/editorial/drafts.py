@@ -109,8 +109,8 @@ def edit_segment(session, config, draft, block_id, nodes, base_version, reason, 
     require(base_version == (previous.sequence if previous else 0), 'SEGMENT_CONFLICT', status=412)
     validate_target(nodes, source, block)
     lineage = {'glossary_revision': draft.glossary_revision, 'glossary_entries': draft.profile.get('glossary_entries', [])}
-    if previous:
-        lineage.update({k: previous.provenance_json[k] for k in ('glossary_revision', 'glossary_entries') if k in previous.provenance_json})
+    if previous and origin != 'candidate_accepted':
+        lineage.update({k: previous.provenance_json[k] for k in ('glossary_revision', 'glossary_entries', 'preparation_revision', 'preparation_job_id', 'preparation_context_modes') if k in previous.provenance_json})
     lineage.update(provenance or {})
     segment = SegmentVersion(id=new_id('seg'), draft_id=draft.id, block_id=block_id,
         sequence=base_version + 1, target_inline=copy.deepcopy(nodes), origin=origin, reason=reason,

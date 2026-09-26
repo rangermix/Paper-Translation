@@ -8,6 +8,7 @@ from packages.domain.models import Candidate, Draft, Edition, SourceRevision, ne
 from packages.editorial.drafts import context_hash, current_review, current_segments, edit_segment
 from packages.ir import digest
 from packages.ir.retention import original_only_blocks
+from packages.preparation import PreparationOptions, freeze_options
 from packages.storage import read_snapshot
 from .common import StrictModel, command, page, response
 from .editorial import draft_view
@@ -25,6 +26,7 @@ def current_source(session, draft):
 
 
 class CandidateRequest(StrictModel):
+    preparation: PreparationOptions = Field(default_factory=PreparationOptions)
     block_ids: list[str] = Field(min_length=1, max_length=10000)
     profile_revision: str
     profile_hash: str = Field(pattern='^[0-9a-f]{64}$')
@@ -60,7 +62,7 @@ def create_candidate(draft_id: str, body: CandidateRequest, request: Request, se
                 'reviewed': bool(current_review(session, draft, segments[bid])) if bid in segments else False} for bid in body.block_ids}})
         session.add(candidate)
         session.flush()
-        payload = {**body.model_dump(), 'budget_micro': budget, 'candidate_id': candidate.id, 'draft_id': draft.id, 'source_revision_id': source_entity.id,
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'budget_micro': budget, 'candidate_id': candidate.id, 'draft_id': draft.id, 'source_revision_id': source_entity.id,
             'source_hash': digest(source), 'profile': profile, 'locale': edition.target_locale,
             'base_glossary_revision': draft.glossary_revision, 'glossary': glossary['entries'], 'publish_policy': 'manual_approval'}
         job = enqueue(session, 'candidate', payload, draft.document_id)
@@ -123,7 +125,8 @@ def accept_candidate(candidate_id: str, body: AcceptCandidate, request: Request,
             edit_segment(session, request.app.state.config, draft, bid, candidate.results[bid], base['segments'][bid]['version'],
                 'Explicitly accepted translation candidate', origin='candidate_accepted',
                 provenance={'candidate_id': candidate.id, 'glossary_revision': base['requested_glossary_revision'],
-                    'glossary_entries': base.get('glossary_entries', []), 'profile': base.get('profile', {})})
+                    'glossary_entries': base.get('glossary_entries', []), 'profile': base.get('profile', {}),
+                    **base.get('preparation_by_block', {}).get(bid, {})})
         remaining = {bid: value for bid, value in base['segments'].items() if bid not in selected}
         candidate.base = {**base, 'segments': remaining}
         candidate.status = 'ready' if remaining else 'accepted'
@@ -150,7 +153,7 @@ def semantic_review(draft_id: str, body: CandidateRequest, request: Request, ses
         original_only = original_only_blocks(source)
         selected = {b['id'] for b in source['blocks'] if b['translatable'] and b['id'] not in original_only}
         require(set(body.block_ids) <= selected and len(body.block_ids) == len(set(body.block_ids)), 'BLOCK_SELECTION_INVALID')
-        job = enqueue(session, 'semantic_review', {**body.model_dump(), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': draft.source_revision_id,
+        job = enqueue(session, 'semantic_review', {**body.model_dump(exclude={'preparation'}), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': draft.source_revision_id,
             'source_hash': digest(source), 'profile': profile, 'locale': edition.target_locale, 'glossary': [], 'publish_policy': 'manual_approval'}, draft.document_id)
         job.budget_micro = budget
         return job_view(session, job)

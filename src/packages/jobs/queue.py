@@ -123,6 +123,11 @@ def finish(session, lease, result=None, status='succeeded'):
 
 
 def has_validated_checkpoint(session, task):
+    if task.payload.get('phase') == 'preparation':
+        request_hash = digest(task.payload['request'])
+        return any(evidence.get('kind') == 'validated_preparation' and evidence.get('request_hash') == request_hash
+            for attempt in session.scalars(select(Attempt).where(Attempt.task_id == task.id, Attempt.state == 'settled'))
+            for evidence in attempt.evidence)
     if task.kind not in {'translate', 'candidate'} or 'unit' not in task.payload:
         return False
     unit = task.payload['unit'] | ({'repair_reason': task.payload['repair_reason']} if task.payload.get('repair_reason') else {})

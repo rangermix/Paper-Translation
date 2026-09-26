@@ -22,6 +22,7 @@ from packages.jobs.history import effective_log_level, log_view, time_view
 from packages.jobs.visibility import clearable_history, visible_history
 from packages.storage import read_snapshot, write_snapshot
 from packages.translation.languages import canonical_locale, translation_profile
+from packages.preparation import PreparationOptions, freeze_options
 from .common import StrictModel, command, page, response
 from .library import Session, enqueue, source_url
 
@@ -337,6 +338,7 @@ from packages.editorial.source_sealing import seal_source
 
 
 class ConfirmPreflight(StrictModel):
+    preparation: PreparationOptions = Field(default_factory=PreparationOptions)
     source_hash: str
     preflight_generation: int
     profile_revision: str
@@ -393,6 +395,12 @@ def source_plan(source, locale, profile):
         require(False, str(exc))
     ceiling = reserve_cost(profile)
     return {'planned_units': len(units), 'estimated_cost_micro': len(units) * ceiling if ceiling is not None else None,
+        'preparation_estimates': {
+            'off': {'additional_requests': 0, 'additional_cost_micro': 0, 'backend': 'none'},
+            'extractive': {'additional_requests': 0, 'additional_cost_micro': 0, 'backend': 'source'},
+            'provider': {'additional_requests': 1, 'additional_cost_micro': ceiling, 'backend': 'provider',
+                         'supported': profile.get('api_protocol') != 'local_translation'},
+            'local': {'additional_requests': 1, 'additional_cost_micro': None, 'backend': 'local'}},
         'cost_control_enabled': cost_control_enabled(profile),
         'estimate_note': 'Conservative request ceilings for the frozen profile; cache hits may lower actual cost.' if ceiling is not None else 'Cost control is disabled; no monetary budget is enforced.'}
 
@@ -421,6 +429,7 @@ def edition_preflight(edition_id: str, request: Request, session=Session):
 
 
 class TranslateEdition(StrictModel):
+    preparation: PreparationOptions = Field(default_factory=PreparationOptions)
     source_revision_id: str
     source_hash: str = Field(pattern='^[0-9a-f]{64}$')
     profile_revision: str
@@ -451,7 +460,7 @@ def translate_edition(edition_id: str, body: TranslateEdition, request: Request,
         glossary = effective_glossary(session, doc.id, source['language'], edition.target_locale)
         profile = {**profile, 'glossary_revision': glossary['revision'], 'glossary_entries': glossary['entries']}
         draft = create_draft(session, request.app.state.config, edition, revision, profile)
-        payload = {**body.model_dump(), 'budget_micro': budget, 'draft_id': draft.id, 'locale': edition.target_locale, 'profile': profile,
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'budget_micro': budget, 'draft_id': draft.id, 'locale': edition.target_locale, 'profile': profile,
             'glossary_revision': glossary['revision'], 'glossary': glossary['entries'], 'source_language': source['language'],
             'confirmed_at': now().isoformat(), 'origin': 'manual_ui'}
         job = enqueue(session, 'translate', payload, doc.id)
@@ -486,7 +495,7 @@ def confirm(import_id: str, body: ConfirmPreflight, request: Request, session=Se
         glossary = effective_glossary(session, revision.document_id, source_language, body.locale)
         profile = {**profile, 'glossary_revision': glossary['revision'], 'glossary_entries': glossary['entries']}
         draft = create_draft(session, request.app.state.config, edition, revision, profile)
-        payload = {**body.model_dump(), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': revision.id, 'source_hash': digest(source),
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': revision.id, 'source_hash': digest(source),
             'profile': profile, 'glossary_revision': glossary['revision'], 'glossary': glossary['entries'],
             'confirmed_at': now().isoformat(), 'origin': 'manual_ui'}
         job = enqueue(session, 'translate', payload, revision.document_id)

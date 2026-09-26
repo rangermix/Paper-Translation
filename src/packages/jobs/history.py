@@ -113,7 +113,7 @@ def record_api_model(db, lease, profile, response=None):
     if not isinstance(reported, str) or not 0 < len(reported) <= 256 or any(ord(c) < 32 for c in reported):
         reported = None
     fields = {k: profile[k] for k in ('provider', 'api_protocol', 'config_revision', 'endpoint') if k in profile}
-    local = profile.get('api_protocol') == 'local_translation'
+    local = profile.get('api_protocol') in {'local_translation', 'local_analysis'}
     if local:
         from packages.local_models.catalog import get_model
         entry = get_model(profile['model_id'])

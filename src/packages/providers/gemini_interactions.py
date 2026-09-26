@@ -15,20 +15,17 @@ ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions'
 def request_body(units, profile, glossary, *, review=False):
     if not units or profile.get('provider') != 'gemini' or profile.get('api_protocol') != 'gemini_interactions':
         raise ProviderFailure('PROVIDER_CONFIG', 'not_sent')
-    content = {'target_locale': units[0]['target_locale'], 'units': [{
-        'unit_id': u['unit_id'], 'source_language': u['source_language'],
-        'source_inline': u['source_inline'], 'protected_atoms': u['protected_atoms'],
-        'context': u['context'], **({'target_text': u['review_target_text']} if review else {})
-    } for u in units], 'glossary': glossary}
     instructions = REVIEW_INSTRUCTIONS if review else INSTRUCTIONS
     if not review and any(u.get('repair_reason') for u in units):
         instructions += ' A previous response failed structural validation. This is the single allowed repair: return every requested ID exactly once, nonempty target text and exactly the original multiset of protected references.'
+    from .content import request_content
+    content, instructions, output_schema = request_content(units, glossary, review, instructions, REVIEW_SCHEMA if review else OUTPUT_SCHEMA)
     body = {'model': profile['model_id'], 'input': canonical_bytes(content).decode(),
         'system_instruction': instructions, 'store': False, 'stream': False, 'background': False,
         'tools': [], 'generation_config': {'max_output_tokens': profile['max_output_tokens'],
             'thinking_summaries': 'none', 'tool_choice': 'none'},
         'response_format': {'type': 'text', 'mime_type': 'application/json',
-            'schema': deepcopy(REVIEW_SCHEMA if review else OUTPUT_SCHEMA)}}
+            'schema': deepcopy(output_schema)}}
     if len(canonical_bytes(body)) + 4096 > profile['max_input_tokens']:
         raise ProviderFailure('UNIT_TOO_LARGE', 'not_sent')
     return body

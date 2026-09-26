@@ -19,13 +19,23 @@ def budget_totals(session,job_id=None,*,controlled_only=False):
     return result
 
 
+def dispatch_profile(job, task):
+    if task.payload.get('phase') == 'preparation' and job.payload.get('preparation_options', {}).get('mode') == 'local':
+        profile = job.payload.get('analysis_profile', {})
+        from packages.providers.local_analysis import profile as local_profile
+        require(profile == local_profile(profile.get('model_id')), 'PROVIDER_PROFILE_STALE')
+        return profile
+    return job.payload.get('profile', {})
+
+
 def authorize(session,lease,reserved_micro,price):
     lock_lifecycle(session);settings=lock_singleton(session)
     job,task=assert_current(session,lease)
     require(not settings.dispatch_disabled,'DISPATCH_DISABLED')
     require(job.payload.get('external_processing_confirmed') is True,'EXTERNAL_PROCESSING_UNCONFIRMED')
-    require(job.payload.get('profile',{}).get('price')==price,'PRICE_SNAPSHOT_STALE')
-    controlled = cost_control_enabled(job.payload.get('profile', {}))
+    profile = dispatch_profile(job, task)
+    require(profile.get('price')==price,'PRICE_SNAPSHOT_STALE')
+    controlled = cost_control_enabled(profile)
     if controlled:
         validate_price(price)
         free = all(price[key] == 0 for key in ('input_micro_per_million', 'cached_input_micro_per_million', 'output_micro_per_million'))

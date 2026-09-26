@@ -15,7 +15,7 @@ def language_name(value):
     base = value.split('-')[0]
     return f'{NATIVE_NAMES[base]} ({value})' if base in NATIVE_NAMES else value
 
-DERIVED_PROFILE_FIELDS = {'glossary_revision', 'glossary_entries', 'language_authorization'}
+DERIVED_PROFILE_FIELDS = {'glossary_revision', 'glossary_entries', 'language_authorization', 'preparation'}
 LOCALE_PATTERN = r'(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{4}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?'
 
 

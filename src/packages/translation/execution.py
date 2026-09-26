@@ -98,6 +98,12 @@ def plan_tasks(db,cfg,lease):
         wanted=job.payload.get('block_ids')
         units=plan_units(source,job.payload['locale'],profile,wanted,nonblocking=lease.kind!='semantic_review')
         if lease.kind=='translate':units=[u for u in units if u['owner_block_id'] not in segments]
+        from packages.preparation.execution import prepare_or_schedule
+        if units and prepare_or_schedule(session, job, draft, source, lease):
+            return
+        if job.payload.get('preparation') and lease.kind != 'semantic_review':
+            from packages.preparation.context import apply_to_units
+            units = apply_to_units(job.payload['preparation'], source, units, profile)
         if lease.kind=='semantic_review':
             # Separate issue-only task; never reuse translation output as a semantic verdict.
             require(profile.get('semantic_review_enabled') is True,'SEMANTIC_REVIEW_DISABLED')
@@ -110,7 +116,10 @@ def plan_tasks(db,cfg,lease):
         versions={b['id']:(segments[b['id']].sequence if b['id'] in segments else 0) for b in source['blocks']}
         for unit in units:
             session.add(Task(id=new_id('task'),job_id=job.id,kind=lease.kind,payload={'unit':unit,'base_version':versions[unit['owner_block_id']],'repair_count':0}))
-        job.progress={'total_units':len(units),'verified_units':0,'total_blocks':len({u['owner_block_id'] for u in units}),'verified_blocks':0,'requests':0,'cache_hits':0}
+        job.progress=job.progress | {'total_units':len(units),'verified_units':0,'total_blocks':len({u['owner_block_id'] for u in units}),'verified_blocks':0,'requests':job.progress.get('requests',0),'cache_hits':0}
+        if job.payload.get('preparation'):
+            job.progress = job.progress | {'preparation_context_mode': job.payload['preparation']['translation_context_mode'],
+                'preparation_omitted_units': sum(bool(u.get('preparation_context_omitted')) for u in units)}
         session.flush();finish(session,lease,{'planned_units':len(units)})
         if not units:
             finalize_translation(session,cfg,job,draft,source,lease.kind)
@@ -156,7 +165,9 @@ def retry_or_stop(db,lease,failure,cfg=None):
             task.status='failed';job.status='pending'
         attempt.finished_at=now()
         if attempt.state=='created':attempt.state='failed'
-        if cfg and task.status=='failed' and job.status=='pending' and lease.kind in {'translate','candidate'}:
+        if task.payload.get('phase') == 'preparation' and task.status == 'failed' and job.status == 'pending':
+            job.status = 'failed'
+        elif cfg and task.status=='failed' and job.status=='pending' and lease.kind in {'translate','candidate'}:
             session.flush()
             draft=get_entity(session,Draft,job.payload['draft_id'],lock=True)
             source=read_snapshot(cfg.data,get_entity(session,SourceRevision,draft.source_revision_id))
@@ -201,16 +212,26 @@ def commit_unit(db,cfg,lease,unit,nodes,key,profile,cache_hit=False,origin_attem
         if len(siblings)==unit['unit_count'] and all(t.status=='succeeded' and t.result and 'target_inline' in t.result for t in siblings):
             joined=[]
             for sibling in sorted(siblings,key=lambda t:t.payload['unit']['unit_order']):joined.extend(restore_inline(sibling.payload['unit'],sibling.result['target_inline']))
+            lineage = {}
+            if unit.get('preparation_revision'):
+                entries = {digest(entry): entry for sibling in siblings for entry in sibling.payload['unit'].get('glossary_entries', [])}
+                lineage = {'preparation_revision': unit['preparation_revision'],
+                    'preparation_job_id': job.id,
+                    'glossary_revision': job.payload.get('glossary_revision', 'empty-v1'),
+                    'glossary_entries': list(entries.values()),
+                    'preparation_context_modes': sorted({s.payload['unit']['preparation_context_mode'] for s in siblings})}
             if lease.kind=='candidate':
                 candidate=get_entity(session,Candidate,job.payload['candidate_id'],lock=True)
                 candidate.results=candidate.results|{owner:joined};candidate.generation+=1
+                if lineage:
+                    candidate.base = candidate.base | {'preparation_by_block': candidate.base.get('preparation_by_block', {}) | {owner: lineage}}
             else:
                 existing=current_segments(session,draft.id).get(owner)
                 if (existing.sequence if existing else 0)==task.payload['base_version']:
                     block=next(b for b in source['blocks'] if b['id']==owner)
                     session.add(SegmentVersion(id=new_id('seg'),draft_id=draft.id,block_id=owner,sequence=task.payload['base_version']+1,
                         target_inline=joined,origin='cache' if cache_hit else 'model',reason='Validated translation task',source_hash=block['source_hash'],
-                        context_hash=context_hash(source,owner),provenance_json={'attempt_id':origin_attempt_id or lease.attempt_id,'job_id':job.id,'profile_revision':profile['profile_revision'],'prompt_version':profile['prompt_version']}))
+                        context_hash=context_hash(source,owner),provenance_json={'attempt_id':origin_attempt_id or lease.attempt_id,'job_id':job.id,'profile_revision':profile['profile_revision'],'prompt_version':profile['prompt_version'], **lineage}))
                     draft.generation+=1;draft.qa_id=None
                 else:
                     task.result=task.result|{'merge_conflict':True};job.error={'code':'SEGMENT_CONFLICT','block_id':owner}
@@ -221,12 +242,16 @@ def commit_unit(db,cfg,lease,unit,nodes,key,profile,cache_hit=False,origin_attem
 
 
 def execute_translation(db,cfg,lease,provider=None):
+    if lease.payload.get('phase') == 'preparation':
+        from packages.preparation.execution import execute_preparation
+        execute_preparation(db, cfg, lease, provider)
+        return
     if 'unit' not in lease.payload:
         plan_tasks(db,cfg,lease);return
     unit=lease.payload['unit'] | ({'repair_reason':lease.payload['repair_reason']} if lease.payload.get('repair_reason') else {})
     with db.transaction() as session:
         job,task,draft,source=snapshot(session,cfg,lease)
-        profile=job.payload['profile'];glossary=unit.get('review_glossary_entries',job.payload.get('glossary',[]))
+        profile=job.payload['profile'];glossary=unit.get('review_glossary_entries',unit.get('glossary_entries',job.payload.get('glossary',[])))
         try:check_language_policy(profile,source,unit['target_locale'])
         except ValueError as exc:raise DomainError(str(exc)) from exc
         key=cache_key(unit,profile,job.payload.get('glossary_revision','empty-v1'))

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from packages.domain.db import get_document, get_entity, writable
 from packages.domain.errors import match_generation, require
-from packages.domain.models import (Candidate, Draft, Edition, IssueResolution, QA, ReviewRecord,
+from packages.domain.models import (Candidate, Draft, Edition, IssueResolution, Job, QA, ReviewRecord,
     SourceRevision, TranslationRevision, new_id)
 from packages.editorial.drafts import (context_hash, create_draft, current_review, current_segments,
     edit_segment, quality_fingerprint, run_quality, seal, segment_fingerprint, semantic_evidence)
@@ -61,6 +61,44 @@ def draft_view(session, config, draft):
 @router.get('/drafts/{draft_id}')
 def get_draft(draft_id: str, request: Request, session=Session):
     return response(draft_view(session, request.app.state.config, get_entity(session, Draft, draft_id)))
+
+
+@router.get('/drafts/{draft_id}/preparation')
+def draft_preparation(draft_id: str, request: Request, block_id: str | None = None,
+                      candidate_id: str | None = None, session=Session):
+    require(not (block_id and candidate_id), 'PREPARATION_SCOPE', status=422)
+    draft = get_entity(session, Draft, draft_id)
+    source = get_entity(session, SourceRevision, draft.source_revision_id)
+    pack = draft.profile.get('preparation')
+    scope, modes = 'draft', None
+    if candidate_id:
+        candidate = get_entity(session, Candidate, candidate_id)
+        require(candidate.draft_id == draft.id, 'NOT_FOUND', status=404)
+        pack, scope = candidate.base.get('preparation'), 'candidate'
+    elif block_id:
+        scope = 'segment'
+        segment = current_segments(session, draft.id).get(block_id)
+        provenance = segment.provenance_json if segment else {}
+        revision = provenance.get('preparation_revision')
+        modes = provenance.get('preparation_context_modes')
+        if not revision:
+            pack = None
+        elif not pack or pack['revision'] != revision:
+            pack = None
+            job_id = provenance.get('preparation_job_id') or provenance.get('job_id')
+            job = session.get(Job, job_id) if job_id else None
+            if job and job.document_id == draft.document_id:
+                pack = job.payload.get('preparation')
+            if not pack and provenance.get('candidate_id'):
+                candidate = session.get(Candidate, provenance['candidate_id'])
+                owner = session.get(Draft, candidate.draft_id) if candidate else None
+                if owner and owner.document_id == draft.document_id:
+                    pack = candidate.base.get('preparation')
+            if pack and pack['revision'] != revision:
+                pack = None
+    available = bool(pack and pack['source_hash'] == source.snapshot_hash and pack['source_revision_id'] == source.id)
+    return response({'available': available, 'preparation': pack if available else None, 'scope': scope,
+                     'context_modes': modes})
 
 
 class SegmentEdit(StrictModel):

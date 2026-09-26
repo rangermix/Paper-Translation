@@ -1,4 +1,5 @@
 """Secret writes intentionally bypass DB-backed command/idempotency receipts."""
+from typing import Literal
 from fastapi import APIRouter, Request
 from pydantic import Field, SecretStr
 from sqlalchemy import select
@@ -13,20 +14,21 @@ router = APIRouter(prefix='/api/v1')
 
 
 @router.get('/settings/local-models')
-def local_models():
+def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
     import httpx
     from packages.local_models.catalog import ENDPOINT, public_models
     from .common import response
     try:
         with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
-            result = client.get(ENDPOINT.rsplit('/v1/', 1)[0] + '/models')
+            result = client.get(ENDPOINT.rsplit('/v1/', 1)[0] + '/models',
+                                **({'params': {'purpose': purpose}} if purpose != 'translation' else {}))
             result.raise_for_status()
             states = {row['id']: row for row in result.json()['models']}
         # Metadata is always our pinned catalog; the service reports status only.
         return response({'models': [{**m, **{k: states.get(m['id'], {}).get(k) for k in
-            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes')}} for m in public_models()]})
+            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes')}} for m in public_models(purpose=purpose)]})
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        return response({'models': [{**m, 'status': 'unavailable', 'code': 'LOCAL_MODEL_SERVICE_UNAVAILABLE'} for m in public_models()]})
+        return response({'models': [{**m, 'status': 'unavailable', 'code': 'LOCAL_MODEL_SERVICE_UNAVAILABLE'} for m in public_models(purpose=purpose)]})
 
 
 @router.post('/settings/local-models/{identifier}/prepare', status_code=202)

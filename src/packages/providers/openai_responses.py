@@ -26,16 +26,13 @@ def request_body(units, profile, glossary, *, review=False):
     protocol = profile.get('api_protocol', 'responses')
     if protocol not in ('responses', 'chat_completions'):
         raise ProviderFailure('PROVIDER_CONFIG', 'not_sent')
-    content = {'target_locale': units[0]['target_locale'], 'units': [{
-        'unit_id': u['unit_id'], 'source_language': u['source_language'],
-        'source_inline': u['source_inline'], 'protected_atoms': u['protected_atoms'],
-        'context': u['context'], **({'target_text': u['review_target_text']} if review else {})
-    } for u in units], 'glossary': glossary}
     instructions = REVIEW_INSTRUCTIONS if review else INSTRUCTIONS
     if not review and any(u.get('repair_reason') for u in units):
         instructions += ' A previous response failed structural validation. This is the single allowed repair: return every requested ID exactly once, nonempty target text and exactly the original multiset of protected references.'
+    from .content import request_content
+    content, instructions, output_schema = request_content(units, glossary, review, instructions, REVIEW_SCHEMA if review else OUTPUT_SCHEMA)
     schema = {'name': 'semantic_issues' if review else 'translation_units',
-        'strict': True, 'schema': REVIEW_SCHEMA if review else OUTPUT_SCHEMA}
+        'strict': True, 'schema': output_schema}
     body = {'model': profile['model_id'], 'store': False, 'stream': False}
     if protocol == 'responses':
         body.update(instructions=instructions,

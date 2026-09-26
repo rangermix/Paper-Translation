@@ -49,6 +49,28 @@ def test_hy_glossary_instructions_do_not_reintroduce_neighbouring_prose():
     assert source == 'Hello.'
 
 
+def test_hy_prepared_context_is_delimited_and_source_output_stays_one_unit():
+    from packages.providers.local_translation import request_body
+    unit = {**TEST_UNIT, 'preparation_revision': 'prepared-v1',
+            'context': {'heading': 'Protocol', 'paper': {'summary': [], 'evidence': [
+                {'id': 'e1', 'block_id': 'definition', 'role': 'definition', 'quote': 'Hello is a protocol greeting.'}]}}}
+    prompt = request_body([unit], profile(), [])['messages'][0]['content']
+    before, source = prompt.split('[Source Text]\n', 1)
+    assert source == 'Hello.'
+    assert '[Background Information]' in before and 'protocol greeting' in before
+    assert 'Never translate the background' in before
+    omitted = request_body([unit | {'preparation_context_omitted': True}], profile(), [])['messages'][0]['content']
+    assert '[Background Information]' not in omitted
+
+
+def test_milmmt_uses_terms_without_inventing_background_template():
+    from packages.providers.local_translation import request_body
+    unit = {**TEST_UNIT, 'preparation_revision': 'prepared-v1',
+            'context': {'paper': {'summary': [{'text': 'Background claim'}], 'evidence': []}}}
+    prompt = request_body([unit], profile('milmmt-46-4b-q4'), [{'source': 'Hello', 'target': '你好'}])['prompt']
+    assert '你好' in prompt and 'Background claim' not in prompt
+
+
 @pytest.mark.parametrize('locale,language', [('zh-Hans', 'Chinese (Simplified)'),
     ('zh-Hant', 'Chinese (Traditional)'), ('ko', 'Korean'), ('ja', 'Japanese')])
 def test_hy_number_word_instruction_uses_the_requested_locale_and_preserves_input(locale, language):

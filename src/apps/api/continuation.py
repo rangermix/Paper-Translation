@@ -10,6 +10,7 @@ from packages.domain.models import Draft, Edition, Job, Permit, SegmentVersion, 
 from packages.editorial.drafts import create_draft, current_segments, validate_target
 from packages.ir import digest
 from packages.jobs.queue import emit
+from packages.preparation import freeze_options
 from packages.storage import read_snapshot
 from .common import command, response
 from .library import Session, enqueue
@@ -108,7 +109,7 @@ def continue_translation(draft_id: str, body: TranslateEdition, request: Request
                 previous.status = 'cancelled'
                 previous.progress = previous.progress | {'continued_draft_id': draft.id}
                 emit(session, previous)
-        payload = {**body.model_dump(), 'draft_id': draft.id, 'profile': profile, 'locale': edition.target_locale,
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'draft_id': draft.id, 'profile': profile, 'locale': edition.target_locale,
             'glossary_revision': glossary['revision'], 'glossary': glossary['entries'],
             'source_language': source['language'], 'confirmed_at': now().isoformat(), 'origin': 'explicit_continuation',
             'continued_from_draft_id': old.id}

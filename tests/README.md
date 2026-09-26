@@ -81,6 +81,18 @@ npm --prefix src/apps/web run build
 See [browser tests](browser/README.md) for the local preview, evidence-dependent
 tests and explicit opt-in for tests that mutate an actual disposable application.
 
+## Paper preparation
+
+Paper preparation contracts live in `tests/unit/test_preparation*.py`, local
+analyst/model tests, `tests/integration/test_translation_preparation.py` and
+`tests/integration/test_preparation_api.py`. They cover exact source evidence,
+scoped terms, request limits, cache identity, permits, late lifecycle changes,
+checkpoint reuse and segment/candidate provenance. The mocked browser suite in
+`tests/browser/translation-preparation.spec.ts` covers the five entry points,
+consent, local preparation, independent evidence scopes and responsive views.
+These checks make no real analyst or translator inference calls. Measure summary
+and translation quality, latency and memory only in a separately authorized run.
+
 ## Historical evidence
 
 Some acceptance tests replay archived parser output or independent human review

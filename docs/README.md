@@ -23,7 +23,7 @@ Completed milestone plans, obsolete acceptance registries and superseded designs
 are available in Git history. Current implementation is defined by source,
 runtime schemas and tests, without a parallel backlog claiming it is unimplemented.
 
-Active feature work: [translation consistency specification](plans/2026-09-26-translation-consistency-design.md),
+Translation consistency: [delivery specification](plans/2026-09-26-translation-consistency-design.md),
 [options and runtime cost](plans/translation-consistency-options.md), and
-[implementation plan](plans/2026-09-26-translation-consistency.md). These documents
+[completed implementation plan](plans/2026-09-26-translation-consistency.md). These documents
 separate the delivery scope from optional research integrations.

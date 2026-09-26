@@ -1,6 +1,6 @@
 # Document context and terminology consistency
 
-Status: implementation specification. The initial source baseline is
+Status: implemented delivery specification (2026-09-27). The initial source baseline is
 `0ced919cccc3d672d57518e804f4932b150257d6`. This document distinguishes the delivery
 scope below from the [option catalogue](translation-consistency-options.md).
 It does not claim that every research option is installed or benchmarked.
@@ -103,7 +103,8 @@ claims remain labeled model suggestions, and exact source excerpts stay availabl
 
 A concept contains a stable ID, source spelling, aliases, definition evidence,
 occurrences, scope, extraction method and optional target proposal. A target
-proposal records locale, spelling, variants, origin and review status. IDs include
+proposal records spelling, origin and review status; locale is bound by the pack.
+Explicit glossary entries also support accepted variants. IDs include
 scope/evidence so identical strings can represent distinct senses. For example,
 MPI `rank` and matrix `rank` must not become one mandatory replacement rule.
 
@@ -156,6 +157,16 @@ extractive context retained. Configuration failures, exhausted budgets, stale
 versions and uncertain network outcomes retain their existing execution states.
 Do not silently retry unknown paid requests or switch providers to obtain a brief.
 
+The implemented analyst is MiniCPM5-1B Q4 with a pinned MLX artifact. A job requests
+one bounded analysis; it does not run a second content-repair request. Known
+unsent/unexecuted transport failures retain the existing bounded retry policy.
+No analysis runs when all requested translation units already exist. Extraction
+currently retains up to 96 complete evidence passages and 48 ranked concepts;
+analysis selects up to 24 candidates and accepts up to four summary items and
+16 target proposals. English definition/acronym/frequency rules have limited
+language coverage; exact source evidence and model analysis remain available for
+other languages. This does not claim complete notation or sense extraction.
+
 ## Request packing and provider behavior
 
 Keep paragraph-sized output units and their protected-reference contract. The
@@ -204,6 +215,10 @@ without requiring review. Users can use existing glossary controls to pin wordin
 and create a new translation/candidate run. Show preparation progress alongside
 translation progress. Internal hashes are evidence metadata, not required steps
 in the ordinary user flow.
+
+Draft baseline, selected segment and candidate preparation have separate views.
+An off-mode replacement has no preparation even if its draft baseline does. Copies
+and human edits retain the preparation job reference of their originating segment.
 
 ## Acceptance
 

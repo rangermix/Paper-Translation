@@ -44,6 +44,35 @@ or download local models.
 storage integrity, bundled templates, frontend and current worker/parser heartbeats.
 A liveness response alone does not establish readiness or successful inference.
 
+## Paper preparation
+
+Upload workflow options, import confirmation, edition translation, draft continuation
+and candidate creation accept `preparation: {"mode": "extractive"}`. Modes are `off`,
+`extractive` (the default for new requests), `provider` and `local`. Persisted jobs
+without preparation options retain the legacy behavior. `provider` requires an API translator;
+`local` freezes a separate pinned analyst and works with either translator type.
+Semantic review is independent and does not run preparation.
+
+Translation preflight returns `preparation_estimates` by mode, with
+`additional_requests`, `additional_cost_micro` and `backend`. The analysis request
+bound excludes repeated translation context. Unknown money is `null`; extractive/off
+add zero requests. These are bounds, not measured inference costs.
+
+`GET /drafts/{id}/preparation` returns `{available, preparation, scope, context_modes}`.
+Its default scope is the draft baseline. Supply `block_id` for the current segment's
+original preparation, or `candidate_id` for a candidate belonging to the draft;
+the parameters are mutually exclusive. An unprepared segment returns no pack even
+when the draft has one. Packs bind exact source revision/hash, locale, evidence,
+concepts, glossary, algorithm versions and optional analyst identity. The endpoint
+does not invoke models or download weights.
+
+`GET /settings/local-models?purpose=analysis` lists the pinned analyst separately
+from the default translation catalogue. The existing explicit
+`POST /settings/local-models/{id}/prepare` prepares either type. Reading status never
+starts downloads. Job `progress` includes `preparation_status`, `preparation_requests`,
+`preparation_terms` (proposed equivalents), `preparation_warnings`,
+`preparation_context_mode` and `preparation_omitted_units`.
+
 ## Upload metadata
 
 Native PDF inspection queues an independent `metadata_lookup` job before the full

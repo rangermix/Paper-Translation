@@ -40,14 +40,15 @@ is not the default because output limits and retries affect the entire document.
 | [Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B) | Multilingual structured brief and terminology | Advertised native context is not allocated MLX/DMR context |
 | [LFM2.5-2.6B](https://huggingface.co/LiquidAI/LFM2.5-2.6B) | Source-grounded extraction and reconciliation | Always-reasoning behavior adds generation cost; do not substitute model recall for source evidence |
 | [MiniCPM5-2B](https://huggingface.co/openbmb/MiniCPM5-2B) | Compact general analyst | Nominal name, quantization, actual memory and backend support require verification |
-| [MiniCPM5-1B](https://huggingface.co/openbmb/MiniCPM5-1B) | Lowest-memory analyst candidate | Compare thinking/no-thinking output quality and total generated tokens |
+| [MiniCPM5-1B](https://huggingface.co/openbmb/MiniCPM5-1B) | Implemented Q4 analyst through the official MLX checkpoint | Reasoning disabled; structured-output contracts tested, downstream model quality still requires an authorized run |
 | [LED-arXiv](https://huggingface.co/allenai/led-large-16384-arxiv) | Specialized English scientific summarization | 16,384 encoder positions; not general glossary instruction following |
 | [PEGASUS-arXiv](https://huggingface.co/google/pegasus-arxiv/blob/main/config.json) | Specialized summary baseline | Published configuration has 1,024 positions; extraction/chunking needed |
 | [LongT5](https://github.com/google-research/longt5) / multilingual variants | Long-input summarization | Choose a suitable task-tuned checkpoint; pretrained weights are not an installed analyst |
 | [Hy-MT2](https://huggingface.co/tencent/Hy-MT2-1.8B) | Reuse selected translator for contextual term wording | Official terminology/background templates establish context consumption, not scientific-summary generation |
 
-No default winner is selected solely from parameter count, context-window claims
-or generic benchmarks. Add a candidate only after pinned artefact hashes,
+The initial local choice is MiniCPM5-1B Q4 (about 590 MiB of pinned files); see the
+[runtime guide](../deployment/local-translation.md). This is a compact integration
+choice, not a quality ranking over the other candidates. Add an alternative only after pinned artefact hashes,
 licence, model identity, tokenizer/template and Docker Model Runner support have
 been verified. Download only on explicit preparation/use, never while reading
 settings. Separate analyst and translator may need sequential residency on a
@@ -114,9 +115,11 @@ Primary retrieval references:
 ## Runtime and cost model
 
 Most stages do not require LLM output. Extract once, optionally reconcile once,
-freeze the result, then retrieve relevant context deterministically. A target of
-one to three preparation requests for an ordinary paper is a design budget,
-not a guarantee for every paper, model or token limit.
+freeze the result, then retrieve relevant context deterministically. The implemented
+flow makes zero additional requests in extractive/off mode and one bounded analysis
+request in provider/local mode. It skips analysis when no units remain or no evidence
+fits. Known unsent/unexecuted failures may retry; known unusable analysis falls back
+without another content-repair request. Hierarchical analysis is an extension.
 
 Let `Ain`/`Aout` be aggregate preparation tokens, `N` the number of translation
 requests and `deltaC` the **net additional** input per request. With separate
@@ -154,7 +157,7 @@ cost. Extractive mode removes preparation generation, not repeated-context cost.
 
 ## Evaluation and later options
 
-Compare off, extractive, model-assisted, and (later) separate-analyst modes on the
+Compare off, extractive, same-provider and separate-local-analyst modes on the
 same authorized PDFs and locales. Measure downstream concept/wording consistency,
 sense errors, omissions, protected references, request count, input/output and
 reasoning tokens, peak memory, cold/warm latency and total job time. Fluent

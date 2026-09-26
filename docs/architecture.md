@@ -45,6 +45,32 @@ before a compare-and-swap pointer change. Deletion tombstones block late writes 
 online reads. Pausing prevents new dispatch permits but cannot revoke requests
 already sent.
 
+## Translation preparation
+
+[preparation/](../src/packages/preparation/) separates exact source collection,
+scoped term identification, optional structured analysis and request context selection.
+The default extractive mode uses no generative model. API analysis uses the selected
+provider; local analysis uses a separately frozen MiniCPM5-1B profile through the
+existing local service. No external summary/retrieval connector runs implicitly.
+
+Preparation finishes before translation units are scheduled. Each analysis request
+has its own task, permit, model identity and validated checkpoint. Known unusable
+suggestions fall back to source excerpts with warnings; uncertain dispatches retain
+their accounting/recovery state. Preparation is skipped if no translation units remain.
+
+Job/draft JSON stores the versioned pack; candidate packs remain with their candidate.
+Each translated segment records its preparation revision, originating job, actual
+terms and adapter context mode. Edits and continuation preserve that basis; accepting
+a replacement candidate uses its own basis, including an unprepared candidate.
+Context and terminology participate in the cache key. This requires no migration
+or change to sealed source/translation schemas or reader templates.
+
+Providers receive a bounded selection, not the entire stored pack. API and Hy-MT
+adapters support background plus terms; MiLMMT receives terms only. Packing checks
+the actual request and removes optional context before the source. The API exposes
+draft baseline, selected segment and candidate packs separately, so mixed translation
+history does not appear to share a preparation it never used.
+
 ## IR and readers
 
 [document-ir.schema.json](../res/schemas/document-ir.schema.json) validates the

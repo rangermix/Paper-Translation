@@ -17,6 +17,11 @@ the instance; the default published address is loopback.
 - Translate through a saved API service or the optional local MLX service.
   All languages are selectable; model quality for each language is not guaranteed
   by the selector. Provider configuration and content processing require confirmation.
+- Prepare a source-grounded paper context and scoped terminology before translation.
+  New requests default to deterministic extraction with no extra model call. Optional
+  API analysis or a separate pinned MiniCPM5-1B local analyst adds a bounded analysis
+  request. Inspect the draft, segment or candidate preparation and its source evidence;
+  generated wording remains an unreviewed suggestion.
 - Edit translations, request selected candidates, maintain terminology and explicit
   translation memories, correct source extraction, and optionally review segments
   or run model-assisted semantic checks.
@@ -56,7 +61,7 @@ Enabled control requires pricing and a positive job budget. Unknown amounts are
 2000 characters; these are application limits, not model capability claims.
 
 The shared source is packaged for Compose. Parser models are built into images;
-optional local translation weights are fetched only on explicit preparation/use.
+optional local translation and analyst weights are fetched only on explicit preparation/use.
 Model inference, arbitrary scanned-PDF accuracy and hardware support require
 verification in the selected environment. Test fixtures and prior runs do not
 certify all documents or an untested deployment.

@@ -1,4 +1,4 @@
-# Local translation with MLX
+# Local translation and paper analysis with MLX
 
 Settings → AI service → **本地翻译模型（MLX）** offers:
 
@@ -8,6 +8,14 @@ Settings → AI service → **本地翻译模型（MLX）** offers:
 | MiLMMT-46-4B Q4 | shraey/milmmt-46-4b-mlx-4bit | 4 bit |
 | Hy-MT2-7B Q4 | mlx-community/Hy-MT2-7B-4bit | 4 bit |
 | MiLMMT-46-12B Q4 | mlx-community/MiLMMT-46-12B-v0.1-4bit | 4 bit |
+
+Translation preparation also offers a separate **MiniCPM5-1B Q4 analyst**, pinned
+to [openbmb/MiniCPM5-1B-MLX](https://huggingface.co/openbmb/MiniCPM5-1B-MLX)
+revision `9879b18bf2928355fcdf4287635388a3665a40cb`.
+The seven verified files total 617,970,878 bytes (about 590 MiB), before DMR's imported
+copy and runtime allocations. It is selected in translation preparation, separately
+from the translator in service settings. It can prepare context for an API translator
+as well as a local one. This is not a CPU/CUDA analyst backend.
 
 Apple Silicon uses MLX safetensors through the same Docker Model Runner
 vLLM Metal backend as PaddleOCR. These are MLX affine quantizations, not GGUF.
@@ -30,6 +38,18 @@ Hugging Face receives weight-download requests, not document content. Switching
 back to a saved API configuration retains its existing secret binding. There
 is no automatic fallback to another model or cloud provider.
 
+Local analyst requests use a bounded structured brief/term contract with reasoning
+disabled. The runtime context is 8,192 tokens, with application ceilings of 6,144
+input and 2,048 output; the input uses a conservative UTF-8 byte guard including the
+schema and template. Only selected source excerpts reach the analyst. A malformed
+settled suggestion produces an extraction fallback warning, without another model
+request. Downloads/model loading and inference are separate from merely viewing a
+saved preparation. Source and consent are rechecked before content dispatch.
+
+With local preparation followed by API translation, selected context is subsequently
+sent to the explicitly confirmed API translator. Local analysis alone does not make
+the combined workflow local-only.
+
 The application uses each model family's native translation prompt and restores
 protected references outside the model. It never asks a translation-only model
 to produce the application's JSON or modify the source. Semantic review is
@@ -43,7 +63,11 @@ or kana when that script is unexpected for the target locale and absent from the
 source and applicable glossary terms. It preserves legitimate Korean/Japanese
 targets, source names and quotations. This is a narrow script check, not a
 translation-accuracy certificate; it neither substitutes words nor retries a
-model request automatically. Prompt changes invalidate cached local translations.
+model request automatically. Prepared Hy-MT requests use bounded background following
+the upstream [background/source pattern](https://huggingface.co/tencent/Hy-MT2-1.8B#hy-mt2-translation-task-instruction-examples-chinese-english-comparison).
+MiLMMT receives applicable terms only. Legacy requests still omit neighboring prose.
+Preparation changes participate in cache identity; the unchanged legacy prompt keeps
+its existing request-format version.
 
 ## Compose deployment
 
@@ -89,8 +113,10 @@ The extension preserves the
 Paddle runtime and fails the build if its reviewed source anchors change. It
 routes quantized Gemma3 text checkpoints through MLX-LM and caps the translation
 KV cache to one configured context plus the scheduler's reserved block. The
-larger MLX memory allowance applies only to the four exact translation model
-identities. Paddle retains its original allocation.
+larger MLX memory allowance applies only to the exact translation and analyst model
+identities in the pinned catalogue. Paddle retains its original allocation. Rebuild
+this extension when adding the analyst to an existing installation, because the
+backend's owned-model allowlist is generated from that catalogue at build time.
 
 Install using the existing Paddle backend procedure: stop new parsing, wait for
 active inference, clear `PARSER_MLX_VERIFIED_MODEL_ID`, preserve the full existing

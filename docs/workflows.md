@@ -34,6 +34,27 @@ source, profile revision/hash and current generation. Changing them requires a n
 confirmation. Waiting for model/configuration startup is represented separately
 from an unknown provider outcome.
 
+All translation entry points offer **翻译前准备**. The default collects exact source
+excerpts, headings, definitions and term candidates without another model call.
+**当前 API 模型** adds one bounded summary/wording request to that saved provider.
+**独立本地小模型** uses MiniCPM5-1B Q4 through Docker Model Runner, then continues
+with the selected API or local translator. It downloads its pinned weights only
+on explicit preparation or use. **不做论文级准备** retains the legacy flow.
+
+Explicit glossary entries take precedence over generated preferred wording.
+Changing the preparation mode resets the form's content confirmation. Local analysis
+followed by API translation still sends the selected context with translation requests
+to the confirmed API destination. Preflight shows the extra analysis request separately;
+repeating context in translation requests also consumes input and time.
+
+The editor's preparation views distinguish the draft baseline, the selected
+paragraph and each candidate. They show source excerpts, summary suggestions, term
+scope and unreviewed wording. Paragraphs inherited during continuation retain their
+own provenance. New candidate preparation never relabels untouched paragraphs.
+Warnings, ambiguous terms and absent suggestions do not require human approval.
+Unknown request outcomes still stop automatic redispatch; settled unusable analysis
+falls back to extraction with a visible warning.
+
 Content checks produce hints and comparison evidence. They do not require manual
 approval to seal, publish or export. Invalid executable content is rejected or
 safely represented before rendering; nonblocking quality does not relax file,
@@ -61,9 +82,9 @@ visible to local translation models; equivalent output typography restores their
 exact source spelling, while missing or changed numbers remain quality findings.
 Distinctive system identifiers explicitly named before a title colon remain
 literal in table cells, while surrounding header prose stays translatable.
-Local translation requests contain only their
-source unit and translation instructions, so neighbouring paragraphs cannot be
-translated in place of the requested text. Explicit numeric scales
+Legacy local requests omit neighbouring prose. Prepared Hy-MT requests additionally
+separate bounded background from the sole source unit; MiLMMT receives relevant terms
+only, with that limitation shown in the UI. Explicit numeric scales
 use exact target formatting for Chinese (for example, `8.3 billion` becomes
 `83亿`); source text and quantity values remain unchanged. Abbreviated `M`/`B`
 scales require parameter/model context, so byte units and identifiers are not

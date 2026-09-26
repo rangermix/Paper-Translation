@@ -1,5 +1,11 @@
 # Translation Consistency Implementation Plan
 
+**Delivery status (2026-09-27):** the six source checkpoints below are implemented.
+The separate local analyst is MiniCPM5-1B Q4 through the existing MLX/DMR service.
+External retrieval, additional models, embeddings and hierarchy remain the extension
+gates at the end of this plan. Production deployment and real-model quality/runtime
+acceptance are separate from the source/test delivery.
+
 > **For the implementing agent:** Use `superpowers:executing-plans` for a separate
 > execution session, or `superpowers:subagent-driven-development` in this session.
 
@@ -102,7 +108,8 @@ and translation execution/checkpoint integration as needed. Add
 5. Freeze final proposals before creating translation units; allow no automatic
    overwrite of existing glossary entries and no fake human review.
 6. Test replay after interruption, stale controls, unknown outcome, model
-   mismatch, one permitted structural repair and deletion after dispatch.
+   mismatch, settled malformed-output fallback and deletion after dispatch.
+   Do not add a paid content-repair retry for optional preparation.
 7. Review and commit/push the optional flow.
 
 ## 4. Model-native context and advisory QA
@@ -133,7 +140,8 @@ Add `tests/browser/translation-preparation.spec.ts` and relevant API tests.
    changes processing scope. Submit the mode with the existing profile and
    source identity. Preserve optional budget semantics.
 3. Show the frozen brief, source quotes, scoped terms, generated/unresolved status
-   and a route to existing glossary editing. Reading never dispatches inference.
+   and a route to existing glossary editing. Separate draft baseline, selected
+   segment and candidate evidence. Reading never dispatches inference.
 4. Update progress presentation and conservative preflight estimates to account
    for optional preparation. Unknown money remains null.
 5. Verify rendered desktop/mobile interactions and request payloads with

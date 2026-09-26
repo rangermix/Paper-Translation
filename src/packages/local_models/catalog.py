@@ -1,4 +1,4 @@
-"""Pinned translation models and deterministic Docker Model Runner identities."""
+"""Pinned local models and deterministic Docker Model Runner identities."""
 import hashlib
 import json
 from functools import lru_cache
@@ -40,6 +40,9 @@ def get_model(identifier):
     raise ValueError('LOCAL_MODEL_UNKNOWN')
 
 
-def public_models():
+def public_models(*, purpose='translation'):
+    if purpose not in ('translation', 'analysis', 'all'):
+        raise ValueError('LOCAL_MODEL_PURPOSE')
     return [{**{key: m[key] for key in ('id', 'label', 'family', 'bits', 'runtime', 'repo', 'revision', 'license', 'context_size')},
-             'model_id': artifact(m)['id'], 'download_bytes': sum(f['size'] for f in m['files'])} for m in models()]
+             'model_id': artifact(m)['id'], 'download_bytes': sum(f['size'] for f in m['files'])}
+            for m in models() if purpose == 'all' or m.get('purpose', 'translation') == purpose]

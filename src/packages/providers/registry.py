@@ -2,6 +2,7 @@
 from datetime import date
 
 PROTOCOLS = {
+    'local_analysis': {'provider': 'local', 'auth_mode': 'none', 'endpoint': 'http://local-translator:8090/v1/completions'},
     'local_translation': {'provider': 'local', 'auth_mode': 'none', 'endpoint': 'http://local-translator:8090/v1/completions'},
     'responses': {'provider': 'openai', 'auth_mode': 'bearer', 'endpoint': 'https://api.openai.com/v1/responses'},
     'chat_completions': {'provider': 'openai', 'auth_mode': 'bearer', 'endpoint': 'https://api.openai.com/v1/chat/completions'},
@@ -20,12 +21,15 @@ def protocol_definition(protocol):
 def validate_protocol_profile(profile):
     protocol = profile.get('api_protocol', 'responses')
     definition = protocol_definition(protocol)
-    if protocol == 'local_translation':
+    if protocol in {'local_translation', 'local_analysis'}:
         from packages.local_models.catalog import ENDPOINT, artifact, get_model
         if (profile.get('endpoint') != ENDPOINT or profile.get('auth_mode') != 'none'
                 or profile.get('semantic_review_enabled') or profile.get('cost_control_enabled')):
             raise ValueError('LOCAL_MODEL_CONFIG')
         if artifact(get_model(profile.get('model_id')))['id'] != profile.get('model_id'):
+            raise ValueError('LOCAL_MODEL_CONFIG')
+        purpose = get_model(profile['model_id']).get('purpose', 'translation')
+        if purpose != ('analysis' if protocol == 'local_analysis' else 'translation'):
             raise ValueError('LOCAL_MODEL_CONFIG')
     if profile.get('provider') != definition['provider']:
         raise ValueError('PROVIDER_PROTOCOL_MISMATCH')

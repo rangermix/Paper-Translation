@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import threading
 import time
+from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -20,6 +21,7 @@ class Completion(BaseModel):
     model: str
     prompt: str | None = Field(None, max_length=30000)
     messages: list[dict[str, str]] | None = None
+    chat_template_kwargs: dict[str, bool] | None = None
     add_special_tokens: bool = False
     max_tokens: int = Field(2048, ge=1, le=2048)
     temperature: float = Field(0, ge=0, le=0)
@@ -55,7 +57,7 @@ class Manager:
 
     def reserve_gpu(self, model):
         """Retire only idle project models; never interrupt another running request."""
-        owned = {m['model_id'] for m in public_models()}
+        owned = {m['model_id'] for m in public_models(purpose='all')}
         paddle = os.environ.get('PADDLE_MLX_MODEL_ID', '')
         if paddle.startswith('sha256:'):
             owned.add(paddle)
@@ -184,8 +186,8 @@ def create_app(*, cache=None, transport=None):
         return {'status': 'ok'}
 
     @app.get('/models')
-    def catalog():
-        return {'models': [{**m, **manager.state(get_model(m['id']))} for m in public_models()]}
+    def catalog(purpose: Literal['translation', 'analysis', 'all'] = 'translation'):
+        return {'models': [{**m, **manager.state(get_model(m['id']))} for m in public_models(purpose=purpose)]}
 
     @app.get('/models/{identifier}')
     def status(identifier: str):
@@ -200,14 +202,25 @@ def create_app(*, cache=None, transport=None):
         model = lookup(body.model)
         if body.model != artifact(model)['id'] or body.stream:
             raise HTTPException(422, 'LOCAL_MODEL_CONFIG')
-        if model['family'] == 'hy':
+        if model.get('purpose') == 'analysis':
+            if (body.prompt is not None or body.add_special_tokens
+                    or body.chat_template_kwargs != {'enable_thinking': False}
+                    or not body.messages or len(body.messages) != 2
+                    or [m.get('role') for m in body.messages] != ['system', 'user']
+                    or any(set(m) != {'role', 'content'} or not m['content'].strip() for m in body.messages)
+                    or sum(len(m['content'].encode()) for m in body.messages) + 256 + body.max_tokens > model['context_size']):
+                raise HTTPException(422, 'LOCAL_MODEL_PROMPT')
+            route = '/chat/completions'
+        elif model['family'] == 'hy':
             if (body.prompt is not None or not body.messages or len(body.messages) != 1
+                    or body.chat_template_kwargs is not None
                     or set(body.messages[0]) != {'role', 'content'} or body.messages[0]['role'] != 'user'
                     or len(body.messages[0]['content'].encode()) + 256 + body.max_tokens > model['context_size']):
                 raise HTTPException(422, 'LOCAL_MODEL_PROMPT')
             route = '/chat/completions'
         else:
             if (body.messages is not None or body.prompt is None or body.add_special_tokens
+                    or body.chat_template_kwargs is not None
                     or len(body.prompt.encode()) + 256 + body.max_tokens > model['context_size']):
                 raise HTTPException(422, 'LOCAL_MODEL_PROMPT')
             route = '/completions'
@@ -227,7 +240,7 @@ def create_app(*, cache=None, transport=None):
                     if response.status_code != 200:
                         raise HTTPException(502, 'LOCAL_MODEL_INFERENCE_FAILED')
                     data = response.json()
-                    if model['family'] == 'hy':
+                    if route == '/chat/completions':
                         for choice in data.get('choices', []):
                             message = choice.get('message', {})
                             if message.get('tool_calls') or message.get('refusal') or message.get('role') != 'assistant':

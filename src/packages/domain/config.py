@@ -59,6 +59,8 @@ def missing_profile_fields(value):
 def validate_public_profile(value, *, allow_incomplete=False):
     """Reject nonpublic fields before metadata can be persisted or exposed."""
     from packages.billing.price import validate_profile
+    if isinstance(value, dict) and value.get('api_protocol') == 'local_analysis':
+        raise ValueError('LOCAL_ANALYST_ANALYSIS_ONLY')
     allowed = {'configured', 'provider', 'model_id', 'profile_revision', 'prompt_version', 'privacy_revision',
         'enabled_pairs', 'max_input_tokens', 'max_output_tokens', 'max_unit_characters', 'price', 'semantic_review_enabled',
         'endpoint', 'api_protocol', 'auth_mode', 'api_version', 'config_revision', 'credential_revision', 'cost_control_enabled'}

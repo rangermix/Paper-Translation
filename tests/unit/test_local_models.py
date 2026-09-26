@@ -19,7 +19,8 @@ def test_catalog_has_exact_requested_quantizations_and_immutable_files():
     from packages.local_models.catalog import models, artifact
     entries = models()
     assert [(m['label'], m['bits']) for m in entries] == [
-        ('Hy-MT2-1.8B Q8', 8), ('MiLMMT-46-4B Q4', 4), ('Hy-MT2-7B Q4', 4), ('MiLMMT-46-12B Q4', 4)]
+        ('Hy-MT2-1.8B Q8', 8), ('MiLMMT-46-4B Q4', 4), ('Hy-MT2-7B Q4', 4), ('MiLMMT-46-12B Q4', 4),
+        ('MiniCPM5-1B Q4 analyst', 4)]
     for model in entries:
         assert model['runtime'] == 'mlx'
         assert len(model['revision']) == 40

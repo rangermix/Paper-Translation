@@ -17,7 +17,10 @@ WORKDIR /app
 COPY deployment/cuda/pyproject.toml deployment/cuda/uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY deployment/cuda-paddle/pyproject.toml deployment/cuda-paddle/uv.lock /paddle/
-RUN UV_PROJECT_ENVIRONMENT=/app/.venv-paddle uv sync --project /paddle --frozen --no-dev
+# uv divides its connect timeout across CDN addresses; Paddle can return dozens.
+# Keep the read timeout above the connect timeout so uv does not cap it at 30s.
+RUN UV_HTTP_CONNECT_TIMEOUT=120 UV_HTTP_TIMEOUT=180 UV_PROJECT_ENVIRONMENT=/app/.venv-paddle \
+    uv sync --project /paddle --frozen --no-dev
 
 FROM dependencies-${PARSER_FLAVOR} AS dependencies
 

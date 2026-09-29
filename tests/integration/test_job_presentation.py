@@ -72,14 +72,17 @@ def test_cleanup_does_not_expose_or_search_deleted_titles(client, database):
     db, _ = database
     with db.transaction() as session:
         session.add(Document(id='doc_deleted', title='Private deleted paper', deleted_at=now()))
+        session.add(Upload(id='deleted_upload', filename='Private upload.pdf', byte_size=100, expires_at=now()))
         session.flush()
         session.add_all([
             Job(id='job_cleanup', document_id='doc_deleted', stage='cleanup'),
             Job(id='job_hidden', document_id='doc_deleted', stage='translate'),
+            Job(id='job_upload', document_id='doc_deleted', stage='inspect', payload={'upload_id': 'deleted_upload'}),
         ])
     assert client.get('/api/v1/jobs?q=Private').json()['items'] == []
     items = client.get('/api/v1/jobs').json()['items']
-    assert {j['id'] for j in items} == {'job_cleanup', 'job_hidden'}
+    assert {j['id'] for j in items} == {'job_cleanup', 'job_hidden', 'job_upload'}
+    assert 'Private upload.pdf' not in str(items)
     assert 'Private deleted paper' not in str(items)
     assert items[0]['title'] == '已删除文档'
     assert client.get('/api/v1/jobs/job_hidden').status_code == 200
@@ -100,9 +103,9 @@ def test_top_level_tasks_filter_before_pagination_and_keep_children_readable(cli
         ])
         session.flush()
         session.add_all(Job(id=f'child_{i:03}', parent_job_id='root_new', document_id='doc_family',
-            stage='parse', status='failed', created_at=timestamp + timedelta(seconds=i + 1)) for i in range(105))
+            stage='recovery', status='failed', created_at=timestamp + timedelta(seconds=i + 1)) for i in range(105))
         session.flush()
-        session.add(Job(id='grandchild', parent_job_id='child_000', document_id='doc_family', stage='parse', status='failed'))
+        session.add(Job(id='grandchild', parent_job_id='child_000', document_id='doc_family', stage='recovery', status='failed'))
     params = {'top_level_only': True, 'include_cleared': include_cleared, 'limit': 1,
               'group': 'attention', 'stage': 'parse', 'q': 'Nested task paper', 'document_id': 'doc_family'}
     found = []
@@ -129,3 +132,82 @@ def test_top_level_tasks_filter_before_pagination_and_keep_children_readable(cli
     assert len(remaining['items']) == 5 and remaining['next_cursor'] is None
     assert len({item['id'] for item in children['items'] + remaining['items']}) == 105
     assert any(item['parent_job_id'] for item in client.get('/api/v1/jobs').json()['items'])
+
+
+@pytest.mark.parametrize('child_status,group', [
+    ('running', 'active'), ('pending', 'active'), ('failed', 'attention'),
+    ('outcome_unknown', 'attention'), ('waiting_config', 'attention'),
+    ('succeeded', 'completed'), ('completed_with_warnings', 'completed'), ('cancelled', 'cancelled'),
+])
+def test_main_task_tracks_internal_step_status_visibility_and_filters(client, database, child_status, group):
+    db, _ = database
+    with db.transaction() as session:
+        session.add(Document(id='doc_publish', title='One publication'))
+        session.flush()
+        session.add(Job(id='publication', document_id='doc_publish', stage='publish', status='succeeded',
+            generation=1, history_cleared_generation=1))
+        session.flush()
+        session.add(Job(id='index', parent_job_id='publication', document_id='doc_publish', stage='index',
+            status=child_status, actual_model={'kind': 'api', 'model_id': 'child-model'}))
+    query = {'top_level_only': True, 'group': group, 'stage': 'index', 'model': 'child-model', 'limit': 1}
+    data = client.get('/api/v1/jobs', params=query).json()
+    assert [row['id'] for row in data['items']] == ['publication']
+    root = data['items'][0]
+    assert root['operation'] == 'publish' and root['status'] == 'succeeded'
+    assert root['task_role'] == 'main'
+    assert root['workflow'] == {'status': child_status, 'job_count': 2}
+    assert data['next_cursor'] is None
+    assert client.get('/api/v1/jobs/publication').json()['workflow'] == root['workflow']
+    children = client.get('/api/v1/jobs?parent_job_id=publication&relationship=internal&include_cleared=true').json()['items']
+    assert [row['id'] for row in children] == ['index'] and children[0]['task_role'] == 'step'
+    assert children[0]['workflow'] == {'status': child_status, 'job_count': 1}
+
+
+def test_upload_parse_translation_and_publication_are_linked_independent_main_tasks(client, database):
+    db, _ = database
+    with db.transaction() as session:
+        for identifier, stage, parent, status in [
+            ('upload', 'inspect', None, 'succeeded'), ('metadata', 'metadata_lookup', 'upload', 'succeeded'),
+            ('parse', 'parse', 'upload', 'succeeded'), ('recovery', 'recovery', 'parse', 'succeeded'),
+            ('translation', 'translate', 'parse', 'succeeded'), ('check', 'quality_check', 'translation', 'succeeded'),
+            ('publication', 'publish', 'translation', 'succeeded'), ('index', 'index', 'publication', 'running'),
+            ('continuation', 'translate', 'translation', 'waiting_config'),
+        ]:
+            session.add(Job(id=identifier, stage=stage, parent_job_id=parent, status=status,
+                payload={'upload_id': 'upload_pdf'} if identifier == 'upload' else {}))
+            session.flush()
+    roots, cursor = {}, None
+    while True:
+        data = client.get('/api/v1/jobs', params={'top_level_only': True, 'limit': 2,
+            **({'cursor': cursor} if cursor else {})}).json()
+        roots.update({row['id']: row for row in data['items']})
+        cursor = data['next_cursor']
+        if not cursor:
+            break
+    assert set(roots) == {'upload', 'parse', 'translation', 'publication', 'continuation'}
+    assert roots['upload']['operation'] == 'upload'
+    assert all(row['task_role'] == 'main' for row in roots.values())
+    assert roots['translation']['workflow'] == {'status': 'succeeded', 'job_count': 2}
+    assert roots['publication']['workflow'] == {'status': 'running', 'job_count': 2}
+    assert client.get('/api/v1/jobs?top_level_only=true&group=active').json()['items'][0]['id'] == 'publication'
+    assert client.get('/api/v1/jobs?top_level_only=true&stage=upload').json()['items'][0]['id'] == 'upload'
+    steps = client.get('/api/v1/jobs?parent_job_id=translation&relationship=internal').json()['items']
+    related = client.get('/api/v1/jobs?parent_job_id=translation&relationship=related').json()['items']
+    assert [row['id'] for row in steps] == ['check']
+    assert {row['id'] for row in related} == {'publication', 'continuation'}
+    assert client.get('/api/v1/jobs?relationship=related').status_code == 422
+    with db.transaction() as session:
+        # Presentation does not rewrite legacy execution ancestry or results.
+        assert session.get(Job, 'translation').parent_job_id == 'parse'
+        assert session.get(Job, 'publication').status == 'succeeded'
+
+
+def test_automatic_content_check_failure_is_a_workflow_warning(client, database):
+    db, _ = database
+    with db.transaction() as session:
+        session.add(Job(id='translation', stage='translate', status='succeeded'))
+        session.flush()
+        session.add(Job(id='check', parent_job_id='translation', stage='quality_check', status='failed'))
+    row = client.get('/api/v1/jobs?top_level_only=true&group=completed').json()['items'][0]
+    assert row['id'] == 'translation' and row['workflow']['status'] == 'completed_with_warnings'
+    assert client.get('/api/v1/jobs/check').json()['status'] == 'failed'

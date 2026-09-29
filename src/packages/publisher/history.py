@@ -17,7 +17,7 @@ def checked_manifest(config, artifact):
     return manifest
 
 
-def commit_publication(session, config, edition, artifact, expected_generation, operation, origin='manual_ui'):
+def commit_publication(session, config, edition, artifact, expected_generation, operation, origin='manual_ui', *, parent_job_id=None):
     get_document(session, edition.document_id, lock=True)
     require(edition.generation == expected_generation, 'PRECONDITION_FAILED', status=412)
     if artifact:
@@ -29,7 +29,9 @@ def commit_publication(session, config, edition, artifact, expected_generation, 
     session.add(Publication(id=new_id('publication'), edition_id=edition.id, artifact_id=edition.current_artifact_id,
         generation=edition.generation, operation=operation, origin=origin))
     if artifact:
-        job = Job(id=new_id('job'), document_id=edition.document_id, stage='index', payload={'edition_id': edition.id, 'generation': edition.generation})
+        job = Job(id=new_id('job'), document_id=edition.document_id, parent_job_id=parent_job_id, stage='index',
+            payload={'edition_id': edition.id, 'generation': edition.generation,
+                     **({'operation': operation} if parent_job_id is None else {})})
         session.add(job)
         session.flush()
         session.add(Task(id=new_id('task'), job_id=job.id, kind='index', payload=job.payload))

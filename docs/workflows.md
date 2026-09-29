@@ -148,11 +148,15 @@ are shown in their own language where available. Locale normalization preserves
 script/region differences such as `zh-Hans`, `zh-Hant`, `pt` and `pt-BR`.
 Language availability does not certify a model's translation quality.
 
-The task center lists parent tasks, with paginated child tasks and logs in details.
+The [task model](task-model.md) defines main operations, internal steps, related
+operations and retry attempts. Upload and PDF inspection form one task. Parsing,
+translation and publication are separate main tasks linked in sequence, including
+when the selected workflow starts them automatically. Recovery, automatic content
+checks, metadata lookup and indexing belong to the operation they support.
 Clearing finished history applies across pages and filters, while retaining the
 documents, task records, logs, attempts and costs. Active/waiting tasks and those
 with active or unknown permits are ineligible. Changed jobs become visible again;
-“显示已清除历史” includes hidden records. Clearing requires generation and idempotency
+"显示已清除历史" includes hidden records. Clearing requires generation and idempotency
 checks and is not data deletion.
 
 ## Provider settings and uncertain requests

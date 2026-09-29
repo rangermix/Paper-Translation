@@ -2,7 +2,7 @@ import pytest
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import select
 
-from packages.domain.models import Artifact, Document, Edition, Publication
+from packages.domain.models import Artifact, Document, Edition, Job, Publication
 from packages.jobs.queue import claim
 from packages.storage import file_hash
 from tests.support import seed_editor
@@ -22,6 +22,8 @@ def seal_and_publish(client, db, cfg, draft_generation, edition_generation, suff
     assert queued.status_code == 202, queued.text
     execute(db, cfg, claim(db))
     with db.transaction() as session:
+        index = session.scalar(select(Job).where(Job.stage == 'index', Job.parent_job_id == queued.json()['job_id']))
+        assert index is not None
         edition = session.get(Edition, 'edition_fixture')
         artifact = session.get(Artifact, edition.current_artifact_id)
         return artifact.id, cfg.data / artifact.storage_key / 'index.html'

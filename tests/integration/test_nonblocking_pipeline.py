@@ -71,6 +71,42 @@ def test_import_starts_frozen_pipeline_and_replay_does_not_duplicate(client, dat
         assert jobs[0].payload['parser_timeout_seconds'] == 7200
 
 
+def test_upload_includes_inspection_and_links_to_separate_parse_task(client, database, monkeypatch):
+    from datetime import timedelta
+    db, cfg = database
+    seed_editor(db, cfg)
+    monkeypatch.setattr('packages.translation.pipeline.provider_profile', lambda: {'configured': False})
+    with db.transaction() as session:
+        session.add(Job(id='upload_job', stage='inspect', status='succeeded', payload={'upload_id': 'uploaded_pdf'}))
+        session.flush()
+        session.add(Upload(id='uploaded_pdf', filename='one-upload.pdf', byte_size=3822, expires_at=now()+timedelta(hours=1),
+            status='verified', source_asset_id='source_pdf', job_id='upload_job'))
+        session.add(Job(id='metadata', parent_job_id='upload_job', stage='metadata_lookup', status='succeeded'))
+    body = {'source': {'kind': 'pdf_upload', 'upload_id': 'uploaded_pdf'}, 'workflow': {'translate': False}}
+    result = client.post('/api/v1/imports', json=body, headers={'Idempotency-Key': 'one-upload'})
+    assert result.status_code == 201, result.text
+    document_id = result.json()['id']
+    roots = {row['id']: row for row in client.get('/api/v1/jobs?top_level_only=true').json()['items']}
+    assert set(roots) == {'upload_job', result.json()['current_job_id']}
+    assert roots['upload_job']['operation'] == 'upload' and roots['upload_job']['document_id'] == document_id
+    assert roots['upload_job']['workflow'] == {'status': 'succeeded', 'job_count': 2}
+    assert roots[result.json()['current_job_id']]['workflow'] == {'status': 'pending', 'job_count': 1}
+    with db.transaction() as session:
+        parse = session.get(Job, result.json()['current_job_id'])
+        assert session.get(Job, 'metadata').document_id == document_id
+        assert parse.parent_job_id == 'upload_job'
+        assert parse.payload['upload_id'] == 'uploaded_pdf'
+        parse.status = 'succeeded'
+        session.scalar(select(Task).where(Task.job_id == parse.id)).status = 'succeeded'
+    # An explicitly requested reparse is a new user action on the same paper.
+    reparse = client.post(f'/api/v1/documents/{document_id}/parse',
+        json={'source_asset_id': 'source_pdf'},
+        headers={'Idempotency-Key': 'manual-reparse', 'If-Match': result.headers['etag']})
+    assert reparse.status_code == 202, reparse.text
+    items = client.get('/api/v1/jobs?top_level_only=true').json()['items']
+    assert {row['id'] for row in items} == {'upload_job', result.json()['current_job_id'], reparse.json()['job_id']}
+
+
 def test_saved_parse_result_exposes_current_translation_draft(client, database, monkeypatch):
     from packages.domain.models import Edition
     db, cfg = database

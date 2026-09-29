@@ -220,7 +220,7 @@ def publish(db, cfg, lease):
             session.add(artifact)
             session.flush()
         if not lease.payload.get('preview_only'):
-            commit_publication(session, cfg, edition, artifact, lease.payload['expected_generation'], 'publish')
+            commit_publication(session, cfg, edition, artifact, lease.payload['expected_generation'], 'publish', parent_job_id=job.id)
         finish(session, lease, {'artifact_id': artifact.id, 'preview_only': bool(lease.payload.get('preview_only'))},
             status=job.payload.get('result_status', 'succeeded'))
 

@@ -93,7 +93,7 @@ def advance_parse(session, cfg, source_draft, parent):
         # A source-only artifact remains available while external execution
         # waits. Its missing translations are explicitly labelled as originals.
         qa = run_quality(session, cfg, draft, parent_job_id=parent.id)
-        revision_tr = seal(session, cfg, draft, qa.id, qa.fingerprint)
+        revision_tr = seal(session, cfg, draft, qa.id, qa.fingerprint, parent_job_id=parent.id)
         payload = {'source_only': True, 'translation_revision_id': revision_tr.id, 'result_status': 'completed_with_warnings'}
         local = Job(id=new_id('job'), document_id=revision.document_id, parent_job_id=parent.id,
             stage='publish', payload=payload, quality_summary=quality_summary(qa))

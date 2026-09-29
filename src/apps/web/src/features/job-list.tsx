@@ -47,18 +47,20 @@ function ClearHistoryDialog({ action, onClose, onCleared }: {
 }
 
 function JobRow({ job, selected }: { job: Job; selected: boolean }) {
-  const progress = jobProgress(job);
+  const steps = job.workflow?.job_count ?? 1;
+  const progress = steps > 1 ? null : jobProgress(job);
   const created = JobDateParts(job.created_at);
-  const tone = jobTone(job.status);
+  const status = job.workflow?.status ?? job.status;
+  const tone = jobTone(status);
   return <li><a href={`#/jobs/${resourceId(job.id)}`} className={`job-entry ${selected ? 'selected' : ''}`} aria-current={selected ? 'page' : undefined}>
     <div className="job-subject">
       <span className="job-document-icon"><Icon name="pdf"/></span>
       <div className="job-info"><strong className="job-name">{jobName(job)}</strong>
-        <div className="job-context"><span>{jobOperation(job.stage)}</span>{job.target_locale && <span>{jobLocale(job.target_locale)}</span>}</div><div className="small muted">{modelLabel(job.actual_model, !job.config_snapshot && !job.actual_model)} · {duration(job.execution_ms)}</div>
+        <div className="job-context"><span>{jobOperation(job.operation ?? job.stage)}</span>{job.target_locale && <span>{jobLocale(job.target_locale)}</span>}</div><div className="small muted">{steps > 1 ? `共 ${steps} 个处理阶段` : <>{modelLabel(job.actual_model, !job.config_snapshot && !job.actual_model)} · {duration(job.execution_ms)}</>}</div>
       </div>
     </div>
     <div className={`job-state ${tone}`}>
-      <span className="job-status"><span className="dot"/>{statusLabel(job.status)}</span>
+      <span className="job-status"><span className="dot"/>{statusLabel(status)}</span>
       {progress && <div className="job-progress"><small>{progress.label}</small><progress aria-label={progress.label} value={progress.value} max={progress.total}/></div>}
       {job.error && job.stage !== 'cleanup' && <span className="job-error-summary" title={job.error.message}>{job.error.message}</span>}
     </div>
@@ -103,7 +105,7 @@ export function JobList({ selectedId }: { selectedId?: string }) {
     </div>
     {!clearDialog && <ActionFeedback error={clearAction.error} notice={clearNotice}/>}
     <div className="job-filters" role="group" aria-label="按任务状态筛选">{filters.map(([value, label]) => <button key={value} type="button" aria-pressed={browse.group === value} onClick={() => setBrowse(previous => ({ ...previous, group: value, cursors: [] }))}>{label}</button>)}</div>
-    <div className="job-extra-filters"><label>任务类型 <select value={stage} onChange={e => { setStage(e.target.value); setBrowse(old => ({ ...old, cursors: [] })); }}><option value="">全部类型</option>{['inspect','parse','recovery','quality_check','translate','candidate','semantic_review','metadata_lookup','publish','rebuild','export','cleanup','provider_test','index','maintenance'].map(kind => <option key={kind} value={kind}>{jobOperation(kind)}</option>)}</select></label><label>实际模型 <input className="input" value={model} onChange={e => { setModel(e.target.value); setBrowse(old => ({ ...old, cursors: [] })); }} placeholder="按执行记录筛选"/></label></div>
+    <div className="job-extra-filters"><label>任务类型 <select value={stage} onChange={e => { setStage(e.target.value); setBrowse(old => ({ ...old, cursors: [] })); }}><option value="">全部类型</option>{['upload','inspect','parse','recovery','quality_check','translate','candidate','semantic_review','metadata_lookup','publish','rollback','rebuild','export','cleanup','provider_test','index','backup','restore','maintenance'].map(kind => <option key={kind} value={kind}>{jobOperation(kind)}</option>)}</select></label><label>实际模型 <input className="input" value={model} onChange={e => { setModel(e.target.value); setBrowse(old => ({ ...old, cursors: [] })); }} placeholder="按执行记录筛选"/></label></div>
     <ErrorNotice error={list.error} retry={list.reload}/>
     {list.loading && <Loading/>}
     {!list.loading && list.data && <>

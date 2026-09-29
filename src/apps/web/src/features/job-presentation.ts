@@ -2,7 +2,11 @@ import { languageName } from '../languages';
 import type { Job } from '../types';
 
 const operations: Record<string, string> = {
+  upload: '上传 PDF', rollback: '切换历史发布版本',
   metadata_lookup: '查询文献信息', recovery: '恢复缺失内容', quality_check: '内容检查', maintenance: '维护实例', backup: '备份实例', restore: '恢复备份',
+  migrate: '迁移数据库', verify: '检查实例数据', 'verify-backup': '检查备份', retention: '清理过期资源',
+  'seed-legacy': '导入受控种子论文', 'maintenance-on': '进入维护模式', 'maintenance-off': '退出维护模式',
+  'enable-dispatch': '启用外部请求', 'set-budget': '设置实例预算',
   provider_test: '测试 API 连接 / 密钥',
   inspect: '检查 PDF', inspecting: '检查 PDF', parse: '解析原文', parsing: '解析原文',
   translate: '全文翻译', translating: '全文翻译', candidate: '局部重译', semantic_review: '语义检查',
@@ -10,7 +14,11 @@ const operations: Record<string, string> = {
   index: '更新检索索引', checking: '质量检查', building: '构建阅读版本', preflight: '结构预检', published: '发布阅读版本',
 };
 export function jobOperation(stage: string) { return operations[stage] ?? '后台任务'; }
-export function jobName(job: Job) { return job.stage === 'provider_test' ? 'AI 服务连接测试' : job.stage === 'cleanup' ? '已删除文档' : job.title?.trim() || job.filename?.trim() || '未命名 PDF'; }
+export function jobName(job: Job) {
+  if (job.stage === 'cleanup' || job.content_deleted) return `已删除文档 · ${job.id.replace(/^job_/, '').slice(-8)}`;
+  if (['maintenance', 'backup', 'restore'].includes(job.stage)) return '文库实例';
+  return job.stage === 'provider_test' ? 'AI 服务连接测试' : job.title?.trim() || job.filename?.trim() || '未命名 PDF';
+}
 export function jobLocale(locale?: string | null) { return languageName(locale); }
 export function jobTone(status: string) {
   if (['failed', 'outcome_unknown'].includes(status)) return 'error';
@@ -30,5 +38,5 @@ export function jobProgress(job: Job) {
 export function JobDateParts(value?: string) {
   const date = value ? new Date(value) : null;
   if (!date || !Number.isFinite(date.getTime())) return null;
-  return { date: date.toLocaleDateString('zh-CN'), time: date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }), full: date.toLocaleString('zh-CN') };
+  return { date: date.toLocaleDateString('zh-CN'), time: date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), full: date.toLocaleString('zh-CN') };
 }

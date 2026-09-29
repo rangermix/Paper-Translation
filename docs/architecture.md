@@ -27,6 +27,10 @@ bridge. This bridge is not a domain firewall.
 
 ## Durable state
 
+The [task model](task-model.md) distinguishes user-facing main operations,
+internal steps, related operations and execution attempts. Stored execution
+records must not each become an independent task-center row.
+
 Database models live in [domain/models.py](../src/packages/domain/models.py).
 The current migration sequence ends at 13 in
 [domain/migrations](../src/packages/domain/migrations). Installed migration bytes

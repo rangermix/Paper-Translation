@@ -66,7 +66,7 @@ def finalize_translation(session,cfg,job,draft,source,kind):
     if job.payload.get('publish_policy')=='auto_publish':
         # Local artifact generation does not dispatch a model request. The
         # original job keeps its model identity and terminal translation result.
-        revision=seal(session,cfg,draft,qa.id,qa.fingerprint)
+        revision=seal(session,cfg,draft,qa.id,qa.fingerprint,parent_job_id=job.id)
         edition=get_entity(session,Edition,draft.edition_id,lock=True)
         child=Job(id=new_id('job'),document_id=job.document_id,parent_job_id=job.id,stage='publish',
             payload={'translation_revision_id':revision.id,'result_status':job.status},quality_summary=job.quality_summary)

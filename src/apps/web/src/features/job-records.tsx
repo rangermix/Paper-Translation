@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ErrorNotice } from '../components';
+import { ErrorNotice, Status } from '../components';
 import { resourceId } from '../domain';
 import { useResource } from '../hooks';
 import type { ExecutionTimes, Job, ModelIdentity, TaskLog } from '../types';
@@ -66,14 +66,19 @@ export function JobRecords({ job }: { job: Job }) {
   if (cursor != null) params.set('cursor', String(cursor));
   const logs = useResource<LogPage>(`/jobs/${resourceId(job.id)}/logs?${params}`, terminal.has(job.status) ? 0 : 3000);
   return <section className="job-records" aria-label="执行记录"><h3>执行记录</h3>
+    {job.workflow && job.workflow.job_count > 1 && <div className="notice" aria-label="整体任务状态">
+      <div className="stack between"><strong>整体任务</strong><Status value={job.workflow.status}/></div>
+      <p>共 {job.workflow.job_count} 个处理阶段。下方显示当前步骤的记录，可分别查看各处理步骤。后续任务独立记录状态。</p>
+    </div>}
     <ModelView model={job.actual_model} historical={!job.actual_model && (!job.config_snapshot || String(job.config_snapshot.evidence_source || '').startsWith('historical'))}/>
     <ExecutionTimesView value={job} status={job.status}/>
     <p className="field-note">时间按 {Intl.DateTimeFormat().resolvedOptions().timeZone} 显示。执行耗时包含期间的暂停和重试，可在日志中查看。</p>
     {job.title_snapshot && <p className="small muted">运行时文档名：{job.title_snapshot}</p>}
     {job.config_snapshot && <details><summary>创建时的配置</summary><pre className="job-config">{JSON.stringify(job.config_snapshot, null, 2)}</pre></details>}
-    {job.parent_job_id && <a className="btn sm" href={`#/jobs/${job.parent_job_id}`}>查看上级任务</a>}
+    {job.parent_job_id && <a className="btn sm" href={`#/jobs/${resourceId(job.parent_job_id)}`}>{job.task_role === 'main' ? '查看来源任务' : '查看所属任务'}</a>}
     {job.stage === 'recovery' && !job.content_deleted && <RecoveryComparison key={job.id} jobId={job.id}/>}
-    {(!!job.child_jobs?.length || job.content_deleted || job.stage === 'cleanup') && <JobChildren key={job.id} jobId={job.id}/>}
+    <JobChildren key={`${job.id}-internal`} jobId={job.id}/>
+    <JobChildren key={`${job.id}-related`} jobId={job.id} relationship="related"/>
     <h4>任务日志</h4><div className="job-log-controls">
       <label>等级 <select value={filter.level} onChange={e => setFilter(old => ({ ...old, level: e.target.value, cursors: [] }))}>
         <option value="">全部</option><option value="info">信息</option><option value="warning">提示</option><option value="error">错误</option>

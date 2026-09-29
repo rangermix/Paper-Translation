@@ -383,14 +383,14 @@ def run_quality(session, config, draft, *, parent_job_id=None):
     return qa
 
 
-def seal(session, config, draft, qa_id=None, qa_fingerprint=None):
+def seal(session, config, draft, qa_id=None, qa_fingerprint=None, *, parent_job_id=None):
     qa = session.get(QA, qa_id) if qa_id else None
     source = read_snapshot(config.data, get_entity(session, SourceRevision, draft.source_revision_id))
     segments = current_segments(session, draft.id)
     current_fingerprint = quality_fingerprint(draft, source, segments, semantic_evidence(session, draft, source, segments))
     if not (qa and qa.draft_id == draft.id and qa.id == draft.qa_id and qa.draft_generation == draft.generation
             and qa.fingerprint == qa_fingerprint == current_fingerprint):
-        qa = run_quality(session, config, draft)
+        qa = run_quality(session, config, draft, parent_job_id=parent_job_id)
     revision_id = new_id('tr')
     tr = translation_snapshot(session, config, draft, revision_id=revision_id)
     source = read_snapshot(config.data, get_entity(session, SourceRevision, draft.source_revision_id))

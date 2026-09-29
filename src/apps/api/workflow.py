@@ -19,6 +19,7 @@ from packages.editorial.drafts import create_draft
 from packages.ir import block_hash, digest, validate_source
 from packages.jobs.queue import emit
 from packages.jobs.history import effective_log_level, log_view, time_view
+from packages.jobs.hierarchy import family_summary, family_tree, family_views, job_operation, main_task, operation, task_role
 from packages.jobs.visibility import clearable_history, visible_history
 from packages.storage import read_snapshot, write_snapshot
 from packages.translation.languages import canonical_locale, translation_profile
@@ -48,9 +49,11 @@ def job_content_deleted(session, job):
     return bool(doc and doc.deleted_at or job.progress.get('content_deleted'))
 
 
-def job_view(session, job, *, details=True):
+def job_view(session, job, *, details=True, workflow=None):
+    family = {'operation': job_operation(job), 'task_role': task_role(job),
+              'workflow': workflow or family_views(session, [job.id]).get(job.id)}
     if job.stage != 'cleanup' and job_content_deleted(session, job):
-        return {'id': job.id, 'job_id': job.id, 'stage': job.stage, 'status': job.status,
+        return {**family, 'id': job.id, 'job_id': job.id, 'stage': job.stage, 'status': job.status,
             'document_id': None, 'title': '已删除文档', 'title_snapshot': None, 'content_deleted': True,
             'parent_job_id': job.parent_job_id, 'created_at': job.created_at, 'generation': job.generation,
             'control_epoch': job.control_epoch, **time_view(job), 'actual_model': job.actual_model,
@@ -63,7 +66,8 @@ def job_view(session, job, *, details=True):
         # task results, provider evidence, or historical progress events.
         files = {'pending': 'pending', 'running': 'running', 'succeeded': 'completed'}.get(job.status, 'failed')
         costs = {'actual_micro': 0, 'reserved_micro': 0, 'unknown_micro': 0}
-        return {'id': job.id, 'job_id': job.id, 'document_id': job.document_id, 'stage': 'cleanup',
+        return {**family, 'id': job.id, 'job_id': job.id, 'document_id': job.document_id, 'stage': 'cleanup',
+            'parent_job_id': job.parent_job_id,
             'title': '已删除文档', 'filename': None, 'target_locale': None,
             'status': job.status, 'generation': job.generation, 'control_epoch': job.control_epoch,
             'created_at': job.created_at, 'progress': {},
@@ -85,12 +89,12 @@ def job_view(session, job, *, details=True):
     results = [t.result for t in tasks if t.status == 'succeeded' and t.result]
     result = {k: v for item in results for k, v in item.items() if k in ('artifact_id', 'export_id', 'import_id', 'document_id')}
     error = job.error and {**job.error, 'message': job.error.get('message', job.error.get('code', 'Job error').replace('_', ' ').capitalize())}
-    return {'id': job.id, 'job_id': job.id, 'document_id': job.document_id, 'stage': job.stage,
+    return {**family, 'id': job.id, 'job_id': job.id, 'document_id': job.document_id, 'stage': job.stage,
         **job_identity(session, job),
         **time_view(job), 'config_snapshot': job.config_snapshot, 'actual_model': job.actual_model,
         'title_snapshot': job.title_snapshot, 'parent_job_id': job.parent_job_id, 'quality_summary': job.quality_summary,
         'child_jobs': [{'id': child.id, 'stage': child.stage, 'status': child.status} for child in session.scalars(
-            select(Job).where(Job.parent_job_id == job.id).order_by(Job.created_at, Job.id).limit(100))] if details else [],
+            select(Job).where(Job.parent_job_id == job.id, ~main_task()).order_by(Job.created_at, Job.id).limit(100))] if details else [],
         'status': job.status, 'generation': job.generation, 'control_epoch': job.control_epoch,
         'progress': progress, 'error': error, 'budget_micro': job.budget_micro,
         'cost_control_enabled': cost_control_enabled(job.payload['profile']) if job.payload.get('profile') else None,
@@ -118,37 +122,43 @@ def readable_job(session, job_id):
 def list_jobs(status: str | None = None, document_id: str | None = None, cursor: str | None = None,
               q: str = Query('', max_length=255), group: Literal['all', 'active', 'attention', 'completed', 'cancelled'] = 'all',
               stage: str | None = Query(None, max_length=40), parent_job_id: str | None = None,
+              relationship: Literal['all', 'internal', 'related'] = 'all',
               model: str | None = Query(None, max_length=256),
               include_cleared: bool = False, top_level_only: bool = False,
               limit: int = Query(30, ge=1, le=100), session=Session):
     query = select(Job).outerjoin(Document).outerjoin(Upload,
         and_(Job.stage == 'inspect', Upload.id == Job.payload['upload_id'].astext)
     )
-    if not include_cleared:
-        query = query.where(visible_history())
+    summary = family_summary(stage=stage, model=model) if top_level_only else None
     if top_level_only:
-        query = query.where(Job.parent_job_id.is_(None))
+        query = query.join(summary, summary.c.root_id == Job.id)
+    if not include_cleared:
+        query = query.where(summary.c.visible if top_level_only else visible_history())
     if stage:
-        query = query.where(Job.stage == stage)
+        query = query.where(summary.c.matches_stage if top_level_only else or_(Job.stage == stage, operation() == stage))
     if parent_job_id:
         query = query.where(Job.parent_job_id == parent_job_id)
+    if relationship != 'all':
+        require(bool(parent_job_id), 'PARENT_REQUIRED', status=422)
+        query = query.where(main_task() if relationship == 'related' else ~main_task())
     if model:
         from sqlalchemy import cast, Text
-        query = query.where(cast(Job.actual_model, Text).icontains(model, autoescape=True))
+        query = query.where(summary.c.matches_model if top_level_only else cast(Job.actual_model, Text).icontains(model, autoescape=True))
     groups = {
         'active': ['pending', 'queued', 'running', 'translating', 'cancel_requested'],
         'attention': ['failed', 'outcome_unknown', 'paused', 'waiting_config', 'waiting_configuration', 'waiting_budget', 'needs_review'],
         'completed': ['succeeded', 'completed', 'completed_with_warnings', 'partially_completed'], 'cancelled': ['cancelled'],
     }
     if group != 'all':
-        query = query.where(Job.status.in_(groups[group]))
+        query = query.where((summary.c.status if top_level_only else Job.status).in_(groups[group]))
     if q.strip():
         term = q.strip()
         query = query.where(or_(
             and_(Document.deleted_at.is_(None), Job.stage != 'cleanup', Document.title.icontains(term, autoescape=True)),
-            Upload.filename.icontains(term, autoescape=True), Job.id.icontains(term, autoescape=True)))
+            and_(Document.deleted_at.is_(None), Upload.filename.icontains(term, autoescape=True)),
+            Job.id.icontains(term, autoescape=True)))
     if status:
-        query = query.where(Job.status == status)
+        query = query.where((summary.c.status if top_level_only else Job.status) == status)
     if document_id:
         require(session.get(Document, document_id) is not None, 'NOT_FOUND', status=404)
         query = query.where(Job.document_id == document_id)
@@ -157,13 +167,15 @@ def list_jobs(status: str | None = None, document_id: str | None = None, cursor:
         require(anchor is not None, 'CURSOR_INVALID', status=422)
         query = query.where(tuple_(Job.created_at, Job.id) < tuple_(anchor.created_at, anchor.id))
     jobs = list(session.scalars(query.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit + 1)))
-    return page([job_view(session, j, details=False) for j in jobs[:limit]], jobs[limit-1].id if len(jobs) > limit else None)
+    families = family_views(session, [job.id for job in jobs[:limit]])
+    return page([job_view(session, j, details=False, workflow=families[j.id]) for j in jobs[:limit]], jobs[limit-1].id if len(jobs) > limit else None)
 
 
 @router.get('/jobs/history')
 def task_history(session=Session):
     settings = session.get(Settings, 'singleton')
-    count = session.scalar(select(func.count()).select_from(Job).where(clearable_history()))
+    summary = family_summary()
+    count = session.scalar(select(func.count()).select_from(summary).where(summary.c.visible, summary.c.finished))
     return response({'generation': settings.generation, 'clearable_count': count})
 
 
@@ -183,10 +195,14 @@ def clear_task_history(body: ClearTaskHistory, request: Request, session=Session
     def execute():
         settings = lock_singleton(session)
         match_generation(settings, request.headers.get('If-Match'))
-        result = session.execute(update(Job).where(clearable_history())
+        tree = family_tree()
+        summary = family_summary(tree=tree)
+        roots = list(session.scalars(select(summary.c.root_id).where(summary.c.visible, summary.c.finished)))
+        session.execute(update(Job).where(clearable_history(),
+            Job.id.in_(select(tree.c.job_id).where(tree.c.root_id.in_(roots))))
             .values(history_cleared_generation=Job.generation))
         settings.generation += 1
-        return {'generation': settings.generation, 'cleared_count': result.rowcount}
+        return {'generation': settings.generation, 'cleared_count': len(roots)}
     return command(session, request, body.model_dump(), execute)
 
 

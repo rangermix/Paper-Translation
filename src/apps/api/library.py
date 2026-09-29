@@ -22,6 +22,7 @@ from packages.domain.db import get_document, get_entity, writable
 from packages.domain.errors import match_generation, require
 from packages.domain.models import (Artifact, Document, Draft, Edition, Export, Job,
     Settings, SourceAsset, SourceDraft, SourceRevision, Task, Upload, new_id, now)
+from packages.jobs.visibility import visible_history
 from packages.storage import atomic_write, file_hash, safe_path
 from .common import StrictModel, command, page, response, session_dependency
 
@@ -77,8 +78,8 @@ def document_view(session, doc):
         'editions': [edition_view(session, e) for e in session.scalars(select(Edition).where(Edition.document_id == doc.id).order_by(Edition.target_locale))]}
 
 
-def enqueue(session, stage, payload, document_id=None):
-    job = Job(id=new_id('job'), document_id=document_id, stage=stage, payload=payload)
+def enqueue(session, stage, payload, document_id=None, *, parent_job_id=None):
+    job = Job(id=new_id('job'), document_id=document_id, parent_job_id=parent_job_id, stage=stage, payload=payload)
     session.add(job)
     session.flush()
     session.add(Task(id=new_id('task'), job_id=job.id, kind=stage, payload=payload))
@@ -174,7 +175,7 @@ def finalize(upload_id: str, body: Finalize, request: Request, session=Session):
         require(h.hexdigest() == body.expected_sha256, 'UPLOAD_HASH_MISMATCH', status=422)
         os.replace(temp, target)
         upload.sha256 = h.hexdigest()
-        job = enqueue(session, 'inspect', {'upload_id': upload.id, 'source_sha256': upload.sha256})
+        job = enqueue(session, 'inspect', {'upload_id': upload.id, 'source_sha256': upload.sha256, 'operation': 'upload'})
         upload.status, upload.job_id = 'inspecting', job.id
         upload.generation += 1
         return upload_view(session, upload)
@@ -245,6 +246,18 @@ def create_import(body: ImportCreate, request: Request, session=Session):
         session.flush()
         from packages.metadata.execution import apply_title
         apply_title(doc, session.get(SourceAsset, upload.source_asset_id))
+        upload_job = session.get(Job, upload.job_id) if upload.job_id else None
+        if upload_job and upload_job.document_id in (None, doc.id):
+            upload_job.document_id = doc.id
+            # Inspection can finish and enqueue metadata before library import.
+            # Bind those internal receipts too so deletion fences/redacts them.
+            from packages.jobs.hierarchy import family_tree
+            tree = family_tree([upload_job.id])
+            for step in session.scalars(select(Job).where(Job.id.in_(select(tree.c.job_id)),
+                    Job.document_id.is_(None)).with_for_update()):
+                step.document_id = doc.id
+        else:
+            upload_job = None
         if body.workflow:
             settings_query = select(Settings).where(Settings.id == 'singleton')
             if body.workflow.use_saved_upload_permission:
@@ -255,7 +268,8 @@ def create_import(body: ImportCreate, request: Request, session=Session):
                 'parser_profile_revision': body.parser_profile_revision or preferred_profile(preferences),
                 'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
                 'source_language': doc.source_language, 'document_generation': doc.generation,
-                'workflow': freeze_pipeline(body.workflow, doc.source_asset_id, preferences)}, doc.id)
+                'workflow': freeze_pipeline(body.workflow, doc.source_asset_id, preferences), 'upload_id': upload.id}, doc.id,
+                parent_job_id=upload_job.id if upload_job else None)
             doc.status = 'parsing'; doc.generation += 1
         return document_view(session, doc)
     return command(session, request, body.model_dump(), execute, 201)
@@ -330,7 +344,8 @@ def refresh_metadata(document_id: str, body: MetadataRefresh, request: Request, 
             from packages.metadata.execution import enqueue_metadata
             job = enqueue_metadata(session, asset, document_id=doc.id, force=True)
         else:
-            job = enqueue(session, 'inspect', {'source_asset_id': asset.id, 'source_sha256': asset.sha256}, doc.id)
+            job = enqueue(session, 'inspect', {'source_asset_id': asset.id, 'source_sha256': asset.sha256,
+                'operation': 'metadata_lookup'}, doc.id)
         return {'metadata_status': asset.metadata_status, 'job_id': job.id if job else None}
     return command(session, request, body.model_dump(), execute, 202)
 
@@ -364,11 +379,16 @@ def delete_doc(document_id: str, body: DeleteDocument, request: Request, session
     match_generation(doc, request.headers.get('If-Match'))
     doc.deleted_at, doc.lifecycle = now(), 'deleted'
     doc.generation += 1
-    for job in session.scalars(select(Job).where(Job.document_id == doc.id).with_for_update()):
+    for job, history_hidden in session.execute(select(Job, ~visible_history())
+            .where(Job.document_id == doc.id).with_for_update(of=Job)):
         job.control_epoch += 1
         if job.status not in TERMINAL_STATES:
             job.status = 'cancelled'
         job.generation += 1
+        # Tombstoning changes the fence, not the user's choice to clear finished
+        # history. Keep already-visible changes and unresolved work discoverable.
+        if history_hidden:
+            job.history_cleared_generation = job.generation
     cleanup = enqueue(session, 'cleanup', {'document_id': doc.id}, doc.id)
     return response({'id': doc.id, 'generation': doc.generation, 'job_id': cleanup.id, 'status': 'deleted',
         'notice': 'Online access is disabled. Downloaded copies cannot be recalled; backups expire by retention policy.'}, 202)

@@ -37,7 +37,7 @@ tab cannot reuse a revoked default. This flag only permits extractive preparatio
 | `/imports/{id}/preflight`, `/editions/{id}/translate` | [workflow.py](../src/apps/api/workflow.py): source/profile-bound translation confirmation |
 | `/drafts/{id}/translation-preflight`, `/drafts/{id}/translate` | [continuation.py](../src/apps/api/continuation.py): continue from a saved source/draft |
 | `/jobs`, `/jobs/{id}/logs`, `/jobs/{id}/recovery` | [workflow.py](../src/apps/api/workflow.py): progress, paginated logs, recovery and task controls |
-| `/jobs/history`, `/jobs/history/clear` | Global eligible count and visibility-only clearing with explicit confirmation |
+| `/jobs/history`, `/jobs/history/clear` | Eligible main-task count and visibility-only clearing of completed tasks and their internal steps with explicit confirmation |
 | `/drafts`, `/candidates`, `/sources` | [editorial.py](../src/apps/api/editorial.py), [candidates.py](../src/apps/api/candidates.py), [sources.py](../src/apps/api/sources.py): edits, review and source revision operations |
 | `/templates`, `/editions`, `/artifacts`, `/exports` | [catalog.py](../src/apps/api/catalog.py), [artifacts.py](../src/apps/api/artifacts.py): template selection, publication, history and downloads |
 | `/settings/provider`, `/settings/local-models` | [provider_settings.py](../src/apps/api/provider_settings.py): saved profiles, explicit tests and local model preparation |
@@ -53,6 +53,28 @@ or download local models.
 `/health/live` reports HTTP liveness. `/health/ready` checks the database schema,
 storage integrity, bundled templates, frontend and current worker/parser heartbeats.
 A liveness response alone does not establish readiness or successful inference.
+
+## Task presentation
+
+The [task model](task-model.md) defines task kinds and relationships.
+`/jobs?top_level_only=true` returns main operations, including automatically
+started parsing, translation and publication. `operation` is the user-facing
+kind; `stage` remains the stored execution stage. `task_role` is `main` or `step`.
+
+Existing `parent_job_id` values retain both kinds of relationship. Query
+`/jobs?parent_job_id=ID&relationship=internal` for contained steps, or
+`relationship=related` for separate follow-up main tasks. Both lists paginate;
+`include_cleared=true` keeps historical links navigable. Omitting `relationship`
+preserves the existing all-children API behavior. The default `/jobs` still
+exposes raw execution records for existing clients.
+
+`workflow.status` and `workflow.job_count` summarize only the selected operation
+and its internal job records, excluding separate follow-up operations. Status
+and model/stage filters on the main-task list consider internal work too. The
+stored `status`, progress, execution times, model and costs retain their original
+scope for details and versioned controls. History preview/clear counts are main
+tasks; an operation is clearable only when it and all its internal steps have
+finished without leased work or unsettled requests.
 
 ## Paper preparation
 

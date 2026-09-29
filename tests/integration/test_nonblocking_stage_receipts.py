@@ -67,3 +67,20 @@ def test_failed_maintenance_records_error_code_without_raw_exception(database):
         assert job.actual_model['kind'] == 'none'
         assert job.error == {'code': 'MAINTENANCE_FAILED'}
         assert 'private' not in str(job.payload) + str(job.error)
+
+
+def test_automatic_sealing_keeps_a_refreshed_check_inside_its_main_task(database, client):
+    from packages.domain.models import Draft
+    from packages.editorial.drafts import seal
+    from tests.support import seed_editor
+    db, cfg = database
+    seed_editor(db, cfg)
+    with db.transaction() as session:
+        session.add(Job(id='translation', stage='translate', document_id='doc_fixture', status='succeeded'))
+        session.flush()
+        # No current QA receipt: sealing must run one without adding a main row.
+        seal(session, cfg, session.get(Draft, 'draft_fixture'), parent_job_id='translation')
+    roots = client.get('/api/v1/jobs?top_level_only=true').json()['items']
+    assert [row['id'] for row in roots] == ['translation']
+    steps = client.get('/api/v1/jobs?parent_job_id=translation&relationship=internal').json()['items']
+    assert len(steps) == 1 and steps[0]['stage'] == 'quality_check'

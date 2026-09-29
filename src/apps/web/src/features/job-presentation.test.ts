@@ -8,7 +8,8 @@ describe('job presentation', () => {
     expect(jobName(job({ title: 'Pathways' }))).toBe('Pathways');
     expect(jobName(job({ filename: '研究.pdf' }))).toBe('研究.pdf');
     expect(jobName(job())).toBe('未命名 PDF');
-    expect(jobName(job({ stage: 'cleanup', title: 'Deleted private title' }))).toBe('已删除文档');
+    expect(jobName(job({ stage: 'cleanup', title: 'Deleted private title' }))).toBe('已删除文档 · opaque');
+    expect(jobName(job({ content_deleted: true, title: 'Deleted private title', filename: 'private.pdf' }))).toBe('已删除文档 · opaque');
     expect(jobOperation('inspect')).toBe('检查 PDF');
     expect(jobOperation('export')).toBe('导出阅读版本');
   });

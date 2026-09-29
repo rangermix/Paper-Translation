@@ -7,14 +7,16 @@ from sqlalchemy import func, select, text
 from apps.api.library import enqueue
 from packages.domain.db import Database
 from packages.domain.models import Attempt, Job, Permit, Settings, Task, TaskLog
-from packages.jobs.queue import emit
+from packages.jobs.queue import claim, emit
+from packages.privacy import cleanup_document
+from tests.support import seed_editor
 
 pytestmark = pytest.mark.postgres
 
 
-def seed_job(db, status, *, permit=None, leased=False):
+def seed_job(db, status, *, permit=None, leased=False, document_id=None):
     with db.transaction() as session:
-        job = enqueue(session, 'parse', {})
+        job = enqueue(session, 'parse', {}, document_id)
         job.status = status
         task = session.scalar(select(Task).where(Task.job_id == job.id))
         task.status = 'leased' if leased else 'cancelled' if status == 'cancelled' else 'succeeded'
@@ -105,6 +107,45 @@ def test_changed_job_generation_reappears_and_new_tasks_are_not_cleared(database
         assert ids(fresh, '?include_cleared=true') == {identifier, new}
 
 
+def test_document_deletion_preserves_cleared_history_without_hiding_changed_or_unresolved_jobs(database, client):
+    db, cfg = database
+    seed_editor(db, cfg)
+    hidden = {seed_job(db, status, document_id='doc_fixture') for status in ['succeeded', 'failed']}
+    changed = seed_job(db, 'failed', document_id='doc_fixture')
+    assert clear(client).json()['cleared_count'] == 3
+    with db.transaction() as session:
+        emit(session, session.get(Job, changed))
+    recent = seed_job(db, 'succeeded', document_id='doc_fixture')
+    running = seed_job(db, 'running', leased=True, document_id='doc_fixture')
+    unknown = seed_job(db, 'cancelled', permit='unknown', document_id='doc_fixture')
+    with db.transaction() as session:
+        # An unresolved request stays visible even with a matching old marker.
+        job = session.get(Job, unknown)
+        job.history_cleared_generation = job.generation
+    visible = {changed, recent, running, unknown}
+    assert ids(client) == visible
+
+    deleted = client.request('DELETE', '/api/v1/documents/doc_fixture', json={'confirm': True}, headers={'If-Match': '"1"'})
+    assert deleted.status_code == 202, deleted.text
+    cleanup_id = deleted.json()['job_id']
+    assert ids(client) == visible | {cleanup_id}
+    assert ids(client, '?include_cleared=true') == visible | hidden | {cleanup_id}
+    assert client.request('DELETE', '/api/v1/documents/doc_fixture', json={'confirm': True}, headers={'If-Match': '"1"'}).status_code == 410
+    assert ids(client, '?stage=cleanup') == {cleanup_id}
+    cleanup_document(db, cfg, claim(db))
+    assert ids(client) == visible | {cleanup_id}
+    for identifier in hidden:
+        assert client.get('/api/v1/jobs/' + identifier).json()['content_deleted'] is True
+        assert client.get('/api/v1/jobs/' + identifier + '/logs').json()['items']
+    with db.transaction() as session:
+        for identifier in hidden:
+            job = session.get(Job, identifier)
+            assert job.history_cleared_generation == job.generation == 2
+            assert job.control_epoch == 1
+        session.scalar(select(Permit).where(Permit.job_id == unknown)).state = 'settled'
+    assert ids(client) == visible | {cleanup_id}
+
+
 def test_clear_is_confirmed_idempotent_versioned_and_maintenance_protected(database, client):
     db, _ = database
     first = seed_job(db, 'succeeded')
@@ -125,6 +166,51 @@ def test_clear_is_confirmed_idempotent_versioned_and_maintenance_protected(datab
         session.get(Settings, 'singleton').maintenance = True
     assert clear(client).status_code == 503
     assert ids(client) == {new}
+
+
+def test_clear_counts_main_tasks_and_keeps_unfinished_steps_with_their_owner(database, client):
+    db, _ = database
+    with db.transaction() as session:
+        for identifier, stage, parent, status in [
+            ('parse', 'parse', None, 'succeeded'), ('recovery', 'recovery', 'parse', 'succeeded'),
+            ('translation', 'translate', 'parse', 'succeeded'), ('check', 'quality_check', 'translation', 'succeeded'),
+            ('publish', 'publish', 'translation', 'succeeded'), ('index', 'index', 'publish', 'running'),
+        ]:
+            session.add(Job(id=identifier, stage=stage, parent_job_id=parent, status=status))
+            session.flush()
+    assert client.get('/api/v1/jobs/history').json()['clearable_count'] == 2
+    assert clear(client).json()['cleared_count'] == 2
+    assert ids(client, '?top_level_only=true') == {'publish'}
+    assert ids(client) == {'publish', 'index'}
+    assert ids(client, '?top_level_only=true&include_cleared=true') == {'parse', 'translation', 'publish'}
+    with db.transaction() as session:
+        assert session.get(Job, 'publish').history_cleared_generation is None
+        session.get(Job, 'index').status = 'succeeded'
+    assert clear(client).json()['cleared_count'] == 1
+    assert ids(client, '?top_level_only=true') == set()
+
+
+@pytest.mark.parametrize('permit,leased', [('unknown', False), ('reserved', False), (None, True)])
+def test_finished_main_task_keeps_unsettled_internal_work_visible(database, client, permit, leased):
+    db, _ = database
+    parent = seed_job(db, 'succeeded')
+    child = seed_job(db, 'cancelled', permit=permit, leased=leased)
+    with db.transaction() as session:
+        step = session.get(Job, child)
+        step.stage, step.parent_job_id = 'index', parent
+    assert client.get('/api/v1/jobs/history').json()['clearable_count'] == 0
+    assert clear(client).json()['cleared_count'] == 0
+    assert ids(client, '?top_level_only=true') == {parent}
+    view = client.get('/api/v1/jobs/' + parent).json()
+    assert view['workflow']['status'] == ('outcome_unknown' if permit == 'unknown' else 'running')
+    with db.transaction() as session:
+        assert session.get(Job, parent).history_cleared_generation is None
+        assert session.get(Job, child).history_cleared_generation is None
+        for request in session.scalars(select(Permit).where(Permit.job_id == child)):
+            request.state = 'settled'
+        session.scalar(select(Task).where(Task.job_id == child)).status = 'cancelled'
+    assert clear(client).json()['cleared_count'] == 1
+    assert not ids(client, '?top_level_only=true')
 
 
 def test_schema_12_upgrade_retains_existing_history(database, monkeypatch):

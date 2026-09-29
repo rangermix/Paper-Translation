@@ -246,13 +246,16 @@ def create_import(body: ImportCreate, request: Request, session=Session):
         from packages.metadata.execution import apply_title
         apply_title(doc, session.get(SourceAsset, upload.source_asset_id))
         if body.workflow:
-            preferences = session.get(Settings, 'singleton').preferences
+            settings_query = select(Settings).where(Settings.id == 'singleton')
+            if body.workflow.use_saved_upload_permission:
+                settings_query = settings_query.with_for_update(read=True)
+            preferences = session.scalar(settings_query.execution_options(populate_existing=True)).preferences
             job = enqueue(session, 'parse', {'source_asset_id': doc.source_asset_id,
                 **frozen_parser_runtime(body.parser_profile_revision or preferred_profile(preferences)),
                 'parser_profile_revision': body.parser_profile_revision or preferred_profile(preferences),
                 'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
                 'source_language': doc.source_language, 'document_generation': doc.generation,
-                'workflow': freeze_pipeline(body.workflow, doc.source_asset_id)}, doc.id)
+                'workflow': freeze_pipeline(body.workflow, doc.source_asset_id, preferences)}, doc.id)
             doc.status = 'parsing'; doc.generation += 1
         return document_view(session, doc)
     return command(session, request, body.model_dump(), execute, 201)

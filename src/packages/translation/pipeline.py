@@ -22,6 +22,7 @@ class PipelineOptions(BaseModel):
     target_locale: str = 'zh-Hans'
     publish_policy: Literal['auto_publish', 'manual_approval'] = 'auto_publish'
     external_processing_confirmed: bool = False
+    use_saved_upload_permission: bool = False
     profile_hash: str | None = Field(None, pattern='^[0-9a-f]{64}$')
     budget_micro: int | None = Field(None, gt=0)
     preparation: PreparationOptions = Field(default_factory=PreparationOptions)
@@ -32,10 +33,14 @@ class PipelineOptions(BaseModel):
         return canonical_locale(value)
 
 
-def freeze_pipeline(options, asset_id):
+def freeze_pipeline(options, asset_id, preferences=None):
     profile = provider_profile()
     if options.translate and options.external_processing_confirmed:
         require(options.profile_hash == digest(profile), 'PROFILE_STALE')
+    if options.use_saved_upload_permission:
+        require(options.translate and options.external_processing_confirmed and options.preparation.mode == 'extractive'
+            and (preferences or {}).get('upload_translation_profile_hash') == digest(profile),
+            'UPLOAD_TRANSLATION_DEFAULT_STALE', '上传默认授权已更改，请重新读取设置或为本次上传确认授权。')
     return {**options.model_dump(exclude={'preparation'}), **(freeze_options(options.preparation, profile) if options.translate else {}),
         'profile': copy.deepcopy(profile), 'source_asset_id': asset_id,
         'confirmed_at': now().isoformat() if options.external_processing_confirmed else None,

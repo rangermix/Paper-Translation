@@ -17,6 +17,10 @@ the instance; the default published address is loopback.
 - Translate through a saved API service or the optional local MLX service.
   All languages are selectable; model quality for each language is not guaranteed
   by the selector. Provider configuration and content processing require confirmation.
+  An opt-in upload default remembers permission for the current saved service, so
+  later uploads can proceed from parsing to translation without checking consent
+  again. Each upload can still opt out; changed service configurations require
+  renewed permission and enabled cost controls still require a document budget.
 - Prepare a source-grounded paper context and scoped terminology before translation.
   New requests default to deterministic extraction with no extra model call. Optional
   API analysis or a separate pinned MiniCPM5-1B local analyst adds a bounded analysis

@@ -7,6 +7,8 @@ import { resourceId } from '../domain';
 import { useAction, useResource } from '../hooks';
 import { ProviderSettings } from './provider-settings';
 import { ParserSettings } from './parser-select';
+import { UploadTranslationDefault } from './upload-translation-default';
+import { ProviderDestination } from './provider-destination';
 import './settings.css';
 import { PositionNotice, positionPath, type ReadingPosition } from './reading-position';
 import type { Glossary, GlossaryEntry, MemoryEntry, Page, Preferences, Provider, SearchHit } from '../types';
@@ -38,6 +40,11 @@ export function Settings({ onTheme }: { onTheme: (theme: string) => void }) {
     <div className="settings-aside">
     <ErrorNotice error={result.error} retry={result.reload}/>
     <ParserSettings preferences={result.data} loading={result.loading} onSaved={result.setData} reload={result.reload}/>
+    <section className="panel" aria-labelledby="upload-default-title"><h2 id="upload-default-title">上传翻译</h2>
+      <ProviderDestination profile={provider.data}/>
+      <UploadTranslationDefault preferences={result.data} provider={provider.data} disabled={Boolean(result.error || provider.error)}
+        onSaved={result.setData} reload={result.reload}/>
+    </section>
     <section className="panel preferences-panel" aria-labelledby="preferences-title"><h2 id="preferences-title">个人偏好</h2>
       {result.loading && <Loading/>}
       {result.data && <form onSubmit={e => { e.preventDefault(); void action.run(async () => { await api('/settings/preferences', { method: 'PATCH', etag: etagFor(result.data), body: { locale: prefs.locale, publish_policy: prefs.publish_policy, theme } }); onTheme(theme); result.reload(); setEdits({}); }, '实例偏好已保存。'); }}>

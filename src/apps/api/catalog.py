@@ -57,7 +57,8 @@ def preferences(session=Session):
 
 
 def preferences_view(settings):
-    return {'generation': settings.generation, 'theme': 'system', **editable_preferences(settings),
+    return {'generation': settings.generation, 'theme': 'system', 'upload_translation_profile_hash': None,
+        **editable_preferences(settings),
         'parser_profile_revision': preferred_profile(settings.preferences),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)}
 
@@ -92,6 +93,7 @@ def patch_dispatch_settings(body: DispatchSettings, request: Request, session=Se
 
 
 class Preferences(StrictModel):
+    upload_translation_profile_hash: str | None = Field(None, pattern='^[0-9a-f]{64}$')
     parser_profile_revision: ParserProfile | None = None
     parser_timeout_seconds: int | None = Field(None, strict=True,
         ge=MIN_PARSE_TIMEOUT_SECONDS, le=MAX_PARSE_TIMEOUT_SECONDS, multiple_of=60)
@@ -112,6 +114,13 @@ def patch_preferences(body: Preferences, request: Request, session=Session):
     settings = session.scalar(select(Settings).where(Settings.id == 'singleton').with_for_update().execution_options(populate_existing=True))
     match_generation(settings, request.headers.get('If-Match'))
     merged = {**editable_preferences(settings), **body.model_dump(exclude_none=True)}
+    if 'upload_translation_profile_hash' in body.model_fields_set:
+        if body.upload_translation_profile_hash is not None:
+            from packages.providers.settings import configuration_view
+            profile = configuration_view()
+            require(profile.get('configured') and profile.get('dispatch_configuration_ready'), 'PROVIDER_CONFIG')
+            require(body.upload_translation_profile_hash == profile['profile_hash'], 'PROFILE_STALE')
+        merged['upload_translation_profile_hash'] = body.upload_translation_profile_hash
     if body.parser_profile_revision is not None:
         frozen_parser_runtime(preferred_profile(merged))
     settings.preferences = merged

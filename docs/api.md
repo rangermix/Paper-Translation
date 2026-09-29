@@ -21,6 +21,16 @@ Errors contain `error.code`, `message`, `retryable`, optional resource/details a
 `request_id`. Submitted secrets and exception stacks are not returned. Time fields
 are UTC; monetary amounts use integer micro-units or `null` when unknown.
 
+`GET/PATCH /settings/preferences` includes `upload_translation_profile_hash`.
+It defaults to `null`. Supplying the current ready provider's hash explicitly
+enables the upload form's saved translation permission; sending `null` clears it,
+and omitting the field preserves it. Updates require the current settings ETag.
+Uploads still submit their own `workflow.external_processing_confirmed` and
+`profile_hash`, binding each queued request to its source and destination. When
+using this default, the form also sends `workflow.use_saved_upload_permission`.
+Import rechecks the stored permission under a settings lock, so an already-open
+tab cannot reuse a revoked default. This flag only permits extractive preparation.
+
 | Route group | Implementation and behavior |
 | --- | --- |
 | `/uploads`, `/imports`, `/documents` | [library.py](../src/apps/api/library.py): chunked PDF intake, metadata, original files and parsing |

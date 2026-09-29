@@ -18,6 +18,6 @@ export function ProviderDestination({ profile }: { profile?: Provider }) {
       <dt>模型 ID</dt><dd>{profile?.model_id || '未配置'}</dd>
       <dt>鉴权方式</dt><dd>{profile?.auth_mode === 'none' ? '无鉴权，不发送 Authorization 或 API 密钥头' : profile?.auth_mode === 'bearer' ? 'Bearer 密钥（由后端使用，不回显）' : profile?.auth_mode === 'api_key' && protocol?.auth === 'api_key' ? `${protocol.keyLabel} 密钥（由后端使用，不回显）` : '未提供'}</dd>
       {profile?.api_protocol === 'claude_messages' && <><dt>Anthropic API 版本</dt><dd>{profile.api_version || '2023-06-01（服务端默认）'}</dd></>}</dl>
-    <p className="field-note">{profile?.api_protocol === 'local_translation' ? privacyNote(profile) : '必要文本将发送到该地址。服务的数据保留规则由服务提供者决定；配置或来源变更后须重新确认。'}</p>
+    <p className="field-note">{profile?.api_protocol === 'local_translation' ? privacyNote(profile) : '必要文本将发送到该地址。服务的数据保留规则由服务提供者决定；授权范围以下方选项为准，配置变更后须重新确认。'}</p>
   </section>;
 }

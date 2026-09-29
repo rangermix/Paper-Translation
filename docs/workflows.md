@@ -34,6 +34,18 @@ source, profile revision/hash and current generation. Changing them requires a n
 confirmation. Waiting for model/configuration startup is represented separately
 from an unknown provider outcome.
 
+The upload page and Settings offer **以后上传默认允许翻译**, initially off.
+Enabling it explicitly authorizes necessary text, context and terminology from
+future PDF uploads to the displayed saved service, including possible charges.
+The instance preference persists a public profile hash, never credentials. The
+upload form uses it only for the matching ready configuration and default
+extractive preparation; changing the preparation mode still clears confirmation.
+Selecting another batch preserves this default, while each batch can uncheck
+consent or choose source-only processing. Saving the preference sends no model
+request and does not resume existing jobs. Provider changes invalidate the match;
+dispatch controls and per-document budgets continue to apply. Imports recheck
+saved permission on the server, including changes made in another browser tab.
+
 All translation entry points offer **翻译前准备**. The default collects exact source
 excerpts, headings, definitions and term candidates without another model call.
 **当前 API 模型** adds one bounded summary/wording request to that saved provider.

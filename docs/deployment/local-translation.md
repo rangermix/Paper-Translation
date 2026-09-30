@@ -6,7 +6,7 @@ translation catalog currently includes:
 
 | Format and engine | Pinned repositories | Deployment capability |
 | --- | --- | --- |
-| GGUF / llama.cpp | tencent/Hy-MT2-1.8B-GGUF and tencent/Hy-MT2-7B-GGUF, Q4_K_M | Docker hosts with a supported llama.cpp backend |
+| GGUF / llama.cpp | tencent/Hy-MT2-1.8B-GGUF and tencent/Hy-MT2-7B-GGUF; mradermacher/MiLMMT-46-{1B,4B,12B}-v0.1-GGUF; all Q4_K_M | Docker hosts with a supported llama.cpp backend |
 | Safetensors / vLLM | tencent/Hy-MT2-1.8B, BF16 | Docker Model Runner deployment with supported NVIDIA CUDA vLLM (Linux x86_64 or supported Windows WSL2) |
 | MLX / Docker-managed vLLM Metal | mlx-community/Hy-MT2-1.8B-8bit, shraey/milmmt-46-4b-mlx-4bit, mlx-community/Hy-MT2-7B-4bit, mlx-community/MiLMMT-46-12B-v0.1-4bit | Apple Silicon macOS with the provisioned MLX backend |
 
@@ -24,6 +24,11 @@ An engine may be supported but not installed, running, or able to fit
 a selected model. Those conditions appear as model status and do not remove a
 supported format from the selector. Docker Model Runner can package Safetensors
 on other hosts, but packaging alone does not provide vLLM inference there.
+
+The MiLMMT GGUF files are community quantizations of Xiaomi's v0.1 checkpoints;
+their repository revisions, file sizes and LFS SHA-256 values are pinned separately
+from the MLX variants. They use the same native translation completion prompt.
+Catalog entries do not assert that inference has been tested on this instance.
 
 Translation preparation also offers a separate **MiniCPM5-1B Q4 analyst**, pinned
 to [openbmb/MiniCPM5-1B-MLX](https://huggingface.co/openbmb/MiniCPM5-1B-MLX)
@@ -107,11 +112,42 @@ docker compose --profile local-translation \
 Keep `--profile local-translation` when starting this configuration, or set
 `COMPOSE_PROFILES=local-translation` in the instance's local environment file.
 
+Enabling Docker Model Runner in Docker Desktop does not start the application's
+optional sidecar. Keep the profile enabled for that sidecar. It also does not prove
+an inference engine installed successfully. The settings page reports backend
+installation failures separately from the pinned model catalog.
+
 The sidecar runs from the app image with a read-only root filesystem and only its
 own cache volume. It has no document, database, provider-secret or Docker-socket
 mount. Compose startup does not download any translation model. The API and
 worker reach it on an internal control network; its other network reaches DMR
 and pinned weight repositories. No runtime pip/npm installation occurs.
+
+## Windows Runner diagnostics
+
+Read the connected Runner's `/engines/status` endpoint before changing CORS,
+ports or GPU drivers. The application calls it from the sidecar, so browser CORS
+does not control this connection. A Windows Runner may fail CUDA detection because
+`com.docker.nv-gpu-info.exe` is missing from the user's inference directory even
+though the installed Docker Desktop bundle contains it. This is tracked in
+[Docker Model Runner issue 1054](https://github.com/docker/model-runner/issues/1054).
+Restore only that helper from the same installed Desktop bundle, then retry the
+existing Runner's `/engines/install-backend` endpoint with `{"backend":"llama.cpp"}`.
+Some Runner builds mark the initial failed installation as completed internally,
+so a retry can return HTTP 200 while `/engines/status` still reports the old error.
+If this occurs, wait for active llama.cpp requests to finish, reset only that
+backend with `/engines/uninstall-backend`, then retry installation and inspect
+the status again. Never interpret HTTP 200 alone as a running backend.
+Preserve existing models, GPU settings and the Runner's other backends. Backend
+updates may remove the helper again, so recheck the specific failure if it recurs.
+
+Windows with WSL2 and a supported NVIDIA GPU can provide CUDA vLLM, as described
+in [Docker's inference engine guide](https://docs.docker.com/ai/model-runner/inference-engines/).
+A native Windows Runner build can still report `Not Installed: only supported on
+Linux`. That reports the connected Runner's deployment, not lack of hardware
+support. Declare Safetensors when provisioning the supported Linux/WSL2 vLLM
+deployment; its unavailable status stays visible until that backend is connected.
+The application never replaces the selected endpoint or backend automatically.
 
 ## Apple Silicon MLX backend payload
 

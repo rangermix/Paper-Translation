@@ -11,7 +11,9 @@ const sizeOf = (model: LocalModel) => `${model.parameter_size} · ${model.quanti
 const labels: Record<string, string> = { ready: '已下载', not_downloaded: '首次使用时下载', downloading: '正在下载',
   loading: '正在加载', failed: '准备失败，可重试', unavailable: '本地模型服务未就绪' };
 const backendLabels: Record<string, string> = { LOCAL_GGUF_UNAVAILABLE: 'llama.cpp 后端未就绪',
-  LOCAL_VLLM_UNAVAILABLE: 'vLLM 后端未就绪', LOCAL_MLX_UNAVAILABLE: 'MLX 后端未就绪' };
+  LOCAL_VLLM_UNAVAILABLE: 'vLLM 后端未就绪', LOCAL_MLX_UNAVAILABLE: 'MLX 后端未就绪',
+  LOCAL_CUDA_PROBE_MISSING: 'Docker Runner 缺少 CUDA 检测组件',
+  LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED: '当前 Runner 部署未提供 vLLM 后端' };
 
 export function LocalModels({ value, onChange, active, onAvailabilityChange }: {
   value: string; onChange: (model: string) => void; active: boolean; onAvailabilityChange: (available: boolean) => void;
@@ -97,6 +99,8 @@ export function LocalModels({ value, onChange, active, onAvailabilityChange }: {
     {catalogCode === 'LOCAL_MODEL_SERVICE_UNAVAILABLE' && <p className="field-note">本地翻译服务未启动或无法连接，仍可选择和保存模型。准备模型和翻译前，请在部署中启用本地翻译服务。</p>}
     {!models.length && <p className="field-note">当前部署没有声明受平台与硬件支持的本地翻译格式。GGUF 使用 llama.cpp；Safetensors 使用受支持的 NVIDIA CUDA vLLM；MLX 仅适用于 Apple Silicon macOS。</p>}
     {selected && <><p className="local-model-status" role="status">{backendLabels[selected.code ?? ''] ?? labels[selected.status ?? 'unavailable'] ?? '状态待刷新'} · {selected.format.toUpperCase()} {selected.quantization} · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
+      {selected.code === 'LOCAL_CUDA_PROBE_MISSING' && <p className="field-note">Docker Model Runner 已启用，但缺少 GPU 检测组件。请修复 Docker Desktop 的推理组件后刷新状态。</p>}
+      {selected.code === 'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED' && <p className="field-note">这台设备可通过 Linux／WSL2 的 CUDA vLLM 部署运行 Safetensors；当前连接的 Runner 没有提供该后端。启用 Runner 开关不会自动接入另一种部署。</p>}
       <p className="local-model-id mono">{selected.model_id}</p>
       {selected.status === 'downloading' && selected.total_bytes ? <progress aria-label="模型下载进度" value={selected.downloaded_bytes ?? 0} max={selected.total_bytes}/> : null}
       <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={pending || ['downloading', 'loading', 'unavailable'].includes(selected.status ?? '')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>

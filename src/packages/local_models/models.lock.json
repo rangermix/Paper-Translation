@@ -266,6 +266,69 @@
       ]
     },
     {
+      "id": "milmmt-46-1b-q4-k-m-gguf",
+      "label": "MiLMMT-46-1B Q4_K_M GGUF",
+      "family": "milmmt",
+      "parameter_size": "1B",
+      "quantization": "Q4_K_M",
+      "bits": 4,
+      "runtime": "llama.cpp",
+      "format": "gguf",
+      "repo": "mradermacher/MiLMMT-46-1B-v0.1-GGUF",
+      "revision": "b1df0ed3a68176ac11281077fdf74a8c17e4938f",
+      "context_size": 8192,
+      "license": "gemma",
+      "files": [
+        {
+          "path": "MiLMMT-46-1B-v0.1.Q4_K_M.gguf",
+          "sha256": "9d5c10855eb2688d453e3069e7b6dee1756fc834d738d2dc04318511993fd54f",
+          "size": 1013675392
+        }
+      ]
+    },
+    {
+      "id": "milmmt-46-4b-q4-k-m-gguf",
+      "label": "MiLMMT-46-4B Q4_K_M GGUF",
+      "family": "milmmt",
+      "parameter_size": "4B",
+      "quantization": "Q4_K_M",
+      "bits": 4,
+      "runtime": "llama.cpp",
+      "format": "gguf",
+      "repo": "mradermacher/MiLMMT-46-4B-v0.1-GGUF",
+      "revision": "815334b74647f86974cff78145d5101e805d8f44",
+      "context_size": 8192,
+      "license": "gemma",
+      "files": [
+        {
+          "path": "MiLMMT-46-4B-v0.1.Q4_K_M.gguf",
+          "sha256": "9888198d9f1cbac935f6428a2a4aead1272f55c1d5ebacd395ab1575bd09b1ec",
+          "size": 2867472640
+        }
+      ]
+    },
+    {
+      "id": "milmmt-46-12b-q4-k-m-gguf",
+      "label": "MiLMMT-46-12B Q4_K_M GGUF",
+      "family": "milmmt",
+      "parameter_size": "12B",
+      "quantization": "Q4_K_M",
+      "bits": 4,
+      "runtime": "llama.cpp",
+      "format": "gguf",
+      "repo": "mradermacher/MiLMMT-46-12B-v0.1-GGUF",
+      "revision": "5d881dd4daff5a463aec0b84b8072d0b3d9931d8",
+      "context_size": 8192,
+      "license": "gemma",
+      "files": [
+        {
+          "path": "MiLMMT-46-12B-v0.1.Q4_K_M.gguf",
+          "sha256": "c9ccc4ae361c83aa63d2c0995851f4bb1981609959ed184727c1d135d81cd28f",
+          "size": 7867146656
+        }
+      ]
+    },
+    {
       "id": "minicpm5-1b-q4",
       "label": "MiniCPM5-1B Q4 analyst",
       "family": "minicpm5",

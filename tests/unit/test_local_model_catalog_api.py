@@ -18,9 +18,9 @@ def catalog_client(monkeypatch, handler):
 
 
 @pytest.mark.parametrize('formats,families,count', [
-    ('gguf', {'hy'}, 2),
-    ('gguf,mlx', {'hy', 'milmmt'}, 6),
-    ('gguf,safetensors', {'hy'}, 3),
+    ('gguf', {'hy', 'milmmt'}, 5),
+    ('gguf,mlx', {'hy', 'milmmt'}, 9),
+    ('gguf,safetensors', {'hy', 'milmmt'}, 6),
 ])
 def test_service_outage_keeps_platform_supported_catalog(monkeypatch, formats, families, count):
     monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', formats)
@@ -75,5 +75,5 @@ def test_invalid_sidecar_response_does_not_hide_catalog(monkeypatch):
     monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', 'gguf')
     with catalog_client(monkeypatch, lambda _: httpx.Response(200, json={'models': None})) as client:
         body = client.get('/api/v1/settings/local-models').json()
-    assert len(body['models']) == 2
+    assert len(body['models']) == 5
     assert body['code'] == 'LOCAL_MODEL_SERVICE_UNAVAILABLE'

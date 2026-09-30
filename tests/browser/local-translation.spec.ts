@@ -136,3 +136,46 @@ test('stopped local service keeps model selection and saving available', async (
   expect(profile.model_id).toBe(row.model_id);
   expect(errors).toEqual([]);
 });
+
+test('backend installation diagnostics retain hardware-supported formats', async ({ page }) => {
+  const rows = [
+    { id: 'hy-gguf', format: 'gguf', runtime: 'llama.cpp', quantization: 'Q4_K_M', bits: 4,
+      code: 'LOCAL_CUDA_PROBE_MISSING', model_id: `sha256:${'a'.repeat(64)}` },
+    { id: 'hy-vllm', format: 'safetensors', runtime: 'vllm', quantization: 'BF16', bits: 16,
+      code: 'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED', model_id: `sha256:${'b'.repeat(64)}` },
+  ].map(row => ({ ...row, label: row.id, family: 'hy', family_label: 'Hy-MT2', parameter_size: '1.8B',
+    repo: 'synthetic/model', revision: 'c'.repeat(40), download_bytes: 1000000000, status: 'unavailable' }));
+  const errors: string[] = []; const writes: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/api/v1/**', route => {
+    const request = route.request(); const path = new URL(request.url()).pathname.slice(7);
+    if (request.method() !== 'GET') writes.push(path);
+    const values: Record<string, unknown> = {
+      '/settings/provider': { generation: 1, configured: false, has_api_key: false,
+        api_protocol: 'responses', provider: 'openai', auth_mode: 'bearer', endpoint: '', model_id: '', enabled_pairs: [] },
+      '/settings/local-models': { models: rows }, '/settings/dispatch': { generation: 1, dispatch_disabled: false },
+      '/settings/preferences': { generation: 1, locale: 'zh-Hans' },
+      '/capabilities': { phase: 'M2', source_mime_types: ['application/pdf'] }, '/jobs': { items: [] } };
+    return route.fulfill({ json: values[path] ?? {}, headers: { ETag: '"1"' } });
+  });
+  await page.goto('/#/settings');
+  await page.getByLabel('接口类型', { exact: true }).selectOption('local_translation');
+  await page.getByRole('combobox', { name: '模型系列' }).selectOption('hy');
+  const size = page.getByRole('combobox', { name: '参数规模与量化' });
+  const format = page.getByRole('combobox', { name: '模型格式' });
+  const model = page.getByRole('combobox', { name: '具体模型 ID' });
+  const status = page.getByRole('region', { name: '本地翻译模型', exact: true }).getByRole('status');
+  await size.selectOption('1.8B · Q4'); await format.selectOption('gguf'); await model.selectOption(rows[0].model_id);
+  await expect(status).toContainText('Docker Runner 缺少 CUDA 检测组件');
+  await expect(page.getByRole('button', { name: '立即准备模型', exact: true })).toBeDisabled();
+  await size.selectOption('1.8B · BF16'); await format.selectOption('safetensors'); await model.selectOption(rows[1].model_id);
+  await expect(status).toContainText('当前 Runner 部署未提供 vLLM 后端');
+  await expect(page.getByRole('button', { name: '保存 AI 服务配置', exact: true })).toBeEnabled();
+  await size.selectOption('1.8B · Q4');
+  await expect(model).toHaveValue(rows[0].model_id);
+  rows[0].status = 'not_downloaded'; rows[0].code = '';
+  await page.getByRole('button', { name: '刷新模型状态', exact: true }).click();
+  await expect(status).toContainText('首次使用时下载');
+  await expect(page.getByRole('button', { name: '立即准备模型', exact: true })).toBeEnabled();
+  expect(writes).toEqual([]); expect(errors).toEqual([]);
+});

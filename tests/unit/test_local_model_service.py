@@ -21,7 +21,7 @@ def test_catalog_get_does_not_download_and_unknown_post_is_rejected(tmp_path):
     with TestClient(app) as client:
         response = client.get('/models')
         assert response.status_code == 200
-        assert len(response.json()['models']) == 7
+        assert len(response.json()['models']) == 10
         assert list(tmp_path.iterdir()) == []
         assert client.post('/models/arbitrary/prepare').status_code == 404
 
@@ -183,7 +183,7 @@ def test_deployment_capability_is_separate_from_backend_installation(tmp_path):
         'vllm': 'Not Installed', 'llama.cpp': 'Not Installed'} if r.url.path == '/engines/status' else []))
     with TestClient(create_app(cache=tmp_path, transport=transport, formats='gguf')) as client:
         rows = client.get('/models').json()['models']
-        assert [row['format'] for row in rows] == ['gguf', 'gguf']
+        assert [row['format'] for row in rows] == ['gguf'] * 5
         assert all(row['status'] == 'unavailable' for row in rows)
         assert client.post('/models/hy-mt2-1.8b-q8/prepare').status_code == 409
     with TestClient(create_app(cache=tmp_path, transport=transport, formats='safetensors')) as client:
@@ -202,6 +202,62 @@ def test_format_defaults_and_explicit_deployment_capabilities(monkeypatch):
     assert configured_formats('gguf,safetensors') == {'gguf', 'safetensors'}
     with pytest.raises(ValueError, match='LOCAL_MODEL_FORMATS_INVALID'):
         configured_formats('gguf,unknown')
+
+
+@pytest.mark.parametrize('slug,status,code', [
+    ('hy-mt2-1.8b-q4-k-m-gguf',
+     'Error: failed to check CUDA 11 capability: fork/exec C:\\Users\\synthetic\\.docker\\bin\\inference\\com.docker.nv-gpu-info.exe: The system cannot find the file specified.',
+     'LOCAL_CUDA_PROBE_MISSING'),
+    ('hy-mt2-1.8b-q4-k-m-gguf',
+     'Error: failed to check CUDA 11 capability: com.docker.nv-gpu-info.exe: Access is denied.',
+     'LOCAL_GGUF_UNAVAILABLE'),
+    ('hy-mt2-1.8b-bf16-vllm', 'Not Installed: only supported on Linux',
+     'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED'),
+])
+def test_backend_failures_have_bounded_actionable_codes(tmp_path, slug, status, code):
+    from packages.local_models.service import create_app, engine
+    model = get_model(slug); calls = []
+    def handle(request):
+        calls.append(request)
+        assert request.url.path == '/engines/status'
+        return httpx.Response(200, json={engine(model): status})
+    with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle))) as client:
+        rows = client.get('/models').json()['models']
+    row = next(row for row in rows if row['id'] == slug)
+    assert row['status'] == 'unavailable' and row['code'] == code
+    assert all(request.method == 'GET' for request in calls)
+    assert 'synthetic' not in str(rows)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize('slug', [
+    'milmmt-46-1b-q4-k-m-gguf', 'milmmt-46-4b-q4-k-m-gguf', 'milmmt-46-12b-q4-k-m-gguf',
+])
+def test_milmmt_gguf_uses_native_completion_without_chat_template(tmp_path, slug):
+    from packages.local_models.service import create_app
+    model = get_model(slug); ident = artifact(model)['id']; sent = []
+    prompt = 'Translate this from English to Chinese (Simplified):\nEnglish: Hello.\nChinese (Simplified):'
+    def handle(request):
+        sent.append(request)
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'llama.cpp': 'Running: llama.cpp test'})
+        if request.url.path == '/models':
+            return httpx.Response(200, json=[{'id': ident}])
+        if request.url.path == '/engines/_configure':
+            return httpx.Response(200, json=[{'Backend': 'llama.cpp', 'ModelID': ident,
+                'Config': {'context-size': model['context_size'], 'runtime-flags': []}}])
+        assert request.url.path == '/engines/llama.cpp/v1/completions'
+        import json
+        payload = json.loads(request.content)
+        assert payload['prompt'] == prompt and payload['model'] == ident
+        assert payload['add_special_tokens'] is False and 'messages' not in payload
+        return httpx.Response(200, json={'model': ident, 'choices': [{'text': '你好。', 'finish_reason': 'stop'}]})
+    with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle), formats='gguf')) as client:
+        result = client.post('/v1/completions', json={'model': ident, 'prompt': prompt, 'max_tokens': 32})
+    assert result.status_code == 200
+    assert result.json()['model'] == ident
+    assert [request.method for request in sent].count('POST') == 1
+    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.parametrize('slug,backend,expected_path', [

@@ -70,6 +70,12 @@ class Manager:
         expected = {'mlx': 'Running: vllm-metal ', 'vllm': 'Running: vllm ',
                     'llama.cpp': 'Running: llama.cpp '}[model['runtime']]
         if not isinstance(backend, str) or not backend.startswith(expected):
+            if isinstance(backend, str):
+                if (model['runtime'] == 'llama.cpp' and 'com.docker.nv-gpu-info.exe' in backend
+                        and ('cannot find the file' in backend.lower() or 'no such file' in backend.lower())):
+                    raise ValueError('LOCAL_CUDA_PROBE_MISSING')
+                if model['runtime'] == 'vllm' and 'only supported on Linux' in backend:
+                    raise ValueError('LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED')
             raise ValueError({'mlx': 'LOCAL_MLX_UNAVAILABLE', 'vllm': 'LOCAL_VLLM_UNAVAILABLE',
                               'llama.cpp': 'LOCAL_GGUF_UNAVAILABLE'}[model['runtime']])
         return backend
@@ -127,9 +133,11 @@ class Manager:
             backend = self.backend(model, statuses)
             status = 'ready' if self.installed(model) else 'not_downloaded'
             return {'status': status, 'backend': backend}
-        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-            return {'status': 'unavailable', 'code': {'mlx': 'LOCAL_MLX_UNAVAILABLE', 'vllm': 'LOCAL_VLLM_UNAVAILABLE',
-                    'llama.cpp': 'LOCAL_GGUF_UNAVAILABLE'}[model['runtime']]}
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            code = str(exc) if str(exc) in {'LOCAL_CUDA_PROBE_MISSING', 'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED'} else {
+                'mlx': 'LOCAL_MLX_UNAVAILABLE', 'vllm': 'LOCAL_VLLM_UNAVAILABLE',
+                'llama.cpp': 'LOCAL_GGUF_UNAVAILABLE'}[model['runtime']]
+            return {'status': 'unavailable', 'code': code}
 
     def prepare(self, model):
         with self.lock:
@@ -189,6 +197,7 @@ class Manager:
         except Exception as exc:
             allowed = {'LOCAL_MODEL_HASH', 'LOCAL_MODEL_PATH', 'LOCAL_MODEL_DOWNLOAD_TIMEOUT',
                        'LOCAL_MODEL_LOAD_FAILED', 'LOCAL_MLX_UNAVAILABLE', 'LOCAL_VLLM_UNAVAILABLE', 'LOCAL_GGUF_UNAVAILABLE',
+                       'LOCAL_CUDA_PROBE_MISSING', 'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED',
                        'LOCAL_MODEL_BACKEND_CONFIG', 'LOCAL_MODEL_BUSY'}
             code = str(exc) if str(exc) in allowed else 'LOCAL_MODEL_DOWNLOAD_FAILED'
             with self.lock:

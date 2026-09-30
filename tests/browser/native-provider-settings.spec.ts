@@ -46,8 +46,8 @@ async function setup(page: Page, value: Record<string, unknown> = profile) {
 }
 const save = (page: Page) => page.getByRole('button', { name: '保存 AI 服务配置', exact: true });
 
-// M1-R08/M1-R22: selecting an interface changes the draft, with no implicit save or key reuse.
-for (const initial of interfaces) test(`interface defaults replace URL and model when switching from ${initial.protocol}`, async ({ page }) => {
+// M1-R08/M1-R22: first visits use defaults; returning restores each draft without saving or reusing a key.
+for (const initial of interfaces) test(`interface defaults and drafts stay separate when switching from ${initial.protocol}`, async ({ page }) => {
   const { writes, errors } = await setup(page, { ...profile, api_protocol: initial.protocol, has_api_key: false, auth_mode: 'none' });
   await page.goto('/#/settings');
   const selector = page.getByLabel('接口类型', { exact: true });
@@ -55,16 +55,25 @@ for (const initial of interfaces) test(`interface defaults replace URL and model
   const model = page.getByLabel('模型 ID', { exact: true });
   await expect(endpoint).toHaveValue(profile.endpoint);
   await expect(model).toHaveValue(profile.model_id);
-  for (const target of [...interfaces.filter(value => value.protocol !== initial.protocol), initial]) {
+  const others = interfaces.filter(value => value.protocol !== initial.protocol);
+  for (const target of others) {
     await selector.selectOption(target.protocol);
     await expect(endpoint).toHaveValue(target.endpoint);
     await expect(model).toHaveValue(target.model);
-    await endpoint.fill('http://local-ai:11434/custom/path');
-    await model.fill('my-model:latest');
-    await selector.selectOption(target.protocol);
-    await expect(endpoint).toHaveValue('http://local-ai:11434/custom/path');
-    await expect(model).toHaveValue('my-model:latest');
+    await endpoint.fill(`http://local-ai:11434/${target.protocol}`);
+    await model.fill(`model-${target.protocol}`);
+    await selector.selectOption(initial.protocol);
+    await expect(endpoint).toHaveValue(profile.endpoint);
+    await expect(model).toHaveValue(profile.model_id);
   }
+  for (const target of others) {
+    await selector.selectOption(target.protocol);
+    await expect(endpoint).toHaveValue(`http://local-ai:11434/${target.protocol}`);
+    await expect(model).toHaveValue(`model-${target.protocol}`);
+  }
+  await selector.selectOption(initial.protocol);
+  await endpoint.fill('http://local-ai:11434/custom/path');
+  await model.fill('my-model:latest');
   expect(writes).toEqual([]);
   await save(page).click();
   await expect.poll(() => writes.length).toBe(1);
@@ -172,8 +181,8 @@ test('native controls and Claude version remain readable at desktop and mobile s
   await expect(page).toHaveURL(/\/#\/settings$/);
   await page.getByLabel('接口类型', { exact: true }).selectOption('gemini_interactions');
   await page.getByLabel('接口类型', { exact: true }).selectOption('claude_messages');
-  await expect(page.getByLabel('完整请求 URL', { exact: true })).toHaveValue('https://api.anthropic.com/v1/messages');
-  await expect(page.getByLabel('模型 ID', { exact: true })).toHaveValue('claude-sonnet-5');
+  await expect(page.getByLabel('完整请求 URL', { exact: true })).toHaveValue(profile.endpoint);
+  await expect(page.getByLabel('模型 ID', { exact: true })).toHaveValue(profile.model_id);
   await page.getByText('高级选项：价格与请求限制', { exact: true }).click();
   await expect(page.getByLabel('Anthropic API 版本', { exact: true })).toHaveValue('2023-06-01');
   await page.screenshot({ path: evidence ? resolve(evidence, 'native-settings-desktop.png') : testInfo.outputPath('native-settings-desktop.png'), fullPage: true });

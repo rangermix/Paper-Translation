@@ -1,13 +1,24 @@
-# Local translation and paper analysis with MLX
+# Local translation and paper analysis
 
-Settings → AI service → **本地翻译模型（MLX）** offers:
+Settings → AI service → **本地翻译模型** selects model family, parameter size and
+quantization, format, then the exact Docker Model Runner model ID. The pinned
+translation catalog currently includes:
 
-| Option | Pinned MLX repository | Quantization |
+| Format and engine | Pinned repositories | Deployment capability |
 | --- | --- | --- |
-| Hy-MT2-1.8B Q8 | mlx-community/Hy-MT2-1.8B-8bit | 8 bit |
-| MiLMMT-46-4B Q4 | shraey/milmmt-46-4b-mlx-4bit | 4 bit |
-| Hy-MT2-7B Q4 | mlx-community/Hy-MT2-7B-4bit | 4 bit |
-| MiLMMT-46-12B Q4 | mlx-community/MiLMMT-46-12B-v0.1-4bit | 4 bit |
+| GGUF / llama.cpp | tencent/Hy-MT2-1.8B-GGUF and tencent/Hy-MT2-7B-GGUF, Q4_K_M | Docker hosts with a supported llama.cpp backend |
+| Safetensors / vLLM | tencent/Hy-MT2-1.8B, BF16 | Docker Model Runner deployment with supported NVIDIA CUDA vLLM (Linux x86_64 or supported Windows WSL2) |
+| MLX / Docker-managed vLLM Metal | mlx-community/Hy-MT2-1.8B-8bit, shraey/milmmt-46-4b-mlx-4bit, mlx-community/Hy-MT2-7B-4bit, mlx-community/MiLMMT-46-12B-v0.1-4bit | Apple Silicon macOS with the provisioned MLX backend |
+
+`LOCAL_TRANSLATION_FORMATS` declares the formats supported by this deployment,
+for example `gguf`, `gguf,mlx`, or `gguf,safetensors`. The sidecar has no Docker
+socket or host hardware access, so set this in the instance's local Compose
+environment after checking the host and Docker Model Runner engine support.
+The default is GGUF, or GGUF plus MLX when the Mac's pinned Paddle MLX model is
+declared. An engine may be supported but not installed, running, or able to fit
+a selected model. Those conditions appear as model status and do not remove a
+supported format from the selector. Docker Model Runner can package Safetensors
+on other hosts, but packaging alone does not provide vLLM inference there.
 
 Translation preparation also offers a separate **MiniCPM5-1B Q4 analyst**, pinned
 to [openbmb/MiniCPM5-1B-MLX](https://huggingface.co/openbmb/MiniCPM5-1B-MLX)
@@ -19,8 +30,9 @@ as well as a local one. This is not a CPU/CUDA analyst backend.
 
 Apple Silicon uses MLX safetensors through the same Docker Model Runner
 vLLM Metal backend as PaddleOCR. These are MLX affine quantizations, not GGUF.
-The local translation service requires Apple Silicon and the Docker-managed Paddle MLX backend;
-the current implementation does not provide a CPU/CUDA local-translation backend.
+The GGUF path uses llama.cpp and may run on CPU or a supported GPU. Safetensors
+uses the standard vLLM backend and requires a supported NVIDIA CUDA environment.
+No path silently chooses a different format, model, or remote provider.
 
 ## Download and use
 
@@ -76,13 +88,14 @@ The `local-translation` profile is included in
 add its `local-model-init` and `local-translator` services and their network/cache
 declarations to the preserved local `compose.yaml`; keep the app/worker connections
 to the internal model-control network. New copies already contain these definitions.
-Prepare the [MLX backend](mlx-backend.md) and select the local file's MLX parser mode
-as described in [acceleration](extraction-acceleration.md), then build the app image
-and start the optional services:
+Declare the supported formats for the host in the local environment file.
+On Apple Silicon, prepare the [MLX backend](mlx-backend.md) and select the
+local file's MLX parser mode as described in [acceleration](extraction-acceleration.md).
+Build the app image and start the optional services:
 
 ```sh
-docker compose --env-file .env.mlx build app
-docker compose --env-file .env.mlx --profile local-translation \
+docker compose build app
+docker compose --profile local-translation \
   up -d --no-build --wait app worker local-translator
 ```
 
@@ -95,7 +108,7 @@ mount. Compose startup does not download any translation model. The API and
 worker reach it on an internal control network; its other network reaches DMR
 and pinned weight repositories. No runtime pip/npm installation occurs.
 
-## Docker-managed backend payload
+## Apple Silicon MLX backend payload
 
 The Paddle backend image must already exist as
 `local/paper-translation-vllm-metal:latest`. Build the translation extension:

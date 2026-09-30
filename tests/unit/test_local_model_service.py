@@ -1,16 +1,27 @@
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
-from packages.local_models.catalog import artifact, models
+from packages.local_models.catalog import artifact, get_model, models
+
+
+@pytest.fixture(autouse=True)
+def all_deployment_formats(monkeypatch):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', 'gguf,mlx,safetensors')
 
 
 def test_catalog_get_does_not_download_and_unknown_post_is_rejected(tmp_path):
     from packages.local_models.service import create_app
-    app = create_app(cache=tmp_path)
+    def handle(request):
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'vllm': 'Running: vllm-metal test',
+                                             'llama.cpp': 'Running: llama.cpp test'})
+        return httpx.Response(200, json=[])
+    app = create_app(cache=tmp_path, transport=httpx.MockTransport(handle))
     with TestClient(app) as client:
         response = client.get('/models')
         assert response.status_code == 200
-        assert len(response.json()['models']) == 4
+        assert len(response.json()['models']) == 7
         assert list(tmp_path.iterdir()) == []
         assert client.post('/models/arbitrary/prepare').status_code == 404
 
@@ -164,3 +175,72 @@ def test_prepare_ready_model_does_not_interrupt_concurrent_inference(tmp_path):
         assert manager.state(model)['status'] == 'ready'
     assert all(request.method == 'GET' for request in calls)
     assert any(request.url.path == '/engines/_configure' for request in calls)
+
+
+def test_deployment_capability_is_separate_from_backend_installation(tmp_path):
+    from packages.local_models.service import create_app
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, json={
+        'vllm': 'Not Installed', 'llama.cpp': 'Not Installed'} if r.url.path == '/engines/status' else []))
+    with TestClient(create_app(cache=tmp_path, transport=transport, formats='gguf')) as client:
+        rows = client.get('/models').json()['models']
+        assert [row['format'] for row in rows] == ['gguf', 'gguf']
+        assert all(row['status'] == 'unavailable' for row in rows)
+        assert client.post('/models/hy-mt2-1.8b-q8/prepare').status_code == 409
+    with TestClient(create_app(cache=tmp_path, transport=transport, formats='safetensors')) as client:
+        rows = client.get('/models').json()['models']
+        assert [row['id'] for row in rows] == ['hy-mt2-1.8b-bf16-vllm']
+        assert rows[0]['status'] == 'unavailable'
+
+
+def test_format_defaults_and_explicit_deployment_capabilities(monkeypatch):
+    from packages.local_models.service import configured_formats
+    monkeypatch.delenv('LOCAL_TRANSLATION_FORMATS')
+    monkeypatch.delenv('PADDLE_MLX_MODEL_ID', raising=False)
+    assert configured_formats() == {'gguf'}
+    monkeypatch.setenv('PADDLE_MLX_MODEL_ID', 'sha256:' + 'a' * 64)
+    assert configured_formats() == {'gguf', 'mlx'}
+    assert configured_formats('gguf,safetensors') == {'gguf', 'safetensors'}
+    with pytest.raises(ValueError, match='LOCAL_MODEL_FORMATS_INVALID'):
+        configured_formats('gguf,unknown')
+
+
+@pytest.mark.parametrize('slug,backend,expected_path', [
+    ('hy-mt2-1.8b-q4-k-m-gguf', 'llama.cpp', '/engines/llama.cpp/v1/chat/completions'),
+    ('hy-mt2-1.8b-bf16-vllm', 'vllm', '/engines/vllm/v1/chat/completions'),
+])
+def test_non_mlx_translation_routes_to_exact_engine(tmp_path, slug, backend, expected_path):
+    from packages.local_models.service import RUNTIME_FLAGS, create_app
+    model = get_model(slug); ident = artifact(model)['id']; sent = []
+    def handle(request):
+        sent.append(request)
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={backend: 'Running: ' + backend + ' test'})
+        if request.url.path == '/models':
+            return httpx.Response(200, json=[{'id': ident}])
+        if request.url.path == '/engines/_configure':
+            return httpx.Response(200, json=[{'Backend': backend, 'ModelID': ident,
+                'Config': {'context-size': 8192, 'runtime-flags': RUNTIME_FLAGS if backend == 'vllm' else []}}])
+        if request.url.path == expected_path:
+            return httpx.Response(200, json={'id': 'local-test', 'model': ident,
+                'choices': [{'message': {'role': 'assistant', 'content': '你好。'}, 'finish_reason': 'stop'}],
+                'usage': {'prompt_tokens': 10, 'completion_tokens': 3}})
+        raise AssertionError(request.url.path)
+    with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle),
+                               formats='gguf,safetensors')) as client:
+        response = client.post('/v1/completions', json={'model': ident,
+            'messages': [{'role': 'user', 'content': 'Translate Hello.'}], 'max_tokens': 32})
+    assert response.status_code == 200, response.text
+    assert response.json()['choices'][0]['text'] == '你好。'
+    assert response.json()['model'] == ident
+    assert any(request.url.path == expected_path for request in sent)
+
+
+def test_gguf_artifact_uses_gguf_layer_and_fixed_quantization():
+    import json
+    model = get_model('hy-mt2-1.8b-q4-k-m-gguf')
+    package = artifact(model)
+    config, manifest = json.loads(package['config']), json.loads(package['manifest'])
+    assert config['config']['format'] == 'gguf'
+    assert config['config']['quantization'] == 'Q4_K_M'
+    assert manifest['layers'][0]['mediaType'] == 'application/vnd.docker.ai.gguf.v3'
+    assert manifest['layers'][0]['digest'] == 'sha256:' + model['files'][0]['sha256']

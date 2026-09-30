@@ -9,11 +9,31 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from .catalog import artifact, get_model, public_models
+from .catalog import artifact, get_model, public_models, selectable_format
 from .download import archive, download
 
 DMR = 'http://model-runner.docker.internal'
 RUNTIME_FLAGS = ['--gpu-memory-utilization', '0.8', '--max-num-seqs', '1', '--max-num-batched-tokens', '512']
+
+
+def engine(model):
+    return 'vllm' if model['runtime'] in ('mlx', 'vllm') else 'llama.cpp'
+
+
+def runtime_flags(model):
+    return RUNTIME_FLAGS if engine(model) == 'vllm' else []
+
+
+def configured_formats(value=None):
+    # The sidecar cannot inspect host OS/GPU without a Docker socket. The Compose
+    # deployment declares supported formats; installation is a separate status.
+    raw = value if value is not None else os.environ.get('LOCAL_TRANSLATION_FORMATS', '')
+    if not raw:
+        raw = 'gguf,mlx' if os.environ.get('PADDLE_MLX_MODEL_ID', '').startswith('sha256:') else 'gguf'
+    formats = [part.strip().lower() for part in raw.split(',')]
+    if not formats or any(part not in {'gguf', 'mlx', 'safetensors'} for part in formats) or len(set(formats)) != len(formats):
+        raise ValueError('LOCAL_MODEL_FORMATS_INVALID')
+    return frozenset(formats)
 
 
 class Completion(BaseModel):
@@ -29,8 +49,9 @@ class Completion(BaseModel):
 
 
 class Manager:
-    def __init__(self, cache, transport=None):
+    def __init__(self, cache, transport=None, formats=None):
         self.cache, self.transport = Path(cache), transport
+        self.formats = configured_formats(formats)
         self.states = {}
         self.lock = threading.RLock()
         self.inference_lock = threading.Lock()
@@ -40,24 +61,36 @@ class Manager:
         return httpx.Client(transport=self.transport or httpx.HTTPTransport(retries=0), timeout=timeout,
                             follow_redirects=False, trust_env=False)
 
+    def supported(self, model):
+        return selectable_format(model) in self.formats
+
     def installed(self, model):
         with self.client() as client:
             response = client.get(DMR + '/models')
             response.raise_for_status()
             return any(row['id'] == artifact(model)['id'] for row in response.json())
 
-    def backend(self):
+    def engine_status(self):
         with self.client() as client:
             response = client.get(DMR + '/engines/status')
             response.raise_for_status()
-            backend = response.json().get('vllm', '')
-            if not isinstance(backend, str) or not backend.startswith('Running: vllm-metal '):
-                raise ValueError('LOCAL_MLX_UNAVAILABLE')
-            return backend
+            return response.json()
+
+    def backend(self, model, statuses=None):
+        name = engine(model)
+        backend = (statuses if statuses is not None else self.engine_status()).get(name, '')
+        expected = {'mlx': 'Running: vllm-metal ', 'vllm': 'Running: vllm ',
+                    'llama.cpp': 'Running: llama.cpp '}[model['runtime']]
+        if not isinstance(backend, str) or not backend.startswith(expected):
+            raise ValueError({'mlx': 'LOCAL_MLX_UNAVAILABLE', 'vllm': 'LOCAL_VLLM_UNAVAILABLE',
+                              'llama.cpp': 'LOCAL_GGUF_UNAVAILABLE'}[model['runtime']])
+        return backend
 
     def reserve_gpu(self, model):
         """Retire only idle project models; never interrupt another running request."""
-        owned = {m['model_id'] for m in public_models(purpose='all')}
+        if model['runtime'] != 'mlx':
+            return
+        owned = {m['model_id'] for m in public_models(purpose='all') if m['runtime'] == 'mlx'}
         paddle = os.environ.get('PADDLE_MLX_MODEL_ID', '')
         if paddle.startswith('sha256:'):
             owned.add(paddle)
@@ -90,22 +123,25 @@ class Manager:
         with self.client() as client:
             response = client.get(DMR + '/engines/_configure', params={'model': artifact(model)['id']})
             response.raise_for_status()
-            return any(row.get('Backend') == 'vllm' and row.get('ModelID') == artifact(model)['id']
-                       and row.get('Config', {}).get('runtime-flags') == RUNTIME_FLAGS
+            return any(row.get('Backend') == engine(model) and row.get('ModelID') == artifact(model)['id']
+                       and (row.get('Config', {}).get('runtime-flags') or []) == runtime_flags(model)
                        and row.get('Config', {}).get('context-size') == model['context_size']
                        for row in response.json())
 
-    def state(self, model):
+    def state(self, model, statuses=None):
+        if not self.supported(model):
+            return {'status': 'unavailable', 'code': 'LOCAL_MODEL_FORMAT_UNSUPPORTED'}
         with self.lock:
             current = dict(self.states.get(model['id'], {}))
         if current.get('status') in ('downloading', 'loading', 'failed'):
             return current
         try:
-            backend = self.backend()
+            backend = self.backend(model, statuses)
             status = 'ready' if self.installed(model) else 'not_downloaded'
             return {'status': status, 'backend': backend}
         except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-            return {'status': 'unavailable', 'code': 'LOCAL_MLX_UNAVAILABLE'}
+            return {'status': 'unavailable', 'code': {'mlx': 'LOCAL_MLX_UNAVAILABLE', 'vllm': 'LOCAL_VLLM_UNAVAILABLE',
+                    'llama.cpp': 'LOCAL_GGUF_UNAVAILABLE'}[model['runtime']]}
 
     def prepare(self, model):
         with self.lock:
@@ -117,7 +153,7 @@ class Manager:
                     # Every unit prepares, including while another is inferring.
                     # Revalidate DMR's effective configuration without taking a
                     # working model offline or queueing behind inference.
-                    self.backend()
+                    self.backend(model)
                     if self.installed(model) and self.configuration_matches(model):
                         return dict(existing)
                 except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
@@ -136,7 +172,7 @@ class Manager:
             with self.lock:
                 self.states[model['id']].update(fields)
         try:
-            self.backend()
+            self.backend(model)
             # Cross-process cache lock and one active download. No shared secret storage.
             with _locked(self.cache):
                 if not self.installed(model):
@@ -156,23 +192,24 @@ class Manager:
                     # Recheck effective flags instead of caching a preparation receipt.
                     if not self.configuration_matches(model):
                         with self.client(timeout=30) as client:
-                            response = client.post(DMR + '/engines/vllm/_configure', json={
+                            response = client.post(DMR + '/engines/' + engine(model) + '/_configure', json={
                                 'model': artifact(model)['id'], 'context-size': model['context_size'],
-                                'keep_alive': '30s', 'runtime-flags': RUNTIME_FLAGS})
+                                'keep_alive': '30s', 'runtime-flags': runtime_flags(model)})
                             if response.status_code not in (200, 202, 204):
                                 raise ValueError('LOCAL_MODEL_BACKEND_CONFIG')
             update(status='ready')
         except Exception as exc:
             allowed = {'LOCAL_MODEL_HASH', 'LOCAL_MODEL_PATH', 'LOCAL_MODEL_DOWNLOAD_TIMEOUT',
-                       'LOCAL_MODEL_LOAD_FAILED', 'LOCAL_MLX_UNAVAILABLE', 'LOCAL_MODEL_BACKEND_CONFIG', 'LOCAL_MODEL_BUSY'}
+                       'LOCAL_MODEL_LOAD_FAILED', 'LOCAL_MLX_UNAVAILABLE', 'LOCAL_VLLM_UNAVAILABLE', 'LOCAL_GGUF_UNAVAILABLE',
+                       'LOCAL_MODEL_BACKEND_CONFIG', 'LOCAL_MODEL_BUSY'}
             code = str(exc) if str(exc) in allowed else 'LOCAL_MODEL_DOWNLOAD_FAILED'
             with self.lock:
                 self.states[model['id']].update(status='failed', code=code)
 
 
-def create_app(*, cache=None, transport=None):
+def create_app(*, cache=None, transport=None, formats=None):
     app = FastAPI(docs_url=None, redoc_url=None)
-    manager = Manager(cache or os.environ.get('LOCAL_MODEL_CACHE', '/model_cache'), transport)
+    manager = Manager(cache or os.environ.get('LOCAL_MODEL_CACHE', '/model_cache'), transport, formats)
     app.state.manager = manager
 
     def lookup(identifier):
@@ -187,7 +224,16 @@ def create_app(*, cache=None, transport=None):
 
     @app.get('/models')
     def catalog(purpose: Literal['translation', 'analysis', 'all'] = 'translation'):
-        return {'models': [{**m, **manager.state(get_model(m['id']))} for m in public_models(purpose=purpose)]}
+        try:
+            statuses = manager.engine_status()
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+            statuses = {}
+        available = []
+        for model in public_models(purpose=purpose):
+            pinned = get_model(model['id'])
+            if manager.supported(pinned):
+                available.append({**model, **manager.state(pinned, statuses)})
+        return {'models': available}
 
     @app.get('/models/{identifier}')
     def status(identifier: str):
@@ -195,13 +241,18 @@ def create_app(*, cache=None, transport=None):
 
     @app.post('/models/{identifier}/prepare', status_code=202)
     def prepare(identifier: str):
-        return manager.prepare(lookup(identifier))
+        model = lookup(identifier)
+        if not manager.supported(model):
+            raise HTTPException(409, 'LOCAL_MODEL_FORMAT_UNSUPPORTED')
+        return manager.prepare(model)
 
     @app.post('/v1/completions')
     def complete(body: Completion):
         model = lookup(body.model)
         if body.model != artifact(model)['id'] or body.stream:
             raise HTTPException(422, 'LOCAL_MODEL_CONFIG')
+        if not manager.supported(model):
+            raise HTTPException(409, 'LOCAL_MODEL_FORMAT_UNSUPPORTED')
         if model.get('purpose') == 'analysis':
             if (body.prompt is not None or body.add_special_tokens
                     or body.chat_template_kwargs != {'enable_thinking': False}
@@ -236,7 +287,8 @@ def create_app(*, cache=None, transport=None):
                 raise HTTPException(503, 'LOCAL_MODEL_NOT_READY') from None
             try:
                 with manager.client(timeout=300) as client:
-                    response = client.post(DMR + '/engines/vllm/v1' + route, json=body.model_dump(exclude_none=True))
+                    response = client.post(DMR + '/engines/' + engine(model) + '/v1' + route,
+                                           json=body.model_dump(exclude_none=True))
                     if response.status_code != 200:
                         raise HTTPException(502, 'LOCAL_MODEL_INFERENCE_FAILED')
                     data = response.json()

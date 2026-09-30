@@ -13,6 +13,7 @@ type Fields = {
   model: string; version: string; inputPrice: string; cachedPrice: string; outputPrice: string;
   costControl: boolean; inputTokens: string; outputTokens: string; unitCharacters: string; includesReasoning: boolean;
 };
+type Draft = { fields: Fields; apiKey: string; clearKey: boolean };
 const dollar = (value?: number | null) => value == null ? '' : String(value / 1_000_000);
 const missingLabels: Record<string, string> = {
   endpoint: '完整请求地址', model_id: '模型 ID', api_key: 'API 密钥', api_protocol: '接口类型', auth_mode: '鉴权方式', api_version: 'Anthropic API 版本',
@@ -29,6 +30,16 @@ const fromProvider = (value: Provider): Fields => ({
   outputTokens: String(value.max_output_tokens ?? value.token_limits_defaults?.max_output_tokens ?? defaultTokenLimits.max_output_tokens),
   unitCharacters: String(value.max_unit_characters ?? value.token_limits_defaults?.max_unit_characters ?? defaultTokenLimits.max_unit_characters), includesReasoning: value.price?.output_includes_reasoning === true,
 });
+function defaultsFor(protocol: Fields['protocol'], base: Provider, auth: Fields['auth']): Fields {
+  const selected = providerProtocols[protocol];
+  return fromProvider({ configured: false, token_limits_defaults: base.token_limits_defaults,
+    api_protocol: protocol, endpoint: selected.defaultEndpoint, model_id: selected.defaultModel,
+    auth_mode: protocol === 'local_translation' ? 'none' : auth === 'none' ? 'none' : selected.auth,
+    api_version: protocol === 'claude_messages' ? '2023-06-01' : undefined,
+    cost_control_enabled: false, price: undefined,
+    ...(protocol === 'local_translation' ? { max_input_tokens: 6144, max_output_tokens: 2048, max_unit_characters: 1500 } : {}),
+  });
+}
 // Decimal strings avoid rounding away a micro-dollar during the UI conversion.
 function micro(value: string): number | undefined {
   if (!value) return undefined;
@@ -73,11 +84,13 @@ export function ProviderSettings({ provider, loading, error, reload, onSaved, on
   </section>;
 }
 
-function ProviderForm({ initial, onSaved }: { initial: Provider & { previous_external?: Provider }; onSaved: (value: Provider) => void }) {
+function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value: Provider) => void }) {
   const [base, setBase] = useState(initial);
   const [fields, setFields] = useState(() => fromProvider(initial));
+  const [drafts, setDrafts] = useState<Partial<Record<Fields['protocol'], Draft>>>({});
   const [apiKey, setApiKey] = useState('');
   const [clearKey, setClearKey] = useState(false);
+  const [localModelAvailable, setLocalModelAvailable] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<ApiError>();
   const [notice, setNotice] = useState('');
@@ -90,33 +103,40 @@ function ProviderForm({ initial, onSaved }: { initial: Provider & { previous_ext
   };
   const protocol = providerProtocols[fields.protocol];
   const local = fields.protocol === 'local_translation';
+  function storedFor(value: Fields['protocol']): Provider | undefined {
+    if ((base.api_protocol ?? 'responses') === value) return base;
+    return base.saved_profiles?.[value] ?? (base.previous_external?.api_protocol === value ? base.previous_external : undefined);
+  }
   function changeProtocol(value: Fields['protocol']) {
     if (value === fields.protocol) return;
-    if (local && initial.previous_external?.api_protocol === value) {
-      setFields(fromProvider(initial.previous_external)); setApiKey(''); setClearKey(false); setNotice(''); return;
-    }
-    const selected = providerProtocols[value];
-    setFields(old => ({ ...old, protocol: value, endpoint: selected.defaultEndpoint, model: selected.defaultModel,
-      version: value === 'claude_messages' ? old.version || '2023-06-01' : old.version, auth: value === 'local_translation' ? 'none' : old.auth === 'none' ? 'none' : selected.auth,
-      ...(value === 'local_translation' ? { costControl: false, inputTokens: '6144', outputTokens: '2048', unitCharacters: '1500' } : {}) }));
-    setApiKey(''); setClearKey(false); setNotice('');
+    setDrafts(old => ({ ...old, [fields.protocol]: { fields, apiKey, clearKey } }));
+    const saved = storedFor(value);
+    const next = drafts[value] ?? { fields: saved ? fromProvider(saved) : defaultsFor(value, base, fields.auth), apiKey: '', clearKey: false };
+    setFields(next.fields); setApiKey(next.apiKey); setClearKey(next.clearKey); setNotice('');
   }
-  const rebind = base.has_api_key !== false && (fields.endpoint.trim() !== (base.endpoint ?? '') || fields.protocol !== (base.api_protocol ?? 'responses') || fields.auth !== (base.auth_mode ?? 'bearer'));
+  const credentialSource = storedFor(fields.protocol) ?? base;
+  const rebind = credentialSource.has_api_key !== false && (fields.endpoint.trim() !== (credentialSource.endpoint ?? '')
+    || fields.protocol !== (credentialSource.api_protocol ?? 'responses') || fields.auth !== (credentialSource.auth_mode ?? 'bearer'));
   const mustRebind = !local && rebind && !apiKey && !clearKey;
   const invalidUrl = endpointInvalid(fields.endpoint.trim());
   const invalidPrice = !local && [fields.inputPrice, fields.cachedPrice, fields.outputPrice].some(value => Number.isNaN(micro(value)));
   const invalidTokens = tokenInvalid(fields.inputTokens, 1_000_000) || tokenInvalid(fields.outputTokens, 1_000_000) || tokenInvalid(fields.unitCharacters, 10_000);
   const invalidKey = /[\r\n]/.test(apiKey) || apiKey.length > 8192;
   const invalidVersion = fields.protocol === 'claude_messages' && fields.version !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(fields.version);
-  const canSave = !pending && !refreshRequired && !latest && !mustRebind && !invalidUrl && !invalidPrice && !invalidTokens && !invalidKey && !invalidVersion && (!local || !!fields.model) && !!etagFor(base);
-  function applyLatest(value: Provider, keepInput: boolean) {
+  const canSave = !pending && !refreshRequired && !latest && !mustRebind && !invalidUrl && !invalidPrice && !invalidTokens && !invalidKey && !invalidVersion && (!local || (!!fields.model && localModelAvailable)) && !!etagFor(base);
+  function applyLatest(value: Provider, keepInput: boolean, savedActive = false) {
     setLoadedVersion(version => version + 1);
     setBase(value); onSaved(value); setLatest(undefined); setRefreshRequired(false); setError(undefined); setApiKey('');
-    if (!keepInput) { setFields(fromProvider(value)); setClearKey(false); }
+    if (!keepInput) {
+      setFields(fromProvider(value)); setClearKey(false);
+      setDrafts(old => { if (!savedActive) return {}; const next = { ...old }; delete next[fields.protocol]; return next; });
+    }
+    else setDrafts(old => Object.fromEntries(Object.entries(old).map(([name, draft]) => [name, { ...draft, apiKey: '' }])));
   }
   async function readLatest() {
     if (running.current) return;
     running.current = true; setPending(true); setApiKey(''); setNotice('');
+    setDrafts(old => Object.fromEntries(Object.entries(old).map(([name, draft]) => [name, { ...draft, apiKey: '' }])));
     try { setLatest(await api<Provider>('/settings/provider')); }
     catch (reason) { setError(saveError(reason)); }
     finally { running.current = false; setPending(false); }
@@ -141,10 +161,11 @@ function ProviderForm({ initial, onSaved }: { initial: Provider & { previous_ext
     };
     const key = !local && fields.auth !== 'none' ? apiKey : '';
     setApiKey('');
+    setDrafts(old => ({ ...old, [fields.protocol]: { fields, apiKey: '', clearKey } }));
     try {
       const value = await api<Provider>('/settings/provider', { method: 'PUT', etag: etagFor(base),
         body: { profile, ...(key ? { api_key: key } : {}), ...(!local && clearKey ? { clear_api_key: true } : {}) } });
-      applyLatest(value, false);
+      applyLatest(value, false, true);
       setNotice(local ? '本地模型配置已保存。' : value.configured && value.dispatch_configuration_ready !== false ? 'AI 服务配置已保存，可测试连接。'
         : 'AI 服务配置已保存，仍等待配置。请补全缺失字段。');
     } catch (reason) {
@@ -152,20 +173,28 @@ function ProviderForm({ initial, onSaved }: { initial: Provider & { previous_ext
       if ([0, 409, 412].includes(safe.status)) setRefreshRequired(true);
     } finally { running.current = false; setPending(false); }
   }
-  const credentialLabel = base.config_source === 'external' && base.has_api_key == null ? '外部密钥状态未核验'
-    : base.has_api_key === true ? '已保存密钥' : '未保存密钥';
+  const credentialLabel = credentialSource.config_source === 'external' && credentialSource.has_api_key == null ? '外部密钥状态未核验'
+    : credentialSource.has_api_key === true && storedFor(fields.protocol) ? '已保存密钥' : '未保存密钥';
   const latestFields = latest ? fromProvider(latest) : undefined;
   const ready = base.configured && base.dispatch_configuration_ready !== false;
   const dirty = JSON.stringify(fields) !== JSON.stringify(fromProvider(base)) || !!apiKey || clearKey;
+  const unsaved = dirty || Object.entries(drafts).some(([name, draft]) => {
+    const selected = name as Fields['protocol'];
+    const saved = storedFor(selected);
+    return !!draft && (JSON.stringify(draft.fields) !== JSON.stringify(saved ? fromProvider(saved) : defaultsFor(selected, base, draft.fields.auth))
+      || !!draft.apiKey || draft.clearKey);
+  });
   return <form className="provider-form" onSubmit={event => { event.preventDefault(); void save(); }} autoComplete="off">
-    <div className="provider-state stack"><span className={ready ? 'provider-ready' : 'muted'}>{ready ? (base.connection_test ? '已配置 · 测试结果见下方' : '已配置 · 未测试') : '等待配置'}</span>{dirty && <span className="settings-unsaved">未保存</span>}</div>
+    <div className="provider-state stack"><span className={ready ? 'provider-ready' : 'muted'}>{ready ? (base.connection_test ? '已配置 · 测试结果见下方' : '已配置 · 未测试') : '等待配置'}</span>{unsaved && <span className="settings-unsaved">未保存</span>}</div>
     {base.missing_fields?.length ? <p className="field-note">待补全：{[...new Set(base.missing_fields.map(field => missingLabels[field] ?? '其他服务配置（请检查高级选项）'))].join('、')}</p> : null}
     <fieldset disabled={pending} className="provider-fields">
       <div className={local ? 'provider-interface' : 'two-cols'}>
         <label className="field">接口类型<select aria-label="接口类型" value={fields.protocol} onChange={event => changeProtocol(event.target.value as Fields['protocol'])}>{Object.entries(providerProtocols).map(([value, entry]) => <option key={value} value={value}>{entry.label}</option>)}</select></label>
         {!local && <label className="field">鉴权方式<select aria-label="鉴权方式" value={fields.auth} onChange={event => { update('auth', event.target.value as Fields['auth']); setApiKey(''); }}><option value={protocol.auth}>API 密钥（{protocol.keyLabel}）</option><option value="none">无鉴权（本地或无需密钥的服务）</option></select></label>}
       </div>
-      {local ? <LocalModels value={fields.model} onChange={value => update('model', value)}/> : <>
+      <LocalModels value={local ? fields.model : drafts.local_translation?.fields.model ?? storedFor('local_translation')?.model_id ?? ''}
+        onChange={value => update('model', value)} active={local} onAvailabilityChange={setLocalModelAvailable}/>
+      {!local && <>
       <label className="field">完整请求 URL<input className="input" type="url" value={fields.endpoint} onChange={event => { update('endpoint', event.target.value); setApiKey(''); }} maxLength={2048} placeholder={protocol.defaultEndpoint} autoCapitalize="none" spellCheck={false}/></label>
       {invalidUrl && <p className="field-note error-text">请输入包含接口路径的 HTTP(S) 地址，不含鉴权信息、查询参数或片段。</p>}
       <label className="field">模型 ID<input className="input" value={fields.model} onChange={event => update('model', event.target.value)} maxLength={160} placeholder="服务实际提供的模型 ID" autoCapitalize="none" spellCheck={false}/></label>

@@ -38,7 +38,7 @@ services. Optional work uses profiles from the same template:
 | Profile | Services and purpose |
 | --- | --- |
 | `maintenance` | `maintenance`: explicit backup, restore, verification and retention commands |
-| `local-translation` | `local-model-init`, `local-translator`: optional Docker-managed MLX translation |
+| `local-translation` | `local-model-init`, `local-translator`: optional Docker Model Runner translation through GGUF/llama.cpp, supported CUDA Safetensors/vLLM, or Apple Silicon MLX |
 | `model-tools` | `model-export`: export already packaged parser weights to an explicitly mounted directory |
 | `tests` | `tests`, `test-db`: disposable Linux/PostgreSQL regression suite |
 | `checks` | `checks`: repository checks with no network, dependencies or product volumes |
@@ -66,7 +66,9 @@ Product images exclude test fixtures.
 
 Builds install locked dependencies and package parser weights. Runtime containers
 never run pip/npm or fetch parser weights. Optional local translation weights are
-prepared only on explicit use. Image inventories and locks are described in
+prepared only on explicit use. Declare formats supported by the host with
+`LOCAL_TRANSLATION_FORMATS`; a supported engine can appear before installation.
+Image inventories and locks are described in
 [dependencies](../ops/dependencies.md).
 
 The complete default stack starts without a translation profile or key.

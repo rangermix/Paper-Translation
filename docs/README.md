@@ -12,7 +12,7 @@ belong in run evidence; an old test report does not describe a running instance.
 | [Deployment](deployment/README.md) | Compose setup, file ownership and configuration |
 | [Extraction acceleration](deployment/extraction-acceleration.md) | CPU, CUDA and Docker-managed MLX |
 | [MLX backend](deployment/mlx-backend.md) | Build, installation and verification procedure |
-| [Local translation](deployment/local-translation.md) | On-demand models and shared MLX backend |
+| [Local translation](deployment/local-translation.md) | On-demand GGUF, Safetensors/vLLM and Apple Silicon MLX models |
 | [Backup and restore](ops/restore.md) | Maintenance lock, backups and upgrades |
 | [Retention](ops/retention.md) | Cleanup policy and bounded maintenance commands |
 | [Dependencies](ops/dependencies.md) | Locks, packaged models and image inventories |

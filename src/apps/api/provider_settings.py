@@ -26,9 +26,10 @@ def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
             states = {row['id']: row for row in result.json()['models']}
         # Metadata is always our pinned catalog; the service reports status only.
         return response({'models': [{**m, **{k: states.get(m['id'], {}).get(k) for k in
-            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes')}} for m in public_models(purpose=purpose)]})
+            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes')}}
+            for m in public_models(purpose=purpose) if m['id'] in states]})
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        return response({'models': [{**m, 'status': 'unavailable', 'code': 'LOCAL_MODEL_SERVICE_UNAVAILABLE'} for m in public_models(purpose=purpose)]})
+        return response({'models': [], 'code': 'LOCAL_MODEL_SERVICE_UNAVAILABLE'})
 
 
 @router.post('/settings/local-models/{identifier}/prepare', status_code=202)

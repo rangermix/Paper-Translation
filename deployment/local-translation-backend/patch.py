@@ -14,7 +14,8 @@ source = source.replace(anchor, '        model_type_from_hf = hf_config.model_ty
 adapter.write_text(source)
 spec = importlib.util.spec_from_file_location('catalog', '/catalog/catalog.py')
 catalog = importlib.util.module_from_spec(spec); spec.loader.exec_module(catalog)
-(root / 'translation_model_ids.json').write_text(json.dumps([catalog.artifact(m)['id'] for m in catalog.models()]))
+(root / 'translation_model_ids.json').write_text(json.dumps([
+    catalog.artifact(m)['id'] for m in catalog.models() if m['runtime'] == 'mlx']))
 startup = root / 'sitecustomize.py'
 startup.write_text(startup.read_text() + '\nimport translation_startup\n')
 cache = root / 'vllm_metal/v1/cache_policy.py'

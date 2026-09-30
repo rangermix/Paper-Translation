@@ -98,6 +98,30 @@ def previous_external(root, identifier):
     return legacy if legacy.get('configured') and legacy.get('api_protocol') != 'local_translation' else None
 
 
+def saved_profiles(root, identifier):
+    """Latest public settings for each interface in the committed history."""
+    from packages.domain.config import external_provider_profile
+    from .registry import PROTOCOLS
+
+    found = {}
+    visited = set()
+    while identifier and len(found) < len(PROTOCOLS):
+        if identifier in visited:
+            raise ValueError('PROVIDER_CONFIG_STORAGE')
+        visited.add(identifier)
+        profile = _bundle(root, identifier)
+        protocol = profile.get('api_protocol', 'responses')
+        if protocol in PROTOCOLS and protocol not in found:
+            path = _revision(root, identifier) / 'key'
+            found[protocol] = {**profile, **_display_defaults(profile), 'has_api_key': _key_present(path)}
+        identifier = _read(_revision(root, identifier) / 'operation.json')['previous_revision']
+    legacy = external_provider_profile()
+    protocol = legacy.get('api_protocol', 'responses')
+    if legacy.get('configured') and protocol in PROTOCOLS and protocol not in found:
+        found[protocol] = {**legacy, **_display_defaults(legacy), 'has_api_key': None}
+    return found
+
+
 def _key_present(path):
     if path.is_symlink():
         raise ValueError('PROVIDER_CONFIG_STORAGE')
@@ -131,6 +155,7 @@ def configuration_view():
         present = _key_present(_revision(root, pointer['revision']) / 'key')
         return {**profile, 'profile_hash': digest(profile), 'generation': pointer['generation'],
                 **({'previous_external': previous_external(root, pointer['revision'])} if profile.get('api_protocol') == 'local_translation' else {}),
+                'saved_profiles': saved_profiles(root, pointer['revision']),
                 'has_api_key': present, 'credential_status': 'stored' if present else 'missing', 'config_source': 'managed',
                 **_availability(profile, present), **_display_defaults(profile)}
     profile = external_provider_profile()
@@ -264,6 +289,7 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
                 present = _key_present(_revision(root, cursor) / 'key')
                 return {**old_profile, 'profile_hash': digest(old_profile), 'generation': operation['generation'],
                         **({'previous_external': previous_external(root, cursor)} if old_profile.get('api_protocol') == 'local_translation' else {}),
+                        'saved_profiles': saved_profiles(root, cursor),
                         'has_api_key': present, 'credential_status': 'stored' if present else 'missing', 'config_source': 'managed',
                         **_availability(old_profile, present), **_display_defaults(old_profile)}
             cursor = operation['previous_revision']
@@ -279,8 +305,8 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
         profile = validate_public_profile(profile, allow_incomplete=True)
         old_key_path = (_revision(root, pointer['revision']) / 'key') if pointer else Path(os.environ.get('PROVIDER_KEY_FILE', '/run/secrets/provider_key'))
         key_source = old
-        if not local and old.get('api_protocol') == 'local_translation' and pointer:
-            prior = previous_external(root, pointer['revision'])
+        if not local and pointer and old.get('api_protocol', 'responses') != profile['api_protocol']:
+            prior = saved_profiles(root, pointer['revision']).get(profile['api_protocol'])
             if prior:
                 key_source = prior
                 old_key_path = (_revision(root, prior['config_revision']) / 'key') if prior.get('config_revision') else Path(os.environ.get('PROVIDER_KEY_FILE', '/run/secrets/provider_key'))
@@ -316,6 +342,7 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
         present = bool(key and not clear_api_key)
         return {**new_profile, 'profile_hash': digest(new_profile), 'generation': generation + 1,
                 **({'previous_external': previous_external(root, identifier)} if local else {}),
+                'saved_profiles': saved_profiles(root, identifier),
                 'has_api_key': present, 'credential_status': 'stored' if present else 'missing', 'config_source': 'managed',
                 **_availability(new_profile, present), **_display_defaults(new_profile)}
 

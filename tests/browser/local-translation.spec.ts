@@ -6,8 +6,15 @@ for (const width of [1440, 390]) test(`local model selection and explicit downlo
   const errors: string[] = []; const writes: { path: string; body: any }[] = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-  const rows = ['Hy-MT2-1.8B Q8', 'MiLMMT-46-4B Q4', 'Hy-MT2-7B Q4', 'MiLMMT-46-12B Q4'].map((label, i) => ({
-    id: `model-${i}`, label, model_id: `sha256:${String(i).repeat(64)}`, runtime: 'mlx', bits: i ? 4 : 8,
+  const variants = [
+    ['Hy-MT2-1.8B Q8', 'hy', 'Hy-MT2', '1.8B', 'Q8'],
+    ['MiLMMT-46-4B Q4', 'milmmt', 'MiLMMT-46', '4B', 'Q4'],
+    ['Hy-MT2-7B Q4', 'hy', 'Hy-MT2', '7B', 'Q4'],
+    ['MiLMMT-46-12B Q4', 'milmmt', 'MiLMMT-46', '12B', 'Q4'],
+  ];
+  const rows = variants.map(([label, family, family_label, parameter_size, quantization], i) => ({
+    id: `model-${i}`, label, model_id: `sha256:${String(i).repeat(64)}`, family, family_label, parameter_size,
+    quantization, format: 'mlx', runtime: 'mlx', bits: i ? 4 : 8,
     repo: 'synthetic/model', revision: 'a'.repeat(40), download_bytes: 2000000000, status: 'not_downloaded' }));
   let profile: any = { generation: 1, configured: false, config_source: 'unconfigured', has_api_key: false,
     provider: 'openai', api_protocol: 'responses', auth_mode: 'bearer', model_id: '', endpoint: '', enabled_pairs: [],
@@ -28,10 +35,22 @@ for (const width of [1440, 390]) test(`local model selection and explicit downlo
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { name: 'AI 服务', exact: true })).toBeVisible();
   await page.getByLabel('接口类型', { exact: true }).selectOption('local_translation');
-  const select = page.getByRole('combobox', { name: '本地翻译模型', exact: true });
-  await expect(select.locator('option')).toHaveCount(5);
+  await page.getByRole('combobox', { name: '模型系列' }).selectOption('milmmt');
+  await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('4B · Q4');
+  await page.getByRole('combobox', { name: '模型格式' }).selectOption('mlx');
+  const select = page.getByRole('combobox', { name: '具体模型 ID' });
+  await expect(select.locator('option')).toHaveCount(2);
   await select.selectOption(rows[1].model_id);
-  await expect(page.getByText('首次使用时下载 · MLX 4 bit · 下载约 2.0 GB')).toBeVisible();
+  await expect(page.getByText('首次使用时下载 · MLX Q4 · 下载约 2.0 GB')).toBeVisible();
+  await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('12B · Q4');
+  await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('4B · Q4');
+  await expect(select).toHaveValue(rows[1].model_id);
+  await page.getByRole('combobox', { name: '模型系列' }).selectOption('hy');
+  await page.getByRole('combobox', { name: '模型系列' }).selectOption('milmmt');
+  await expect(select).toHaveValue(rows[1].model_id);
+  await page.getByLabel('接口类型', { exact: true }).selectOption('responses');
+  await page.getByLabel('接口类型', { exact: true }).selectOption('local_translation');
+  await expect(select).toHaveValue(rows[1].model_id);
   expect(writes).toEqual([]);
   await expect(page.getByLabel('API 密钥', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '保存 AI 服务配置', exact: true }).click();
@@ -41,9 +60,38 @@ for (const width of [1440, 390]) test(`local model selection and explicit downlo
   await page.getByRole('button', { name: '立即准备模型', exact: true }).click();
   await expect.poll(() => writes.length).toBe(2);
   expect(writes[1].path).toBe('/settings/local-models/model-1/prepare');
-  await expect(page.getByText('正在下载 · MLX 4 bit · 下载约 2.0 GB')).toBeVisible();
+  await expect(page.getByText('正在下载 · MLX Q4 · 下载约 2.0 GB')).toBeVisible();
   await expect(page.getByRole('button', { name: '测试本地翻译模型' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   await page.screenshot({ path: outputDirectory(`local-model-${width}.png`), fullPage: true });
   expect(errors).toEqual([]);
+});
+
+test('format switch restores the exact model', async ({ page }) => {
+  const rows = ['mlx', 'gguf'].map((format, index) => ({
+    id: `hy-${format}`, label: `Hy-MT2-7B Q4 ${format}`, model_id: `sha256:${String(index + 1).repeat(64)}`,
+    family: 'hy', family_label: 'Hy-MT2', parameter_size: '7B', quantization: format === 'gguf' ? 'Q4_K_M' : 'Q4',
+    bits: 4, format, runtime: format === 'gguf' ? 'llama.cpp' : 'mlx', repo: `synthetic/${format}`,
+    revision: 'a'.repeat(40), download_bytes: 1000000000, status: 'not_downloaded',
+  }));
+  const profile = { generation: 1, configured: false, has_api_key: false, api_protocol: 'responses',
+    provider: 'openai', auth_mode: 'bearer', endpoint: '', model_id: '', enabled_pairs: [] };
+  await page.route('**/api/v1/**', route => {
+    const path = new URL(route.request().url()).pathname.slice(7);
+    const values: Record<string, unknown> = { '/settings/provider': profile, '/settings/local-models': { models: rows },
+      '/settings/dispatch': { generation: 1, dispatch_disabled: false }, '/settings/preferences': { generation: 1, locale: 'zh-Hans' },
+      '/capabilities': { phase: 'M2', source_mime_types: ['application/pdf'] }, '/jobs': { items: [] } };
+    return route.fulfill({ json: values[path] ?? {}, headers: { ETag: '"1"' } });
+  });
+  await page.goto('/#/settings');
+  await page.getByLabel('接口类型', { exact: true }).selectOption('local_translation');
+  await page.getByRole('combobox', { name: '模型系列' }).selectOption('hy');
+  await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('7B · Q4');
+  const format = page.getByRole('combobox', { name: '模型格式' });
+  const model = page.getByRole('combobox', { name: '具体模型 ID' });
+  await format.selectOption('mlx'); await model.selectOption(rows[0].model_id);
+  await format.selectOption('gguf'); await model.selectOption(rows[1].model_id);
+  await format.selectOption('mlx');
+  await expect(model).toHaveValue(rows[0].model_id);
+  await expect(page.getByText(rows[0].model_id, { exact: true })).toBeVisible();
 });

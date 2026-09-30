@@ -14,7 +14,8 @@ the instance; the default published address is loopback.
   the model and parsing timeout; queued jobs keep their recorded model, device and timeout.
 - Recover extraction gaps using original-PDF evidence, show unresolved content
   beside page images, and expose saved parse results for later translation.
-- Translate through a saved API service or the optional local MLX service.
+- Translate through a saved API service or the optional local translation service
+  with platform-supported GGUF, Safetensors/vLLM, or Apple Silicon MLX models.
   All languages are selectable; model quality for each language is not guaranteed
   by the selector. Provider configuration and content processing require confirmation.
   Each translation task freezes its public service settings and credential revision

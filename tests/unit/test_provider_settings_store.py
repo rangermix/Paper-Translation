@@ -73,6 +73,36 @@ def test_versions_bind_old_endpoint_and_old_credential_and_blank_retains(store):
         resolve_provider_credentials({**a, 'credential_revision': b['credential_revision']})
 
 
+def test_each_interface_restores_latest_public_fields_and_its_own_bound_key(store):
+    from packages.local_models.catalog import ENDPOINT, artifact, get_model
+    from packages.providers.registry import PROTOCOLS
+
+    responses = complete(api_protocol='responses', endpoint=PROTOCOLS['responses']['endpoint'],
+                         model_id='responses-custom', max_output_tokens=700)
+    gemini = complete(**PROTOCOLS['gemini_interactions'], api_protocol='gemini_interactions',
+                      model_id='gemini-custom', max_output_tokens=900)
+    local = complete(provider='local', api_protocol='local_translation', auth_mode='none',
+                     endpoint=ENDPOINT, model_id=artifact(get_model('hy-mt2-1.8b-q8'))['id'],
+                     cost_control_enabled=False, price={}, semantic_review_enabled=False)
+    save(responses, 'SYNTHETIC_RESPONSES_KEY')
+    save(gemini, 'SYNTHETIC_GEMINI_KEY', generation=1, operation='gemini')
+    view = save(local, generation=2, operation='local')
+    assert set(view['saved_profiles']) >= {'responses', 'gemini_interactions', 'local_translation'}
+    assert view['saved_profiles']['responses']['model_id'] == 'responses-custom'
+    assert view['saved_profiles']['gemini_interactions']['max_output_tokens'] == 900
+    assert view['saved_profiles']['responses']['has_api_key'] is True
+    assert 'SYNTHETIC_RESPONSES_KEY' not in json.dumps(view)
+    restored = save(responses, generation=3, operation='restore-responses')
+    assert restored['has_api_key'] is True
+    assert resolve_provider_credentials(provider_profile())[3].read_text() == 'SYNTHETIC_RESPONSES_KEY'
+    save(responses, generation=4, operation='clear-responses', clear=True)
+    save(gemini, generation=5, operation='restore-gemini')
+    assert resolve_provider_credentials(provider_profile())[3].read_text() == 'SYNTHETIC_GEMINI_KEY'
+    without_key = save(responses, generation=6, operation='responses-stays-cleared')
+    assert without_key['has_api_key'] is False
+    assert without_key['dispatch_configuration_ready'] is False
+
+
 @pytest.mark.parametrize('change', [{'endpoint': 'https://other.invalid/v1/responses'}, {'api_protocol': 'responses'}, {'auth_mode': 'none'}])
 def test_credential_rebinding_needs_explicit_action(store, change):
     save(complete(), 'synthetic-key-A')

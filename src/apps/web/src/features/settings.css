@@ -61,7 +61,8 @@
 .settings-page .preferences-panel .field:last-of-type { margin-bottom: 0; }
 .settings-page .provider-dispatch { max-width: none; margin: 12px 0; padding: 12px; }
 .settings-page .provider-dispatch .field { margin-top: 10px; }
-.settings-page .local-model-status { margin: 0 0 12px; color: var(--accent); font-size: 12px; }
+  .settings-page .local-model-status { margin: 0 0 12px; color: var(--accent); font-size: 12px; }
+  .settings-page .local-model-id { overflow-wrap: anywhere; font-size: 11px; }
 .settings-page .local-model-settings > .stack { margin-bottom: 14px; }
 .settings-page .parser-device { margin: -5px 0 14px; }
 .settings-page .parser-details { margin-top: 14px; }

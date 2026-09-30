@@ -75,6 +75,45 @@ test('managed service saves only explicit public fields with CAS and preserves a
   expect(errors).toEqual([]);
 });
 
+test('each interface keeps its draft and restores its last saved settings after reload', async ({ page }) => {
+  const gemini = { ...profile, provider: 'gemini', api_protocol: 'gemini_interactions', auth_mode: 'api_key',
+    endpoint: 'https://gemini.example/v1beta/interactions', model_id: 'gemini-saved', has_api_key: true };
+  await setup(page, { ...profile, saved_profiles: { responses: profile, gemini_interactions: gemini } });
+  const selector = page.getByLabel('接口类型', { exact: true });
+  await selector.selectOption('gemini_interactions');
+  await expect(page.getByLabel('完整请求 URL', { exact: true })).toHaveValue(gemini.endpoint);
+  await expect(modelInput(page)).toHaveValue('gemini-saved');
+  await modelInput(page).fill('gemini-unsaved');
+  await keyInput(page).fill('synthetic-gemini-draft');
+  await selector.selectOption('responses');
+  await modelInput(page).fill('responses-unsaved');
+  await selector.selectOption('gemini_interactions');
+  await expect(modelInput(page)).toHaveValue('gemini-unsaved');
+  await expect(keyInput(page)).toHaveValue('synthetic-gemini-draft');
+  await selector.selectOption('responses');
+  await expect(modelInput(page)).toHaveValue('responses-unsaved');
+  expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).not.toContain('synthetic-gemini-draft');
+  await page.reload();
+  await selector.selectOption('gemini_interactions');
+  await expect(modelInput(page)).toHaveValue('gemini-saved');
+  await expect(page.getByLabel('完整请求 URL', { exact: true })).toHaveValue(gemini.endpoint);
+});
+
+test('saving one interface keeps another unsaved draft in this tab', async ({ page }) => {
+  const gemini = { ...profile, provider: 'gemini', api_protocol: 'gemini_interactions', auth_mode: 'api_key',
+    endpoint: 'https://gemini.example/v1beta/interactions', model_id: 'gemini-saved', has_api_key: true };
+  const { writes } = await setup(page, { ...profile, saved_profiles: { responses: profile, gemini_interactions: gemini } });
+  const selector = page.getByLabel('接口类型', { exact: true });
+  await selector.selectOption('gemini_interactions');
+  await modelInput(page).fill('gemini-draft');
+  await selector.selectOption('responses');
+  await modelInput(page).fill('responses-saved-next');
+  await save(page).click();
+  await expect.poll(() => writes.length).toBe(1);
+  await selector.selectOption('gemini_interactions');
+  await expect(modelInput(page)).toHaveValue('gemini-draft');
+});
+
 test('complete new service submits actual prices and a password once and stores no browser secret', async ({ page }) => {
   const { writes } = await setup(page, { generation: 0, configured: false, config_source: 'unconfigured', has_api_key: false, enabled_pairs: [] });
   await page.getByLabel('完整请求 URL', { exact: true }).fill('https://service.example/v1/responses');

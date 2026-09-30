@@ -5,6 +5,8 @@
       "id": "hy-mt2-1.8b-q8",
       "label": "Hy-MT2-1.8B Q8",
       "family": "hy",
+      "parameter_size": "1.8B",
+      "quantization": "Q8",
       "bits": 8,
       "runtime": "mlx",
       "format": "safetensors",
@@ -54,6 +56,8 @@
       "id": "milmmt-46-4b-q4",
       "label": "MiLMMT-46-4B Q4",
       "family": "milmmt",
+      "parameter_size": "4B",
+      "quantization": "Q4",
       "bits": 4,
       "runtime": "mlx",
       "format": "safetensors",
@@ -98,6 +102,8 @@
       "id": "hy-mt2-7b-q4",
       "label": "Hy-MT2-7B Q4",
       "family": "hy",
+      "parameter_size": "7B",
+      "quantization": "Q4",
       "bits": 4,
       "runtime": "mlx",
       "format": "safetensors",
@@ -147,6 +153,8 @@
       "id": "milmmt-46-12b-q4",
       "label": "MiLMMT-46-12B Q4",
       "family": "milmmt",
+      "parameter_size": "12B",
+      "quantization": "Q4",
       "bits": 4,
       "runtime": "mlx",
       "format": "safetensors",
@@ -193,9 +201,76 @@
       ]
     },
     {
+      "id": "hy-mt2-1.8b-bf16-vllm",
+      "label": "Hy-MT2-1.8B BF16 Safetensors",
+      "family": "hy",
+      "parameter_size": "1.8B",
+      "quantization": "BF16",
+      "bits": 16,
+      "runtime": "vllm",
+      "format": "safetensors",
+      "repo": "tencent/Hy-MT2-1.8B",
+      "revision": "9a341cd1b679d3efd23b46e847b01745a71ed792",
+      "context_size": 8192,
+      "license": "apache-2.0",
+      "files": [
+        {"path": "chat_template.jinja", "sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee", "size": 654},
+        {"path": "config.json", "sha256": "da40c514cc74a5748a2e591b1b95fca4b7e94de05349abe4ea4164a82641de1a", "size": 1348},
+        {"path": "generation_config.json", "sha256": "0e28667f1cb4c7b880b9223b2d87978f88e79ed7ae037de1021f826c18d4ed6f", "size": 221},
+        {"path": "model.safetensors", "sha256": "29e9117a44c79f81857613601968ff482d8a23c2d6736a1710bba9e5ca4762e5", "size": 4077072784},
+        {"path": "special_tokens_map.json", "sha256": "bb9f59990034dae326581b9c62471523975417869f78a244b7ae2ce8cbb085eb", "size": 488},
+        {"path": "tokenizer.json", "sha256": "b475bbef1b0b2fd57dcb865332b546475bd1ede2deb3bb91bafd0c047a8a530a", "size": 9527287},
+        {"path": "tokenizer_config.json", "sha256": "53bd8581b601a8ee9caefeb988207de50b3fc0b733295bdf5ad68dec4cc0b07c", "size": 165815}
+      ]
+    },
+    {
+      "id": "hy-mt2-1.8b-q4-k-m-gguf",
+      "label": "Hy-MT2-1.8B Q4_K_M GGUF",
+      "family": "hy",
+      "parameter_size": "1.8B",
+      "quantization": "Q4_K_M",
+      "bits": 4,
+      "runtime": "llama.cpp",
+      "format": "gguf",
+      "repo": "tencent/Hy-MT2-1.8B-GGUF",
+      "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+      "context_size": 8192,
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": "Hy-MT2-1.8B-Q4_K_M.gguf",
+          "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+          "size": 1133080448
+        }
+      ]
+    },
+    {
+      "id": "hy-mt2-7b-q4-k-m-gguf",
+      "label": "Hy-MT2-7B Q4_K_M GGUF",
+      "family": "hy",
+      "parameter_size": "7B",
+      "quantization": "Q4_K_M",
+      "bits": 4,
+      "runtime": "llama.cpp",
+      "format": "gguf",
+      "repo": "tencent/Hy-MT2-7B-GGUF",
+      "revision": "ab8472660ac61fac25f1af43fac2599d52a8a775",
+      "context_size": 8192,
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": "Hy-MT2-7B-Q4_K_M.gguf",
+          "sha256": "9f96256500f3fc1ab4d64336b58f52a949a95ad7516b0c229476eef782f9f77b",
+          "size": 4624648896
+        }
+      ]
+    },
+    {
       "id": "minicpm5-1b-q4",
       "label": "MiniCPM5-1B Q4 analyst",
       "family": "minicpm5",
+      "parameter_size": "1B",
+      "quantization": "Q4",
       "purpose": "analysis",
       "bits": 4,
       "runtime": "mlx",

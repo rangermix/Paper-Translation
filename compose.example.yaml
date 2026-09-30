@@ -261,7 +261,9 @@ services:
     depends_on:
       db: {condition: service_healthy}
     restart: "no"
-  # Optional Docker-managed MLX translation. Startup does not download weights.
+  # Optional local translation. Startup does not download weights. The sidecar
+  # offers GGUF by default; select supported formats for this host with
+  # LOCAL_TRANSLATION_FORMATS (for example gguf,mlx or gguf,safetensors).
   local-model-init:
     profiles: [local-translation]
     image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
@@ -291,6 +293,7 @@ services:
     environment:
       LOCAL_MODEL_CACHE: /model_cache
       PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
+      LOCAL_TRANSLATION_FORMATS: "${LOCAL_TRANSLATION_FORMATS:-}"
     volumes: [local_translation_models:/model_cache]
     networks: [local_model_control, model_inference]
     depends_on:

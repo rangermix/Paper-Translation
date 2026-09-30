@@ -296,6 +296,7 @@ services:
       LOCAL_MODEL_CACHE: /model_cache
       PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
       LOCAL_TRANSLATION_FORMATS: "${LOCAL_TRANSLATION_FORMATS:-}"
+      LOCAL_VLLM_DMR_URL: "${LOCAL_VLLM_DMR_URL:-}"
     volumes: [local_translation_models:/model_cache]
     networks: [local_model_control, model_inference]
     depends_on:
@@ -307,6 +308,35 @@ services:
       retries: 6
     mem_limit: 768m
     cpus: 1
+    restart: unless-stopped
+  # Optional Linux/WSL2 CUDA vLLM Runner. Set LOCAL_VLLM_DMR_URL to
+  # http://vllm-runner:12434 and declare Safetensors for supported NVIDIA hosts.
+  # This endpoint is private to the model network and does not replace native DMR.
+  vllm-runner:
+    profiles: [local-vllm]
+    image: "${LOCAL_VLLM_RUNNER_IMAGE:-local/paper-translation-vllm-cuda:0.19.1}"
+    build:
+      context: deployment/vllm-backend
+    platform: linux/amd64
+    init: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      MODEL_RUNNER_PORT: "12434"
+      DO_NOT_TRACK: "1"
+      HF_HUB_OFFLINE: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    volumes: [local_vllm_models:/models]
+    networks: [model_inference]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: 2g
+    mem_limit: 16g
     restart: unless-stopped
   # Explicit setup operation: supply an existing writable output directory with
   # run --volume "$MODEL_EXPORT_DIR:/export" model-export. No default host bind.
@@ -379,6 +409,7 @@ volumes:
   backups:
   provider_config:
   local_translation_models:
+  local_vllm_models:
 networks:
   backend:
     internal: true

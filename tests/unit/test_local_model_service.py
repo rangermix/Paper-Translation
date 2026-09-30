@@ -300,3 +300,80 @@ def test_gguf_artifact_uses_gguf_layer_and_fixed_quantization():
     assert config['config']['quantization'] == 'Q4_K_M'
     assert manifest['layers'][0]['mediaType'] == 'application/vnd.docker.ai.gguf.v3'
     assert manifest['layers'][0]['digest'] == 'sha256:' + model['files'][0]['sha256']
+
+
+def test_separate_cuda_runner_catalog_preserves_native_gguf_and_mlx(tmp_path):
+    from packages.local_models.service import create_app
+    calls = []
+    def handle(request):
+        calls.append(request)
+        if request.url.path == '/engines/status':
+            statuses = ({'vllm': 'Running: vllm 0.19.1'} if request.url.host == 'vllm-runner' else
+                        {'vllm': 'Running: vllm-metal test', 'llama.cpp': 'Running: llama.cpp cuda'})
+            return httpx.Response(200, json=statuses)
+        assert request.url.path == '/models'
+        return httpx.Response(200, json=[])
+    with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle),
+                              vllm_dmr='http://vllm-runner:12434/')) as client:
+        rows = client.get('/models').json()['models']
+    assert len(rows) == 10 and all(row['status'] == 'not_downloaded' for row in rows)
+    assert {r.url.host for r in calls if r.url.path == '/engines/status'} == {
+        'model-runner.docker.internal', 'vllm-runner'}
+    assert sum(r.url.path == '/engines/status' for r in calls) == 2
+    assert all(r.method == 'GET' for r in calls) and not list(tmp_path.iterdir())
+
+
+def test_cuda_runner_outage_does_not_hide_catalog_or_redirect_to_native(tmp_path):
+    from packages.local_models.service import create_app
+    def handle(request):
+        if request.url.host == 'vllm-runner':
+            raise httpx.ConnectError('synthetic CUDA runner outage')
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'llama.cpp': 'Running: llama.cpp cuda'})
+        return httpx.Response(200, json=[])
+    with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle), formats='gguf,safetensors',
+                              vllm_dmr='http://vllm-runner:12434')) as client:
+        rows = client.get('/models').json()['models']
+    assert len(rows) == 6
+    assert next(row for row in rows if row['runtime'] == 'vllm')['code'] == 'LOCAL_VLLM_UNAVAILABLE'
+    assert all(row['status'] == 'not_downloaded' for row in rows if row['runtime'] == 'llama.cpp')
+
+
+def test_cuda_prepare_and_inference_use_same_explicit_runner_and_exact_model(tmp_path):
+    from packages.local_models.service import Manager, RUNTIME_FLAGS, create_app
+    model = get_model('hy-mt2-1.8b-bf16-vllm'); ident = artifact(model)['id']; calls = []
+    configured = False
+    def handle(request):
+        nonlocal configured
+        import json
+        calls.append(request)
+        assert request.url.host == 'vllm-runner' and request.url.port == 12434
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'vllm': 'Running: vllm 0.19.1'})
+        if request.url.path == '/models':
+            return httpx.Response(200, json=[{'id': ident}])
+        if request.url.path == '/engines/_configure':
+            return httpx.Response(200, json=[{'Backend': 'vllm', 'ModelID': ident,
+                'Config': {'context-size': 8192, 'runtime-flags': RUNTIME_FLAGS}}] if configured else [])
+        if request.url.path == '/engines/vllm/_configure':
+            assert json.loads(request.content)['model'] == ident
+            configured = True
+            return httpx.Response(202)
+        assert request.url.path == '/engines/vllm/v1/chat/completions'
+        assert json.loads(request.content)['model'] == ident
+        return httpx.Response(200, json={'model': ident, 'choices': [
+            {'message': {'role': 'assistant', 'content': 'synthetic translation'}}]})
+    transport = httpx.MockTransport(handle)
+    manager = Manager(tmp_path, transport, vllm_dmr='http://vllm-runner:12434')
+    manager.states[model['id']] = {'status': 'loading'}
+    manager._prepare(model)
+    assert manager.states[model['id']]['status'] == 'ready'
+    with TestClient(create_app(cache=tmp_path, transport=transport,
+                              vllm_dmr='http://vllm-runner:12434')) as client:
+        response = client.post('/v1/completions', json={'model': ident,
+            'messages': [{'role': 'user', 'content': 'Synthetic test input.'}], 'max_tokens': 32})
+    assert response.status_code == 200 and response.json()['model'] == ident
+    assert response.json()['choices'][0]['text'] == 'synthetic translation'
+    assert [r.url.path for r in calls if r.method == 'POST'] == [
+        '/engines/vllm/_configure', '/engines/vllm/v1/chat/completions']
+    assert all(path.name == '.lock' for path in tmp_path.iterdir())

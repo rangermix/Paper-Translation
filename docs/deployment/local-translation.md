@@ -149,6 +149,56 @@ support. Declare Safetensors when provisioning the supported Linux/WSL2 vLLM
 deployment; its unavailable status stays visible until that backend is connected.
 The application never replaces the selected endpoint or backend automatically.
 
+### CUDA vLLM through Compose on Windows/WSL2
+
+Use the optional `local-vllm` profile to run a Linux Docker Model Runner on the
+existing Docker Desktop WSL2 engine. Its pinned backend image rebuilds the Python
+environment with vLLM 0.19.1 and CUDA 13.0 PyTorch wheels, including locked package
+hashes. It verifies a CUDA tensor operation before exposing the Runner API.
+The host must support NVIDIA GPU passthrough; no Linux GPU driver is installed by
+this deployment. No translation weights or inference requests occur at startup.
+
+This avoids two observed upstream setup failures: Model Runner CLI v1.2.6 tests
+the Docker Engine's operating-system string for exact equality with `Docker Desktop`,
+which misses `Docker Desktop (containerized)`; and the current
+`latest-vllm-cuda` image can contain CPU-only PyTorch, as reported in
+[Docker Model Runner issue 952](https://github.com/docker/model-runner/issues/952).
+The usual CLI setup can also collide with an existing native Runner's TCP port
+12434. This Compose service exposes no host port and keeps the native Runner intact.
+
+After inspecting the actual host, preserve the instance's local configuration and
+add the `vllm-runner` service and `local_vllm_models` volume from the template.
+Add `LOCAL_VLLM_DMR_URL` to the local-translator environment, as in the template.
+Set these instance environment entries:
+
+```dotenv
+COMPOSE_PROFILES=local-translation,local-vllm
+LOCAL_TRANSLATION_FORMATS=gguf,safetensors
+LOCAL_VLLM_DMR_URL=http://vllm-runner:12434
+```
+
+Build and start the selected services:
+
+```sh
+docker compose build app vllm-runner
+docker compose up -d --no-build --wait app worker local-translator vllm-runner
+docker compose exec vllm-runner curl -fsS http://localhost:12434/engines/status
+```
+
+`LOCAL_VLLM_DMR_URL` applies only to CUDA Safetensors models. GGUF and MLX retain
+their existing native Runner endpoint, inventory and configuration. A failure of
+the CUDA Runner leaves the other catalog entries available and never changes the
+selected model or forwards the request to another backend. Both use the existing
+exact artifact-ID checks and pinned download cache.
+The separate Runner stores imported artifacts in `local_vllm_models`; the
+sidecar's existing cache volume is retained. This endpoint accepts DMR APIs,
+not a standalone OpenAI-only vLLM service.
+
+The CUDA startup check establishes runtime/GPU availability, not that a selected
+model fits or produces a correct translation. Those require explicit model
+preparation and separately authorized inference. GPU memory is shared with the
+parser and any other application on the device.
+
 ## Apple Silicon MLX backend payload
 
 The Paddle backend image must already exist as

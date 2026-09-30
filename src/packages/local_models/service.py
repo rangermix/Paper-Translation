@@ -37,9 +37,15 @@ class Completion(BaseModel):
 
 
 class Manager:
-    def __init__(self, cache, transport=None, formats=None):
+    def __init__(self, cache, transport=None, formats=None, vllm_dmr=None):
         self.cache, self.transport = Path(cache), transport
         self.formats = configured_formats(formats)
+        self.vllm_dmr = (vllm_dmr if vllm_dmr is not None else
+                         os.environ.get('LOCAL_VLLM_DMR_URL', '')).rstrip('/') or DMR
+        url = httpx.URL(self.vllm_dmr)
+        if (url.scheme not in ('http', 'https') or not url.host or url.userinfo
+                or url.query or url.fragment):
+            raise ValueError('LOCAL_MODEL_RUNNER_URL_INVALID')
         self.states = {}
         self.lock = threading.RLock()
         self.inference_lock = threading.Lock()
@@ -52,21 +58,25 @@ class Manager:
     def supported(self, model):
         return selectable_format(model) in self.formats
 
+    def runner(self, model):
+        """An explicit CUDA deployment never redirects GGUF or MLX models."""
+        return self.vllm_dmr if model['runtime'] == 'vllm' else DMR
+
     def installed(self, model):
         with self.client() as client:
-            response = client.get(DMR + '/models')
+            response = client.get(self.runner(model) + '/models')
             response.raise_for_status()
             return any(row['id'] == artifact(model)['id'] for row in response.json())
 
-    def engine_status(self):
+    def engine_status(self, model=None):
         with self.client() as client:
-            response = client.get(DMR + '/engines/status')
+            response = client.get((self.runner(model) if model is not None else DMR) + '/engines/status')
             response.raise_for_status()
             return response.json()
 
     def backend(self, model, statuses=None):
         name = engine(model)
-        backend = (statuses if statuses is not None else self.engine_status()).get(name, '')
+        backend = (statuses if statuses is not None else self.engine_status(model)).get(name, '')
         expected = {'mlx': 'Running: vllm-metal ', 'vllm': 'Running: vllm ',
                     'llama.cpp': 'Running: llama.cpp '}[model['runtime']]
         if not isinstance(backend, str) or not backend.startswith(expected):
@@ -115,7 +125,7 @@ class Manager:
 
     def configuration_matches(self, model):
         with self.client() as client:
-            response = client.get(DMR + '/engines/_configure', params={'model': artifact(model)['id']})
+            response = client.get(self.runner(model) + '/engines/_configure', params={'model': artifact(model)['id']})
             response.raise_for_status()
             return any(row.get('Backend') == engine(model) and row.get('ModelID') == artifact(model)['id']
                        and (row.get('Config', {}).get('runtime-flags') or []) == runtime_flags(model)
@@ -177,7 +187,7 @@ class Manager:
                         download(model, root, client, update)
                     update(status='loading')
                     with self.client(timeout=600) as client:
-                        response = client.post(DMR + '/models/load', content=archive(model, root),
+                        response = client.post(self.runner(model) + '/models/load', content=archive(model, root),
                                                headers={'Content-Type': 'application/x-tar'})
                         response.raise_for_status()
                     if not self.installed(model):
@@ -188,7 +198,7 @@ class Manager:
                     # Recheck effective flags instead of caching a preparation receipt.
                     if not self.configuration_matches(model):
                         with self.client(timeout=30) as client:
-                            response = client.post(DMR + '/engines/' + engine(model) + '/_configure', json={
+                            response = client.post(self.runner(model) + '/engines/' + engine(model) + '/_configure', json={
                                 'model': artifact(model)['id'], 'context-size': model['context_size'],
                                 'keep_alive': '30s', 'runtime-flags': runtime_flags(model)})
                             if response.status_code not in (200, 202, 204):
@@ -204,9 +214,9 @@ class Manager:
                 self.states[model['id']].update(status='failed', code=code)
 
 
-def create_app(*, cache=None, transport=None, formats=None):
+def create_app(*, cache=None, transport=None, formats=None, vllm_dmr=None):
     app = FastAPI(docs_url=None, redoc_url=None)
-    manager = Manager(cache or os.environ.get('LOCAL_MODEL_CACHE', '/model_cache'), transport, formats)
+    manager = Manager(cache or os.environ.get('LOCAL_MODEL_CACHE', '/model_cache'), transport, formats, vllm_dmr)
     app.state.manager = manager
 
     def lookup(identifier):
@@ -221,15 +231,18 @@ def create_app(*, cache=None, transport=None, formats=None):
 
     @app.get('/models')
     def catalog(purpose: Literal['translation', 'analysis', 'all'] = 'translation'):
-        try:
-            statuses = manager.engine_status()
-        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-            statuses = {}
+        statuses = {}
         available = []
         for model in public_models(purpose=purpose):
             pinned = get_model(model['id'])
             if manager.supported(pinned):
-                available.append({**model, **manager.state(pinned, statuses)})
+                runner = manager.runner(pinned)
+                if runner not in statuses:
+                    try:
+                        statuses[runner] = manager.engine_status(pinned)
+                    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+                        statuses[runner] = {}
+                available.append({**model, **manager.state(pinned, statuses[runner])})
         return {'models': available}
 
     @app.get('/models/{identifier}')
@@ -284,7 +297,7 @@ def create_app(*, cache=None, transport=None, formats=None):
                 raise HTTPException(503, 'LOCAL_MODEL_NOT_READY') from None
             try:
                 with manager.client(timeout=300) as client:
-                    response = client.post(DMR + '/engines/' + engine(model) + '/v1' + route,
+                    response = client.post(manager.runner(model) + '/engines/' + engine(model) + '/v1' + route,
                                            json=body.model_dump(exclude_none=True))
                     if response.status_code != 200:
                         raise HTTPException(502, 'LOCAL_MODEL_INFERENCE_FAILED')

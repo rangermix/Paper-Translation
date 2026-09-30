@@ -154,15 +154,20 @@ The application never replaces the selected endpoint or backend automatically.
 Use the optional `local-vllm` profile to run a Linux Docker Model Runner on the
 existing Docker Desktop WSL2 engine. Its pinned backend image rebuilds the Python
 environment with vLLM 0.19.1 and CUDA 13.0 PyTorch wheels, including locked package
-hashes. It verifies a CUDA tensor operation before exposing the Runner API.
+hashes. The final image uses a clean, pinned NVIDIA CUDA base, retaining the Runner
+and its rebuilt environment without Docker Desktop's reserved internal-service
+label. It verifies a CUDA tensor operation before exposing the Runner API.
 The host must support NVIDIA GPU passthrough; no Linux GPU driver is installed by
 this deployment. No translation weights or inference requests occur at startup.
 
-This avoids two observed upstream setup failures: Model Runner CLI v1.2.6 tests
+This avoids observed upstream setup failures: Model Runner CLI v1.2.6 tests
 the Docker Engine's operating-system string for exact equality with `Docker Desktop`,
 which misses `Docker Desktop (containerized)`; and the current
 `latest-vllm-cuda` image can contain CPU-only PyTorch, as reported in
 [Docker Model Runner issue 952](https://github.com/docker/model-runner/issues/952).
+The upstream image also carries `com.docker.desktop.service=model-runner`, which
+hides containers from Compose discovery on Docker Desktop. Setting that label to
+an empty value still hides the container, so the final image omits the key entirely.
 The usual CLI setup can also collide with an existing native Runner's TCP port
 12434. This Compose service exposes no host port and keeps the native Runner intact.
 

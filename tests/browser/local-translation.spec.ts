@@ -95,3 +95,44 @@ test('format switch restores the exact model', async ({ page }) => {
   await expect(model).toHaveValue(rows[0].model_id);
   await expect(page.getByText(rows[0].model_id, { exact: true })).toBeVisible();
 });
+
+test('stopped local service keeps model selection and saving available', async ({ page }) => {
+  const errors: string[] = []; const writes: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const row = { id: 'hy-gguf', label: 'Hy-MT2-1.8B Q4_K_M', model_id: `sha256:${'a'.repeat(64)}`,
+    family: 'hy', family_label: 'Hy-MT2', parameter_size: '1.8B', quantization: 'Q4_K_M', bits: 4,
+    format: 'gguf', runtime: 'llama.cpp', repo: 'tencent/Hy-MT2-1.8B-GGUF',
+    revision: 'b'.repeat(40), download_bytes: 1000000000, status: 'unavailable', code: 'LOCAL_MODEL_SERVICE_UNAVAILABLE' };
+  let profile: any = { generation: 1, configured: false, has_api_key: false, api_protocol: 'responses',
+    provider: 'openai', auth_mode: 'bearer', endpoint: '', model_id: '', enabled_pairs: [] };
+  await page.route('**/api/v1/**', route => {
+    const request = route.request(); const path = new URL(request.url()).pathname.slice(7);
+    if (request.method() !== 'GET') {
+      writes.push(path);
+      if (path === '/settings/provider') profile = { ...profile, ...request.postDataJSON().profile,
+        generation: 2, configured: true, dispatch_configuration_ready: true };
+    }
+    const values: Record<string, unknown> = { '/settings/provider': profile,
+      '/settings/local-models': { models: [row], code: 'LOCAL_MODEL_SERVICE_UNAVAILABLE' },
+      '/settings/dispatch': { generation: 1, dispatch_disabled: false },
+      '/settings/preferences': { generation: 1, locale: 'zh-Hans' },
+      '/capabilities': { phase: 'M2', source_mime_types: ['application/pdf'] }, '/jobs': { items: [] } };
+    return route.fulfill({ json: values[path] ?? {}, headers: { ETag: `"${profile.generation}"` } });
+  });
+  await page.goto('/#/settings');
+  await page.getByLabel('接口类型', { exact: true }).selectOption('local_translation');
+  await expect(page.getByRole('combobox', { name: '模型系列' }).locator('option')).toHaveCount(2);
+  await expect(page.getByText('本地翻译服务未启动或无法连接，仍可选择和保存模型。准备模型和翻译前，请在部署中启用本地翻译服务。')).toBeVisible();
+  await page.getByRole('combobox', { name: '模型系列' }).selectOption('hy');
+  await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('1.8B · Q4');
+  await page.getByRole('combobox', { name: '模型格式' }).selectOption('gguf');
+  await page.getByRole('combobox', { name: '具体模型 ID' }).selectOption(row.model_id);
+  await expect(page.getByRole('button', { name: '立即准备模型', exact: true })).toBeDisabled();
+  const save = page.getByRole('button', { name: '保存 AI 服务配置', exact: true });
+  await expect(save).toBeEnabled();
+  expect(writes).toEqual([]);
+  await save.click();
+  await expect.poll(() => writes).toEqual(['/settings/provider']);
+  expect(profile.model_id).toBe(row.model_id);
+  expect(errors).toEqual([]);
+});

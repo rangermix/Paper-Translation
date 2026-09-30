@@ -94,13 +94,12 @@ export function LocalModels({ value, onChange, active, onAvailabilityChange }: {
       {finalModels.map(model => <option key={model.id} value={model.model_id}>{model.repo} · {model.id}</option>)}
     </select></label>
     {value && !selected && <p className="field-note error-text">已保存的模型在当前部署中不可用。请选择当前后端提供的模型。</p>}
-    {!models.length && <p className="field-note">{catalogCode === 'LOCAL_MODEL_SERVICE_UNAVAILABLE'
-      ? '本地模型服务未就绪，暂时无法读取此部署支持的格式。'
-      : '当前部署没有声明受平台与硬件支持的本地翻译格式。GGUF 使用 llama.cpp；Safetensors 使用受支持的 NVIDIA CUDA vLLM；MLX 仅适用于 Apple Silicon macOS。'}</p>}
+    {catalogCode === 'LOCAL_MODEL_SERVICE_UNAVAILABLE' && <p className="field-note">本地翻译服务未启动或无法连接，仍可选择和保存模型。准备模型和翻译前，请在部署中启用本地翻译服务。</p>}
+    {!models.length && <p className="field-note">当前部署没有声明受平台与硬件支持的本地翻译格式。GGUF 使用 llama.cpp；Safetensors 使用受支持的 NVIDIA CUDA vLLM；MLX 仅适用于 Apple Silicon macOS。</p>}
     {selected && <><p className="local-model-status" role="status">{backendLabels[selected.code ?? ''] ?? labels[selected.status ?? 'unavailable'] ?? '状态待刷新'} · {selected.format.toUpperCase()} {selected.quantization} · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
       <p className="local-model-id mono">{selected.model_id}</p>
       {selected.status === 'downloading' && selected.total_bytes ? <progress aria-label="模型下载进度" value={selected.downloaded_bytes ?? 0} max={selected.total_bytes}/> : null}
-      <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={pending || ['downloading', 'loading'].includes(selected.status ?? '')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>
+      <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={pending || ['downloading', 'loading', 'unavailable'].includes(selected.status ?? '')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>
       </>}
     <details className="settings-details"><summary>本地模型说明</summary>
       <p>通过 Docker Model Runner 在本机翻译，无需密钥。首次使用或明确准备时下载所选模型；切换格式不会自动下载。</p>

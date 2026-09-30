@@ -15,7 +15,12 @@ for example `gguf`, `gguf,mlx`, or `gguf,safetensors`. The sidecar has no Docker
 socket or host hardware access, so set this in the instance's local Compose
 environment after checking the host and Docker Model Runner engine support.
 The default is GGUF, or GGUF plus MLX when the Mac's pinned Paddle MLX model is
-declared. An engine may be supported but not installed, running, or able to fit
+declared. Pass the same declaration to app, worker and local-translator; the
+template's shared app environment and sidecar environment already do this. When
+upgrading an older local Compose file, add both environment entries there too.
+The API reads the pinned catalog even when the optional sidecar is stopped, so
+model families remain selectable and saveable while service status is unavailable.
+An engine may be supported but not installed, running, or able to fit
 a selected model. Those conditions appear as model status and do not remove a
 supported format from the selector. Docker Model Runner can package Safetensors
 on other hosts, but packaging alone does not provide vLLM inference there.

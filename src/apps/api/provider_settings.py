@@ -16,20 +16,28 @@ router = APIRouter(prefix='/api/v1')
 @router.get('/settings/local-models')
 def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
     import httpx
-    from packages.local_models.catalog import ENDPOINT, public_models
+    from packages.local_models.catalog import ENDPOINT, configured_formats, public_models
     from .common import response
+    formats = configured_formats()
+    models = [m for m in public_models(purpose=purpose) if m['format'] in formats]
+    code = None
     try:
-        with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
+        with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
             result = client.get(ENDPOINT.rsplit('/v1/', 1)[0] + '/models',
                                 **({'params': {'purpose': purpose}} if purpose != 'translation' else {}))
             result.raise_for_status()
             states = {row['id']: row for row in result.json()['models']}
-        # Metadata is always our pinned catalog; the service reports status only.
-        return response({'models': [{**m, **{k: states.get(m['id'], {}).get(k) for k in
-            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes')}}
-            for m in public_models(purpose=purpose) if m['id'] in states]})
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        return response({'models': [], 'code': 'LOCAL_MODEL_SERVICE_UNAVAILABLE'})
+        states = {}
+        code = 'LOCAL_MODEL_SERVICE_UNAVAILABLE'
+    # The pinned catalog and deployment capabilities remain readable even when
+    # the optional sidecar is stopped. Its response supplies runtime status only.
+    for model in models:
+        state = states.get(model['id'], {'status': 'unavailable',
+            'code': code or 'LOCAL_MODEL_FORMAT_UNSUPPORTED'})
+        model.update({key: state[key] for key in
+            ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes') if key in state})
+    return response({'models': models, **({'code': code} if code else {})})
 
 
 @router.post('/settings/local-models/{identifier}/prepare', status_code=202)

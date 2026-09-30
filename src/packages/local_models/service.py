@@ -9,7 +9,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from .catalog import artifact, get_model, public_models, selectable_format
+from .catalog import artifact, configured_formats, get_model, public_models, selectable_format
 from .download import archive, download
 
 DMR = 'http://model-runner.docker.internal'
@@ -22,18 +22,6 @@ def engine(model):
 
 def runtime_flags(model):
     return RUNTIME_FLAGS if engine(model) == 'vllm' else []
-
-
-def configured_formats(value=None):
-    # The sidecar cannot inspect host OS/GPU without a Docker socket. The Compose
-    # deployment declares supported formats; installation is a separate status.
-    raw = value if value is not None else os.environ.get('LOCAL_TRANSLATION_FORMATS', '')
-    if not raw:
-        raw = 'gguf,mlx' if os.environ.get('PADDLE_MLX_MODEL_ID', '').startswith('sha256:') else 'gguf'
-    formats = [part.strip().lower() for part in raw.split(',')]
-    if not formats or any(part not in {'gguf', 'mlx', 'safetensors'} for part in formats) or len(set(formats)) != len(formats):
-        raise ValueError('LOCAL_MODEL_FORMATS_INVALID')
-    return frozenset(formats)
 
 
 class Completion(BaseModel):

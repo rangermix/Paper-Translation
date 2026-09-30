@@ -1,0 +1,79 @@
+import httpx
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from apps.api.provider_settings import router
+from packages.local_models.catalog import public_models
+
+
+def catalog_client(monkeypatch, handler):
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    original_client = httpx.Client
+    monkeypatch.setattr(httpx, 'Client', lambda **kwargs:
+        original_client(transport=httpx.MockTransport(handler), **kwargs))
+    return client
+
+
+@pytest.mark.parametrize('formats,families,count', [
+    ('gguf', {'hy'}, 2),
+    ('gguf,mlx', {'hy', 'milmmt'}, 6),
+    ('gguf,safetensors', {'hy'}, 3),
+])
+def test_service_outage_keeps_platform_supported_catalog(monkeypatch, formats, families, count):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', formats)
+    calls = []
+    def unavailable(request):
+        calls.append(request)
+        raise httpx.ConnectError('synthetic stopped sidecar', request=request)
+    with catalog_client(monkeypatch, unavailable) as client:
+        result = client.get('/api/v1/settings/local-models')
+    assert result.status_code == 200
+    body = result.json()
+    assert body['code'] == 'LOCAL_MODEL_SERVICE_UNAVAILABLE'
+    assert len(body['models']) == count
+    assert {row['family'] for row in body['models']} == families
+    assert {row['format'] for row in body['models']} == set(formats.split(','))
+    expected = [row for row in public_models() if row['format'] in formats.split(',')]
+    for row, pinned in zip(body['models'], expected, strict=True):
+        assert row == {**pinned, 'status': 'unavailable', 'code': body['code']}
+    assert len(calls) == 1
+    assert calls[0].method == 'GET' and calls[0].url.path == '/models'
+
+
+def test_runtime_state_cannot_replace_pinned_catalog_metadata(monkeypatch):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', 'gguf')
+    pinned = next(row for row in public_models() if row['format'] == 'gguf')
+    runtime = {**pinned, 'model_id': 'untrusted', 'repo': 'untrusted', 'family': 'untrusted',
+               'status': 'ready', 'backend': 'llama.cpp', 'downloaded_bytes': 10, 'total_bytes': 10}
+    with catalog_client(monkeypatch, lambda _: httpx.Response(200, json={'models': [runtime]})) as client:
+        body = client.get('/api/v1/settings/local-models').json()
+    assert 'code' not in body
+    assert body['models'][0] == {**pinned, 'status': 'ready', 'backend': 'llama.cpp',
+                                'downloaded_bytes': 10, 'total_bytes': 10}
+    assert body['models'][1]['status'] == 'unavailable'
+    assert body['models'][1]['code'] == 'LOCAL_MODEL_FORMAT_UNSUPPORTED'
+
+
+@pytest.mark.parametrize('formats,count', [('gguf', 0), ('gguf,mlx', 1)])
+def test_outage_preserves_separate_analysis_catalog(monkeypatch, formats, count):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', formats)
+    calls = []
+    def unavailable(request):
+        calls.append(request)
+        raise httpx.ConnectError('synthetic stopped sidecar', request=request)
+    with catalog_client(monkeypatch, unavailable) as client:
+        body = client.get('/api/v1/settings/local-models?purpose=analysis').json()
+    assert len(body['models']) == count
+    assert all(row['family'] == 'minicpm5' for row in body['models'])
+    assert calls[0].url.params['purpose'] == 'analysis'
+
+
+def test_invalid_sidecar_response_does_not_hide_catalog(monkeypatch):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', 'gguf')
+    with catalog_client(monkeypatch, lambda _: httpx.Response(200, json={'models': None})) as client:
+        body = client.get('/api/v1/settings/local-models').json()
+    assert len(body['models']) == 2
+    assert body['code'] == 'LOCAL_MODEL_SERVICE_UNAVAILABLE'

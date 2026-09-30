@@ -108,6 +108,8 @@ x-app: &app
     PARSER_OUTPUTS_DIR: /parser_outputs
     DATABASE_CONFIG_FILE: /internal/database.json
     PROVIDER_CONFIG_DIR: /provider_config
+    LOCAL_TRANSLATION_FORMATS: "${LOCAL_TRANSLATION_FORMATS:-}"
+    PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
     ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,app}"
     APP_ORIGINS: "${APP_ORIGINS:-http://localhost:${PORT:-8080},http://127.0.0.1:${PORT:-8080}}"
     READ_ONLY: "${READ_ONLY:-false}"

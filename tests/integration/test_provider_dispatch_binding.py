@@ -6,13 +6,16 @@ import httpx
 import pytest
 from sqlalchemy import func, select
 
-from packages.domain.models import Attempt, Job, Permit, SegmentVersion, Task, Settings
+from packages.domain.models import Attempt, Edition, Job, Permit, SegmentVersion, Task, Settings
 from packages.ir import digest
 from packages.jobs.queue import claim
 from packages.providers.openai_responses import OpenAIResponses
-from packages.providers.settings import managed_profile, save_configuration
+from packages.providers.settings import managed_profile, resolve_provider_credentials, save_configuration
+from packages.preparation import freeze_options
 from packages.translation.execution import execute_translation
+from packages.translation.languages import public_profile
 from tests.integration.test_translation_execution import PROFILE, setup_library
+from tests.support import seed_editor
 
 pytestmark = pytest.mark.postgres
 
@@ -52,6 +55,52 @@ def intercept(monkeypatch, handler, *, after_bind=None):
         if after_bind: after_bind()
         return instance
     monkeypatch.setattr('packages.translation.execution.OpenAIResponses', factory)
+
+
+def test_api_created_jobs_keep_their_own_settings_snapshot(client, database, monkeypatch, tmp_path):
+    db, cfg = database
+    monkeypatch.setenv('PROVIDER_CONFIG_DIR', str(tmp_path / 'provider-settings'))
+    monkeypatch.setenv('PROVIDER_PROFILE_FILE', str(tmp_path / 'absent-profile'))
+    seed_editor(db, cfg)
+    with db.transaction() as session:
+        session.get(Settings, 'singleton').dispatch_disabled = False
+        session.get(Edition, 'edition_fixture').target_locale = 'en'
+        session.flush()
+        session.add_all([Edition(id='old_settings_edition', document_id='doc_fixture', target_locale='zh-Hans'),
+            Edition(id='new_settings_edition', document_id='doc_fixture', target_locale='ja')])
+    base = copy.deepcopy(PROFILE) | {'endpoint': 'http://127.0.0.1:11434/synthetic-A',
+        'api_protocol': 'chat_completions', 'auth_mode': 'bearer', 'cost_control_enabled': False}
+    save_configuration(base, 'synthetic-key-A', False, '"0"', 'snapshot-A')
+    first = managed_profile()
+
+    def start(edition_id, key):
+        preflight = client.get('/api/v1/editions/' + edition_id + '/preflight')
+        assert preflight.status_code == 200, preflight.text
+        view = preflight.json()
+        body = {'source_revision_id': view['source_revision_id'], 'source_hash': view['source_hash'],
+            'profile_revision': view['profile']['profile_revision'], 'profile_hash': view['profile_hash'],
+            'external_processing_confirmed': True, 'publish_policy': 'manual_approval'}
+        created = client.post('/api/v1/editions/' + edition_id + '/translate', json=body,
+            headers={'If-Match': preflight.headers['etag'], 'Idempotency-Key': key})
+        assert created.status_code == 202, created.text
+        return created.json()['job_id']
+
+    old_id = start('old_settings_edition', 'start-A')
+    updated = base | {'endpoint': 'http://127.0.0.1:11434/synthetic-B', 'model_id': 'model-B'}
+    save_configuration(updated, 'synthetic-key-B', False, '"1"', 'snapshot-B')
+    second = managed_profile()
+    new_id = start('new_settings_edition', 'start-B')
+    with db.transaction() as session:
+        old, new = session.get(Job, old_id), session.get(Job, new_id)
+        assert public_profile(old.payload['profile']) == first
+        assert public_profile(new.payload['profile']) == second
+        assert old.config_snapshot['config_revision'] == first['config_revision']
+        assert new.config_snapshot['config_revision'] == second['config_revision']
+        assert old.config_snapshot['model_id'] == first['model_id']
+        assert new.config_snapshot['model_id'] == second['model_id']
+        assert 'synthetic-key-' not in json.dumps([old.payload, new.payload, old.config_snapshot, new.config_snapshot])
+        endpoint, protocol, auth, key = resolve_provider_credentials(old.payload['profile'])
+        assert (endpoint, protocol, auth, key.read_text()) == (first['endpoint'], 'chat_completions', 'bearer', 'synthetic-key-A')
 
 
 @pytest.mark.parametrize('protocol,auth', [('responses', 'bearer'), ('chat_completions', 'bearer'),
@@ -96,7 +145,12 @@ def test_invalid_tracking_metadata_does_not_prevent_known_usage_settlement(
 
 def test_rotation_after_adapter_binding_cannot_mix_endpoint_A_and_key_B(database, monkeypatch, tmp_path):
     db, cfg, frozen = prepare(database, monkeypatch, tmp_path); calls = []
+    rotated = False
     def rotate():
+        nonlocal rotated
+        if rotated:
+            return
+        rotated = True
         new = {k: v for k, v in frozen.items() if k not in {'config_revision', 'credential_revision'}}
         new['endpoint'] = 'http://127.0.0.1:11434/synthetic-B'
         save_configuration(new, 'synthetic-key-B', False, '"1"', 'rotation')
@@ -110,11 +164,75 @@ def test_rotation_after_adapter_binding_cannot_mix_endpoint_A_and_key_B(database
         assert session.get(Task, lease.task_id).status == 'succeeded'
         assert session.scalar(select(Permit)).state == 'settled'
     assert managed_profile()['endpoint'].endswith('synthetic-B') and len(calls) == 1
-    # A later queued unit is stale; it cannot pick up B or silently retry A.
-    later = claim(db); execute_translation(db, cfg, later)
+    # Queued units keep the original endpoint and credential after a settings edit.
+    while later := claim(db):
+        execute_translation(db, cfg, later)
     with db.transaction() as session:
-        assert session.get(Job, 'job').error['code'] == 'PROVIDER_PROFILE_STALE'
-        assert session.scalar(select(func.count()).select_from(Permit)) == 1
+        assert session.get(Job, 'job').status in {'succeeded', 'completed_with_warnings'}
+        assert all(permit.state == 'settled' for permit in session.scalars(select(Permit)))
+        assert session.scalar(select(func.count()).select_from(Permit)) == len(calls)
+    assert len(calls) > 1
+
+
+def test_old_profile_wait_resumes_only_with_its_saved_revision(database, monkeypatch, tmp_path):
+    db, cfg, frozen = prepare(database, monkeypatch, tmp_path)
+    updated = {k: v for k, v in frozen.items() if k not in {'config_revision', 'credential_revision'}}
+    updated['endpoint'] = 'http://127.0.0.1:11434/synthetic-B'
+    save_configuration(updated, 'synthetic-key-B', False, '"1"', 'rotation')
+    with db.transaction() as session:
+        job = session.get(Job, 'job')
+        job.status = 'waiting_config'
+        job.error = {'code': 'PROVIDER_PROFILE_STALE'}
+    calls = []
+    def wire(request):
+        calls.append(request)
+        assert str(request.url) == frozen['endpoint']
+        assert request.headers['authorization'] == 'Bearer synthetic-key-A'
+        return wire_response(request, 'chat_completions')
+    intercept(monkeypatch, wire)
+    lease = claim(db)
+    assert lease is not None and lease.job_id == 'job'
+    execute_translation(db, cfg, lease)
+    with db.transaction() as session:
+        assert session.get(Task, lease.task_id).status == 'succeeded'
+        assert session.get(Job, 'job').status != 'waiting_config'
+        assert session.scalar(select(Permit)).state == 'settled'
+    assert len(calls) == 1
+
+
+def test_provider_preparation_uses_frozen_settings_after_rotation(database, monkeypatch, tmp_path):
+    db, cfg = database
+    monkeypatch.setenv('PROVIDER_CONFIG_DIR', str(tmp_path / 'provider-settings'))
+    base = copy.deepcopy(PROFILE) | {'endpoint': 'http://127.0.0.1:11434/synthetic-A',
+        'api_protocol': 'chat_completions', 'auth_mode': 'bearer', 'cost_control_enabled': True}
+    save_configuration(base, 'synthetic-key-A', False, '"0"', 'prepare-A')
+    frozen = managed_profile()
+    setup_library(db, cfg)
+    with db.transaction() as session:
+        job = session.get(Job, 'job')
+        job.payload = job.payload | {'profile': frozen} | freeze_options({'mode': 'provider'}, frozen)
+    execute_translation(db, cfg, claim(db))
+    preparation = claim(db)
+    assert preparation.payload['phase'] == 'preparation'
+    updated = base | {'endpoint': 'http://127.0.0.1:11434/synthetic-B'}
+    save_configuration(updated, 'synthetic-key-B', False, '"1"', 'prepare-B')
+    calls = []
+    def wire(request):
+        calls.append(request)
+        assert str(request.url) == frozen['endpoint']
+        assert request.headers['authorization'] == 'Bearer synthetic-key-A'
+        return httpx.Response(200, json={'model': frozen['model_id'], 'choices': [{'finish_reason': 'stop',
+            'message': {'role': 'assistant', 'content': '{"summary":[],"terms":[]}'}}],
+            'usage': {'prompt_tokens': 100, 'completion_tokens': 20}})
+    def factory(key_file=None, **kwargs):
+        return OpenAIResponses(key_file, httpx.MockTransport(wire), **kwargs)
+    monkeypatch.setattr('packages.providers.openai_responses.OpenAIResponses', factory)
+    execute_translation(db, cfg, preparation)
+    with db.transaction() as session:
+        job = session.get(Job, 'job')
+        assert job.progress['preparation_status'] == 'completed'
+        assert session.scalar(select(Permit)).state == 'settled'
+        assert job.status != 'waiting_config'
     assert len(calls) == 1
 
 

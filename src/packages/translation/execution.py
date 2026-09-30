@@ -281,9 +281,10 @@ def execute_translation(db,cfg,lease,provider=None):
         # legacy output into a cache for a different request format.
         commit_unit(db,cfg,lease,unit,checkpoint[0],key,profile,origin_attempt_id=checkpoint[1],cacheable=checkpoint[2]);return
     managed_provider = provider is None
-    if provider is None:
-        # Deployment changes invalidate the confirmed profile; a test double must be injected explicitly.
-        if provider_profile()!=public_profile(profile):
+    if managed_provider:
+        # Managed revisions and their credentials are immutable. A legacy
+        # external profile has no revisioned key, so it still needs a live match.
+        if not profile.get('config_revision') and provider_profile()!=public_profile(profile):
             wait_without_dispatch(db,lease,'PROVIDER_PROFILE_STALE');return
         try:
             endpoint,protocol,auth_mode,key_file=resolve_provider_credentials(profile)
@@ -293,7 +294,7 @@ def execute_translation(db,cfg,lease,provider=None):
                 def check_current():
                     with db.transaction() as session:
                         assert_current(session,lease)
-                    if provider_profile()!=public_profile(profile):
+                    if not profile.get('config_revision') and provider_profile()!=public_profile(profile):
                         raise ProviderFailure('PROVIDER_PROFILE_STALE','not_sent')
                 provider.prepare(profile,check_current)
             elif protocol in ('gemini_interactions','claude_messages'):
@@ -308,7 +309,7 @@ def execute_translation(db,cfg,lease,provider=None):
     try:
         request_body([unit],profile,glossary,review=lease.kind=='semantic_review')
         with db.transaction() as session:
-            if managed_provider and profile.get('api_protocol')=='local_translation' and provider_profile()!=public_profile(profile):
+            if managed_provider and profile.get('api_protocol')=='local_translation' and not profile.get('config_revision') and provider_profile()!=public_profile(profile):
                 raise ProviderFailure('PROVIDER_PROFILE_STALE','not_sent')
             authorize(session,lease,reserve_cost(profile),profile.get('price'))
             job=session.get(Job,lease.job_id);job.progress=job.progress|{'requests':job.progress.get('requests',0)+1};emit(session,job)

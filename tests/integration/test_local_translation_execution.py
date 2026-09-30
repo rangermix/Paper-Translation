@@ -80,14 +80,23 @@ def test_local_tracking_metadata_does_not_prevent_known_usage_settlement(
     assert len(calls) == 1
 
 
-def test_local_profile_rotation_during_prepare_never_dispatches(database, monkeypatch, tmp_path):
+def test_local_profile_rotation_during_prepare_uses_frozen_model(database, monkeypatch, tmp_path):
     db, cfg = prepare(database, monkeypatch, tmp_path)
+    frozen = managed_profile()
     def prepared(self, saved, check_current):
         check_current()
         save_configuration(profile('milmmt-46-4b-q4'), None, False, '"1"', 'rotate')
     monkeypatch.setattr(LocalTranslation, 'prepare', prepared)
-    monkeypatch.setattr(LocalTranslation, 'translate', lambda *args: (_ for _ in ()).throw(AssertionError('sent stale model')))
+    def wire(request):
+        body = json.loads(request.content)
+        assert body['model'] == frozen['model_id']
+        return httpx.Response(200, json={'model': body['model'], 'choices': [{'text': '原设置译文', 'finish_reason': 'stop'}],
+            'usage': {'prompt_tokens': 20, 'completion_tokens': 5}})
+    original = LocalTranslation.__init__
+    monkeypatch.setattr(LocalTranslation, '__init__', lambda self: original(self, transport=httpx.MockTransport(wire)))
     execute_translation(db, cfg, claim(db))
     with db.transaction() as session:
-        assert session.scalar(select(Permit)) is None
-        assert session.get(Job, 'job').error['code'] == 'PROVIDER_PROFILE_STALE'
+        assert session.scalar(select(Permit)).state == 'settled'
+        assert session.get(Job, 'job').error is None
+        assert session.scalar(select(SegmentVersion)) is not None
+    assert managed_profile()['model_id'] != frozen['model_id']

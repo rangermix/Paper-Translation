@@ -30,9 +30,13 @@ and ambiguous mappings stay unchanged.
 
 Translation requires a complete saved profile, content/destination confirmation,
 enabled dispatch and a budget when cost control is enabled. Confirmations bind the
-source, profile revision/hash and current generation. Changing them requires a new
-confirmation. Waiting for model/configuration startup is represented separately
-from an unknown provider outcome.
+source, profile revision/hash and current generation. A task records the selected
+public profile and credential revision at creation; later changes to the saved
+translation interface affect new tasks, while queued translation and preparation
+requests use that task's original revision. A new task using changed settings
+requires a new confirmation. Global dispatch controls and budget checks still apply.
+Waiting for model/configuration startup is represented separately from an unknown
+provider outcome.
 
 The upload page and Settings offer **以后上传默认允许翻译**, initially off.
 Enabling it explicitly authorizes necessary text, context and terminology from

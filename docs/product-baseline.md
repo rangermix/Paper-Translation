@@ -17,6 +17,9 @@ the instance; the default published address is loopback.
 - Translate through a saved API service or the optional local MLX service.
   All languages are selectable; model quality for each language is not guaranteed
   by the selector. Provider configuration and content processing require confirmation.
+  Each translation task freezes its public service settings and credential revision
+  when created. Later settings changes apply to new tasks; queued units and model
+  preparation continue with the original revision.
   An opt-in upload default remembers permission for the current saved service, so
   later uploads can proceed from parsing to translation without checking consent
   again. Each upload can still opt out; changed service configurations require
@@ -59,7 +62,8 @@ The settings page supports Responses, Chat Completions, Gemini Interactions and
 Claude Messages. Endpoints and model IDs are user-configurable; saving does not
 send a request. Keys live in backend files and are never returned. Protocol,
 authentication and native response model identity must agree with the saved profile.
-There is no automatic provider fallback.
+Saved credential revisions remain available to tasks that already use them. There
+is no automatic provider fallback.
 
 Cost control defaults off for new settings and preserves existing choices.
 Enabled control requires pricing and a positive job budget. Unknown amounts are

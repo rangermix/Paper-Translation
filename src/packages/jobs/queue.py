@@ -40,8 +40,14 @@ def claim(db, lease_seconds=60):
             .group_by(Attempt.job_id).subquery())
         # Rotate jobs after every claim, including retries. A large document's
         # many ready units must not monopolize the pool ahead of smaller files.
+        # Older workers left revisioned jobs waiting when the current provider
+        # setting changed. Their pending units can now use the saved revision.
+        frozen_config_wait = ((Job.status == 'waiting_config')
+            & (Job.stage.in_(['translate', 'translating', 'candidate', 'semantic_review']))
+            & (Job.error['code'].astext == 'PROVIDER_PROFILE_STALE')
+            & (Job.payload['profile']['config_revision'].astext.is_not(None)))
         job = session.scalar(select(Job).outerjoin(last_claim, last_claim.c.job_id == Job.id)
-            .where(Job.status.in_(['pending', 'running']), eligible)
+            .where((Job.status.in_(['pending', 'running']) | frozen_config_wait), eligible)
             .order_by(func.coalesce(last_claim.c.at, Job.created_at), Job.created_at, Job.id)
             .with_for_update(of=Job, skip_locked=True).limit(1))
         if not job:

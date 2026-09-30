@@ -77,9 +77,14 @@ def test_native_job_uses_matching_header_schema_and_settles_cached_thinking_usag
 
 
 @pytest.mark.parametrize('protocol', ['gemini_interactions', 'claude_messages'])
-def test_native_rotation_keeps_inflight_key_and_blocks_later_stale_unit(database, monkeypatch, tmp_path, protocol):
+def test_native_rotation_keeps_inflight_and_later_units_on_frozen_key(database, monkeypatch, tmp_path, protocol):
     db, cfg, frozen = prepare(database, monkeypatch, tmp_path, protocol); calls = []
+    rotated = False
     def rotate():
+        nonlocal rotated
+        if rotated:
+            return
+        rotated = True
         new = {k: v for k, v in frozen.items() if k not in ('config_revision', 'credential_revision')}
         new['endpoint'] = 'http://127.0.0.1:19009/native-B'
         save_configuration(new, 'synthetic-native-B', False, '"1"', 'rotate')
@@ -90,12 +95,13 @@ def test_native_rotation_keeps_inflight_key_and_blocks_later_stale_unit(database
         return httpx.Response(200, json=response_for(request, protocol))
     intercept(monkeypatch, wire, rotate)
     execute_translation(db, cfg, claim(db))
-    execute_translation(db, cfg, claim(db))
+    while lease := claim(db):
+        execute_translation(db, cfg, lease)
     with db.transaction() as session:
-        assert session.scalar(select(Permit)).state == 'settled'
-        assert session.get(Job, 'job').error['code'] == 'PROVIDER_PROFILE_STALE'
-        assert session.scalar(select(func.count()).select_from(Permit)) == 1
-    assert len(calls) == 1
+        assert session.get(Job, 'job').status in {'succeeded', 'completed_with_warnings'}
+        assert all(permit.state == 'settled' for permit in session.scalars(select(Permit)))
+        assert session.scalar(select(func.count()).select_from(Permit)) == len(calls)
+    assert len(calls) > 1
 
 
 @pytest.mark.parametrize('mode', ['missing_usage', 'cache_write', 'empty_refusal', 'server_tool'])

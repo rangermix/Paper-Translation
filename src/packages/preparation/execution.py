@@ -96,7 +96,7 @@ def execute_preparation(db, cfg, lease, provider=None):
         return
     managed = provider is None
     if managed:
-        if provider_profile() != public_profile(translation_profile):
+        if not translation_profile.get('config_revision') and provider_profile() != public_profile(translation_profile):
             wait_without_dispatch(db, lease, 'PROVIDER_PROFILE_STALE'); return
         try:
             if profile.get('api_protocol') == 'local_analysis':
@@ -105,7 +105,7 @@ def execute_preparation(db, cfg, lease, provider=None):
                 def check_current():
                     with db.transaction() as session:
                         snapshot(session, cfg, lease)
-                    if provider_profile() != public_profile(translation_profile):
+                    if not translation_profile.get('config_revision') and provider_profile() != public_profile(translation_profile):
                         raise ProviderFailure('PROVIDER_PROFILE_STALE', 'not_sent')
                 provider.prepare(profile, check_current)
             else:
@@ -123,7 +123,7 @@ def execute_preparation(db, cfg, lease, provider=None):
         request_body(request, profile)
         with db.transaction() as session:
             snapshot(session, cfg, lease)
-            if managed and provider_profile() != public_profile(translation_profile):
+            if managed and not translation_profile.get('config_revision') and provider_profile() != public_profile(translation_profile):
                 raise ProviderFailure('PROVIDER_PROFILE_STALE', 'not_sent')
             authorize(session, lease, reserve_cost(profile), profile.get('price'))
             job, _ = assert_current(session, lease)

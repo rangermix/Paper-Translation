@@ -13,10 +13,10 @@ from tests.integration.test_translation_execution import setup_library
 from tests.unit.test_local_translation_provider import profile
 
 
-def prepare(database, monkeypatch, tmp_path):
+def prepare(database, monkeypatch, tmp_path, slug='hy-mt2-1.8b-q8'):
     db, cfg = database
     monkeypatch.setenv('PROVIDER_CONFIG_DIR', str(tmp_path / 'settings'))
-    save_configuration(profile(), None, False, '"0"', 'local')
+    save_configuration(profile(slug), None, False, '"0"', 'local')
     setup_library(db, cfg)
     with db.transaction() as session:
         job = session.get(Job, 'job'); job.payload = job.payload | {'profile': managed_profile()}
@@ -24,8 +24,12 @@ def prepare(database, monkeypatch, tmp_path):
     return db, cfg
 
 
-def test_local_prepare_precedes_permit_and_exact_model_is_recorded(database, monkeypatch, tmp_path):
-    db, cfg = prepare(database, monkeypatch, tmp_path)
+@pytest.mark.parametrize('slug,runtime', [
+    ('hy-mt2-1.8b-q8', 'mlx'), ('hy-mt2-7b-q4-k-m-gguf', 'llama.cpp'),
+    ('hy-mt2-1.8b-bf16-vllm', 'vllm'),
+])
+def test_local_prepare_precedes_permit_and_exact_model_is_recorded(database, monkeypatch, tmp_path, slug, runtime):
+    db, cfg = prepare(database, monkeypatch, tmp_path, slug)
     events = []
     def prepared(self, saved, check_current):
         check_current()
@@ -47,8 +51,8 @@ def test_local_prepare_precedes_permit_and_exact_model_is_recorded(database, mon
         assert session.get(Task, lease.task_id).status == 'succeeded'
         assert session.scalar(select(SegmentVersion)) is not None
         identity = session.get(Job, 'job').actual_model
-        assert identity['kind'] == 'local' and identity['model_id'] == profile()['model_id']
-        assert identity['engine'] == 'mlx' and identity['revision']
+        assert identity['kind'] == 'local' and identity['model_id'] == profile(slug)['model_id']
+        assert identity['engine'] == runtime and identity['revision']
     assert events == ['prepare', 'inference']
 
 

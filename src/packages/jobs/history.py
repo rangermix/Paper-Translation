@@ -117,7 +117,7 @@ def record_api_model(db, lease, profile, response=None):
     if local:
         from packages.local_models.catalog import get_model
         entry = get_model(profile['model_id'])
-        fields.update(engine='mlx', revision=entry['revision'], models=[{'name': entry['label'], 'bits': entry['bits']}])
+        fields.update(engine=entry['runtime'], revision=entry['revision'], models=[{'name': entry['label'], 'bits': entry['bits']}])
     model = ModelIdentity(kind='local' if local else 'api', model_id=reported,
         evidence_source=('local_response' if local else 'api_response') if response is not None else ('local_dispatch' if local else 'api_dispatch'),
         **fields).model_dump(exclude_none=True)

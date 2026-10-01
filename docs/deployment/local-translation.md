@@ -212,6 +212,12 @@ older local Compose file, recreate local-translator, then prepare the exact mode
 and resume the waiting job. Model-import HTTP failures report
 `LOCAL_MODEL_LOAD_FAILED` separately from weight-download failures.
 
+GGUF preparation also configures llama.cpp's `--alias` to the exact artifact
+digest. Without this, llama.cpp reports a weight-file path as the response model,
+which fails the application's exact model-ID check. The sidecar checks the alias
+before every inference; it never substitutes the requested ID for an unchecked
+response. Task history records the selected engine (`llama.cpp`, `vllm` or `mlx`).
+
 The CUDA startup check establishes runtime/GPU availability, not that a selected
 model fits or produces a correct translation. Those require explicit model
 preparation and separately authorized inference. GPU memory is shared with the

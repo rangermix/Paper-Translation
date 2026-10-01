@@ -16,10 +16,13 @@ router = APIRouter(prefix='/api/v1')
 @router.get('/settings/local-models')
 def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
     import httpx
-    from packages.local_models.catalog import ENDPOINT, configured_formats, public_models
+    from packages.local_models.catalog import ENDPOINT, configured_backends, configured_formats, public_models
     from .common import response
     formats = configured_formats()
+    backends = configured_backends(formats=formats)
     models = [m for m in public_models(purpose=purpose) if m['format'] in formats]
+    for model in models:
+        model['inference_backends'] = [backend for backend in model['inference_backends'] if backend in backends]
     code = None
     try:
         with httpx.Client(timeout=3, trust_env=False, follow_redirects=False) as client:
@@ -37,29 +40,44 @@ def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
             'code': code or 'LOCAL_MODEL_FORMAT_UNSUPPORTED'})
         model.update({key: state[key] for key in
             ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes') if key in state})
+        model['backend_states'] = {}
+        remote = state.get('backend_states', {})
+        for backend in model['inference_backends']:
+            entry = remote.get(backend) if isinstance(remote, dict) else None
+            if not isinstance(entry, dict):
+                entry = state if backend == model['default_backend'] else {'status': 'unavailable', 'code': code or 'LOCAL_MODEL_SERVICE_UNAVAILABLE'}
+            model['backend_states'][backend] = {key: entry[key] for key in
+                ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes') if key in entry}
     return response({'models': models, **({'code': code} if code else {})})
 
 
 @router.post('/settings/local-models/{identifier}/prepare', status_code=202)
-def prepare_local_model(identifier: str, request: Request, session=Session):
+def prepare_local_model(identifier: str, request: Request, backend: Literal['llama.cpp', 'vllm', 'mlx'] | None = None, session=Session):
     import httpx
-    from packages.local_models.catalog import ENDPOINT, get_model
+    from packages.local_models.catalog import ENDPOINT, configured_backends, configured_formats, get_model, select_backend, selectable_format
     from .common import command
     try:
         model = get_model(identifier)
     except ValueError:
         raise DomainError('LOCAL_MODEL_UNKNOWN', status=404) from None
+    try:
+        selected = select_backend(model, backend)
+    except ValueError:
+        raise DomainError('LOCAL_MODEL_BACKEND_UNSUPPORTED', status=409) from None
+    require(selectable_format(model) in configured_formats(), 'LOCAL_MODEL_FORMAT_UNSUPPORTED', status=409)
+    require(selected in configured_backends(), 'LOCAL_MODEL_BACKEND_UNSUPPORTED', status=409)
     def execute():
         lock_lifecycle(session)
         try:
             with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
-                result = client.post(ENDPOINT.rsplit('/v1/', 1)[0] + '/models/' + model['id'] + '/prepare')
+                result = client.post(ENDPOINT.rsplit('/v1/', 1)[0] + '/models/' + model['id'] + '/prepare',
+                                     **({'params': {'backend': selected}} if backend is not None else {}))
                 result.raise_for_status()
                 state = result.json()
             return {k: state[k] for k in ('status', 'code', 'downloaded_bytes', 'total_bytes') if k in state}
         except (httpx.HTTPError, ValueError, KeyError, TypeError):
             raise DomainError('LOCAL_MODEL_SERVICE_UNAVAILABLE', status=503) from None
-    return command(session, request, {}, execute, 202)
+    return command(session, request, {'backend': selected} if backend is not None else {}, execute, 202)
 
 
 class ProviderSettings(StrictModel):

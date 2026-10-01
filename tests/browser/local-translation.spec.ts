@@ -3,7 +3,7 @@ import { outputDirectory } from './paths';
 
 for (const width of [1440, 390]) test(`local model selection and explicit download at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
-  const errors: string[] = []; const writes: { path: string; body: any }[] = [];
+  const errors: string[] = []; const writes: { path: string; backend: string | null; body: any }[] = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   const variants = [
@@ -22,7 +22,7 @@ for (const width of [1440, 390]) test(`local model selection and explicit downlo
   await page.route('**/api/v1/**', async route => {
     const r = route.request(); const path = new URL(r.url()).pathname.slice(7);
     if (r.method() !== 'GET') {
-      writes.push({ path, body: r.postDataJSON() });
+      writes.push({ path, backend: new URL(r.url()).searchParams.get('backend'), body: r.postDataJSON() });
       if (path === '/settings/provider') profile = { ...profile, ...r.postDataJSON().profile, generation: 2, configured: true, dispatch_configuration_ready: true };
       if (path.endsWith('/prepare')) rows[1].status = 'downloading';
     }
@@ -41,6 +41,7 @@ for (const width of [1440, 390]) test(`local model selection and explicit downlo
   const select = page.getByRole('combobox', { name: '具体模型 ID' });
   await expect(select.locator('option')).toHaveCount(2);
   await select.selectOption(rows[1].model_id);
+  await expect(page.getByRole('combobox', { name: '推理后端' })).toHaveValue('mlx');
   await expect(page.getByText('首次使用时下载 · MLX Q4 · 下载约 2.0 GB')).toBeVisible();
   await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('12B · Q4');
   await page.getByRole('combobox', { name: '参数规模与量化' }).selectOption('4B · Q4');
@@ -55,11 +56,12 @@ for (const width of [1440, 390]) test(`local model selection and explicit downlo
   await expect(page.getByLabel('API 密钥', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '保存 AI 服务配置', exact: true }).click();
   await expect.poll(() => writes.length).toBe(1);
-  expect(writes[0].body.profile).toMatchObject({ api_protocol: 'local_translation', provider: 'local', auth_mode: 'none', model_id: rows[1].model_id, semantic_review_enabled: false, cost_control_enabled: false });
+  expect(writes[0].body.profile).toMatchObject({ api_protocol: 'local_translation', provider: 'local', auth_mode: 'none', model_id: rows[1].model_id, local_backend: 'mlx', semantic_review_enabled: false, cost_control_enabled: false });
   expect(writes[0].body.api_key).toBeUndefined();
   await page.getByRole('button', { name: '立即准备模型', exact: true }).click();
   await expect.poll(() => writes.length).toBe(2);
   expect(writes[1].path).toBe('/settings/local-models/model-1/prepare');
+  expect(writes[1].backend).toBe('mlx');
   await expect(page.getByText('正在下载 · MLX Q4 · 下载约 2.0 GB')).toBeVisible();
   await expect(page.getByRole('button', { name: '测试本地翻译模型' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();

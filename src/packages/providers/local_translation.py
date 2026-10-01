@@ -5,7 +5,7 @@ import time
 import httpx
 
 from packages.ir import canonical_bytes, strict_loads
-from packages.local_models.catalog import ENDPOINT, canonical_response_model, get_model
+from packages.local_models.catalog import ENDPOINT, canonical_response_model, get_model, select_backend
 from .contract import ProviderFailure, normalize_request_id
 
 REQUEST_FORMAT_VERSION = 'local-translation-v5'
@@ -115,6 +115,7 @@ def request_body(units, profile, glossary, *, review=False):
     if len(prompt.encode()) + 256 > limit:
         raise ProviderFailure('UNIT_TOO_LARGE', 'not_sent')
     return {**body, 'model': profile['model_id'], 'max_tokens': min(profile['max_output_tokens'], 2048),
+            **({'backend': select_backend(model, profile['local_backend'])} if 'local_backend' in profile else {}),
             'temperature': 0, 'stream': False}
 
 
@@ -153,10 +154,11 @@ class LocalTranslation:
         """No document content: complete download before obtaining a dispatch permit."""
         base = ENDPOINT.rsplit('/v1/', 1)[0]
         model = get_model(profile['model_id'])
+        params = {'backend': select_backend(model, profile['local_backend'])} if 'local_backend' in profile else {}
         with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
             try:
                 check_current()
-                response = client.post(base + '/models/' + model['id'] + '/prepare')
+                response = client.post(base + '/models/' + model['id'] + '/prepare', **({'params': params} if params else {}))
                 response.raise_for_status()
                 until = time.monotonic() + 3600
                 while True:
@@ -169,7 +171,7 @@ class LocalTranslation:
                     if time.monotonic() >= until:
                         raise ProviderFailure('LOCAL_MODEL_DOWNLOAD_TIMEOUT', 'not_sent')
                     time.sleep(1)
-                    response = client.get(base + '/models/' + model['id'])
+                    response = client.get(base + '/models/' + model['id'], **({'params': params} if params else {}))
                     response.raise_for_status()
             except (httpx.HTTPError, ValueError, KeyError) as exc:
                 if isinstance(exc, ProviderFailure):

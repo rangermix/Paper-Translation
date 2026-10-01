@@ -7,6 +7,31 @@ from pathlib import Path
 
 ENDPOINT = 'http://local-translator:8090/v1/completions'
 FAMILY_LABELS = {'hy': 'Hy-MT2', 'milmmt': 'MiLMMT-46', 'minicpm5': 'MiniCPM5'}
+BACKEND_LABELS = {'llama.cpp': 'llama.cpp', 'vllm': 'vLLM（CUDA）', 'mlx': 'vLLM Metal（MLX）'}
+
+
+def compatible_backends(model):
+    """Reviewed model/adapter compatibility, never inferred from installation."""
+    return tuple(model.get('inference_backends', [model['runtime']]))
+
+
+def select_backend(model, backend=None):
+    selected = model['runtime'] if backend in (None, '') else backend
+    if not isinstance(selected, str) or selected not in BACKEND_LABELS or selected not in compatible_backends(model):
+        raise ValueError('LOCAL_MODEL_BACKEND_UNSUPPORTED')
+    return selected
+
+
+def configured_backends(value=None, *, formats=None):
+    """Host capability declaration; a stopped/missing engine remains selectable."""
+    raw = value if value is not None else os.environ.get('LOCAL_TRANSLATION_BACKENDS', '')
+    if not raw:
+        formats = configured_formats() if formats is None else formats
+        return frozenset({'gguf': 'llama.cpp', 'safetensors': 'vllm', 'mlx': 'mlx'}[fmt] for fmt in formats)
+    backends = [part.strip() for part in raw.split(',')]
+    if any(part not in BACKEND_LABELS for part in backends) or len(set(backends)) != len(backends):
+        raise ValueError('LOCAL_MODEL_BACKENDS_INVALID')
+    return frozenset(backends)
 
 
 def selectable_format(model):
@@ -73,6 +98,7 @@ def public_models(*, purpose='translation'):
         raise ValueError('LOCAL_MODEL_PURPOSE')
     return [{**{key: m[key] for key in ('id', 'label', 'family', 'bits', 'runtime', 'repo', 'revision', 'license', 'context_size', 'parameter_size', 'quantization')},
              'family_label': FAMILY_LABELS[m['family']],
+             'inference_backends': list(compatible_backends(m)), 'default_backend': m['runtime'],
              'format': selectable_format(m),
              'model_id': artifact(m)['id'], 'download_bytes': sum(f['size'] for f in m['files'])}
             for m in models() if purpose == 'all' or m.get('purpose', 'translation') == purpose]

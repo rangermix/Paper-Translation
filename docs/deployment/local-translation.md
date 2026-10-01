@@ -1,7 +1,8 @@
 # Local translation and paper analysis
 
 Settings → AI service → **本地翻译模型** selects model family, parameter size and
-quantization, format, then the exact Docker Model Runner model ID. The pinned
+quantization, format, then the exact Docker Model Runner model ID. An independent
+**推理后端** selector follows the model ID. The pinned
 translation catalog currently includes:
 
 | Format and engine | Pinned repositories | Deployment capability |
@@ -9,6 +10,14 @@ translation catalog currently includes:
 | GGUF / llama.cpp | tencent/Hy-MT2-1.8B-GGUF and tencent/Hy-MT2-7B-GGUF; mradermacher/MiLMMT-46-{1B,4B,12B}-v0.1-GGUF; all Q4_K_M | Docker hosts with a supported llama.cpp backend |
 | Safetensors / vLLM | tencent/Hy-MT2-1.8B, BF16 | Docker Model Runner deployment with supported NVIDIA CUDA vLLM (Linux x86_64 or supported Windows WSL2) |
 | MLX / Docker-managed vLLM Metal | mlx-community/Hy-MT2-1.8B-8bit, shraey/milmmt-46-4b-mlx-4bit, mlx-community/Hy-MT2-7B-4bit, mlx-community/MiLMMT-46-12B-v0.1-4bit | Apple Silicon macOS with the provisioned MLX backend |
+
+Each pinned model declares its reviewed `inference_backends`; the model's default
+engine is retained for old configurations. Choices are the intersection of those
+compatibilities and the deployment's supported backends. Installation, engine
+readiness and downloaded weights are reported for the selected backend separately.
+The current catalog offers the combinations in the table. GGUF through vLLM is
+not integrated with this Runner adapter yet and is not offered as a working choice.
+Compatibility metadata does not change a model's pinned artifact ID.
 
 `LOCAL_TRANSLATION_FORMATS` declares the formats supported by this deployment,
 for example `gguf`, `gguf,mlx`, or `gguf,safetensors`. The sidecar has no Docker
@@ -24,6 +33,23 @@ An engine may be supported but not installed, running, or able to fit
 a selected model. Those conditions appear as model status and do not remove a
 supported format from the selector. Docker Model Runner can package Safetensors
 on other hosts, but packaging alone does not provide vLLM inference there.
+
+`LOCAL_TRANSLATION_BACKENDS` optionally declares supported engines independently,
+using `llama.cpp`, `vllm` and `mlx` (for example `llama.cpp,vllm` on a supported
+CUDA Linux/WSL2 deployment). Leave it empty to derive the existing engines from
+`LOCAL_TRANSLATION_FORMATS`. Declare `mlx` only on Apple Silicon macOS, and `vllm`
+only where the deployment's platform and hardware support CUDA vLLM. Pass the same
+value to app, worker and local-translator using the template's environment entries.
+This declares capability; it does not require the engine to be installed or started.
+
+The settings form remembers backend choices for each exact model while switching
+family, size, format or interface. Saving writes `local_backend` to the versioned
+provider profile and the public task configuration snapshot. New tasks use this
+saved backend for preparation, status and inference. Existing immutable profiles
+without this field continue to use the original model default; viewing them does
+not rewrite their revision or hash. Changing the saved backend does not change
+an already started task. A saved incompatible backend is shown explicitly and
+must be corrected before saving; no engine is substituted silently.
 
 The MiLMMT GGUF files are community quantizations of Xiaomi's v0.1 checkpoints;
 their repository revisions, file sizes and LFS SHA-256 values are pinned separately

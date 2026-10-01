@@ -10,7 +10,7 @@ import { LocalModels } from './local-models';
 
 type Fields = {
   endpoint: string; protocol: NonNullable<Provider['api_protocol']>; auth: NonNullable<Provider['auth_mode']>;
-  model: string; version: string; inputPrice: string; cachedPrice: string; outputPrice: string;
+  model: string; backend: string; version: string; inputPrice: string; cachedPrice: string; outputPrice: string;
   costControl: boolean; inputTokens: string; outputTokens: string; unitCharacters: string; includesReasoning: boolean;
 };
 type Draft = { fields: Fields; apiKey: string; clearKey: boolean };
@@ -24,7 +24,7 @@ const missingLabels: Record<string, string> = {
 };
 const fromProvider = (value: Provider): Fields => ({
   endpoint: value.endpoint ?? '', protocol: value.api_protocol ?? 'responses', auth: value.auth_mode ?? providerProtocols[value.api_protocol ?? 'responses'].auth,
-  model: value.model_id ?? '', version: value.api_version ?? (value.api_protocol === 'claude_messages' ? '2023-06-01' : ''), costControl: costControlEnabled(value), inputPrice: dollar(value.price?.input_micro_per_million),
+  model: value.model_id ?? '', backend: value.local_backend ?? '', version: value.api_version ?? (value.api_protocol === 'claude_messages' ? '2023-06-01' : ''), costControl: costControlEnabled(value), inputPrice: dollar(value.price?.input_micro_per_million),
   cachedPrice: dollar(value.price?.cached_input_micro_per_million), outputPrice: dollar(value.price?.output_micro_per_million),
   inputTokens: String(value.max_input_tokens ?? value.token_limits_defaults?.max_input_tokens ?? defaultTokenLimits.max_input_tokens),
   outputTokens: String(value.max_output_tokens ?? value.token_limits_defaults?.max_output_tokens ?? defaultTokenLimits.max_output_tokens),
@@ -152,6 +152,7 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     const hasPrice = !!fields.inputPrice || !!fields.cachedPrice || !!fields.outputPrice || fields.includesReasoning;
     const profile = {
       provider: protocol.provider, endpoint: fields.endpoint.trim(), api_protocol: fields.protocol, auth_mode: fields.auth, model_id: fields.model.trim(),
+      ...(local && fields.backend ? { local_backend: fields.backend } : {}),
       ...(fields.protocol === 'claude_messages' && fields.version ? { api_version: fields.version } : {}),
       cost_control_enabled: local ? false : fields.costControl, enabled_pairs: base.enabled_pairs ?? [], semantic_review_enabled: local ? false : base.semantic_review_enabled ?? false,
       ...(fields.inputTokens !== '' ? { max_input_tokens: Number(fields.inputTokens) } : {}),
@@ -193,7 +194,8 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
         {!local && <label className="field">鉴权方式<select aria-label="鉴权方式" value={fields.auth} onChange={event => { update('auth', event.target.value as Fields['auth']); setApiKey(''); }}><option value={protocol.auth}>API 密钥（{protocol.keyLabel}）</option><option value="none">无鉴权（本地或无需密钥的服务）</option></select></label>}
       </div>
       <LocalModels value={local ? fields.model : drafts.local_translation?.fields.model ?? storedFor('local_translation')?.model_id ?? ''}
-        onChange={value => update('model', value)} active={local} onAvailabilityChange={setLocalModelAvailable}/>
+        backend={local ? fields.backend : drafts.local_translation?.fields.backend ?? storedFor('local_translation')?.local_backend ?? ''}
+        onChange={(model, backend) => { setFields(old => ({ ...old, model, backend })); setNotice(''); }} active={local} onAvailabilityChange={setLocalModelAvailable}/>
       {!local && <>
       <label className="field">完整请求 URL<input className="input" type="url" value={fields.endpoint} onChange={event => { update('endpoint', event.target.value); setApiKey(''); }} maxLength={2048} placeholder={protocol.defaultEndpoint} autoCapitalize="none" spellCheck={false}/></label>
       {invalidUrl && <p className="field-note error-text">请输入包含接口路径的 HTTP(S) 地址，不含鉴权信息、查询参数或片段。</p>}

@@ -63,7 +63,7 @@ def validate_public_profile(value, *, allow_incomplete=False):
         raise ValueError('LOCAL_ANALYST_ANALYSIS_ONLY')
     allowed = {'configured', 'provider', 'model_id', 'profile_revision', 'prompt_version', 'privacy_revision',
         'enabled_pairs', 'max_input_tokens', 'max_output_tokens', 'max_unit_characters', 'price', 'semantic_review_enabled',
-        'endpoint', 'api_protocol', 'auth_mode', 'api_version', 'config_revision', 'credential_revision', 'cost_control_enabled'}
+        'endpoint', 'api_protocol', 'auth_mode', 'api_version', 'config_revision', 'credential_revision', 'cost_control_enabled', 'local_backend'}
     price_fields = {'revision', 'currency', 'input_micro_per_million', 'cached_input_micro_per_million',
         'output_micro_per_million', 'output_includes_reasoning', 'input_bound_rule'}
     if not isinstance(value, dict) or set(value) - allowed or not isinstance(value.get('price', {}), dict) or set(value.get('price', {})) - price_fields:

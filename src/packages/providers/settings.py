@@ -240,7 +240,10 @@ def save_configuration(profile, api_key, clear_api_key, expected_etag, idempoten
     profile.setdefault('api_protocol', 'responses')
     try:
         definition = protocol_definition(profile['api_protocol'])
-    except ValueError:
+        if profile['api_protocol'] == 'local_translation' and profile.get('model_id'):
+            from packages.local_models.catalog import get_model, select_backend
+            profile['local_backend'] = select_backend(get_model(profile['model_id']), profile.get('local_backend'))
+    except (ValueError, TypeError):
         raise DomainError('PROVIDER_CONFIG_INVALID', status=422) from None
     profile.setdefault('provider', definition['provider'])
     profile.setdefault('auth_mode', definition['auth_mode'])

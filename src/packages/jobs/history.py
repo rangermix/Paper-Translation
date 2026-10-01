@@ -77,7 +77,7 @@ def config_snapshot(stage, payload):
     profile = payload.get('profile') or workflow.get('profile') or {}
     result = {key: copy.deepcopy(profile[key]) for key in ('model_id', 'api_protocol', 'provider', 'config_revision',
         'profile_revision', 'prompt_version', 'privacy_revision', 'max_input_tokens', 'max_output_tokens',
-        'max_unit_characters', 'cost_control_enabled') if key in profile}
+        'max_unit_characters', 'cost_control_enabled', 'local_backend') if key in profile}
     if profile.get('endpoint'):
         parsed = urlsplit(profile['endpoint'])
         if parsed.scheme in {'http', 'https'} and not parsed.username and not parsed.password:
@@ -115,9 +115,9 @@ def record_api_model(db, lease, profile, response=None):
     fields = {k: profile[k] for k in ('provider', 'api_protocol', 'config_revision', 'endpoint') if k in profile}
     local = profile.get('api_protocol') in {'local_translation', 'local_analysis'}
     if local:
-        from packages.local_models.catalog import canonical_response_model, get_model
+        from packages.local_models.catalog import canonical_response_model, get_model, select_backend
         entry = get_model(profile['model_id'])
-        fields.update(engine=entry['runtime'], revision=entry['revision'], models=[{'name': entry['label'], 'bits': entry['bits']}])
+        fields.update(engine=select_backend(entry, profile.get('local_backend')), revision=entry['revision'], models=[{'name': entry['label'], 'bits': entry['bits']}])
     original = (response or {}).get('reported_model_id')
     if (local and isinstance(original, str) and len(original) <= 256
             and reported == profile['model_id'] and canonical_response_model(entry, original) == reported):

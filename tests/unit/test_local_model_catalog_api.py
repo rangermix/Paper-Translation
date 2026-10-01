@@ -38,7 +38,8 @@ def test_service_outage_keeps_platform_supported_catalog(monkeypatch, formats, f
     assert {row['format'] for row in body['models']} == set(formats.split(','))
     expected = [row for row in public_models() if row['format'] in formats.split(',')]
     for row, pinned in zip(body['models'], expected, strict=True):
-        assert row == {**pinned, 'status': 'unavailable', 'code': body['code']}
+        state = {'status': 'unavailable', 'code': body['code']}
+        assert row == {**pinned, **state, 'backend_states': {backend: state for backend in pinned['inference_backends']}}
     assert len(calls) == 1
     assert calls[0].method == 'GET' and calls[0].url.path == '/models'
 
@@ -51,8 +52,8 @@ def test_runtime_state_cannot_replace_pinned_catalog_metadata(monkeypatch):
     with catalog_client(monkeypatch, lambda _: httpx.Response(200, json={'models': [runtime]})) as client:
         body = client.get('/api/v1/settings/local-models').json()
     assert 'code' not in body
-    assert body['models'][0] == {**pinned, 'status': 'ready', 'backend': 'llama.cpp',
-                                'downloaded_bytes': 10, 'total_bytes': 10}
+    state = {'status': 'ready', 'backend': 'llama.cpp', 'downloaded_bytes': 10, 'total_bytes': 10}
+    assert body['models'][0] == {**pinned, **state, 'backend_states': {'llama.cpp': state}}
     assert body['models'][1]['status'] == 'unavailable'
     assert body['models'][1]['code'] == 'LOCAL_MODEL_FORMAT_UNSUPPORTED'
 
@@ -77,3 +78,28 @@ def test_invalid_sidecar_response_does_not_hide_catalog(monkeypatch):
         body = client.get('/api/v1/settings/local-models').json()
     assert len(body['models']) == 5
     assert body['code'] == 'LOCAL_MODEL_SERVICE_UNAVAILABLE'
+
+
+def test_backend_state_is_whitelisted_and_cannot_add_model_compatibility(monkeypatch):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', 'gguf')
+    pinned = next(row for row in public_models() if row['format'] == 'gguf')
+    state = {'status': 'unavailable', 'code': 'LOCAL_GGUF_UNAVAILABLE'}
+    runtime = {**pinned, 'inference_backends': ['llama.cpp', 'vllm'], 'default_backend': 'vllm',
+               'backend_states': {'llama.cpp': {**state, 'repo': 'untrusted', 'local_backend': 'vllm'},
+                                  'vllm': {'status': 'ready'}}}
+    with catalog_client(monkeypatch, lambda _: httpx.Response(200, json={'models': [runtime]})) as client:
+        row = client.get('/api/v1/settings/local-models').json()['models'][0]
+    assert row['default_backend'] == 'llama.cpp' and row['inference_backends'] == ['llama.cpp']
+    assert row['backend_states'] == {'llama.cpp': state}
+
+
+def test_backend_capability_declaration_is_applied_even_during_outage(monkeypatch):
+    monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', 'gguf,safetensors')
+    monkeypatch.setenv('LOCAL_TRANSLATION_BACKENDS', 'llama.cpp')
+    def unavailable(request):
+        raise httpx.ConnectError('synthetic outage', request=request)
+    with catalog_client(monkeypatch, unavailable) as client:
+        rows = client.get('/api/v1/settings/local-models').json()['models']
+    assert all(row['inference_backends'] == ['llama.cpp'] for row in rows if row['format'] == 'gguf')
+    safetensors = next(row for row in rows if row['format'] == 'safetensors')
+    assert safetensors['inference_backends'] == [] and safetensors['backend_states'] == {}

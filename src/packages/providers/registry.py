@@ -22,15 +22,21 @@ def validate_protocol_profile(profile):
     protocol = profile.get('api_protocol', 'responses')
     definition = protocol_definition(protocol)
     if protocol in {'local_translation', 'local_analysis'}:
-        from packages.local_models.catalog import ENDPOINT, artifact, get_model
+        from packages.local_models.catalog import BACKEND_LABELS, ENDPOINT, artifact, get_model, select_backend
         if (profile.get('endpoint') != ENDPOINT or profile.get('auth_mode') != 'none'
                 or profile.get('semantic_review_enabled') or profile.get('cost_control_enabled')):
             raise ValueError('LOCAL_MODEL_CONFIG')
+        if 'local_backend' in profile and (not isinstance(profile['local_backend'], str)
+                                           or profile['local_backend'] not in BACKEND_LABELS):
+            raise ValueError('LOCAL_MODEL_BACKEND_UNSUPPORTED')
         if artifact(get_model(profile.get('model_id')))['id'] != profile.get('model_id'):
             raise ValueError('LOCAL_MODEL_CONFIG')
         purpose = get_model(profile['model_id']).get('purpose', 'translation')
         if purpose != ('analysis' if protocol == 'local_analysis' else 'translation'):
             raise ValueError('LOCAL_MODEL_CONFIG')
+        select_backend(get_model(profile['model_id']), profile.get('local_backend'))
+    elif 'local_backend' in profile:
+        raise ValueError('LOCAL_MODEL_CONFIG')
     if profile.get('provider') != definition['provider']:
         raise ValueError('PROVIDER_PROTOCOL_MISMATCH')
     if profile.get('auth_mode', definition['auth_mode']) not in (definition['auth_mode'], 'none'):

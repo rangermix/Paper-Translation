@@ -50,6 +50,15 @@ confirmations cannot authorize a different model or document. Keys are write-onl
 settings inputs. Listing capabilities or reading settings does not call providers
 or download local models.
 
+Local translation profiles accept `local_backend` (`llama.cpp`, `vllm`, or `mlx`)
+only when compatible with the pinned model. New saves record an explicit backend;
+legacy profiles retain their default without rewriting immutable revisions.
+`GET /settings/local-models` exposes `inference_backends`, `default_backend` and
+per-engine `backend_states` independently of installation/readiness.
+`POST /settings/local-models/{id}/prepare?backend=ENGINE` prepares the exact
+selected engine and rejects unsupported model/deployment combinations. The
+backend participates in the command's idempotency payload and task snapshots.
+
 `/health/live` reports HTTP liveness. `/health/ready` checks the database schema,
 storage integrity, bundled templates, frontend and current worker/parser heartbeats.
 A liveness response alone does not establish readiness or successful inference.

@@ -69,6 +69,10 @@ Model Runner, or `mlx` for an Apple Silicon vLLM Metal backend that supports the
 selected architecture. `PARSER_DMR_URL` defaults to Docker's internal hostname; an
 explicit local Docker-managed Runner such as `http://vllm-runner:12434` may be used.
 It must provide the model-management, configuration and inference APIs.
+Infinity's upstream SDK requires vLLM 0.26.0 or later. The optional translation
+Runner's default 0.19.1 image does not meet that prerequisite; select a compatible
+Docker-managed backend before preparing these parsers. Metal uses its own version
+scheme and still needs architecture/image-inference verification.
 
 ```sh
 docker compose build app parser db

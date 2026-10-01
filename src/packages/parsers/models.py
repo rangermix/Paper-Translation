@@ -9,18 +9,22 @@ LOCK_PATH = ROOT/'deployment/parser-models.lock.json'
 
 
 def parser_version(profile='docling-v1'):
-    from .profiles import PADDLE_PROFILE, selected_profile
+    from .profiles import PADDLE_PROFILE, VLM_PROFILES, selected_profile
     selected_profile({'parser_profile_revision': profile})
+    if profile in VLM_PROFILES:
+        from .catalog import vlm_lock
+        return vlm_lock()['adapter_version']
     return strict_loads(LOCK_PATH.read_bytes())['paddleocr_version' if profile == PADDLE_PROFILE else 'docling_version']
 
 
-def verify_models(artifacts_path):
+def verify_models(artifacts_path, profile=None):
     root = Path(artifacts_path)
     if not root.is_dir():
         raise PDFError('PARSER_MODELS_MISSING')
     lock = strict_loads(LOCK_PATH.read_bytes())
+    from .catalog import repositories
     try:
-        for repo in lock['repositories']:
+        for repo in repositories(profile, lock) if profile else lock['repositories']:
             for entry in repo['files']:
                 file = safe_path(root,repo['local_directory']+'/'+entry['path'])
                 with file.open('rb') as handle:

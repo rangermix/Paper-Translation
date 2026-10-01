@@ -28,6 +28,54 @@ def parser_environment():
     return response(read_environment())
 
 
+def parser_model_backend():
+    import os
+    from packages.parsers.environment import read_environment
+    return os.environ.get('PARSER_DMR_BACKEND', 'vllm') if read_environment().get('default') == 'dmr' else 'native'
+
+
+@router.get('/settings/parser-models')
+def parser_models():
+    import httpx
+    from packages.parsers.catalog import public_models
+    from packages.parsers.model_service import CONTROL_URL
+    rows = public_models()
+    try:
+        with httpx.Client(timeout=5, trust_env=False, follow_redirects=False) as client:
+            result = client.get(CONTROL_URL + '/models', params={'backend': parser_model_backend()})
+            result.raise_for_status()
+            states = {row['id']: row for row in result.json()['models']}
+        for row in rows:
+            state = states.get(row['id'], {})
+            row.update({key: state[key] for key in ('status', 'downloaded_bytes', 'total_bytes', 'code') if key in state})
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        for row in rows:
+            row['status'] = 'unavailable'
+    return response({'models': rows})
+
+
+class ParserModelPreparation(StrictModel):
+    parser_profile_revision: ParserProfile
+
+
+@router.post('/settings/parser-models/prepare', status_code=202)
+def prepare_parser_model(body: ParserModelPreparation, request: Request, session=Session):
+    def execute():
+        writable(session)
+        frozen_parser_runtime(body.parser_profile_revision)
+        import httpx
+        from packages.parsers.model_service import CONTROL_URL
+        try:
+            with httpx.Client(timeout=10, trust_env=False, follow_redirects=False) as client:
+                result = client.post(CONTROL_URL + '/models/' + body.parser_profile_revision + '/prepare',
+                                     params={'backend': parser_model_backend()})
+                require(result.status_code == 202, 'PARSER_MODEL_PREPARATION_FAILED')
+                return result.json()
+        except (httpx.HTTPError, ValueError):
+            require(False, 'PARSER_MODEL_PREPARATION_FAILED', '解析模型准备服务不可用，请检查部署配置。')
+    return command(session, request, body.model_dump(), execute, 202)
+
+
 @router.get('/settings/provider')
 def provider(session=Session):
     from packages.providers.settings import configuration_view

@@ -15,14 +15,14 @@ from packages.ir import canonical_bytes, digest, safe_path, strict_loads
 from packages.parsers import PDFError, inspect_pdf
 from packages.parsers.pdf_docling import DoclingParser
 from packages.parsers.spool import validate_request
-from packages.parsers.models import verify_models
+from packages.parsers.models import parser_version
 from packages.parsers.config import CPU_THREADS, MEMORY_LIMIT_BYTES
 from packages.parsers.timeouts import request_timeout_seconds
 from workers.parser.process import ParserProcess
 
 
 class ModelHealth:
-    """Only publish liveness while the locked local model set remains intact."""
+    """Liveness is independent of optional weights; parse checks selected bytes."""
     def __init__(self, outputs, artifacts_path):
         self.outputs, self.artifacts_path = Path(outputs), Path(artifacts_path)
         self.checked_at, self.version, self.memory_limit = None, None, None
@@ -32,14 +32,13 @@ class ModelHealth:
         if self.checked_at is None or time.monotonic() - self.checked_at >= 60:
             try:
                 self.memory_limit = verify_memory_envelope()
-                lock = verify_models(self.artifacts_path)
                 from packages.parsers.environment import detect_environment
                 self.environment = detect_environment()
             except BaseException:
                 (self.outputs/'heartbeat.json').unlink(missing_ok=True)
                 raise
-            self.checked_at, self.version = time.monotonic(), lock['docling_version']
-        payload = {'timestamp': time.time(), 'models_verified': True, 'parser_version': self.version,
+            self.checked_at, self.version = time.monotonic(), parser_version()
+        payload = {'timestamp': time.time(), 'service_ready': True, 'parser_version': self.version,
             'memory_limit_bytes': self.memory_limit, 'environment': self.environment}
         if active_task:
             payload['active_task'] = active_task
@@ -108,8 +107,15 @@ def process_request(request, source, output):
         if operation == 'inspect': payload = inspect_pdf(source,{'max_pages':request['max_pages']})
         else:
             profile = request.get('profile',{}) | {'limits':{'max_pages':request['max_pages']}}
-            from packages.parsers.profiles import PADDLE_PROFILE, selected_profile
-            if selected_profile(profile) == PADDLE_PROFILE:
+            from packages.parsers.profiles import PADDLE_PROFILE, VLM_PROFILES, selected_profile
+            selection = selected_profile(profile)
+            from packages.parsers.preparation import prepare_models
+            from packages.parsers.runtime import runtime_config
+            prepare_models(selection, os.environ.get('DOCLING_ARTIFACTS_PATH', '/opt/docling/models'), runtime_config(selection))
+            if selection in VLM_PROFILES:
+                from packages.parsers.pdf_vlm import VisionParser
+                parser = VisionParser()
+            elif selection == PADDLE_PROFILE:
                 from packages.parsers.pdf_paddleocr import PaddleOCRParser
                 parser = PaddleOCRParser()
             else:

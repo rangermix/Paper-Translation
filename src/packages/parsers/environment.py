@@ -7,9 +7,10 @@ import sys
 import time
 from pathlib import Path
 
-from .profiles import DOCLING_PROFILE, GRANITE_PROFILE, PADDLE_PROFILE
+from .profiles import (DMR_PROFILES, DOCLING_PROFILE, GRANITE_PROFILE, NATIVE_PROFILES,
+                       PADDLE_PROFILE, PROFILE_IDS, VLM_PROFILES, INFINITY_PRO_PROFILE)
 
-ACCELERATORS = ('cpu', 'cuda', 'mlx')
+ACCELERATORS = ('cpu', 'cuda', 'mlx', 'dmr')
 
 
 def cuda_probe(executable, framework):
@@ -64,7 +65,9 @@ def mlx_available():
 def detect_environment():
     torch = cuda_probe(sys.executable, 'torch')
     paddle = cuda_probe('/app/.venv-paddle/bin/python', 'paddle')
-    gpu_profiles = ([DOCLING_PROFILE, GRANITE_PROFILE] if torch.get('available') is True else [])
+    native = os.environ.get('PARSER_IMAGE_FLAVOR', 'cpu') != 'runner'
+    gpu_profiles = ([DOCLING_PROFILE, GRANITE_PROFILE, *(p for p in VLM_PROFILES if p != INFINITY_PRO_PROFILE)]
+                    if native and torch.get('available') is True else [])
     if paddle.get('available') is True:
         gpu_profiles.append(PADDLE_PROFILE)
     mlx = mlx_available()
@@ -79,10 +82,11 @@ def detect_environment():
         'cpu_count': cpus, 'memory_bytes': memory_limit(), 'gpu_name': torch.get('name'),
         'default': os.environ.get('PARSER_ACCELERATOR', 'cpu'),
         'options': [
-            {'id': 'cpu', 'profiles': [DOCLING_PROFILE, GRANITE_PROFILE, PADDLE_PROFILE], 'reason': None},
+            {'id': 'cpu', 'profiles': list(NATIVE_PROFILES) if native else [], 'reason': None},
             {'id': 'cuda', 'profiles': gpu_profiles, 'reason': 'CUDA_UNAVAILABLE_OR_MODEL_UNSUPPORTED'},
             {'id': 'mlx', 'profiles': [PADDLE_PROFILE] if mlx else [],
-                'reason': None if mlx else 'MLX_IMAGE_BACKEND_UNAVAILABLE'}]}
+                'reason': None if mlx else 'MLX_IMAGE_BACKEND_UNAVAILABLE'},
+            {'id': 'dmr', 'profiles': list(DMR_PROFILES), 'reason': None}]}
 
 
 def read_environment(root=None):
@@ -91,13 +95,14 @@ def read_environment(root=None):
         with (Path(root or os.environ.get('PARSER_OUTPUTS_DIR', '/parser_outputs')) / 'heartbeat.json').open('rb') as stream:
             body = json.loads(stream.read(65537))
         env = body['environment']
-        if (body.get('models_verified') is not True or not 0 <= time.time() - body['timestamp'] < 90
+        if (body.get('service_ready') is not True and body.get('models_verified') is not True
+                or not 0 <= time.time() - body['timestamp'] < 90
                 or not 0 <= time.time() - env['detected_at'] < 180
                 or env.get('default') not in ACCELERATORS
                 or not isinstance(env['options'], list)
                 or any(not isinstance(option, dict) or option.get('id') not in ACCELERATORS
                     or not isinstance(option.get('profiles'), list)
-                    or any(profile not in (DOCLING_PROFILE, GRANITE_PROFILE, PADDLE_PROFILE) for profile in option['profiles'])
+                    or any(profile not in PROFILE_IDS for profile in option['profiles'])
                     for option in env['options'])
                 or len({option['id'] for option in env['options']}) != len(env['options'])):
             return offline

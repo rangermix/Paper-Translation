@@ -64,9 +64,9 @@ def test_optional_model_services_do_not_start_with_the_core_stack():
     exporter = services['model-export']
     assert exporter['profiles'] == ['model-tools']
     assert exporter['network_mode'] == 'none' and exporter['read_only']
-    assert not exporter.get('volumes')  # The operator supplies an explicit output bind.
+    assert exporter['volumes'] == ['parser_models:/opt/docling/models:ro']
     assert {name for name, s in services.items() if not s.get('profiles')} == {
-        'init', 'db', 'migrate', 'app', 'worker', 'parser'}
+        'init', 'db', 'migrate', 'app', 'worker', 'parser', 'parser-models'}
 
 
 def test_release_environment_example_names_are_consumed_by_production_compose():
@@ -80,8 +80,9 @@ def test_release_environment_example_names_are_consumed_by_production_compose():
 def test_cpu_and_cuda_keep_parser_isolation_and_one_unified_image_recipe():
     base = compose_mode()
     gpu = compose_mode('CUDA')['services']['parser']
-    assert base['services']['parser']['network_mode'] == 'none'
-    assert gpu['network_mode'] == 'none' and 'networks' not in gpu
+    assert base['services']['parser']['networks'] == ['parser_model_control']
+    assert gpu['networks'] == ['parser_model_control'] and 'network_mode' not in gpu
+    assert base['networks']['parser_model_control']['internal'] is True
     assert gpu['build']['args']['PARSER_FLAVOR'] == 'cuda'
     assert gpu['deploy']['resources']['reservations']['devices'] == [
         {'driver': 'nvidia', 'count': 1, 'capabilities': ['gpu']}]
@@ -95,9 +96,9 @@ def test_mlx_is_compose_managed_and_does_not_mount_host_credentials():
     parser = doc['services']['parser']
     assert parser['models'] == ['paddle_extraction']
     assert 'network_mode' not in parser
-    assert parser['networks'] == ['model_inference']
+    assert parser['networks'] == ['parser_model_control', 'model_inference']
     assert not set(parser) & {'ports', 'secrets'}
-    assert parser['volumes'] == ['parser_inputs:/inputs:ro', 'parser_outputs:/outputs']
+    assert parser['volumes'] == ['parser_inputs:/inputs:ro', 'parser_outputs:/outputs', 'parser_models:/opt/docling/models:ro']
     assert 'PADDLE_MLX_MODEL_ID' in parser['environment']
     assert doc['models']['paddle_extraction']['context_size'] == 8192
     assert not Path('src/workers/mlx_server.py').exists()
@@ -115,6 +116,36 @@ def test_cuda_dependency_graphs_are_separate_and_frozen():
         assert '+cu126' in packages['torch']['version'] if project == 'cuda' else '+cpu' in packages['torch']['version']
 
 
+def test_dmr_client_is_portable_and_model_preparation_has_no_content_or_secret_mounts():
+    doc = compose_mode('DMR')
+    parser = doc['services']['parser']
+    assert parser['build']['args']['PARSER_FLAVOR'] == 'runner'
+    assert 'platform' not in parser and 'models' not in parser
+    assert parser['networks'] == ['parser_model_control', 'model_inference']
+    manager = doc['services']['parser-models']
+    assert manager['volumes'] == ['parser_models:/model_cache']
+    assert manager['networks'] == ['parser_model_control', 'model_inference']
+    assert not any(manager.get(key) for key in ('ports', 'secrets', 'models'))
+    recipe = Path('deployment/images/parser.Dockerfile').read_text()
+    assert 'download_parser_models' not in recipe and 'COPY --from=models' not in recipe
+
+
+def test_native_cpu_cuda_parser_versions_match_model_manifests():
+    native = json.loads(Path('deployment/parser-models.lock.json').read_text())
+    vision = json.loads(Path('deployment/parser-vlm-models.lock.json').read_text())
+    for path in ('uv.lock', 'deployment/cuda/uv.lock'):
+        packages = {row['name']: row for row in tomllib.loads(Path(path).read_text())['package']}
+        assert packages['docling']['version'] == native['docling_version']
+        assert packages['transformers']['version'] == vision['transformers_version']
+    tele = tomllib.loads(Path('deployment/teleocr/uv.lock').read_text())
+    packages = {row['name']: row for row in tele['package']}
+    model = next(row for row in vision['models'] if row['id'] == 'teleocr-v1')
+    assert packages['transformers']['version'] == model['transformers_version'] == '4.57.1'
+    assert 'torch' not in packages
+    recipe = Path('deployment/images/parser.Dockerfile').read_text()
+    assert '/app/.venv-tele' in recipe and 'parser-native.pth' in recipe
+
+
 def test_export_refuses_overwrite_and_verifies_before_copy(tmp_path, monkeypatch):
     from tools.export_parser_model import export_model
     root = tmp_path / 'weights'; root.mkdir()
@@ -122,7 +153,7 @@ def test_export_refuses_overwrite_and_verifies_before_copy(tmp_path, monkeypatch
     model = {'repo_id': 'PaddlePaddle/PaddleOCR-VL-1.6', 'local_directory': 'paddle',
         'revision': 'fixed', 'files': [{'path': 'weight'}]}
     calls = []
-    monkeypatch.setattr('tools.export_parser_model.verify_models', lambda path: calls.append(path) or {'repositories': [model]})
+    monkeypatch.setattr('tools.export_parser_model.verify_models', lambda path, profile: calls.append(path) or {'repositories': [model]})
     target = tmp_path / 'export'
     assert export_model(root, target) == 'fixed'
     assert calls == [root]

@@ -253,6 +253,10 @@ parser = [
     { name = "transformers", marker = "sys_platform == 'linux'" },
 ]
 
+parser-runner = [
+    { name = "lxml", marker = "sys_platform == 'linux'" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = "==0.141.1" },
@@ -286,6 +290,8 @@ parser = [
     { name = "torchvision", specifier = "==0.29.0", index = "https://download.pytorch.org/whl/cpu" },
     { name = "transformers", specifier = "==5.17.0" },
 ]
+
+parser-runner = [{ name = "lxml", specifier = "==6.1.3" }]
 
 [[package]]
 name = "cachetools"

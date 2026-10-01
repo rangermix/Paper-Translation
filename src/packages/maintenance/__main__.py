@@ -31,6 +31,12 @@ def init_volumes():
         os.chown(path, 10001, 10001)
         os.chmod(path, 0o755)
     provider_config = Path('/provider_config')
+    parser_models = Path('/parser_models')
+    # Older local Compose files may omit this new optional cache mount.
+    if parser_models.exists():
+        require(parser_models.is_dir() and not parser_models.is_symlink(), 'VOLUME_MISSING')
+        os.chown(parser_models, 10001, 10001)
+        os.chmod(parser_models, 0o755)
     require(provider_config.is_dir() and not provider_config.is_symlink(), 'VOLUME_MISSING')
     os.chown(provider_config, 10001, 10001)
     os.chmod(provider_config, 0o700)

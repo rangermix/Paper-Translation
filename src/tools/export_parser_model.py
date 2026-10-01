@@ -1,16 +1,16 @@
-"""Export verified, already bundled model files; never download at runtime."""
+"""Export verified, already prepared model files; this tool never downloads."""
 import argparse
 import os
 import shutil
 from pathlib import Path
 
 from packages.parsers.models import verify_models
-from packages.parsers.profiles import PADDLE_MODEL
+from packages.parsers.profiles import PADDLE_MODEL, PADDLE_PROFILE
 
 
 def export_model(root, destination):
     root, destination = Path(root), Path(destination)
-    lock = verify_models(root)
+    lock = verify_models(root, PADDLE_PROFILE)
     model = next(repo for repo in lock['repositories'] if repo['repo_id'] == PADDLE_MODEL)
     if destination.exists():
         raise ValueError('MODEL_EXPORT_DESTINATION_EXISTS')

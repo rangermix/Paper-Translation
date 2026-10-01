@@ -41,7 +41,7 @@ tab cannot reuse a revoked default. This flag only permits extractive preparatio
 | `/drafts`, `/candidates`, `/sources` | [editorial.py](../src/apps/api/editorial.py), [candidates.py](../src/apps/api/candidates.py), [sources.py](../src/apps/api/sources.py): edits, review and source revision operations |
 | `/templates`, `/editions`, `/artifacts`, `/exports` | [catalog.py](../src/apps/api/catalog.py), [artifacts.py](../src/apps/api/artifacts.py): template selection, publication, history and downloads |
 | `/settings/provider`, `/settings/local-models` | [provider_settings.py](../src/apps/api/provider_settings.py): saved profiles, explicit tests and local model preparation |
-| `/settings/preferences`, `/settings/parser-environment`, `/settings/dispatch` | [catalog.py](../src/apps/api/catalog.py): current preferences, Compose-owned parser device/capabilities and dispatch state; preferences do not accept a device override |
+| `/settings/preferences`, `/settings/parser-environment`, `/settings/parser-models`, `/settings/parser-models/prepare`, `/settings/dispatch` | [catalog.py](../src/apps/api/catalog.py): preferences, Compose-owned parser capabilities, model preparation and dispatch state; preferences do not accept a device override |
 | `/glossaries`, `/translation-memory`, `/search`, `/reading-position` | [knowledge.py](../src/apps/api/knowledge.py) and [catalog.py](../src/apps/api/catalog.py) |
 
 Quality findings are descriptive and nonblocking. Confirmation bodies still bind
@@ -122,7 +122,8 @@ fallback for identifiers not available there. Without a selected DOI, it searche
 Crossref using the PDF's embedded title/author or a prominent first-page heading.
 Filename-like and missing titles are skipped. Only the DOI or bounded title/author
 fields leave the instance; the metadata lookup sends no PDF, body text or provider
-credentials. The parser itself does not make network requests.
+credentials. Native parsing only contacts its internal model preparation service;
+DMR/MLX inference sends page images to the local Docker-managed backend.
 
 A standalone arXiv stamp before the first-page body, or a complete dated vertical
 stamp in either side margin of that page, supplies the preprint's

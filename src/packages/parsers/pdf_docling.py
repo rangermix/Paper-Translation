@@ -264,7 +264,7 @@ class DoclingParser:
             raise PDFError('PARSER_PROFILE_INVALID') from exc
         from .runtime import runtime_config, require_device
         require_device(runtime_config(selection), selection)
-        lock = verify_models(self.artifacts_path)
+        lock = verify_models(self.artifacts_path, selection)
         from .progress import local_identity, report_progress
         report_progress('loading_model', model=local_identity(selection, lock))
         inspection = inspect_pdf(local_pdf,profile.get('limits'))
@@ -329,7 +329,9 @@ class DoclingParser:
         # Native reconciliation can repair code glyphs. Preserve the independent
         # VLM result before that pass, and only apply it to surviving code/formula leaves.
         recognized={item.get('self_ref'):dict(item) for item in items if enrichment and item.get('label') in {'code','formula'}}
-        if enrichment and enrichment['model'] in {GRANITE_MODEL, PADDLE_MODEL}:
+        from .profiles import VLM_PROFILES
+        if enrichment and (enrichment['model'] in {GRANITE_MODEL, PADDLE_MODEL}
+                           or profile and profile.get('parser_profile_revision') in VLM_PROFILES):
             # VLM orig is generated text too. Coverage of protected formula/code
             # uses independent native evidence within the retained PDF crop.
             from copy import deepcopy
@@ -557,7 +559,8 @@ class DoclingParser:
             check_failed = False
             try:
                 coverage = coverage_report(inspection['pages'],blocks,excluded)
-                if enrichment and enrichment['model'] in {GRANITE_MODEL, PADDLE_MODEL}:
+                if enrichment and (enrichment['model'] in {GRANITE_MODEL, PADDLE_MODEL}
+                                   or profile.get('parser_profile_revision') in VLM_PROFILES):
                     issues.extend(vlm_text_issues(inspection['pages'], blocks))
             except (ValueError, RuntimeError, KeyError, TypeError):
                 check_failed = True

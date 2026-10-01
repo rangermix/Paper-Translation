@@ -36,6 +36,7 @@ COPY src/packages/ /app/src/packages/
 COPY src/workers/ /app/src/workers/
 COPY res/schemas/ /app/res/schemas/
 COPY deployment/parser-models.lock.json /app/deployment/parser-models.lock.json
+COPY deployment/parser-vlm-models.lock.json /app/deployment/parser-vlm-models.lock.json
 COPY res/reference/ /app/res/reference/
 COPY res/vendor/ /app/res/vendor/
 COPY pyproject.toml uv.lock /app/

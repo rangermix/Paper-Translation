@@ -9,8 +9,9 @@ the instance; the default published address is loopback.
 
 - Upload, inspect and store PDFs; browse, search, tag, star and archive documents.
   Defaults are 50 MiB per PDF, 200 pages and ten files per upload batch.
-- Parse with PaddleOCR-VL-1.6 (the default for new preferences), Docling or Granite.
-  The active CPU/CUDA/MLX mode in Compose determines the device. Settings controls
+- Parse with PaddleOCR-VL-1.6 (the default for new preferences), Docling, Granite,
+  Surya OCR 2, Chandra OCR 2, Infinity-Parser2 Pro/Flash, TeleOCR or Xiaomi-OCR-0.
+  The active CPU/CUDA/MLX/DMR mode in Compose determines the device. Settings controls
   the model and parsing timeout; queued jobs keep their recorded model, device and timeout.
 - Recover extraction gaps using original-PDF evidence, show unresolved content
   beside page images, and expose saved parse results for later translation.
@@ -71,8 +72,14 @@ Enabled control requires pricing and a positive job budget. Unknown amounts are
 `null`, not zero. Input/output token limits default to 32768/8192 and unit text to
 2000 characters; these are application limits, not model capability claims.
 
-The shared source is packaged for Compose. Parser models are built into images;
-optional local translation and analyst weights are fetched only on explicit preparation/use.
+The shared source is packaged for Compose. Images contain no parser weights.
+Parser, optional local translation and analyst weights are fetched only on explicit
+preparation/use, pinned by revision, byte count and SHA-256. Parser startup and
+settings reads/saves do not download models. A persistent parser cache is writable
+only by its preparation service and read-only in the parser. The lightweight DMR
+image delegates five new standard Qwen parsers to Docker's vLLM/vLLM Metal engine;
+TeleOCR's custom model and the original pipelines use native CPU/CUDA images.
+Infinity Pro requires DMR because its weights exceed the parser's memory envelope.
 Model inference, arbitrary scanned-PDF accuracy and hardware support require
 verification in the selected environment. Test fixtures and prior runs do not
 certify all documents or an untested deployment.

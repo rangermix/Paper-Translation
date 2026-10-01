@@ -1,7 +1,8 @@
 # Architecture
 
 The application consists of an HTTP app, a durable worker, an isolated PDF parser
-and PostgreSQL. Compose also provides volume initialization, migrations and an
+and PostgreSQL. A separate parser-models service prepares pinned weights only on
+explicit use. Compose also provides volume initialization, migrations and an
 explicit maintenance service. The optional local translation service shares the
 Docker-managed MLX backend. See the [single Compose template](../compose.example.yaml);
 each deployed instance uses its preserved local `compose.yaml`.
@@ -22,8 +23,10 @@ directory. Requests contain generated storage keys, source hash, selected parser
 and deadline. The parser reads only its input volume and writes results and
 evidence to its output volume; it has no database or translation credentials.
 The worker revalidates paths, hashes, task identity and lease fence before committing.
-CPU/CUDA parsing is network-isolated; MLX reaches Docker Model Runner on a dedicated
-bridge. This bridge is not a domain firewall.
+CPU/CUDA parsing reaches only the internal preparation network, with a read-only
+model cache and no internet access. The preparation service receives only a pinned
+profile/backend selection and has no document or credential mounts. MLX/DMR parsing
+reaches Docker Model Runner on a dedicated bridge. This bridge is not a domain firewall.
 
 ## Durable state
 
@@ -95,7 +98,7 @@ from translated and human-reviewed content.
 ## Storage and secrets
 
 Named volumes separate document data, upload staging, parser input/output,
-PostgreSQL, internal service configuration, provider settings and backups.
+PostgreSQL, internal service configuration, provider settings, model caches and backups.
 The app resolves only registered PDF/artifact/export paths; it does not expose a
 directory listing of the data volume.
 

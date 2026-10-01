@@ -15,7 +15,12 @@ async function setup(page: Page, stale = false, legacyPreferences = {}) {
       }
       return route.fulfill({ json: preferences, headers: { ETag: `"${preferences.generation}"` } });
     }
-    if (path.endsWith('/settings/parser-environment')) return route.fulfill({ json: { online: true, detected_at: Date.now() / 1000, system: 'Linux', architecture: 'x86_64', cpu_count: 4, memory_bytes: 8 * 1024 ** 3, default: 'cpu', options: [{ id: 'cpu', profiles: ['docling-v1', 'granite-docling-v1', 'paddleocr-vl-1.6-v1'] }, { id: 'cuda', profiles: [], reason: 'CUDA_UNAVAILABLE_OR_MODEL_UNSUPPORTED' }, { id: 'mlx', profiles: [], reason: 'MLX_IMAGE_BACKEND_UNAVAILABLE' }] } });
+    if (path.endsWith('/settings/parser-environment')) return route.fulfill({ json: { online: true, detected_at: Date.now() / 1000, system: 'Linux', architecture: 'x86_64', cpu_count: 4, memory_bytes: 8 * 1024 ** 3, default: 'cpu', options: [{ id: 'cpu', profiles: ['docling-v1', 'granite-docling-v1', 'paddleocr-vl-1.6-v1', 'surya-ocr-2-v1', 'chandra-ocr-2-v1', 'infinity-parser2-flash-v1', 'teleocr-v1', 'xiaomi-ocr-0-v1'] }, { id: 'cuda', profiles: [], reason: 'CUDA_UNAVAILABLE_OR_MODEL_UNSUPPORTED' }, { id: 'mlx', profiles: [], reason: 'MLX_IMAGE_BACKEND_UNAVAILABLE' }] } });
+    if (path.endsWith('/settings/parser-models')) return route.fulfill({ json: { models: [
+      { id: 'surya-ocr-2-v1', download_bytes: 1374048660, status: 'not_downloaded' },
+      { id: 'infinity-parser2-pro-v1', download_bytes: 70234587962, status: 'not_downloaded' },
+    ] } });
+    if (path.endsWith('/settings/parser-models/prepare')) return route.fulfill({ status: 202, json: { status: 'downloading' } });
     if (path.endsWith('/settings/provider')) return route.fulfill({ json: { configured: false, dispatch_disabled: true, endpoint: '', model_id: '', generation: 2 } });
     if (path.endsWith('/settings/dispatch')) return route.fulfill({ json: { generation: 3, dispatch_disabled: true, unknown_attempts: 0, inflight_requests: 0 } });
     if (path.endsWith('/capabilities')) return route.fulfill({ json: { phase: 'M2', features: { translation: true }, source_mime_types: ['application/pdf'] } });
@@ -27,7 +32,7 @@ async function setup(page: Page, stale = false, legacyPreferences = {}) {
   return { writes, errors };
 }
 
-for (const profile of ['granite-docling-v1', 'paddleocr-vl-1.6-v1']) {
+for (const profile of ['granite-docling-v1', 'paddleocr-vl-1.6-v1', 'surya-ocr-2-v1', 'chandra-ocr-2-v1', 'infinity-parser2-flash-v1', 'teleocr-v1', 'xiaomi-ocr-0-v1']) {
   test(`${profile}: save default, reload, then override for one document`, async ({ page }) => {
     const { writes, errors } = await setup(page);
     await page.goto('/#/settings');
@@ -56,6 +61,34 @@ for (const profile of ['granite-docling-v1', 'paddleocr-vl-1.6-v1']) {
     expect(errors).toEqual([]);
   });
 }
+
+test('new parser selection and saving do not download; explicit preparation does', async ({ page }) => {
+  const { writes } = await setup(page);
+  await page.goto('/#/settings');
+  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+  await expect(panel.getByLabel('默认 PDF 解析方案').locator('option')).toHaveCount(9);
+  await panel.getByLabel('默认 PDF 解析方案').selectOption('surya-ocr-2-v1');
+  await expect(panel).toContainText('首次使用时下载');
+  await expect(panel).toContainText('1.37 GB');
+  expect(writes).toHaveLength(0);
+  await panel.getByRole('button', { name: '保存解析设置' }).click();
+  await expect(panel).toContainText('解析设置已保存');
+  expect(writes.map(w => w.path)).toEqual(['/api/v1/settings/preferences']);
+  await panel.getByRole('button', { name: '准备解析模型', exact: true }).click();
+  await expect(panel).toContainText('已开始准备解析模型');
+  expect(writes[1]).toMatchObject({ path: '/api/v1/settings/parser-models/prepare', body: { parser_profile_revision: 'surya-ocr-2-v1' } });
+});
+
+test('Infinity Pro exposes its size and requires DMR in native deployments', async ({ page }) => {
+  const { writes } = await setup(page);
+  await page.goto('/#/settings');
+  const panel = page.getByRole('region', { name: 'PDF 解析', exact: true });
+  await panel.getByLabel('默认 PDF 解析方案').selectOption('infinity-parser2-pro-v1');
+  await expect(panel).toContainText('70.23 GB');
+  await expect(panel.getByRole('button', { name: '保存解析设置' })).toBeDisabled();
+  await expect(panel.getByRole('button', { name: '准备解析模型', exact: true })).toBeDisabled();
+  expect(writes).toHaveLength(0);
+});
 
 test('stale save preserves choice and offers refresh without overwriting newer settings', async ({ page }) => {
   const { writes } = await setup(page, true);

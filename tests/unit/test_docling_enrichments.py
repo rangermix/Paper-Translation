@@ -40,7 +40,7 @@ def test_failed_model_conversion_keeps_native_source_and_progress(tmp_path, monk
     monkeypatch.setenv('HF_HUB_OFFLINE', '1')
     monkeypatch.setenv('TRANSFORMERS_OFFLINE', '1')
     monkeypatch.setattr('importlib.metadata.version', lambda _: lock['docling_version'])
-    monkeypatch.setattr('packages.parsers.pdf_docling.verify_models', lambda _: lock)
+    monkeypatch.setattr('packages.parsers.pdf_docling.verify_models', lambda *args: lock)
     monkeypatch.setattr('packages.parsers.pdf_docling.pipeline_options', lambda *args: {})
     request = {'task_id': 'task_fallback', 'fence': 1, 'source_sha256': 'a' * 64,
                'max_pages': 1, 'deadline': '2099-01-01T00:00:00+00:00'}

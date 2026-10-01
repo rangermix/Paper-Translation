@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "docling_version": "2.94.0",
+  "docling_version": "2.130.0",
   "repositories": [
     {
       "repo_id": "docling-project/docling-layout-old",

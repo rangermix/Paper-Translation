@@ -69,10 +69,14 @@ def check_compose():
     production = yaml.safe_load((ROOT / 'compose.example.yaml').read_text())
     services = production['services']
     core = {name: service for name, service in services.items() if not service.get('profiles')}
-    require(set(core) == {'init', 'db', 'migrate', 'app', 'worker', 'parser'}, 'Unexpected default services')
+    require(set(core) == {'init', 'db', 'migrate', 'app', 'worker', 'parser', 'parser-models'}, 'Unexpected default services')
     require([name for name, service in core.items() if 'ports' in service] == ['app'], 'Unexpected product port')
     require('127.0.0.1' in services['app']['ports'][0], 'Default bind is not loopback')
-    require(services['parser']['network_mode'] == 'none' and not services['parser'].get('secrets'), 'Default parser isolation')
+    require(services['parser']['networks'] == ['parser_model_control']
+            and production['networks']['parser_model_control'].get('internal') is True
+            and not services['parser'].get('secrets'), 'Default parser isolation')
+    require(services['parser-models']['volumes'] == ['parser_models:/model_cache'], 'Model preparation storage boundary')
+    require(not {'backend', 'provider_egress'} & set(services['parser-models']['networks']), 'Model preparation network boundary')
     require(not production.get('secrets') and not any(s.get('secrets') for s in services.values()), 'Unexpected external secret mount')
     require(not any({'PROVIDER_PROFILE_FILE', 'PROVIDER_KEY_FILE'} & s.get('environment', {}).keys()
                     for s in services.values()), 'Provider settings must come from the application')

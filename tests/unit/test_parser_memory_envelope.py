@@ -45,7 +45,7 @@ def test_unbounded_service_cannot_advertise_model_health(tmp_path, monkeypatch):
     def unbounded():
         raise PDFError('PARSER_RESOURCE_LIMIT')
     monkeypatch.setattr('workers.parser.main.verify_memory_envelope', unbounded)
-    monkeypatch.setattr('workers.parser.main.verify_models', lambda path: pytest.fail('Memory guard must precede model verification'))
+    monkeypatch.setattr('workers.parser.main.parser_version', lambda: pytest.fail('Memory guard must precede parser initialization'))
     with pytest.raises(PDFError):
         ModelHealth(tmp_path, tmp_path / 'models').heartbeat()
     assert not (tmp_path / 'heartbeat.json').exists()

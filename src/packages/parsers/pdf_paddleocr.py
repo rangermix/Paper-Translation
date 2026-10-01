@@ -86,7 +86,7 @@ class PaddleOCRParser:
             raise PDFError('PARSER_PROFILE_INVALID')
         runtime = runtime_config(selection)
         require_device(runtime, selection)
-        lock = verify_models(self.artifacts_path)
+        lock = verify_models(self.artifacts_path, selection)
         if runtime.device == 'mlx':
             verify_mlx_service(runtime)
         from .progress import local_identity, report_progress, remaining_seconds

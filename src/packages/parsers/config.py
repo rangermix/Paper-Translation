@@ -1,4 +1,4 @@
-"""Reproducible local pipelines, with models supplied by the image."""
+"""Reproducible local pipelines, with models supplied by the read-only cache."""
 from packages.ir import digest
 from .runtime import runtime_config
 from .profiles import DOCLING_PROFILE, GRANITE_PROFILE, GRANITE_MODEL, selected_profile

@@ -7,11 +7,21 @@ bundle, native libraries and per-image Python/system package inventories under
 `/app/release/`. A runtime manifest records installed system-package versions;
 the final image digest identifies their exact bytes.
 
-`deployment/parser-models.lock.json` is the parser model allowlist. Model downloads
-occur during image build through `src/tools/download_parser_models.py`. Enabled layout
-table, OCR, formula/code and VLM models must match every declared byte count and
-hash. CPU/CUDA parsing uses fixed local assets without network access. Apple MLX
-recognition uses the separately packaged, verified Docker Model Runner backend.
+`deployment/parser-models.lock.json` and `deployment/parser-vlm-models.lock.json`
+are the parser model allowlists. Models are absent from image layers. The separate
+`parser-models` service downloads only the selected profile's pinned files on an
+explicit Settings preparation request or first parsing use. Downloads are bounded
+by byte count, hash checked, written atomically and reused after restart. Interrupted
+downloads reuse completed verified files; incomplete files are discarded.
+CPU/CUDA parsing uses the read-only cache and an internal preparation network,
+without internet access, database credentials or Provider secrets. The lightweight
+`runner` image includes no Torch, Paddle, Docling or model weights; Docker Model
+Runner owns standard Qwen inference. TeleOCR's custom code is a pinned, hash-checked
+local file loaded only on explicit native use. Apple Paddle MLX recognition still
+uses the separately packaged, verified Docker Model Runner backend.
+TeleOCR's Transformers 4.57 dependencies are locked in `deployment/teleocr/uv.lock`;
+its isolated child environment shares the main native Torch packages, so it does
+not duplicate Torch wheels or change the other parsers' Transformers 5.17 runtime.
 Optional translation weights have their own `src/packages/local_models/models.lock.json`
 and are downloaded only on explicit use; settings reads and startup do not prepare
 them. See [local translation](../deployment/local-translation.md).

@@ -4,15 +4,15 @@ from pathlib import Path
 import pytest
 
 from packages.ir import canonical_bytes
-from packages.parsers.profiles import PADDLE_PROFILE
+from packages.parsers.profiles import PADDLE_PROFILE, NATIVE_PROFILES, VLM_PROFILES, INFINITY_PRO_PROFILE
 
 
 def test_detection_distinguishes_installed_image_and_attached_gpu(monkeypatch):
     from packages.parsers import environment as env
     monkeypatch.setattr(env, 'cuda_probe', lambda executable, framework: {'available': framework == 'torch', 'name': 'Test GPU'})
     result = env.detect_environment()
-    assert result['options'][0]['profiles'] == ['docling-v1', 'granite-docling-v1', PADDLE_PROFILE]
-    assert result['options'][1]['profiles'] == ['docling-v1', 'granite-docling-v1']
+    assert result['options'][0]['profiles'] == list(NATIVE_PROFILES)
+    assert result['options'][1]['profiles'] == ['docling-v1', 'granite-docling-v1', *(p for p in VLM_PROFILES if p != INFINITY_PRO_PROFILE)]
     assert result['options'][2]['profiles'] == []
 
 

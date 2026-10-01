@@ -5,7 +5,7 @@ import re
 from urllib.parse import quote
 
 from .inspect import PDFError
-from .profiles import PADDLE_PROFILE, selected_profile
+from .profiles import DMR_PROFILES, INFINITY_PRO_PROFILE, PADDLE_PROFILE, TELEOCR_PROFILE, selected_profile
 
 DMR_URL = 'http://model-runner.docker.internal/engines/vllm/v1'
 
@@ -27,6 +27,9 @@ class ParserRuntime:
 
     def identity(self):
         data = {'device': self.device, 'backend': self.backend}
+        if self.device == 'dmr':
+            data.update(inference_engine='docker-model-runner/' + ('vllm-metal' if self.backend == 'mlx' else 'vllm'),
+                        model_artifact_id=self.model_id)
         if self.device == 'mlx':
             data.update(layout_device='cpu', inference_engine='docker-model-runner/vllm-metal',
                 model_artifact_id=self.model_id)
@@ -36,8 +39,20 @@ class ParserRuntime:
 def runtime_config(profile, accelerator=None):
     selected_profile({'parser_profile_revision': profile})
     accelerator = accelerator or os.environ.get('PARSER_ACCELERATOR', 'cpu')
-    if accelerator not in {'cpu', 'cuda', 'mlx'}:
+    if accelerator not in {'cpu', 'cuda', 'mlx', 'dmr'}:
         raise ValueError('PARSER_ACCELERATOR_INVALID')
+    if accelerator == 'dmr':
+        if profile not in DMR_PROFILES:
+            raise ValueError('PARSER_MODEL_BACKEND_UNSUPPORTED')
+        from packages.local_models.catalog import artifact
+        from .catalog import vlm_model
+        from .model_service import runner_url
+        backend = os.environ.get('PARSER_DMR_BACKEND', 'vllm')
+        if backend not in ('vllm', 'mlx'):
+            raise ValueError('PARSER_MODEL_BACKEND_UNSUPPORTED')
+        return ParserRuntime('dmr', backend, runner_url() + '/engines/vllm/v1', artifact(vlm_model(profile))['id'])
+    if profile == INFINITY_PRO_PROFILE:
+        raise ValueError('PARSER_MODEL_REQUIRES_DMR')
     if accelerator == 'cuda':
         return ParserRuntime('cuda:0')
     if accelerator == 'mlx' and profile == PADDLE_PROFILE:
@@ -94,10 +109,15 @@ def verify_mlx_service(runtime):
 
 
 def child_executable(profile, accelerator=None):
-    """CUDA libraries conflict: select the isolated Paddle subprocess environment."""
+    """Select pinned environments for incompatible native framework versions."""
     import sys
     from pathlib import Path
     runtime = runtime_config(profile, accelerator)
+    if profile == TELEOCR_PROFILE:
+        executable = Path('/app/.venv-tele/bin/python')
+        if not executable.is_file():
+            raise PDFError('PARSER_TELEOCR_ENVIRONMENT_REQUIRED')
+        return str(executable)
     if runtime.device == 'cuda:0' and profile == PADDLE_PROFILE:
         executable = Path('/app/.venv-paddle/bin/python')
         if not executable.is_file():

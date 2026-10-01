@@ -32,14 +32,14 @@ a port in the normal product stack. Stop with the same Compose configuration and
 
 ## Services and optional profiles
 
-The local file contains app, worker, parser, database, initialization and migration
-services. Optional work uses profiles from the same template:
+The local file contains app, worker, parser, parser-models preparation, database,
+initialization and migration services. Optional work uses profiles from the same template:
 
 | Profile | Services and purpose |
 | --- | --- |
 | `maintenance` | `maintenance`: explicit backup, restore, verification and retention commands |
 | `local-translation` | `local-model-init`, `local-translator`: optional Docker Model Runner translation through GGUF/llama.cpp, supported CUDA Safetensors/vLLM, or Apple Silicon MLX |
-| `model-tools` | `model-export`: export already packaged parser weights to an explicitly mounted directory |
+| `model-tools` | `model-export`: export already prepared parser weights to an explicitly mounted directory |
 | `tests` | `tests`, `test-db`: disposable Linux/PostgreSQL regression suite |
 | `checks` | `checks`: repository checks with no network, dependencies or product volumes |
 
@@ -58,15 +58,21 @@ follow [tests/README.md](../../tests/README.md). Do not use an unqualified profi
 | `mlx-backend/` | Docker-built macOS MLX payload and extraction helper |
 | `local-translation-backend/` | Translation support layered on the same payload |
 | `parser-models.lock.json` | Parser weight revisions, sizes and SHA-256 allowlist |
+| `parser-vlm-models.lock.json` | Surya, Chandra, Infinity-Parser2 Pro/Flash, TeleOCR and Xiaomi pinned files |
 
 The shared test/check image recipe is [`tests/Dockerfile`](../../tests/Dockerfile).
 Product images exclude test fixtures.
 
 ## Configuration and startup
 
-Builds install locked dependencies and package parser weights. Runtime containers
-never run pip/npm or fetch parser weights. Optional local translation weights are
-prepared only on explicit use. Declare formats supported by the host with
+Builds install locked dependencies and contain no parser weights. Runtime containers
+never run pip/npm. Settings can explicitly prepare a parser, and first parsing use
+prepares it automatically. Only the selected profile's pinned dependencies download
+to `parser_models`; startup, settings reads and saving preferences do not download.
+The parser mounts that cache read-only. Its downloader has no PDF, DB or credential
+mounts. Optional local translation weights are prepared only on explicit use.
+For native CPU/CUDA or the lightweight cross-platform Docker Model Runner client,
+see [extraction acceleration](extraction-acceleration.md). Declare formats supported by the host with
 `LOCAL_TRANSLATION_FORMATS`; a supported engine can appear before installation.
 Image inventories and locks are described in
 [dependencies](../ops/dependencies.md).

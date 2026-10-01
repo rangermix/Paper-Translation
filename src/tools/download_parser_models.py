@@ -1,4 +1,8 @@
-"""BUILD-TIME ONLY: retrieve pinned model files and verify every byte against the lock."""
+"""Operator preparation tool; production image builds never download weights.
+
+Normal use prepares one selected profile through the parser-models service. This
+standalone tool can still prepare the legacy full native set for offline staging.
+"""
 import argparse
 import hashlib
 import json

@@ -41,6 +41,7 @@ class ContentIssue(Contract):
 class ModelIdentity(Contract):
     kind: Literal['none', 'local', 'api', 'historical_unknown']
     model_id: str | None = None
+    reported_model_id: str | None = None
     models: list[dict] = Field(default_factory=list)
     parser_profile_revision: str | None = None
     revision: str | None = None

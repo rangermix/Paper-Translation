@@ -115,9 +115,13 @@ def record_api_model(db, lease, profile, response=None):
     fields = {k: profile[k] for k in ('provider', 'api_protocol', 'config_revision', 'endpoint') if k in profile}
     local = profile.get('api_protocol') in {'local_translation', 'local_analysis'}
     if local:
-        from packages.local_models.catalog import get_model
+        from packages.local_models.catalog import canonical_response_model, get_model
         entry = get_model(profile['model_id'])
         fields.update(engine=entry['runtime'], revision=entry['revision'], models=[{'name': entry['label'], 'bits': entry['bits']}])
+    original = (response or {}).get('reported_model_id')
+    if (local and isinstance(original, str) and len(original) <= 256
+            and reported == profile['model_id'] and canonical_response_model(entry, original) == reported):
+        fields['reported_model_id'] = original
     model = ModelIdentity(kind='local' if local else 'api', model_id=reported,
         evidence_source=('local_response' if local else 'api_response') if response is not None else ('local_dispatch' if local else 'api_dispatch'),
         **fields).model_dump(exclude_none=True)

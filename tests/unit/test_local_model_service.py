@@ -245,7 +245,7 @@ def test_milmmt_gguf_uses_native_completion_without_chat_template(tmp_path, slug
             return httpx.Response(200, json=[{'id': ident}])
         if request.url.path == '/engines/_configure':
             return httpx.Response(200, json=[{'Backend': 'llama.cpp', 'ModelID': ident,
-                'Config': {'context-size': model['context_size'], 'runtime-flags': ['--alias', ident]}}])
+                'Config': {'context-size': model['context_size'], 'runtime-flags': []}}])
         assert request.url.path == '/engines/llama.cpp/v1/completions'
         import json
         payload = json.loads(request.content)
@@ -275,7 +275,7 @@ def test_non_mlx_translation_routes_to_exact_engine(tmp_path, slug, backend, exp
             return httpx.Response(200, json=[{'id': ident}])
         if request.url.path == '/engines/_configure':
             return httpx.Response(200, json=[{'Backend': backend, 'ModelID': ident,
-                'Config': {'context-size': 8192, 'runtime-flags': RUNTIME_FLAGS if backend == 'vllm' else ['--alias', ident]}}])
+                'Config': {'context-size': 8192, 'runtime-flags': RUNTIME_FLAGS if backend == 'vllm' else []}}])
         if request.url.path == expected_path:
             return httpx.Response(200, json={'id': 'local-test', 'model': ident,
                 'choices': [{'message': {'role': 'assistant', 'content': '你好。'}, 'finish_reason': 'stop'}],
@@ -400,10 +400,10 @@ def test_gguf_import_prepare_and_inference_use_explicit_runner(tmp_path, monkeyp
             return httpx.Response(200)
         if request.url.path == '/engines/_configure':
             return httpx.Response(200, json=[{'Backend': 'llama.cpp', 'ModelID': ident,
-                'Config': {'context-size': 8192, 'runtime-flags': ['--alias', ident]}}] if configured else [])
+                'Config': {'context-size': 8192, 'runtime-flags': []}}] if configured else [])
         if request.url.path == '/engines/llama.cpp/_configure':
             body = json.loads(request.content)
-            assert body['model'] == ident and body['runtime-flags'] == ['--alias', ident]
+            assert body['model'] == ident and body['runtime-flags'] == []
             configured = True
             return httpx.Response(202)
         assert request.url.path == '/engines/llama.cpp/v1/chat/completions'
@@ -480,7 +480,7 @@ def test_gguf_runner_environment_does_not_change_other_formats(tmp_path, monkeyp
     assert manager.runner(models()[0]) == DMR
 
 
-def test_gguf_without_digest_alias_cannot_infer(tmp_path):
+def test_gguf_with_unchecked_runtime_configuration_cannot_infer(tmp_path):
     from packages.local_models.service import create_app
     model = get_model('hy-mt2-7b-q4-k-m-gguf'); ident = artifact(model)['id']; calls = []
     def handle(request):
@@ -491,7 +491,7 @@ def test_gguf_without_digest_alias_cannot_infer(tmp_path):
             return httpx.Response(200, json={'llama.cpp': 'Running: llama.cpp test'})
         assert request.url.path == '/engines/_configure'
         return httpx.Response(200, json=[{'Backend': 'llama.cpp', 'ModelID': ident,
-            'Config': {'context-size': 8192, 'runtime-flags': []}}])
+            'Config': {'context-size': 8192, 'runtime-flags': ['--unsupported-flag']}}])
     with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle))) as client:
         response = client.post('/v1/completions', json={'model': ident,
             'messages': [{'role': 'user', 'content': 'Synthetic test input.'}]})

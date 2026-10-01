@@ -21,9 +21,7 @@ def engine(model):
 
 
 def runtime_flags(model):
-    # llama.cpp reports the weight filename unless an API alias is configured.
-    # Bind that alias to the same digest checked in inventory and responses.
-    return RUNTIME_FLAGS if engine(model) == 'vllm' else ['--alias', artifact(model)['id']]
+    return RUNTIME_FLAGS if engine(model) == 'vllm' else []
 
 
 class Completion(BaseModel):

@@ -5,7 +5,7 @@ import time
 import httpx
 
 from packages.ir import canonical_bytes, strict_loads
-from packages.local_models.catalog import ENDPOINT, get_model
+from packages.local_models.catalog import ENDPOINT, canonical_response_model, get_model
 from .contract import ProviderFailure, normalize_request_id
 
 REQUEST_FORMAT_VERSION = 'local-translation-v5'
@@ -194,11 +194,15 @@ class LocalTranslation:
             raise ProviderFailure('OUTCOME_UNKNOWN', 'unknown')
         try:
             data = strict_loads(response.content)
-            result = {'response_model': data.get('model'), 'request_id': normalize_request_id(data.get('id')),
+            reported = data.get('model')
+            actual = canonical_response_model(get_model(profile['model_id']), reported)
+            result = {'response_model': actual, 'request_id': normalize_request_id(data.get('id')),
                       'status': 'unsupported', 'refusal': False, 'output_text': '',
                       'usage': {'input_tokens': (data.get('usage') or {}).get('prompt_tokens'),
                                 'output_tokens': (data.get('usage') or {}).get('completion_tokens')}}
-            if data.get('model') != profile['model_id']:
+            if actual != reported:
+                result['reported_model_id'] = reported
+            if actual != profile['model_id']:
                 return {**result, 'failure_code': 'PROVIDER_MODEL_MISMATCH'}
             if len(data['choices']) != 1:
                 return result

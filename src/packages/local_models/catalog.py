@@ -50,6 +50,17 @@ def artifact(model):
     return {'id': 'sha256:' + sha(manifest), 'config': config, 'manifest': manifest}
 
 
+def canonical_response_model(model, reported):
+    """Recognize only the exact verified Linux DMR GGUF bundle filename."""
+    weights = [f['path'] for f in model['files'] if f['path'].endswith('.gguf')]
+    if model['format'] == 'gguf' and len(weights) == 1:
+        ident = artifact(model)['id']
+        path = '/models/bundles/sha256/' + ident.split(':')[1] + '/model/' + weights[0]
+        if reported == path:
+            return ident
+    return reported
+
+
 def get_model(identifier):
     for model in models():
         if identifier in (model['id'], artifact(model)['id']):

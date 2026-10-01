@@ -377,3 +377,103 @@ def test_cuda_prepare_and_inference_use_same_explicit_runner_and_exact_model(tmp
     assert [r.url.path for r in calls if r.method == 'POST'] == [
         '/engines/vllm/_configure', '/engines/vllm/v1/chat/completions']
     assert all(path.name == '.lock' for path in tmp_path.iterdir())
+
+
+def test_gguf_import_prepare_and_inference_use_explicit_runner(tmp_path, monkeypatch):
+    import json
+    from packages.local_models import service
+    model = get_model('hy-mt2-7b-q4-k-m-gguf'); ident = artifact(model)['id']
+    calls = []; installed = False; configured = False
+    monkeypatch.setattr(service, 'download', lambda *args: None)
+    monkeypatch.setattr(service, 'archive', lambda *args: iter([b'synthetic model archive']))
+    def handle(request):
+        nonlocal installed, configured
+        calls.append(request)
+        assert request.url.host == 'gguf-runner' and request.url.port == 12434
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'llama.cpp': 'Running: llama.cpp cuda'})
+        if request.url.path == '/models':
+            return httpx.Response(200, json=[{'id': ident}] if installed else [])
+        if request.url.path == '/models/load':
+            assert request.content == b'synthetic model archive'
+            installed = True
+            return httpx.Response(200)
+        if request.url.path == '/engines/_configure':
+            return httpx.Response(200, json=[{'Backend': 'llama.cpp', 'ModelID': ident,
+                'Config': {'context-size': 8192, 'runtime-flags': []}}] if configured else [])
+        if request.url.path == '/engines/llama.cpp/_configure':
+            assert json.loads(request.content)['model'] == ident
+            configured = True
+            return httpx.Response(202)
+        assert request.url.path == '/engines/llama.cpp/v1/chat/completions'
+        assert json.loads(request.content)['model'] == ident
+        return httpx.Response(200, json={'model': ident, 'choices': [
+            {'message': {'role': 'assistant', 'content': 'synthetic translation'}}]})
+    transport = httpx.MockTransport(handle)
+    manager = service.Manager(tmp_path, transport, gguf_dmr='http://gguf-runner:12434/')
+    manager.states[model['id']] = {'status': 'loading'}
+    manager._prepare(model)
+    assert manager.states[model['id']]['status'] == 'ready'
+    with TestClient(service.create_app(cache=tmp_path, transport=transport,
+                                      gguf_dmr='http://gguf-runner:12434')) as client:
+        response = client.post('/v1/completions', json={'model': ident,
+            'messages': [{'role': 'user', 'content': 'Synthetic test input.'}], 'max_tokens': 32})
+    assert response.status_code == 200 and response.json()['model'] == ident
+    assert [r.url.path for r in calls if r.method == 'POST'] == [
+        '/models/load', '/engines/llama.cpp/_configure', '/engines/llama.cpp/v1/chat/completions']
+
+
+def test_explicit_gguf_runner_outage_never_falls_back_to_native(tmp_path):
+    from packages.local_models.service import create_app
+    calls = []
+    def handle(request):
+        calls.append(request)
+        assert request.url.host == 'gguf-runner'
+        raise httpx.ConnectError('synthetic Runner outage')
+    with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle), formats='gguf',
+                              gguf_dmr='http://gguf-runner:12434')) as client:
+        rows = client.get('/models').json()['models']
+        ident = rows[0]['model_id']
+        response = client.post('/v1/completions', json={'model': ident,
+            'messages': [{'role': 'user', 'content': 'Synthetic test input.'}]})
+    assert len(rows) == 5 and all(row['code'] == 'LOCAL_GGUF_UNAVAILABLE' for row in rows)
+    assert response.status_code == 503
+    assert all(request.method == 'GET' for request in calls)
+
+
+@pytest.mark.parametrize('failure', ['http_error', 'timeout'])
+def test_model_import_failure_is_distinct_from_weight_download(tmp_path, monkeypatch, failure):
+    from packages.local_models import service
+    model = get_model('hy-mt2-7b-q4-k-m-gguf')
+    monkeypatch.setattr(service, 'download', lambda *args: None)
+    monkeypatch.setattr(service, 'archive', lambda *args: iter([b'synthetic cached weights']))
+    def handle(request):
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'llama.cpp': 'Running: llama.cpp cuda'})
+        if request.url.path == '/models':
+            return httpx.Response(200, json=[])
+        assert request.url.path == '/models/load'
+        if failure == 'timeout':
+            raise httpx.ReadTimeout('synthetic model import timeout')
+        return httpx.Response(500, text='missing blob; private upstream diagnostics')
+    manager = service.Manager(tmp_path, httpx.MockTransport(handle))
+    manager.states[model['id']] = {'status': 'loading'}
+    manager._prepare(model)
+    assert manager.states[model['id']] == {'status': 'failed', 'code': 'LOCAL_MODEL_LOAD_FAILED'}
+
+
+@pytest.mark.parametrize('url', ['ftp://runner', 'http://user:secret@runner',
+                               'http://runner?key=secret', 'http://runner#fragment'])
+def test_explicit_gguf_runner_url_is_validated(tmp_path, url):
+    from packages.local_models.service import Manager
+    with pytest.raises(ValueError, match='LOCAL_MODEL_RUNNER_URL_INVALID'):
+        Manager(tmp_path, gguf_dmr=url)
+
+
+def test_gguf_runner_environment_does_not_change_other_formats(tmp_path, monkeypatch):
+    from packages.local_models.service import DMR, Manager
+    monkeypatch.setenv('LOCAL_GGUF_DMR_URL', 'http://gguf-runner:12434/')
+    manager = Manager(tmp_path, vllm_dmr='http://vllm-runner:12434')
+    assert manager.runner(get_model('hy-mt2-7b-q4-k-m-gguf')) == 'http://gguf-runner:12434'
+    assert manager.runner(get_model('hy-mt2-1.8b-bf16-vllm')) == 'http://vllm-runner:12434'
+    assert manager.runner(models()[0]) == DMR

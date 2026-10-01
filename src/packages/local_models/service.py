@@ -37,15 +37,18 @@ class Completion(BaseModel):
 
 
 class Manager:
-    def __init__(self, cache, transport=None, formats=None, vllm_dmr=None):
+    def __init__(self, cache, transport=None, formats=None, vllm_dmr=None, gguf_dmr=None):
         self.cache, self.transport = Path(cache), transport
         self.formats = configured_formats(formats)
         self.vllm_dmr = (vllm_dmr if vllm_dmr is not None else
                          os.environ.get('LOCAL_VLLM_DMR_URL', '')).rstrip('/') or DMR
-        url = httpx.URL(self.vllm_dmr)
-        if (url.scheme not in ('http', 'https') or not url.host or url.userinfo
-                or url.query or url.fragment):
-            raise ValueError('LOCAL_MODEL_RUNNER_URL_INVALID')
+        self.gguf_dmr = (gguf_dmr if gguf_dmr is not None else
+                         os.environ.get('LOCAL_GGUF_DMR_URL', '')).rstrip('/') or DMR
+        for runner in (self.vllm_dmr, self.gguf_dmr):
+            url = httpx.URL(runner)
+            if (url.scheme not in ('http', 'https') or not url.host or url.userinfo
+                    or url.query or url.fragment):
+                raise ValueError('LOCAL_MODEL_RUNNER_URL_INVALID')
         self.states = {}
         self.lock = threading.RLock()
         self.inference_lock = threading.Lock()
@@ -59,8 +62,8 @@ class Manager:
         return selectable_format(model) in self.formats
 
     def runner(self, model):
-        """An explicit CUDA deployment never redirects GGUF or MLX models."""
-        return self.vllm_dmr if model['runtime'] == 'vllm' else DMR
+        """Each format uses its explicitly selected Runner, without fallback."""
+        return {'vllm': self.vllm_dmr, 'llama.cpp': self.gguf_dmr}.get(model['runtime'], DMR)
 
     def installed(self, model):
         with self.client() as client:
@@ -186,10 +189,13 @@ class Manager:
                     with self.client(timeout=60) as client:
                         download(model, root, client, update)
                     update(status='loading')
-                    with self.client(timeout=600) as client:
-                        response = client.post(self.runner(model) + '/models/load', content=archive(model, root),
-                                               headers={'Content-Type': 'application/x-tar'})
-                        response.raise_for_status()
+                    try:
+                        with self.client(timeout=600) as client:
+                            response = client.post(self.runner(model) + '/models/load', content=archive(model, root),
+                                                   headers={'Content-Type': 'application/x-tar'})
+                            response.raise_for_status()
+                    except httpx.HTTPError:
+                        raise ValueError('LOCAL_MODEL_LOAD_FAILED') from None
                     if not self.installed(model):
                         raise ValueError('LOCAL_MODEL_LOAD_FAILED')
                 with self.inference_lock:
@@ -214,9 +220,9 @@ class Manager:
                 self.states[model['id']].update(status='failed', code=code)
 
 
-def create_app(*, cache=None, transport=None, formats=None, vllm_dmr=None):
+def create_app(*, cache=None, transport=None, formats=None, vllm_dmr=None, gguf_dmr=None):
     app = FastAPI(docs_url=None, redoc_url=None)
-    manager = Manager(cache or os.environ.get('LOCAL_MODEL_CACHE', '/model_cache'), transport, formats, vllm_dmr)
+    manager = Manager(cache or os.environ.get('LOCAL_MODEL_CACHE', '/model_cache'), transport, formats, vllm_dmr, gguf_dmr)
     app.state.manager = manager
 
     def lookup(identifier):

@@ -297,6 +297,7 @@ services:
       PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
       LOCAL_TRANSLATION_FORMATS: "${LOCAL_TRANSLATION_FORMATS:-}"
       LOCAL_VLLM_DMR_URL: "${LOCAL_VLLM_DMR_URL:-}"
+      LOCAL_GGUF_DMR_URL: "${LOCAL_GGUF_DMR_URL:-}"
     volumes: [local_translation_models:/model_cache]
     networks: [local_model_control, model_inference]
     depends_on:
@@ -311,6 +312,7 @@ services:
     restart: unless-stopped
   # Optional Linux/WSL2 CUDA vLLM Runner. Set LOCAL_VLLM_DMR_URL to
   # http://vllm-runner:12434 and declare Safetensors for supported NVIDIA hosts.
+  # LOCAL_GGUF_DMR_URL can explicitly select its llama.cpp backend for GGUF.
   # This endpoint is private to the model network and does not replace native DMR.
   vllm-runner:
     profiles: [local-vllm]

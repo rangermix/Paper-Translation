@@ -190,14 +190,27 @@ docker compose up -d --no-build --wait app worker local-translator vllm-runner
 docker compose exec vllm-runner curl -fsS http://localhost:12434/engines/status
 ```
 
-`LOCAL_VLLM_DMR_URL` applies only to CUDA Safetensors models. GGUF and MLX retain
-their existing native Runner endpoint, inventory and configuration. A failure of
-the CUDA Runner leaves the other catalog entries available and never changes the
-selected model or forwards the request to another backend. Both use the existing
+`LOCAL_VLLM_DMR_URL` applies only to CUDA Safetensors models. GGUF and MLX use
+their existing native Runner by default. GGUF can independently select a Runner
+with `LOCAL_GGUF_DMR_URL`; MLX continues to use the native endpoint. A failure of
+a selected Runner keeps catalog entries available and never changes the selected
+model or forwards the request to another backend. All paths use the existing
 exact artifact-ID checks and pinned download cache.
 The separate Runner stores imported artifacts in `local_vllm_models`; the
 sidecar's existing cache volume is retained. This endpoint accepts DMR APIs,
 not a standalone OpenAI-only vLLM service.
+
+If the native Windows Runner rejects model import with a `missing blob` error
+after the weight files pass validation, set
+`LOCAL_GGUF_DMR_URL=http://vllm-runner:12434` for local-translator. The same Linux
+Compose Runner provides llama.cpp for GGUF. The native Windows tar importer in
+[DMR v1.2.8](https://github.com/docker/model-runner/blob/v1.2.8/pkg/distribution/tarball/reader.go)
+cleans paths with Windows separators but splits them on `/`, skipping the archive's
+blobs. Selecting the Linux importer preserves the pinned model identity and reuses
+the verified cache. Add the sidecar environment entry from the template to an
+older local Compose file, recreate local-translator, then prepare the exact model
+and resume the waiting job. Model-import HTTP failures report
+`LOCAL_MODEL_LOAD_FAILED` separately from weight-download failures.
 
 The CUDA startup check establishes runtime/GPU availability, not that a selected
 model fits or produces a correct translation. Those require explicit model

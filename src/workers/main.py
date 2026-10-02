@@ -1,7 +1,7 @@
 """Production worker: durable PostgreSQL jobs, isolated parser spool, immutable files."""
 import argparse
 from packages.parsers.models import parser_version
-from packages.parsers.profiles import selected_profile
+from packages.parsers.profiles import recorded_profile, selected_profile
 from packages.parsers.timeouts import PARSER_RESULT_GRACE_SECONDS, task_timeout_seconds
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -44,17 +44,27 @@ def parse_spool(db, cfg, lease):
             source_pdf = safe_path(cfg.data, asset.storage_key, must_exist=True)
             sha, asset_id, language = asset.sha256, asset.id, lease.payload.get('source_language', doc.source_language)
         timeout_seconds = task_timeout_seconds(lease.payload, lease.kind)
+        selection = None
+        if lease.kind == 'parse':
+            try:
+                selection = selected_profile({'parser_profile_revision': recorded_profile(lease.payload)})
+            except ValueError as exc:
+                raise DomainError(str(exc), 'Recorded parser is unavailable; explicitly select an active full-page DMR parser for a new task.') from None
+            require(lease.payload.get('parser_accelerator', 'dmr') == 'dmr',
+                'PARSER_NATIVE_RUNTIME_RETIRED', 'Recorded native parsing cannot run in the DMR image; create a new parse task.')
         expires_at = now() + timedelta(seconds=timeout_seconds)
         descriptor = {'task_id': lease.task_id, 'fence': lease.fence, 'source_sha256': sha,
             'max_pages': cfg.max_pages, 'deadline': expires_at.isoformat(), 'timeout_seconds': timeout_seconds,
-            'parser_version': 'inspector-v1' if lease.kind == 'inspect' else parser_version(selected_profile(lease.payload)),
+            'parser_version': 'inspector-v1' if lease.kind == 'inspect' else parser_version(selection),
             'operation': lease.kind, 'profile': {'language': language if language != 'auto' else 'und'}}
         if asset_id:
             descriptor['asset_id'] = asset_id
         if lease.kind == 'parse':
-            descriptor['profile']['parser_profile_revision'] = selected_profile(lease.payload)
+            descriptor['profile']['parser_profile_revision'] = selection
             if lease.payload.get('parser_accelerator'):
                 descriptor['accelerator'] = lease.payload['parser_accelerator']
+            if lease.payload.get('parser_backend'):
+                descriptor['backend'] = lease.payload['parser_backend']
     write_request(cfg.parser_inputs, descriptor, source_pdf)
     output_dir = cfg.parser_outputs / lease.task_id / str(lease.fence)
     deadline = time.monotonic() + max(0, (expires_at - now()).total_seconds()) + PARSER_RESULT_GRACE_SECONDS

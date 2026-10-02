@@ -159,7 +159,7 @@ def test_recovery_adds_only_unmapped_native_region_and_does_not_clear_graphics()
 
 def test_preflight_correction_creates_new_draft_keeps_parser_evidence_and_uses_cas(client, database):
     from packages.domain.models import Document, SourceAsset, SourceDraft
-    from packages.parsers.pdf_docling import coverage_report
+    from packages.parsers.source_adapter import coverage_report
     db, cfg = database
     source, inspection, proof = native_fixture()
     from packages.storage import atomic_write

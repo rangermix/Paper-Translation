@@ -2,7 +2,7 @@ import copy
 import pytest
 from pathlib import Path
 
-from packages.parsers.pdf_docling import DoclingParser
+from packages.parsers.source_adapter import SourceAdapter
 from packages.parsers import inspect_pdf
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -72,7 +72,7 @@ def test_url_annotation_only_joins_wrapping_and_hyphen_loss():
 
 @pytest.mark.parametrize('url', ['http://[IPv6-address]/path', 'https://[broken', 'https://exam／ple.com'])
 def test_malformed_url_text_survives_without_discarding_valid_links(url):
-    from packages.parsers.pdf_docling import _source_nodes
+    from packages.parsers.source_adapter import _source_nodes
     text = f'Example {url} and https://example.org/path.'
     nodes = _source_nodes(text, 'paragraph', {}, 'paragraph')
     assert ''.join(node['text'] for node in nodes) == text
@@ -80,7 +80,7 @@ def test_malformed_url_text_survives_without_discarding_valid_links(url):
 
 
 def test_source_url_stays_link_and_heading_parent_follows_level(tmp_path):
-    from packages.parsers.pdf_docling import _source_nodes
+    from packages.parsers.source_adapter import _source_nodes
     assert _source_nodes('See https://example.com/a-1.', 'b', {}, 'paragraph')==[
         {'type':'text','text':'See '},{'type':'link','href':'https://example.com/a-1','text':'https://example.com/a-1'},{'type':'text','text':'.'}]
     pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
@@ -90,7 +90,7 @@ def test_source_url_stays_link_and_heading_parent_follows_level(tmp_path):
     # extraction of sample.pdf. Supply matching controlled native regions.
     inspection['pages'][0]['text_regions'] = [
         {'text': row['orig'], 'bbox': [row['prov'][0]['bbox'][k] for k in ('l', 't', 'r', 'b')]} for row in items]
-    result=DoclingParser().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']['blocks']
+    result=SourceAdapter().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']['blocks']
     assert result[2]['attributes']['level']==4
     assert result[2]['parent_id']==result[1]['id']
     assert result[3]['parent_id']==result[2]['id']
@@ -106,7 +106,7 @@ def test_small_caps_native_regions_do_not_repeat_neighbors():
 
 
 def test_empty_native_marker_and_joint_table_cells_coverage():
-    from packages.parsers.pdf_docling import coverage_report
+    from packages.parsers.source_adapter import coverage_report
     page={'page':1,'page_size':[100,100],'text_characters':4,'scan_suspected':False,
           'text_regions':[{'bbox':[10,20,90,30],'text':'A 12 B 34'},{'bbox':[1,1,2,2],'text':'\x02'}]}
     loc=lambda box:{'page':1,'bbox':box,'page_size':[100,100]}
@@ -120,7 +120,7 @@ def test_empty_native_marker_and_joint_table_cells_coverage():
 
 def test_formula_always_retains_pdf_image(tmp_path):
     pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
-    result=DoclingParser().adapt([item('title','title','Publication',[20,20,200,40]),
+    result=SourceAdapter().adapt([item('title','title','Publication',[20,20,200,40]),
         item('m','formula','a b',[20,80,100,110])],inspection,pdf,'original',tmp_path)
     formula=next(b for b in result['source_revision']['blocks'] if b['kind']=='math')
     assert formula['attributes']['representation']=='image'
@@ -129,7 +129,7 @@ def test_formula_always_retains_pdf_image(tmp_path):
 
 
 def test_coverage_requires_complete_ordered_text_even_for_short_omissions():
-    from packages.parsers.pdf_docling import coverage_report
+    from packages.parsers.source_adapter import coverage_report
     prefix='The operation processes a substantial collection of independent requests with carefully documented conditions. '
     native=prefix+'It must not accept 64 invalid requests.'
     loc={'page':1,'bbox':[10,20,90,30],'page_size':[100,100]}
@@ -146,7 +146,7 @@ def test_appendix_heading_ancestry(tmp_path):
     pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     items=[item('t','title','Paper',[20,20,200,40]),item('a','section_header','A Appendix',[20,50,200,60]),
         item('aa','section_header','A.2 Details',[20,70,200,80]),item('aaa','section_header','A.2.1 Nested',[20,90,200,100])]
-    blocks=DoclingParser().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']['blocks']
+    blocks=SourceAdapter().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']['blocks']
     headings=[b for b in blocks if b['kind']=='heading']
     assert [b['attributes']['level'] for b in headings[1:]]==[2,3,4]
     assert [b['parent_id'] for b in headings[1:]]==[headings[0]['id'],headings[1]['id'],headings[2]['id']]
@@ -176,7 +176,7 @@ def test_code_in_numbered_figure_retains_original_image_and_caption(tmp_path,cap
     pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     items=[item('title','title','Paper',[20,20,200,40]),item('code','code','def f(): return 1',[20,80,200,110]),
         item('caption',caption_label,'Figure 2. Code example.',[20,115,200,125])]
-    source=DoclingParser().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']
+    source=SourceAdapter().adapt(items,inspection,pdf,'original',tmp_path)['source_revision']
     owner=next(b for b in source['blocks'] if b['raw_text']=='def f(): return 1')
     caption=next(b for b in source['blocks'] if b['kind']=='caption')
     assert owner['kind']=='figure' and owner['attributes']['asset_id']
@@ -184,7 +184,7 @@ def test_code_in_numbered_figure_retains_original_image_and_caption(tmp_path,cap
 
 
 def test_composite_arrow_is_protected_without_rewriting_native_operator():
-    from packages.parsers.pdf_docling import _source_nodes
+    from packages.parsers.source_adapter import _source_nodes
     atoms={};nodes=_source_nodes('Arg −→ Compute','b',atoms,'paragraph')
     assert [a for a in atoms.values()]==[{'kind':'math','value':'−→'}]
     assert nodes[1]['type']=='protected_ref'
@@ -236,7 +236,7 @@ def test_reference_url_page_continuation_needs_exact_annotation_evidence():
 
 def test_standalone_code_retains_original_layout_without_invented_line_breaks(tmp_path):
     pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
-    source=DoclingParser().adapt([item('t','title','Paper',[20,20,200,40]),item('c','code','def f(): return 1',[20,80,200,110])],inspection,pdf,'original',tmp_path)['source_revision']
+    source=SourceAdapter().adapt([item('t','title','Paper',[20,20,200,40]),item('c','code','def f(): return 1',[20,80,200,110])],inspection,pdf,'original',tmp_path)['source_revision']
     code=next(b for b in source['blocks'] if b['kind']=='code')
     assert code['attributes']['representation']=='image' and code['attributes']['asset_id']
     assert code['warnings'] and code['raw_text']=='def f(): return 1'

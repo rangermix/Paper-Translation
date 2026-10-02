@@ -11,11 +11,11 @@ from fastapi import FastAPI, HTTPException
 from packages.ir import canonical_bytes, safe_path, strict_loads
 from .catalog import download_spec, manifest_id, public_models, vlm_model
 from .download import cache_lock, download
-from .profiles import DMR_PROFILES, INFINITY_PRO_PROFILE, PROFILE_IDS
+from .profiles import PROFILE_IDS
 
 CONTROL_URL = 'http://parser-models:8091'
 DMR_URL = 'http://model-runner.docker.internal'
-Backend = Literal['native', 'vllm', 'mlx']
+Backend = Literal['vllm', 'mlx']
 
 
 def runner_url(value=None):
@@ -43,7 +43,7 @@ class Manager:
     def receipt(self, profile, backend):
         return safe_path(self.cache, f'{profile}-{backend}.json', must_exist=False)
 
-    def state(self, profile, backend='native'):
+    def state(self, profile, backend='vllm'):
         with self.lock:
             value = dict(self.states.get((profile, backend), {}))
         if value:
@@ -55,13 +55,9 @@ class Manager:
         return {'status': 'ready' if ready else 'not_downloaded',
                 'total_bytes': sum(f['size'] for f in download_spec(profile))}
 
-    def prepare(self, profile, backend='native'):
-        if profile not in PROFILE_IDS or backend not in ('native', 'vllm', 'mlx'):
+    def prepare(self, profile, backend='vllm'):
+        if profile not in PROFILE_IDS or backend not in ('vllm', 'mlx'):
             raise ValueError('PARSER_PROFILE_INVALID')
-        if backend != 'native' and profile not in DMR_PROFILES:
-            raise ValueError('PARSER_MODEL_BACKEND_UNSUPPORTED')
-        if backend == 'native' and profile == INFINITY_PRO_PROFILE:
-            raise ValueError('PARSER_MODEL_REQUIRES_DMR')
         with self.lock:
             key = (profile, backend)
             if self.states.get(key, {}).get('status') in ('downloading', 'loading'):
@@ -112,14 +108,12 @@ class Manager:
                 self.states[(profile, backend)].update(fields)
         try:
             with cache_lock(self.cache):
-                if backend != 'native':
-                    # Do not fetch tens of GB when the selected engine is absent.
-                    with self.client() as client:
-                        self.verify_backend(client, backend)
+                # Do not fetch tens of GB when the selected engine is absent.
+                with self.client() as client:
+                    self.verify_backend(client, backend)
                 with self.client(timeout=120) as client:
                     download(download_spec(profile), self.cache, client, update)
-                if backend != 'native':
-                    self.prepare_dmr(profile, backend, update)
+                self.prepare_dmr(profile, backend, update)
                 receipt = self.receipt(profile, backend)
                 temporary = safe_path(self.cache, receipt.name + '.part', must_exist=False)
                 temporary.write_bytes(canonical_bytes({'manifest_id': manifest_id(profile)}))
@@ -147,16 +141,16 @@ def create_app(cache=None, transport=None, dmr=None):
         return {'status': 'ok'}
 
     @app.get('/models')
-    def catalog(backend: Backend = 'native'):
+    def catalog(backend: Backend = 'vllm'):
         return {'models': [{**m, **manager.state(m['id'], backend)} for m in public_models()]}
 
     @app.get('/models/{profile}')
-    def state(profile: str, backend: Backend = 'native'):
+    def state(profile: str, backend: Backend = 'vllm'):
         lookup(profile)
         return manager.state(profile, backend)
 
     @app.post('/models/{profile}/prepare', status_code=202)
-    def prepare(profile: str, backend: Backend = 'native'):
+    def prepare(profile: str, backend: Backend = 'vllm'):
         lookup(profile)
         try:
             return manager.prepare(profile, backend)

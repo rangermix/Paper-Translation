@@ -79,30 +79,15 @@ def read_progress(output, request, cursor=0):
 
 
 def local_identity(selection, lock):
-    from packages.parsers.config import CPU_THREADS
-    from packages.parsers.profiles import GRANITE_MODEL, GRANITE_PROFILE, PADDLE_MODEL, PADDLE_PROFILE
+    from .config import CPU_THREADS
+    from .catalog import vlm_model
     from .runtime import runtime_config
-    runtime = runtime_config(selection)
+    from .timeouts import request_timeout_seconds
+    model, runtime = vlm_model(selection), runtime_config(selection)
     writer = _writer.get()
-    from packages.parsers.timeouts import request_timeout_seconds
-    from .profiles import VLM_PROFILES
-    if selection in VLM_PROFILES:
-        from .catalog import vlm_model
-        model = vlm_model(selection)
-        return {'kind': 'local', 'model_id': model['repo'], 'revision': model['revision'],
-                'models': [{'model_id': model['repo'], 'revision': model['revision']}],
-                'parser_profile_revision': selection, **runtime.identity(), 'threads': CPU_THREADS,
-                'engine': 'docker-model-runner' if runtime.device == 'dmr' else 'transformers',
-                'engine_version': None if runtime.device == 'dmr' else model.get('transformers_version', lock['transformers_version']),
-                'timeout_seconds': request_timeout_seconds(writer['request']) if writer else None,
-                'evidence_source': 'parser_execution'}
-    ids = ({PADDLE_MODEL, 'PaddlePaddle/PP-DocLayoutV3'} if selection == PADDLE_PROFILE else
-           {GRANITE_MODEL} if selection == GRANITE_PROFILE else
-           {'docling-project/docling-layout-old', 'docling-project/docling-models', 'docling-project/CodeFormulaV2', 'RapidAI/RapidOCR'})
-    models = [{'model_id': row['repo_id'], 'revision': row['revision']} for row in lock['repositories'] if row['repo_id'] in ids]
-    return {'kind': 'local', 'model_id': PADDLE_MODEL if selection == PADDLE_PROFILE else GRANITE_MODEL if selection == GRANITE_PROFILE else 'docling-standard',
-        'models': models, 'parser_profile_revision': selection, **runtime.identity(), 'threads': CPU_THREADS,
-        'engine': 'paddleocr' if selection == PADDLE_PROFILE else 'docling',
-        'engine_version': lock['paddleocr_version' if selection == PADDLE_PROFILE else 'docling_version'],
+    return {'kind': 'local', 'model_id': model['repo'], 'revision': model['revision'],
+        'models': [{'model_id': model['repo'], 'revision': model['revision']}],
+        'parser_profile_revision': selection, **runtime.identity(), 'threads': CPU_THREADS,
+        'engine': 'docker-model-runner', 'engine_version': None,
         'timeout_seconds': request_timeout_seconds(writer['request']) if writer else None,
         'evidence_source': 'parser_execution'}

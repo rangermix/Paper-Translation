@@ -1,7 +1,7 @@
 """Independent geometric boundary checks; these controls are not PDF source gold."""
 import copy
 import pytest
-from packages.parsers.pdf_docling import native_paragraph_order_conflicts
+from packages.parsers.source_adapter import native_paragraph_order_conflicts
 
 def fixture():
     regions=[{'bbox':[10,10,110,20],'text':'Upper original text.'},{'bbox':[10,40,110,50],'text':'Lower original text.'}]

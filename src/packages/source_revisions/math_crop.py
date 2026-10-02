@@ -6,7 +6,7 @@ import re
 
 from packages.domain.errors import require
 from packages.ir import digest,flatten_inline
-from packages.parsers.pdf_docling import _source_nodes,overlap
+from packages.parsers.source_adapter import _source_nodes,overlap
 from packages.storage import atomic_write,file_hash,safe_path
 from .corrections import _set_order,_split_inline
 

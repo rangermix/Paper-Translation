@@ -9,9 +9,9 @@ from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
 
 from packages.ir import validate_ir, validate_source
 from packages.parsers.inspect import inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser, vlm_text_issues
-from packages.parsers.pdf_paddleocr import page_items
-from packages.parsers.profiles import PADDLE_MODEL
+from packages.parsers.source_adapter import SourceAdapter, vlm_text_issues
+from packages.parsers.vlm_output import item as layout_item
+PADDLE_MODEL = 'authored/table-recognition-double'
 from packages.parsers.table_html import parse_table_html
 from packages.publisher.renderer import render_html
 from packages.translation.planner import plan_units
@@ -86,10 +86,13 @@ def adapt_table(tmp_path, html=MERGED):
         {'block_label': 'doc_title', 'block_content': 'Table parsing sample', 'block_bbox': [45, 35, 500, 60]},
         {'block_label': 'table', 'block_content': html, 'block_bbox': [45, 100, 500, 220]},
     ]}
-    items = page_items(result, page_info, [600, 800])
-    return DoclingParser().adapt(items, inspection, pdf, 'asset_test', tmp_path / 'parsed',
-        profile={'language': 'en'}, parser_name='paddleocr', parser_version='3.7.0',
-        enrichment={'model': PADDLE_MODEL, 'revision': 'a' * 40})
+    items = [layout_item('title' if row['block_label'] == 'doc_title' else 'table',
+        row['block_content'] if row['block_label'] != 'table' else '', row['block_bbox'], page_info, index,
+        parse_table_html(row['block_content']) if row['block_label'] == 'table' else None)
+        for index, row in enumerate(result['parsing_res_list'])]
+    return SourceAdapter().adapt(items, inspection, pdf, 'asset_test', tmp_path / 'parsed',
+        profile={'language': 'en'}, parser_name='authored-table', parser_version='fixture-v1',
+        enrichment={'model': PADDLE_MODEL, 'revision': 'a' * 40}, model_generated_source=True)
 
 
 def as_ir(source):

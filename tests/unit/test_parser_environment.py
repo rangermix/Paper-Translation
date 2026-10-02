@@ -1,140 +1,39 @@
 import time
-from pathlib import Path
-
 import pytest
-
 from packages.ir import canonical_bytes
-from packages.parsers.profiles import PADDLE_PROFILE, NATIVE_PROFILES, VLM_PROFILES, INFINITY_PRO_PROFILE
+from packages.parsers.environment import detect_environment, read_environment, resolve_accelerator
+from packages.parsers.profiles import PROFILE_IDS
 
 
-def test_detection_distinguishes_installed_image_and_attached_gpu(monkeypatch):
-    from packages.parsers import environment as env
-    monkeypatch.setattr(env, 'cuda_probe', lambda executable, framework: {'available': framework == 'torch', 'name': 'Test GPU'})
-    result = env.detect_environment()
-    assert result['options'][0]['profiles'] == list(NATIVE_PROFILES)
-    assert result['options'][1]['profiles'] == ['docling-v1', 'granite-docling-v1', *(p for p in VLM_PROFILES if p != INFINITY_PRO_PROFILE)]
-    assert result['options'][2]['profiles'] == []
+def test_detection_never_contacts_inference_or_model_preparation(monkeypatch):
+    monkeypatch.setattr('httpx.Client', lambda **kwargs: pytest.fail('Startup/read must not contact models'))
+    report = detect_environment()
+    assert report['default'] == 'dmr'
+    assert report['options'] == [{'id': 'dmr', 'profiles': list(PROFILE_IDS), 'reason': None}]
 
 
-def test_report_expires_and_unavailable_compose_device_fails_closed(tmp_path):
-    from packages.parsers.environment import read_environment, resolve_accelerator
-    report = {'detected_at': time.time(), 'default': 'cpu', 'options': [
-        {'id': 'cpu', 'profiles': [PADDLE_PROFILE]}, {'id': 'cuda', 'profiles': []}]}
-    heartbeat = {'timestamp': time.time(), 'models_verified': True, 'environment': report}
-    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(heartbeat))
-    assert read_environment(tmp_path)['online'] is True
-    assert resolve_accelerator(PADDLE_PROFILE, tmp_path) == 'cpu'
-    report['default'] = 'cuda'
-    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(heartbeat))
+def test_current_report_and_offline_jobs_both_freeze_dmr(tmp_path):
+    report = detect_environment()
+    body = {'timestamp': time.time(), 'service_ready': True, 'environment': report}
+    path = tmp_path / 'heartbeat.json';path.write_bytes(canonical_bytes(body))
+    assert read_environment(tmp_path)['online']
+    assert resolve_accelerator(PROFILE_IDS[0], tmp_path) == 'dmr'
+    body['timestamp'] -= 91;path.write_bytes(canonical_bytes(body))
+    assert not read_environment(tmp_path)['online']
+    assert resolve_accelerator(PROFILE_IDS[0], tmp_path) == 'dmr'
+
+
+@pytest.mark.parametrize('options', [[{}], [None], [{'id': 'dmr', 'profiles': 'surya'}], [{'id': 'cpu', 'profiles': []}], [{'id': 'dmr', 'profiles': ['docling-v1']}]])
+def test_untrusted_or_native_heartbeat_cannot_advertise_active_capabilities(tmp_path, options):
+    body = {'timestamp': time.time(), 'service_ready': True, 'environment': {
+        'detected_at': time.time(), 'default': 'dmr', 'options': options}}
+    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(body))
+    assert read_environment(tmp_path)['online'] is False
+
+
+def test_report_missing_active_profile_fails_closed(tmp_path):
+    body = {'timestamp': time.time(), 'service_ready': True, 'environment': {
+        'detected_at': time.time(), 'default': 'dmr', 'options': [{'id': 'dmr', 'profiles': []}]}}
+    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(body))
     with pytest.raises(ValueError, match='PARSER_ACCELERATOR_UNAVAILABLE'):
-        resolve_accelerator(PADDLE_PROFILE, tmp_path)
-    heartbeat['timestamp'] -= 91
-    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(heartbeat))
-    assert read_environment(tmp_path)['online'] is False
-    # Without a current report, the parser applies its Compose configuration.
-    assert resolve_accelerator(PADDLE_PROFILE, tmp_path) is None
-
-
-@pytest.mark.parametrize('device,profile,expected', [
-    ('cpu', PADDLE_PROFILE, 'cpu'), ('cuda', PADDLE_PROFILE, 'cuda'),
-    ('mlx', PADDLE_PROFILE, 'mlx'), ('mlx', 'docling-v1', 'cpu'),
-    ('mlx', 'granite-docling-v1', 'cpu'),
-])
-def test_runtime_uses_compose_mode_and_its_supported_profile_engines(tmp_path, device, profile, expected):
-    from packages.parsers.environment import resolve_accelerator
-    body = {'timestamp': time.time(), 'models_verified': True, 'environment': {
-        'detected_at': time.time(), 'default': device, 'options': [
-            {'id': 'cpu', 'profiles': ['docling-v1', 'granite-docling-v1', PADDLE_PROFILE]},
-            {'id': 'cuda', 'profiles': [PADDLE_PROFILE]},
-            {'id': 'mlx', 'profiles': [PADDLE_PROFILE]}]}}
-    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(body))
-    assert resolve_accelerator(profile, tmp_path) == expected
-
-
-def test_job_runtime_override_does_not_mutate_parent_environment(monkeypatch):
-    from packages.parsers.runtime import runtime_config
-    monkeypatch.setenv('PARSER_ACCELERATOR', 'cuda')
-    assert runtime_config(PADDLE_PROFILE, 'cpu').device == 'cpu'
-    assert runtime_config(PADDLE_PROFILE).device == 'cuda:0'
-
-
-@pytest.mark.parametrize('options', [[{}], [None], [{'id': 'cpu', 'profiles': 'docling-v1'}], [{'id': 'unknown', 'profiles': []}]])
-def test_malformed_capabilities_fail_closed(tmp_path, options):
-    from packages.parsers.environment import read_environment
-    body = {'timestamp': time.time(), 'models_verified': True, 'environment': {
-        'detected_at': time.time(), 'default': 'cpu', 'options': options}}
-    (tmp_path / 'heartbeat.json').write_bytes(canonical_bytes(body))
-    assert read_environment(tmp_path)['online'] is False
-
-
-def test_child_applies_frozen_runtime_and_rejects_unknown_values(tmp_path, monkeypatch):
-    from workers.parser import child
-    from packages.parsers.models import parser_version
-    from packages.parsers.runtime import runtime_config
-    from datetime import datetime, timezone, timedelta
-    request = {'task_id': 'runtime_test', 'fence': 1, 'source_sha256': '0' * 64,
-        'max_pages': 1, 'deadline': (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat(),
-        'parser_version': parser_version(PADDLE_PROFILE), 'profile': {'parser_profile_revision': PADDLE_PROFILE},
-        'accelerator': 'cpu'}
-    path = tmp_path / 'request.json'
-    monkeypatch.setenv('PARSER_ACCELERATOR', 'cuda')
-    monkeypatch.setattr('sys.argv', ['child', str(path), str(tmp_path / 'source.pdf'), str(tmp_path / 'out')])
-    results = []
-    monkeypatch.setattr(child, 'process_request', lambda *args: results.append(runtime_config(PADDLE_PROFILE).device))
-    path.write_bytes(canonical_bytes(request))
-    child.main()
-    assert results == ['cpu']
-    request['accelerator'] = 'deployment'
-    path.write_bytes(canonical_bytes(request))
-    with pytest.raises(ValueError, match='accelerator'):
-        child.main()
-    assert results == ['cpu']
-
-
-def test_wsl_gpu_reaches_framework_probe(monkeypatch):
-    from packages.parsers import environment as env
-    from types import SimpleNamespace
-    monkeypatch.setattr(env.Path, 'exists', lambda path: str(path) == '/dev/dxg')
-    monkeypatch.setattr(env.Path, 'is_file', lambda path: True)
-    calls = []
-    def run(command, **kwargs):
-        calls.append(command)
-        return SimpleNamespace(stdout='{"available": true, "name": "WSL NVIDIA"}')
-    monkeypatch.setattr(env.subprocess, 'run', run)
-    assert env.cuda_probe('/app/.venv/bin/python', 'torch')['available'] is True
-    assert len(calls) == 1
-
-
-def test_mlx_requires_setup_image_proof_bound_to_current_model(monkeypatch):
-    from packages.parsers import environment as env
-    from packages.parsers import runtime
-    calls = []
-    monkeypatch.setattr(env, 'cuda_probe', lambda *args: {'available': False})
-    monkeypatch.setattr(runtime, 'verify_mlx_service', lambda configured: calls.append(configured.model_id))
-    model_id = 'sha256:' + 'a' * 64
-    monkeypatch.setenv('PADDLE_MLX_MODEL_ID', model_id)
-    monkeypatch.delenv('PARSER_MLX_VERIFIED_MODEL_ID', raising=False)
-    assert env.detect_environment()['options'][2]['profiles'] == []
-    assert not calls
-    monkeypatch.setenv('PARSER_MLX_VERIFIED_MODEL_ID', 'sha256:' + 'b' * 64)
-    assert env.detect_environment()['options'][2]['profiles'] == []
-    assert not calls
-    monkeypatch.setenv('PARSER_MLX_VERIFIED_MODEL_ID', model_id)
-    option = env.detect_environment()['options'][2]
-    assert option['profiles'] == [PADDLE_PROFILE]
-    assert option['reason'] is None
-    assert calls == [model_id]
-
-
-def test_mlx_revokes_availability_when_model_runner_metadata_fails(monkeypatch):
-    from packages.parsers import environment as env
-    from packages.parsers import runtime
-    from packages.parsers.inspect import PDFError
-    monkeypatch.setattr(env, 'cuda_probe', lambda *args: {'available': False})
-    model_id = 'sha256:' + 'a' * 64
-    monkeypatch.setenv('PADDLE_MLX_MODEL_ID', model_id)
-    monkeypatch.setenv('PARSER_MLX_VERIFIED_MODEL_ID', model_id)
-    def unavailable(configured):
-        raise PDFError('PARSER_MLX_UNAVAILABLE_OR_MISMATCH')
-    monkeypatch.setattr(runtime, 'verify_mlx_service', unavailable)
-    assert env.detect_environment()['options'][2]['profiles'] == []
+        resolve_accelerator(PROFILE_IDS[0], tmp_path)

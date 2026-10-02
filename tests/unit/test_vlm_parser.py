@@ -6,7 +6,7 @@ from PIL import Image
 import pytest
 
 from packages.parsers.inspect import PDFError
-from packages.parsers.vlm_output import html_items, json_items, markdown_items, otsl_table
+from packages.parsers.vlm_output import html_items, json_items
 
 PAGE = {'page': 1, 'page_size': [600, 800]}
 
@@ -32,53 +32,21 @@ def test_infinity_json_maps_formulas_and_table_data_in_reading_order():
     assert items[1]['text'] == 'E=mc^2'
 
 
-def test_otsl_supports_spans_and_rejects_incomplete_grids():
-    table = otsl_table('<fcel>Header<lcel><nl><fcel>A<fcel>B<nl>')
-    assert table['num_cols'] == 2 and table['num_rows'] == 2
-    assert table['table_cells'][0]['col_span'] == 2
-    assert otsl_table('<ucel><nl>') is None
-    assert otsl_table('<fcel>A<fcel>B<nl><fcel>C<nl>') is None
-    vertical = otsl_table('<fcel>A<fcel>B<nl><ucel><fcel>C<nl>')
-    assert vertical['table_cells'][0]['row_span'] == 2
-
-
-def test_xiaomi_markdown_uses_page_provenance_without_fabricating_boxes():
-    items = markdown_items('# Heading\n\nBody text.\n\n<fcel>A<fcel>B<nl>', PAGE)
-    assert [i['label'] for i in items] == ['section_header', 'text', 'table']
-    assert items[2]['data']['num_cols'] == 2
-    assert items[0]['prov'][0]['bbox'] == {'l': 0, 't': 0, 'r': 600, 'b': 800, 'coord_origin': 'TOPLEFT'}
-
-
-def test_teleocr_native_layout_tokens_drive_crop_recognition():
-    from packages.parsers.pdf_vlm import teleocr_items
-    calls = []
-    def infer(image, prompt):
-        calls.append((image.size, prompt))
-        return 'Printed source text'
-    with Image.new('RGB', (1000, 1000)) as image:
-        items = teleocr_items('<box:0 0 500 100><label:text><up>\n<box:500 100 1000 600><label:image><up>', PAGE, image, infer)
-    assert len(calls) == 1 and calls[0][0] == (500, 100)
-    assert items[0]['text'] == 'Printed source text'
-    assert items[1]['text'] == ''
-
-
 @pytest.mark.parametrize('profile', ['surya-ocr-2-v1', 'chandra-ocr-2-v1', 'infinity-parser2-pro-v1',
-    'infinity-parser2-flash-v1', 'teleocr-v1', 'xiaomi-ocr-0-v1'])
+    'infinity-parser2-flash-v1'])
 def test_each_adapter_parses_real_fixture_pdf_into_valid_source_ir(profile, tmp_path, monkeypatch):
     from pathlib import Path
     from packages.parsers.pdf_vlm import VisionParser
     from packages.ir import validate_source
-    monkeypatch.setenv('PARSER_ACCELERATOR', 'dmr' if profile == 'infinity-parser2-pro-v1' else 'cpu')
+    monkeypatch.setenv('PARSER_ACCELERATOR', 'dmr')
     outputs = {
         'surya-ocr-2-v1': '<div data-label="Text" data-bbox="0 0 1000 1000">Synthetic OCR output</div>',
         'chandra-ocr-2-v1': '<div data-label="Text" data-bbox="0 0 1000 1000">Synthetic OCR output</div>',
         'infinity-parser2-pro-v1': '{"layout":[{"category":"text","bbox":[0,0,1000,1000],"text":"Synthetic OCR output"}]}',
         'infinity-parser2-flash-v1': '{"layout":[{"category":"text","bbox":[0,0,1000,1000],"text":"Synthetic OCR output"}]}',
-        'teleocr-v1': '<box:0 0 1000 1000><label:text><up>',
-        'xiaomi-ocr-0-v1': '# Synthetic heading\n\nSynthetic OCR output',
     }
     def factory(*args):
-        return lambda image, prompt: outputs[profile] if 'layout' in prompt.lower() or profile != 'teleocr-v1' else 'Synthetic OCR output'
+        return lambda image, prompt: outputs[profile]
     result = VisionParser(inference_factory=factory).parse(Path('tests/fixtures/sample.pdf'), 'source_pdf', tmp_path,
         {'parser_profile_revision': profile})
     validate_source(result['source_revision'], asset_root=tmp_path)

@@ -1,114 +1,13 @@
-# Copy this file to compose.yaml in the repository root, then run:
-#   docker compose up --build -d
-# The copied compose.yaml is local and ignored by Git; keep this template portable.
-# Existing instances: check the backup/upgrade instructions in docs/ops/restore.md first.
-# Keep exactly ONE mode block active: CPU (default), CUDA, MLX, or DMR.
-# To switch, comment the active block and uncomment the chosen block.
-# The active mode determines the parser device; Settings has no device override.
-# The shared services and persistent volumes below stay the same.
-# See docs/ops/restore.md for upgrades and docs/deployment/extraction-acceleration.md
-# for GPU prerequisites and MLX model packaging/verification.
-# Optional services: --profile local-translation; explicit run model-export, tests, checks.
-# Tests/checks: use this template with a separate project name; see tests/README.md.
+# Copy to the ignored local compose.yaml; preserve existing project/volume names.
+# Inspect docs/ops/restore.md before upgrading an existing instance.
+# API, worker, parser and preparation share one amd64/arm64 application image.
+# All active parsers process whole pages through Docker Model Runner only.
+# Docker owns the inference backend: PARSER_DMR_BACKEND=vllm (CUDA) or mlx (Metal).
+# Weights prepare only on explicit use; startup/settings never download models.
+# Configure the backend prerequisites in docs/deployment/extraction-acceleration.md.
+# Tests/checks use an explicit separate project; see tests/README.md.
 # Translation endpoint, model and credentials are configured in the application.
 name: bilingual-personal-pdf
-
-x-parser-build: &parser-build
-  context: .
-  dockerfile: deployment/images/parser.Dockerfile
-  args: &parser-build-args
-    SOURCE_COMMIT: "${SOURCE_COMMIT:-uncommitted}"
-    SOURCE_TREE_SHA256: "${SOURCE_TREE_SHA256:-unrecorded}"
-    PARSER_FLAVOR: cpu
-
-x-parser-environment: &parser-environment
-  DOCLING_ARTIFACTS_PATH: /opt/docling/models
-  PARSER_INPUTS: /inputs
-  PARSER_OUTPUTS: /outputs
-  HF_HUB_OFFLINE: "1"
-  TRANSFORMERS_OFFLINE: "1"
-
-# --- BEGIN CPU MODE (enabled by default) ---
-x-parser-mode: &parser-mode
-  image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
-  build: *parser-build
-  platform: linux/amd64
-  networks: [parser_model_control]
-  environment:
-    <<: *parser-environment
-    PARSER_ACCELERATOR: cpu
-# --- END CPU MODE ---
-
-# NVIDIA CUDA: requires a compatible NVIDIA GPU, driver, and Docker GPU access.
-# --- BEGIN CUDA MODE (uncomment instead of CPU) ---
-# x-parser-mode: &parser-mode
-#   image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:cuda}"
-#   platform: linux/amd64
-#   build:
-#     <<: *parser-build
-#     args:
-#       <<: *parser-build-args
-#       PARSER_FLAVOR: cuda
-#   networks: [parser_model_control]
-#   environment:
-#     <<: *parser-environment
-#     PARSER_ACCELERATOR: cuda
-#     NVIDIA_DRIVER_CAPABILITIES: compute,utility
-#   deploy:
-#     resources:
-#       reservations:
-#         devices:
-#           - driver: nvidia
-#             count: 1
-#             capabilities: [gpu]
-# --- END CUDA MODE ---
-
-# Apple MLX: requires Apple Silicon, Compose 2.38+, Docker Model Runner,
-# a working vLLM Metal backend, and the packaged Paddle model.
-# Replace the model ID expressions with the actual sha256 IDs, or set them
-# in a root .env file. Set PARSER_MLX_VERIFIED_MODEL_ID only after image inference passes;
-# see docs/deployment/extraction-acceleration.md. MLX accelerates Paddle recognition;
-# layout and other parser profiles use CPU.
-# --- BEGIN MLX MODE (uncomment instead of CPU, including models below) ---
-# x-parser-mode: &parser-mode
-#   image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
-#   platform: linux/amd64
-#   build: *parser-build
-#   networks: [parser_model_control, model_inference]
-#   environment:
-#     <<: *parser-environment
-#     PARSER_ACCELERATOR: mlx
-#     PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:?Set the packaged Paddle model sha256 ID}"
-#     PARSER_MLX_VERIFIED_MODEL_ID: "${PARSER_MLX_VERIFIED_MODEL_ID:-}"
-#     NO_PROXY: model-runner.docker.internal
-#     no_proxy: model-runner.docker.internal
-#   models: [paddle_extraction]
-# models:
-#   paddle_extraction:
-#     model: "${PADDLE_MLX_MODEL:-docker.io/local/paddleocr-vl-1.6:latest}"
-#     context_size: 8192
-# --- END MLX MODE ---
-
-# Lightweight portable parser client. Docker owns the inference engine.
-# Supports Surya 2, Chandra 2, Infinity-Parser2 Pro/Flash and Xiaomi-OCR-0.
-# TeleOCR's custom implementation and Docling/Paddle require native CPU/CUDA mode.
-# Enable Docker's vLLM backend (Linux/WSL2 NVIDIA) or verified vLLM Metal (Apple).
-# Models are loaded only by explicit preparation/use; no Compose models auto-pull.
-# --- BEGIN DMR MODE (uncomment instead of CPU) ---
-# x-parser-mode: &parser-mode
-#   image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:runner}"
-#   build:
-#     <<: *parser-build
-#     args:
-#       <<: *parser-build-args
-#       PARSER_FLAVOR: runner
-#   networks: [parser_model_control, model_inference]
-#   environment:
-#     <<: *parser-environment
-#     PARSER_ACCELERATOR: dmr
-#     PARSER_DMR_BACKEND: "${PARSER_DMR_BACKEND:-vllm}"
-#     PARSER_DMR_URL: "${PARSER_DMR_URL:-http://model-runner.docker.internal}"
-# --- END DMR MODE ---
 
 x-app: &app
   image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
@@ -133,13 +32,24 @@ x-app: &app
     PROVIDER_CONFIG_DIR: /provider_config
     LOCAL_TRANSLATION_FORMATS: "${LOCAL_TRANSLATION_FORMATS:-}"
     LOCAL_TRANSLATION_BACKENDS: "${LOCAL_TRANSLATION_BACKENDS:-}"
-    PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
     PARSER_DMR_BACKEND: "${PARSER_DMR_BACKEND:-vllm}"
     ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,app}"
     APP_ORIGINS: "${APP_ORIGINS:-http://localhost:${PORT:-8080},http://127.0.0.1:${PORT:-8080}}"
     READ_ONLY: "${READ_ONLY:-false}"
   volumes:
     - internal:/internal:ro
+x-parser-mode: &parser-mode
+  image: "${APP_IMAGE:-bilingual-personal-pdf-app:local}"
+  build: *app-build
+  networks: [parser_model_control, model_inference]
+  environment:
+    PARSER_MODEL_CACHE: /model_cache
+    PARSER_INPUTS: /inputs
+    PARSER_OUTPUTS: /outputs
+    PARSER_ACCELERATOR: dmr
+    PARSER_DMR_BACKEND: "${PARSER_DMR_BACKEND:-vllm}"
+    PARSER_DMR_URL: "${PARSER_DMR_URL:-http://model-runner.docker.internal}"
+
 x-test-build: &test-build
   context: .
   dockerfile: tests/Dockerfile
@@ -259,7 +169,7 @@ services:
     volumes:
       - parser_inputs:/inputs:ro
       - parser_outputs:/outputs
-      - parser_models:/opt/docling/models:ro
+      - parser_models:/model_cache:ro
     tmpfs: ["/tmp:rw,nosuid,size=512m,mode=1777"]
     mem_limit: 16g
     cpus: 4.0
@@ -345,7 +255,6 @@ services:
     command: [uvicorn, packages.local_models.service:app, --host, 0.0.0.0, --port, "8090", --no-access-log]
     environment:
       LOCAL_MODEL_CACHE: /model_cache
-      PADDLE_MLX_MODEL_ID: "${PADDLE_MLX_MODEL_ID:-}"
       LOCAL_TRANSLATION_FORMATS: "${LOCAL_TRANSLATION_FORMATS:-}"
       LOCAL_TRANSLATION_BACKENDS: "${LOCAL_TRANSLATION_BACKENDS:-}"
       LOCAL_VLLM_DMR_URL: "${LOCAL_VLLM_DMR_URL:-}"
@@ -392,21 +301,6 @@ services:
     shm_size: 2g
     mem_limit: 16g
     restart: unless-stopped
-  # Explicit setup operation: supply an existing writable output directory with
-  # run --volume "$MODEL_EXPORT_DIR:/export" model-export. No default host bind.
-  model-export:
-    profiles: [model-tools]
-    image: "${PARSER_IMAGE:-bilingual-personal-pdf-parser:local}"
-    build: *parser-build
-    user: "10001:10001"
-    network_mode: none
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
-    environment:
-      DOCLING_ARTIFACTS_PATH: /opt/docling/models
-    volumes: [parser_models:/opt/docling/models:ro]
-    command: [python, /app/src/tools/export_parser_model.py, --destination, /export/paddleocr-vl-1.6]
   # Run tests/checks explicitly with -p paper-tests/-p paper-checks. Their only
   # database is disposable test-db; none of these services mounts library data.
   tests:

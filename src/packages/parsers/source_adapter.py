@@ -1,4 +1,4 @@
-"""Docling adapter with independent native coverage accounting and local assets."""
+"""Model-free source adapter with independent PDF coverage and local assets."""
 from __future__ import annotations
 
 import os
@@ -11,9 +11,6 @@ from pathlib import Path
 
 from packages.ir import block_hash, canonical_bytes, digest, validate_source
 from .inspect import PDFError, inspect_pdf
-from .models import verify_models
-from .config import pipeline_fingerprint, pipeline_options
-from .profiles import GRANITE_PROFILE, GRANITE_MODEL, PADDLE_MODEL, selected_profile
 
 
 def overlap(a,b):
@@ -250,77 +247,14 @@ def _source_nodes(text, block_id, atoms, kind):
     return nodes
 
 
-class DoclingParser:
-    def __init__(self, artifacts_path=None):
-        self.artifacts_path = Path(artifacts_path or os.environ.get('DOCLING_ARTIFACTS_PATH','/opt/docling/models'))
+class SourceAdapter:
+    """Model-free PDF source construction, recovery and evidence checks."""
 
-    def parse(self, local_pdf, asset_id, output_dir, profile=None):
-        profile = profile or {}
-        if set(profile) - {'language','limits','created_at','parser_profile_revision'}:
-            raise PDFError('PARSER_PROFILE_INVALID')
-        try:
-            selection = selected_profile(profile)
-        except ValueError as exc:
-            raise PDFError('PARSER_PROFILE_INVALID') from exc
-        from .runtime import runtime_config, require_device
-        require_device(runtime_config(selection), selection)
-        lock = verify_models(self.artifacts_path, selection)
-        from .progress import local_identity, report_progress
-        report_progress('loading_model', model=local_identity(selection, lock))
-        inspection = inspect_pdf(local_pdf,profile.get('limits'))
-        os.environ['HF_HUB_OFFLINE'] = '1'
-        os.environ['TRANSFORMERS_OFFLINE'] = '1'
-        from importlib.metadata import version
-        if version('docling') != lock['docling_version']:
-            raise PDFError('PARSER_VERSION_MISMATCH')
-        from docling.document_converter import DocumentConverter, PdfFormatOption
-        from docling.datamodel.base_models import InputFormat
-        options = pipeline_options(self.artifacts_path, lock, selection)
-        format_options = {'pipeline_options': options}
-        if selection == GRANITE_PROFILE:
-            from docling.pipeline.vlm_pipeline import VlmPipeline
-            format_options['pipeline_cls'] = VlmPipeline
-        converter = DocumentConverter(allowed_formats=[InputFormat.PDF],format_options={InputFormat.PDF:PdfFormatOption(**format_options)})
-        try:
-            converted = converter.convert(Path(local_pdf), raises_on_error=False, max_num_pages=inspection['page_count'])
-        except Exception:
-            # Inspection has already proved that the original PDF is readable.
-            # A model/page failure can still yield native text and page images.
-            converted = None
-        if converted is not None and getattr(converted, 'document', None) is not None:
-            report_progress('model_loaded', model=local_identity(selection, lock))
-        else:
-            report_progress('check_failed', phase='model_conversion')
-        if converted is None or str(converted.status.value) != 'success':
-            inspection.setdefault('warnings', []).append({'code': 'PARSER_PARTIAL_RESULT'})
-        for page in inspection['pages']:page['ocr_attempted']=converted is not None
-        output = Path(output_dir); output.mkdir(parents=True,exist_ok=True)
-        document = getattr(converted, 'document', None)
-        raw = document.export_to_dict() if document is not None else {}
-        (output/'docling.json').write_bytes(canonical_bytes(raw))
-        items = [item.model_dump(mode='json',by_alias=True) for item,_ in document.iterate_items()] if document is not None else []
-        seen={item.get('self_ref') for item in items}
-        # Default Docling iteration omits furniture. Its original labels and
-        # coordinates are still needed to justify exclusions in the coverage ledger.
-        items.extend(item for item in raw.get('texts',[]) if item.get('label') in {'page_header','page_footer'} and item.get('self_ref') not in seen)
-        model_id = GRANITE_MODEL if selection == GRANITE_PROFILE else 'docling-project/CodeFormulaV2'
-        model=next(repo for repo in lock['repositories'] if repo['repo_id']==model_id)
-        def local_reparse(number):
-            report_progress('loading_model', page=number, model=local_identity(selection, lock), phase='page_recovery')
-            retried = converter.convert(Path(local_pdf), raises_on_error=False, page_range=(number, number), max_num_pages=inspection['page_count'])
-            return [item.model_dump(mode='json', by_alias=True) for item, _ in retried.document.iterate_items()]
-        local_reparse.model_identity = local_identity(selection, lock)
-        result = self.adapt(items,inspection,local_pdf,asset_id,output,profile=profile,parser_version=lock['docling_version'],
-            enrichment={'model':model['repo_id'],'revision':model['revision']},pipeline_hash=pipeline_fingerprint(lock, selection),
-            recovery_callback=local_reparse)
-        result['parser_profile_revision'] = selection
-        return result
-
-    def adapt(self, items, inspection, local_pdf, asset_id, output_dir, *, profile=None, parser_version=None, enrichment=None, pipeline_hash=None, parser_name='docling', recovery_callback=None):
+    def adapt(self, items, inspection, local_pdf, asset_id, output_dir, *, profile=None, parser_version=None, enrichment=None, pipeline_hash=None, parser_name='pdf-source', recovery_callback=None, model_generated_source=False):
         if parser_version is None:
             from .models import parser_version as locked_version
             parser_version = locked_version()
-        """Convert a Docling item sequence; kept separate for contract and corpus testing."""
+        """Convert neutral PDF layout records after evidence-bound recovery."""
         import pypdfium2 as pdfium
         from .fidelity import reconcile_items
         from .recovery import recover_items
@@ -330,8 +264,7 @@ class DoclingParser:
         # VLM result before that pass, and only apply it to surviving code/formula leaves.
         recognized={item.get('self_ref'):dict(item) for item in items if enrichment and item.get('label') in {'code','formula'}}
         from .profiles import VLM_PROFILES
-        if enrichment and (enrichment['model'] in {GRANITE_MODEL, PADDLE_MODEL}
-                           or profile and profile.get('parser_profile_revision') in VLM_PROFILES):
+        if enrichment and model_generated_source:
             # VLM orig is generated text too. Coverage of protected formula/code
             # uses independent native evidence within the retained PDF crop.
             from copy import deepcopy
@@ -377,7 +310,7 @@ class DoclingParser:
                 finally: page.close()
             def locator(prov):
                 number = int(prov['page_no'])
-                if not 1 <= number <= inspection['page_count']: raise PDFError('SOURCE_PARSE_REVIEW','Invalid Docling page number')
+                if not 1 <= number <= inspection['page_count']: raise PDFError('SOURCE_PARSE_REVIEW','Invalid parser page number')
                 w,h = inspection['pages'][number-1]['page_size']; bbox = prov['bbox']
                 l,t,r,b = [float(bbox[k]) for k in ('l','t','r','b')]
                 if str(bbox.get('coord_origin','TOPLEFT')).upper().endswith('BOTTOMLEFT'): t,b = h-t,h-b
@@ -559,8 +492,7 @@ class DoclingParser:
             check_failed = False
             try:
                 coverage = coverage_report(inspection['pages'],blocks,excluded)
-                if enrichment and (enrichment['model'] in {GRANITE_MODEL, PADDLE_MODEL}
-                                   or profile.get('parser_profile_revision') in VLM_PROFILES):
+                if enrichment and model_generated_source:
                     issues.extend(vlm_text_issues(inspection['pages'], blocks))
             except (ValueError, RuntimeError, KeyError, TypeError):
                 check_failed = True

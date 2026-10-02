@@ -4,7 +4,8 @@
 
 Upload inspection verifies the PDF before library import. Parsing freezes the
 selected profile, accelerator and timeout. Newly saved preferences use
-PaddleOCR-VL-1.6; older explicit preferences and queued jobs are preserved.
+Surya OCR 2 through DMR. Older explicit preferences and queued jobs are preserved;
+retired/native choices must be replaced explicitly for new work.
 
 Source extraction is followed by page coverage checks and bounded recovery using
 the original PDF. Missing regions that cannot be safely recovered remain visible

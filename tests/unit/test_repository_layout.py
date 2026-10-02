@@ -15,7 +15,7 @@ from packages.parsers.models import parser_version
 from packages.seed.legacy import checked_release
 from packages.templates.registry import list_templates
 from workers.parser.process import ParserProcess
-from tools.export_parser_model import export_model
+from packages.parsers.source_adapter import SourceAdapter
 print(json.dumps({"seeds": len(checked_release()["documents"]),
                   "templates": [row["id"] for row in list_templates()],
                   "parser_version": parser_version()}))

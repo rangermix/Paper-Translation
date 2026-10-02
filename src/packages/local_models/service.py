@@ -109,9 +109,8 @@ class Manager:
         if select_backend(model, backend) != 'mlx':
             return
         owned = {m['model_id'] for m in public_models(purpose='all') if m['runtime'] == 'mlx'}
-        paddle = os.environ.get('PADDLE_MLX_MODEL_ID', '')
-        if paddle.startswith('sha256:'):
-            owned.add(paddle)
+        from packages.parsers.catalog import vlm_lock
+        owned.update(artifact(parser)['id'] for parser in vlm_lock()['models'])
         target = artifact(model)['id']
         with self.client(timeout=30) as client:
             response = client.get(DMR + '/engines/ps')

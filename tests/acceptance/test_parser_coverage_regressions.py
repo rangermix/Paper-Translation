@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 
 from packages.parsers import inspect_pdf
-from packages.parsers.pdf_docling import coverage_report, table_grid_complete, _source_nodes
+from packages.parsers.source_adapter import coverage_report, table_grid_complete, _source_nodes
 
 ROOT = Path(__file__).resolve().parents[2]
 

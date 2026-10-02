@@ -42,7 +42,7 @@ def configured_formats(value=None):
     """Deployment capability declaration, independent of engine installation."""
     raw = value if value is not None else os.environ.get('LOCAL_TRANSLATION_FORMATS', '')
     if not raw:
-        raw = 'gguf,mlx' if os.environ.get('PADDLE_MLX_MODEL_ID', '').startswith('sha256:') else 'gguf'
+        raw = 'gguf'
     formats = [part.strip().lower() for part in raw.split(',')]
     if any(part not in {'gguf', 'mlx', 'safetensors'} for part in formats) or len(set(formats)) != len(formats):
         raise ValueError('LOCAL_MODEL_FORMATS_INVALID')

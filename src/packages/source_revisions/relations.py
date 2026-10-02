@@ -4,7 +4,7 @@ import re
 
 from packages.domain.errors import require
 from packages.ir import digest,flatten_inline
-from packages.parsers.pdf_docling import overlap
+from packages.parsers.source_adapter import overlap
 from .corrections import _split_inline,_set_order
 
 

@@ -50,7 +50,7 @@ def test_native_list_indexes_survive_adapter_with_original_markers(tmp_path):
     from pypdf import PdfWriter
     from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
     from packages.parsers.inspect import inspect_pdf
-    from packages.parsers.pdf_docling import DoclingParser
+    from packages.parsers.source_adapter import SourceAdapter
     from packages.ir import validate_source
 
     items, pages = numbered_source()
@@ -67,7 +67,7 @@ def test_native_list_indexes_survive_adapter_with_original_markers(tmp_path):
     pdf = tmp_path / 'numbered-list.pdf'
     writer.write(pdf)
     output = tmp_path / 'parsed'
-    source = DoclingParser().adapt(items, inspect_pdf(pdf), pdf, 'original', output,
+    source = SourceAdapter().adapt(items, inspect_pdf(pdf), pdf, 'original', output,
                                   parser_version='test')['source_revision']
     validate_source(source, asset_root=output)
     blocks = [block for block in source['blocks'] if block['kind'] == 'list_item']

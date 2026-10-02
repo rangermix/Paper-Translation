@@ -31,15 +31,13 @@ host memory settings. Memory fractions are not a hard cap on total process RAM.
 
 ## Install and validate
 
-Stop new parser/translation work and wait for active inference. Clear the parser's
-MLX verification receipt. Unload only this project's idle model, and back up the
+Stop new parser/translation work and wait for active inference. Unload only this project's idle model, and back up the
 entire existing `~/.docker/model-runner/vllm-metal` directory into a new persistent
 `.agent/local-data/` directory. Replace the backend directory with the extracted
 payload rather than overlaying old and new packages.
 
 Check the actual engine logs, a real image request through the Compose parser, and
-a controlled PDF job. Only after successful image inference restore
-`PARSER_MLX_VERIFIED_MODEL_ID` using the actual packaged model ID. Record the source,
+a controlled PDF job. Verify the exact locked model ID and effective configuration. Record the source,
 backend image/model IDs and outputs. Status text alone is insufficient because DMR
 can retain a cached version label after a payload replacement.
 
@@ -51,7 +49,6 @@ reproduce the installation's inference check.
 ## Rollback
 
 Keep the exact prior payload and local Compose settings. Stop new work, wait for
-inference, clear the receipt, unload only the affected model and restore the saved
+inference, unload only the affected model and restore the saved
 backend directory. Preserve application volumes and model caches. Verify the restored
-backend before enabling work. Switching to CPU routing requires enough Docker VM
-memory and its own extraction check; it is not automatic fallback.
+backend before enabling work. The application has no native CPU parser fallback.

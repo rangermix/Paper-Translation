@@ -36,9 +36,13 @@ Session = Depends(session_dependency, scope='function')
 def frozen_parser_runtime(profile):
     try:
         choice = resolve_accelerator(profile)
-    except ValueError:
-        require(False, 'PARSER_ACCELERATOR_UNAVAILABLE', 'Compose 配置的解析设备当前不可用，请检查部署配置和解析服务。')
-    return {'parser_accelerator': choice} if choice else {}
+    except ValueError as exc:
+        require(False, str(exc), '当前解析方案已停用或部署不可用；请明确选择可用的全页 DMR 方案。')
+    from packages.parsers.environment import read_environment
+    environment = read_environment()
+    backend = environment.get('backend') or os.environ.get('PARSER_DMR_BACKEND', 'vllm')
+    require(backend in {'vllm', 'mlx'}, 'PARSER_MODEL_BACKEND_UNSUPPORTED')
+    return {'parser_accelerator': choice, 'parser_backend': backend}
 
 
 def upload_view(session, upload):

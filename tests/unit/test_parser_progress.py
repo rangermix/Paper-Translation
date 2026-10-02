@@ -28,8 +28,9 @@ def test_new_model_history_preserves_timeout_without_inventing_dmr_version(tmp_p
         monkeypatch.setenv('PARSER_ACCELERATOR', 'dmr')
         model = local_identity('surya-ocr-2-v1', vlm_lock())
         assert model['engine_version'] is None and model['timeout_seconds'] == 3600
-        monkeypatch.setenv('PARSER_ACCELERATOR', 'cpu')
-        model = local_identity('teleocr-v1', vlm_lock())
-        assert model['engine_version'] == '4.57.1' and model['timeout_seconds'] == 3600
+        import pytest
+        with pytest.raises(ValueError, match='PARSER_PROFILE_UNAVAILABLE'):
+            local_identity('teleocr-v1', vlm_lock())
+
     finally:
         reset_progress(token)

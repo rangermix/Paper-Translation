@@ -25,6 +25,13 @@ settings, parser environment, preparation, Compose, deployment and current docs.
 Use the application image for API, workers, parser and preparation with distinct
 commands, networks and mounts. Verify removed frameworks and weights are absent.
 
+Checkpoint: shared application image built on amd64 (428,598,147 bytes reported
+by Docker); no native inference modules are installed and cold import with no
+network succeeds. Offline unit checks passed (1161 cases), focused PostgreSQL
+selection/runtime checks passed (93 cases), and six repository checks passed.
+These are client/dependency facts, not model inference or ARM evidence. The richer
+semantic bridge below remains in progress.
+
 ## 3. Versioned semantic IR and model-output decoding
 
 Add a new schema compatibility version while retaining schema 3.0. Implement the

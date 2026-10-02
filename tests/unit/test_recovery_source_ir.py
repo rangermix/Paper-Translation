@@ -5,7 +5,7 @@ from pypdf import PdfWriter
 
 from packages.ir import validate_source
 from packages.parsers import inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser
+from packages.parsers.source_adapter import SourceAdapter
 
 
 def test_image_only_source_has_page_fallback_and_does_not_invent_text(tmp_path):
@@ -15,7 +15,7 @@ def test_image_only_source_has_page_fallback_and_does_not_invent_text(tmp_path):
     with path.open('wb') as handle:
         writer.write(handle)
     output = tmp_path / 'output'
-    result = DoclingParser().adapt([], inspect_pdf(path), path, 'original', output)
+    result = SourceAdapter().adapt([], inspect_pdf(path), path, 'original', output)
     source = result['source_revision']
     validate_source(source, asset_root=output)
     assert not any(b['normalized_text'] for b in source['blocks'])
@@ -28,7 +28,7 @@ def test_native_recovery_retains_original_and_all_numeric_comparison_assets(tmp_
     path = Path('tests/fixtures/sample.pdf')
     before = path.read_bytes()
     output = tmp_path / 'output'
-    result = DoclingParser().adapt([], inspect_pdf(path), path, 'original', output)
+    result = SourceAdapter().adapt([], inspect_pdf(path), path, 'original', output)
     source = result['source_revision']
     validate_source(source, asset_root=output)
     assert path.read_bytes() == before

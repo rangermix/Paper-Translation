@@ -72,7 +72,7 @@ def check_compose():
     require(set(core) == {'init', 'db', 'migrate', 'app', 'worker', 'parser', 'parser-models'}, 'Unexpected default services')
     require([name for name, service in core.items() if 'ports' in service] == ['app'], 'Unexpected product port')
     require('127.0.0.1' in services['app']['ports'][0], 'Default bind is not loopback')
-    require(services['parser']['networks'] == ['parser_model_control']
+    require(services['parser']['networks'] == ['parser_model_control', 'model_inference']
             and production['networks']['parser_model_control'].get('internal') is True
             and not services['parser'].get('secrets'), 'Default parser isolation')
     require(services['parser-models']['volumes'] == ['parser_models:/model_cache'], 'Model preparation storage boundary')

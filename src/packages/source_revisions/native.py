@@ -9,7 +9,7 @@ import re
 
 from packages.domain.errors import require
 from packages.ir import block_hash, digest, validate_source
-from packages.parsers.pdf_docling import _source_nodes, coverage_report, overlap
+from packages.parsers.source_adapter import _source_nodes, coverage_report, overlap
 from .corrections import _set_order, revision_mapping
 
 

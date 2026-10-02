@@ -122,7 +122,7 @@ def test_reparse_worker_binds_parent_and_explicit_preflight_images(client, datab
     # This authored output fixture represents Docling; freeze that explicit
     # choice rather than depending on the default for newly queued parses.
     parsed = client.post('/api/v1/documents/doc_fixture/parse', json={
-        'source_asset_id': 'asset_new', 'parser_profile_revision': 'docling-v1'},
+        'source_asset_id': 'asset_new', 'parser_profile_revision': 'surya-ocr-2-v1'},
         headers={'If-Match': '"2"', 'Idempotency-Key': 'parse-replacement'})
     assert parsed.status_code == 202, parsed.text
     lease = claim(db)

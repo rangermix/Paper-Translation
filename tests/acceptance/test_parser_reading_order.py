@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from packages.ir import digest, validate_source
-from packages.parsers.pdf_docling import coverage_report
+from packages.parsers.source_adapter import coverage_report
 from packages.source_revisions.corrections import _set_order
 
 ROOT = Path(__file__).resolve().parents[2]

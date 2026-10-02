@@ -22,7 +22,7 @@ ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHO
 WORKDIR /app
 # PostgreSQL 15 server and client share a major version. Exact dpkg versions are
 # included in the built image inventory and release evidence.
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libpq5 liblz4-1 libzstd1 libreadline8t64 ca-certificates && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libpq5 liblz4-1 libzstd1 libreadline8t64 libgomp1 ca-certificates && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 library && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /tmp library \
     && mkdir -p /app/release && dpkg-query -W -f='${Package}\t${Version}\n' > /app/release/system-packages.tsv
 COPY --from=dependencies /app/.venv /app/.venv
@@ -35,7 +35,6 @@ COPY src/apps/api/ /app/src/apps/api/
 COPY src/packages/ /app/src/packages/
 COPY src/workers/ /app/src/workers/
 COPY res/schemas/ /app/res/schemas/
-COPY deployment/parser-models.lock.json /app/deployment/parser-models.lock.json
 COPY deployment/parser-vlm-models.lock.json /app/deployment/parser-vlm-models.lock.json
 COPY res/reference/ /app/res/reference/
 COPY res/vendor/ /app/res/vendor/

@@ -7,10 +7,10 @@ from pathlib import Path
 
 from packages.ir import canonical_bytes, digest, safe_path, strict_loads
 from .models import parser_version
-from .profiles import selected_profile
+from .profiles import PROFILE_IDS, recorded_profile
 from .timeouts import request_timeout_seconds
 
-REQUEST_KEYS = {'task_id','fence','source_sha256','max_pages','deadline','timeout_seconds','parser_version','operation','asset_id','profile','accelerator'}
+REQUEST_KEYS = {'task_id','fence','source_sha256','max_pages','deadline','timeout_seconds','parser_version','operation','asset_id','profile','accelerator','backend'}
 
 
 def validate_request(request):
@@ -29,16 +29,22 @@ def validate_request(request):
     request_timeout_seconds(request)
     if 'accelerator' in request and request['accelerator'] not in ('cpu', 'cuda', 'mlx', 'dmr'):
         raise ValueError('PARSER_REQUEST_INVALID: accelerator')
+    if 'backend' in request and request['backend'] not in ('vllm', 'mlx'):
+        raise ValueError('PARSER_REQUEST_INVALID: backend')
     if not isinstance(request.get('profile', {}), dict): raise ValueError('PARSER_REQUEST_INVALID: profile')
-    selection = selected_profile(request.get('profile', {}))
-    expected_version = 'inspector-v1' if request.get('operation','parse') == 'inspect' else parser_version(selection)
-    if request['parser_version'] != expected_version: raise ValueError('PARSER_VERSION_MISMATCH')
+    selection = recorded_profile(request.get('profile', {}))
+    expected_version = ('inspector-v1' if request.get('operation','parse') == 'inspect' else
+                        parser_version(selection) if selection in PROFILE_IDS else None)
+    if not request['parser_version'] or len(request['parser_version']) > 160:
+        raise ValueError('PARSER_VERSION_MISMATCH')
+    if expected_version is not None and request['parser_version'] != expected_version:
+        raise ValueError('PARSER_VERSION_MISMATCH')
     deadline = datetime.fromisoformat(request['deadline'].replace('Z','+00:00'))
     if deadline.tzinfo is None: raise ValueError('PARSER_REQUEST_INVALID: deadline must have timezone')
     if request.get('asset_id') and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,159}',request['asset_id']): raise ValueError('PARSER_REQUEST_INVALID')
     if not isinstance(request.get('profile', {}), dict) or set(request.get('profile',{}))-{'language','created_at','parser_profile_revision'}:
         raise ValueError('PARSER_REQUEST_INVALID: profile')
-    selected_profile(request.get('profile', {}))
+    recorded_profile(request.get('profile', {}))
     return request
 
 

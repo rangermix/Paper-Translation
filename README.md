@@ -12,11 +12,11 @@ docker compose build app parser db
 docker compose up -d --wait
 ```
 
-打开 `http://127.0.0.1:8080`。`compose.example.yaml` 是唯一受版本管理的 Compose 模板，默认启用 CPU；CUDA/MLX 通过复制文件中的注释块选择。根目录 `compose.yaml` 是 Git 忽略的本地配置，保留已有实例设置。详见[部署说明](docs/deployment/README.md)。构建会取得锁定的依赖与解析模型，运行容器不安装依赖。默认只绑定本机地址；能访问服务的客户端均可操作文库。
+打开 `http://127.0.0.1:8080`。`compose.example.yaml` 是唯一受版本管理的 Compose 模板，所有解析选项都通过 Docker Model Runner 运行完整页面；API、worker、parser 和准备服务共用一个跨架构应用镜像。根目录 `compose.yaml` 是 Git 忽略的本地配置，保留已有实例设置。详见[部署说明](docs/deployment/README.md)。构建只取得锁定依赖，不包含模型；明确准备或首次使用时才下载选定模型，运行容器不安装依赖。默认只绑定本机地址；能访问服务的客户端均可操作文库。
 
 ## 使用
 
-上传 PDF 后可以先保存和阅读原件。设置页选择解析模型、设备和超时，保存翻译服务配置并明确确认内容处理后开始翻译。只完成解析的文档提供继续翻译入口，不会被标为已翻译。
+上传 PDF 后可以先保存和阅读原件。设置页选择解析模型和超时，保存翻译服务配置并明确确认内容处理后开始翻译。只完成解析的文档提供继续翻译入口，不会被标为已翻译。
 
 支持 OpenAI Responses、兼容 Chat Completions、Gemini Interactions 和 Claude Messages；也可部署[本地 MLX 翻译](docs/deployment/local-translation.md)。服务地址和 model ID 可编辑，密钥只保存到后端文件且不回显。保存配置不调用模型；连接测试和翻译需要单独确认。金额控制默认关闭，可按需启用；未知费用显示为未计价，未知请求结果不会自动重发。
 
@@ -39,7 +39,7 @@ docker compose -p paper-tests -f compose.example.yaml --profile tests down --vol
 | `src/apps/` | FastAPI 与 React 前端 |
 | `src/packages/` | 领域逻辑、数据库迁移、阅读模板 |
 | `src/workers/` | 任务 worker 与隔离 PDF parser |
-| `src/tools/` | 仓库检查、模型打包与部署工具 |
+| `src/tools/` | 仓库检查与部署工具 |
 | [res/](res/README.md) | 运行时 Schema、冻结阅读样式和受控种子资料 |
 | [tests/](tests/README.md) | 自动化测试、合成测试资料、测试镜像构建输入 |
 | [deployment/](docs/deployment/README.md) | 产品镜像、硬件运行环境和模型构建输入 |

@@ -9,10 +9,11 @@ the instance; the default published address is loopback.
 
 - Upload, inspect and store PDFs; browse, search, tag, star and archive documents.
   Defaults are 50 MiB per PDF, 200 pages and ten files per upload batch.
-- Parse with PaddleOCR-VL-1.6 (the default for new preferences), Docling, Granite,
-  Surya OCR 2, Chandra OCR 2, Infinity-Parser2 Pro/Flash, TeleOCR or Xiaomi-OCR-0.
-  The active CPU/CUDA/MLX/DMR mode in Compose determines the device. Settings controls
-  the model and parsing timeout; queued jobs keep their recorded model, device and timeout.
+- Parse full pages with Surya OCR 2 (the default for new preferences), Chandra
+  OCR 2 or Infinity-Parser2 Pro/Flash through Docker Model Runner only. Settings
+  controls the model and timeout. Queued jobs keep their recorded model/backend;
+  retired/native choices fail explicitly rather than being reassigned. Docling
+  and Granite inference are removed; Paddle, Xiaomi and TeleOCR are archived.
 - Recover extraction gaps using original-PDF evidence, show unresolved content
   beside page images, and expose saved parse results for later translation.
 - Translate through a saved API service or the optional local translation service
@@ -76,10 +77,9 @@ The shared source is packaged for Compose. Images contain no parser weights.
 Parser, optional local translation and analyst weights are fetched only on explicit
 preparation/use, pinned by revision, byte count and SHA-256. Parser startup and
 settings reads/saves do not download models. A persistent parser cache is writable
-only by its preparation service and read-only in the parser. The lightweight DMR
-image delegates five new standard Qwen parsers to Docker's vLLM/vLLM Metal engine;
-TeleOCR's custom model and the original pipelines use native CPU/CUDA images.
-Infinity Pro requires DMR because its weights exceed the parser's memory envelope.
+only by its preparation service and read-only in the parser. All four active parsers use the same portable application client image, without
+native inference frameworks. Docker's vLLM/vLLM Metal engine provides inference;
+the selected model architecture and image-input path need backend support.
 Model inference, arbitrary scanned-PDF accuracy and hardware support require
 verification in the selected environment. Test fixtures and prior runs do not
 certify all documents or an untested deployment.

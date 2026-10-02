@@ -8,7 +8,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from packages.ir import flatten_inline, validate_source
 from packages.parsers import inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser
+from packages.parsers.source_adapter import SourceAdapter
 
 
 def authored_pdf(path, *, marker='1', before='Research.', after=' is discussed with ordinary 1.',
@@ -52,7 +52,7 @@ def adapt(tmp_path, **options):
     if options.get('second_reference'):
         items.insert(2, item('second_body', 'text', text, [38, 118, 580, 150]))
     inspection = inspect_pdf(pdf)
-    result = DoclingParser().adapt(items, inspection, pdf, 'original', tmp_path / 'output')
+    result = SourceAdapter().adapt(items, inspection, pdf, 'original', tmp_path / 'output')
     return result['source_revision'], result['inspection']
 
 
@@ -134,7 +134,7 @@ def test_fresh_parser_links_do_not_import_source_correction_or_domain_modules(tm
 
 
 def unlinked_source(tmp_path):
-    from packages.parsers.pdf_docling import _source_nodes
+    from packages.parsers.source_adapter import _source_nodes
     source, inspection = adapt(tmp_path)
     for block in source['blocks']:
         block['source_inline'] = _source_nodes(block['normalized_text'], block['id'], source['protected_atoms'], block['kind'])
@@ -148,7 +148,7 @@ def unlinked_source(tmp_path):
     'moved_note', 'changed_note', 'missing_indices', 'wrong_marker_index', 'wrong_context_index'])
 def test_ambiguous_or_misaligned_evidence_cannot_link_an_occurrence(tmp_path, case):
     from packages.parsers.footnotes import link_native_footnotes
-    from packages.parsers.pdf_docling import _source_nodes
+    from packages.parsers.source_adapter import _source_nodes
     source, inspection, body, note = unlinked_source(tmp_path)
     if case in {'duplicate_note', 'duplicate_body'}:
         duplicate = deepcopy(note if case == 'duplicate_note' else body)

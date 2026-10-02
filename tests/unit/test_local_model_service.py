@@ -126,11 +126,12 @@ def test_translation_backend_cache_cap_is_scoped(tmp_path, monkeypatch):
     assert cap('paddle-artifact', 8192, 16, 1024, 9999999) == 9999999
 
 
-def test_paddle_tag_resolves_to_explicit_owned_artifact(tmp_path, monkeypatch):
+def test_parser_tag_resolves_to_exact_owned_artifact(tmp_path, monkeypatch):
     from packages.local_models.service import Manager
     import json
-    paddle = 'sha256:' + 'a' * 64
-    monkeypatch.setenv('PADDLE_MLX_MODEL_ID', paddle)
+    from packages.parsers.catalog import vlm_lock
+    from packages.local_models.catalog import artifact as dmr_artifact
+    paddle = dmr_artifact(vlm_lock()['models'][0])['id']
     calls = []
     def handle(request):
         calls.append(request)
@@ -198,7 +199,8 @@ def test_format_defaults_and_explicit_deployment_capabilities(monkeypatch):
     monkeypatch.delenv('PADDLE_MLX_MODEL_ID', raising=False)
     assert configured_formats() == {'gguf'}
     monkeypatch.setenv('PADDLE_MLX_MODEL_ID', 'sha256:' + 'a' * 64)
-    assert configured_formats() == {'gguf', 'mlx'}
+    assert configured_formats() == {'gguf'}
+    assert configured_formats('gguf,mlx') == {'gguf', 'mlx'}
     assert configured_formats('gguf,safetensors') == {'gguf', 'safetensors'}
     with pytest.raises(ValueError, match='LOCAL_MODEL_FORMATS_INVALID'):
         configured_formats('gguf,unknown')

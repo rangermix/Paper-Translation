@@ -2,25 +2,10 @@
 from pathlib import Path
 
 from packages.parsers.inspect import inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser
-from packages.parsers.pdf_docling import vlm_text_issues
-from packages.parsers.pdf_paddleocr import page_items
-from packages.parsers.profiles import PADDLE_MODEL, GRANITE_MODEL
+from packages.parsers.source_adapter import SourceAdapter
+from packages.parsers.source_adapter import vlm_text_issues
+from packages.parsers.profiles import SURYA_PROFILE, CHANDRA_PROFILE
 import pytest
-
-
-def test_pixel_boxes_map_to_pdf_points_and_tables_never_inject_html():
-    page = {'page': 2, 'page_size': [600, 800], 'text_regions': [{'text': 'Table cell', 'bbox': [10, 20, 100, 40]}]}
-    result = {'parsing_res_list': [
-        {'block_label': 'algorithm', 'block_content': 'if x:\n    return x', 'block_bbox': [20, 100, 200, 200]},
-        {'block_label': 'table', 'block_content': '<script>attack</script>', 'block_bbox': [10, 20, 400, 200]},
-    ]}
-    items = page_items(result, page, [1200, 1600])
-    assert items[0]['label'] == 'code'
-    assert items[0]['text'] == 'if x:\n    return x'
-    assert items[0]['prov'] == [{'page_no': 2, 'bbox': {'l': 10, 't': 50, 'r': 100, 'b': 100, 'coord_origin': 'TOPLEFT'}}]
-    assert items[1]['text'] == 'Table cell'
-    assert '<script>' not in str(items)
 
 
 def test_generated_prose_cannot_add_text_to_a_complete_native_region():
@@ -41,7 +26,7 @@ def test_formula_contradictions_are_reported_without_rewriting_model_output():
     assert vlm_text_issues([], [block]) == []
 
 
-@pytest.mark.parametrize('model', [PADDLE_MODEL, GRANITE_MODEL])
+@pytest.mark.parametrize('model', [SURYA_PROFILE, CHANDRA_PROFILE])
 def test_full_page_vlm_code_uses_native_evidence_and_remains_protected(tmp_path, model):
     pdf = Path('tests/fixtures/sample.pdf')
     inspection = inspect_pdf(pdf)
@@ -51,8 +36,8 @@ def test_full_page_vlm_code_uses_native_evidence_and_remains_protected(tmp_path,
         return {'self_ref': ref, 'label': label, 'orig': text, 'text': text,
             'prov': [{'page_no': 1, 'bbox': dict(zip(('l', 't', 'r', 'b'), region['bbox']), coord_origin='TOPLEFT')}]}
     generated = 'if generated_code:\n    return 123'
-    result = DoclingParser().adapt([item('title', 'title', title, title['text']), item('code', 'code', code, generated)],
-        inspection, pdf, 'asset_test', tmp_path, enrichment={'model': model, 'revision': 'a' * 40})
+    result = SourceAdapter().adapt([item('title', 'title', title, title['text']), item('code', 'code', code, generated)],
+        inspection, pdf, 'asset_test', tmp_path, enrichment={'model': model, 'revision': 'a' * 40}, model_generated_source=True)
     block = next(b for b in result['source_revision']['blocks'] if b['kind'] == 'code')
     assert block['raw_text'] == generated
     assert block['attributes']['recognition']['original_text'] == code['text']

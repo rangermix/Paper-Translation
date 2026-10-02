@@ -3,7 +3,7 @@ import pytest
 
 from packages.ir import block_hash, flatten_inline
 from packages.ir.retention import original_only_blocks
-from packages.parsers.pdf_docling import _source_nodes
+from packages.parsers.source_adapter import _source_nodes
 from packages.translation.planner import plan_units, restore_inline
 from tests.unit.test_translation import source, profile
 

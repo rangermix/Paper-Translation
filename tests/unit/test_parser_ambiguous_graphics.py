@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from packages.parsers import inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser, coverage_report
+from packages.parsers.source_adapter import SourceAdapter, coverage_report
 from packages.parsers.fidelity import reconcile_items
 from tests.unit.test_parser_fidelity import item
 
@@ -26,7 +26,7 @@ def test_missed_full_image_and_partial_model_picture_keep_assets_and_visible_rev
     pdf=ROOT/'tests/fixtures/sample.pdf';inspection=inspect_pdf(pdf)
     native=inspection['pages'][0]['image_regions'][0]['bbox'];x0,y0,x1,y1=native
     partial=[x0,y0,x0+(x1-x0)/3,y1]
-    result=DoclingParser().adapt([item('title','title','Controlled title',[15,15,200,30]),
+    result=SourceAdapter().adapt([item('title','title','Controlled title',[15,15,200,30]),
         item('part','picture','',partial)],inspection,pdf,'original',tmp_path)
     figures=[b for b in result['source_revision']['blocks'] if b['kind']=='figure']
     assert len(figures)==2 and all((tmp_path/a['storage_key']).is_file() for a in result['source_revision']['assets'])

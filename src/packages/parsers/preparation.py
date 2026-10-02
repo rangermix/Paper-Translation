@@ -13,7 +13,7 @@ from .profiles import VLM_PROFILES
 
 def prepare_models(profile, root, runtime):
     from .progress import remaining_seconds, report_progress
-    backend = runtime.backend if runtime.device == 'dmr' else 'native'
+    backend = runtime.backend
     report_progress('loading_model', phase='model_preparation')
     try:
         with httpx.Client(timeout=10, trust_env=False, follow_redirects=False) as client:

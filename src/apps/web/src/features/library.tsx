@@ -34,7 +34,7 @@ export function DocumentDetail({ id, capability }: { id: string; capability?: Ca
   const result = useResource<Document>(`/documents/${resourceId(id)}`, 5000); const provider = useResource<Provider>('/settings/provider'); const action = useAction(); const [translateEdition, setTranslateEdition] = useState(''); const [editing, setEditing] = useState(false); const [deleting, setDeleting] = useState(false); const [deleteText, setDeleteText] = useState(''); const [title, setTitle] = useState(''); const [tags, setTags] = useState('');
   const { preferences, ready, locale, setLocale, policy } = useWorkflowPreferences();
   const [parserChoice, setParserChoice] = useState<ParserProfileRevision>();
-  const selectedParser = parserChoice ?? preferences.data?.parser_profile_revision ?? 'paddleocr-vl-1.6-v1';
+  const selectedParser = parserChoice ?? preferences.data?.parser_profile_revision ?? 'surya-ocr-2-v1';
   const doc = result.data;
   if (!doc) return <><ErrorNotice error={result.error} retry={result.reload}/>{result.loading && <Loading/>}</>;
   const asset = doc.source_asset;

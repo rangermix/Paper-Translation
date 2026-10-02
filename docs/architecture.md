@@ -23,10 +23,11 @@ directory. Requests contain generated storage keys, source hash, selected parser
 and deadline. The parser reads only its input volume and writes results and
 evidence to its output volume; it has no database or translation credentials.
 The worker revalidates paths, hashes, task identity and lease fence before committing.
-CPU/CUDA parsing reaches only the internal preparation network, with a read-only
-model cache and no internet access. The preparation service receives only a pinned
-profile/backend selection and has no document or credential mounts. MLX/DMR parsing
-reaches Docker Model Runner on a dedicated bridge. This bridge is not a domain firewall.
+Every active parser sends full-page images through Docker Model Runner on a
+separate inference bridge, with a read-only model cache. The preparation service
+receives only a pinned profile/backend selection and has no PDF or credential
+mounts. API, worker, parser and preparation share one application image without
+inference frameworks or weights. The inference bridge is not a domain firewall.
 
 ## Durable state
 

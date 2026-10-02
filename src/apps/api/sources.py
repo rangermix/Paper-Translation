@@ -104,7 +104,7 @@ def corrections(revision_id: str, body: CorrectionBody, request: Request, sessio
             # locator/quote. Preserve this separately verified evidence path.
             changed = apply_corrections(source, body.operations, body.evidence, body.reason)
             if inspection and inspection.get('pages'):
-                from packages.parsers.pdf_docling import coverage_report
+                from packages.parsers.source_adapter import coverage_report
                 changed['coverage'] = coverage_report(inspection['pages'], changed['source']['blocks'],
                     base.metadata_json.get('coverage', {}).get('excluded', []))
         new_source = changed['source']

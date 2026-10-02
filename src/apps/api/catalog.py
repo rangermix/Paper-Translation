@@ -30,8 +30,7 @@ def parser_environment():
 
 def parser_model_backend():
     import os
-    from packages.parsers.environment import read_environment
-    return os.environ.get('PARSER_DMR_BACKEND', 'vllm') if read_environment().get('default') == 'dmr' else 'native'
+    return os.environ.get('PARSER_DMR_BACKEND', 'vllm')
 
 
 @router.get('/settings/parser-models')
@@ -105,9 +104,12 @@ def preferences(session=Session):
 
 
 def preferences_view(settings):
+    from packages.parsers.profiles import RETIRED_PROFILES
+    choice = preferred_profile(settings.preferences)
     return {'generation': settings.generation, 'theme': 'system', 'upload_translation_profile_hash': None,
         **editable_preferences(settings),
-        'parser_profile_revision': preferred_profile(settings.preferences),
+        'parser_profile_revision': choice,
+        'parser_profile_status': RETIRED_PROFILES.get(choice, {}).get('status', 'active'),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)}
 
 

@@ -17,7 +17,8 @@ SOURCE = Path(__file__).resolve().parents[2] / 'tests/fixtures/sample.pdf'
 def request(timeout=None, deadline=10000):
     value = {'task_id': 'task-timeout', 'fence': 1, 'source_sha256': digest(SOURCE.read_bytes()),
         'max_pages': 20, 'deadline': (datetime.now(timezone.utc) + timedelta(seconds=deadline)).isoformat(),
-        'operation': 'parse', 'parser_version': parser_version()}
+        'operation': 'parse', 'parser_version': parser_version(),
+        'profile': {'parser_profile_revision': 'surya-ocr-2-v1'}}
     if timeout is not None:
         value['timeout_seconds'] = timeout
     return value

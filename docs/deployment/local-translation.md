@@ -65,7 +65,7 @@ from the translator in service settings. It can prepare context for an API trans
 as well as a local one. This is not a CPU/CUDA analyst backend.
 
 Apple Silicon uses MLX safetensors through the same Docker Model Runner
-vLLM Metal backend as PaddleOCR. These are MLX affine quantizations, not GGUF.
+vLLM Metal backend as the full-page parsers. These are MLX affine quantizations, not GGUF.
 The GGUF path uses llama.cpp and may run on CPU or a supported GPU. Safetensors
 uses the standard vLLM backend and requires a supported NVIDIA CUDA environment.
 No path silently chooses a different format, model, or remote provider.
@@ -253,7 +253,7 @@ parser and any other application on the device.
 
 ## Apple Silicon MLX backend payload
 
-The Paddle backend image must already exist as
+The Docker-managed Metal backend image must already exist as
 `local/paper-translation-vllm-metal:latest`. Build the translation extension:
 
 ```sh
@@ -266,22 +266,21 @@ docker buildx build --platform darwin/arm64 \
 ```
 
 The extension preserves the
-Paddle runtime and fails the build if its reviewed source anchors change. It
+base runtime and fails the build if its reviewed source anchors change. It
 routes quantized Gemma3 text checkpoints through MLX-LM and caps the translation
 KV cache to one configured context plus the scheduler's reserved block. The
 larger MLX memory allowance applies only to the exact translation and analyst model
-identities in the pinned catalogue. Paddle retains its original allocation. Rebuild
+identities in the pinned catalogue. Parser models retain the base allocation. Rebuild
 this extension when adding the analyst to an existing installation, because the
 backend's owned-model allowlist is generated from that catalogue at build time.
 
-Install using the existing Paddle backend procedure: stop new parsing, wait for
-active inference, clear `PARSER_MLX_VERIFIED_MODEL_ID`, preserve the full existing
+Install using the [Docker-managed backend procedure](mlx-backend.md): stop new parsing, wait for
+active inference, preserve the full existing
 DMR backend directory, extract the Docker-built macOS payload and replace that
 directory. DMR owns and launches the process. Do not start an independent host
-server or overlay different versions of site-packages. Restore the Paddle
-receipt only after real image inference and a controlled PDF check succeed.
+server or overlay different versions of site-packages. Verify real image inference and a controlled PDF check after replacing the backend.
 
-Only idle project translation models and the explicitly configured Paddle ID
+Only idle project translation models and the four exact active parser artifact IDs
 may be unloaded when switching models. An active or unrelated model produces a
 busy failure. Larger models require more unified memory; a 12B model is not a
 promise of fitting every Mac. Resource failures do not choose a different model.

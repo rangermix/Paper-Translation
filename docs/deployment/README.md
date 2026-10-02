@@ -12,10 +12,10 @@ docker compose ps
 ```
 
 Keep an existing local file and its project name, image pins, hardware settings and
-any local overrides. The template enables CPU parsing. To select CUDA or MLX, edit
-the copied file: comment the CPU mode block and uncomment the chosen mode block,
-including its required model declaration for MLX. Keep exactly one mode active.
-Compose does not choose hardware automatically. See [acceleration](extraction-acceleration.md).
+any local overrides. All four active parsers use DMR. Set `PARSER_DMR_BACKEND=vllm` or `mlx` and
+`PARSER_DMR_URL` for the Docker-managed inference backend. The application image
+is shared by API, worker, parser and preparation; Docker supplies a separate
+inference engine. See [acceleration](extraction-acceleration.md).
 
 The optional helper runs the same build, startup and status sequence using the
 existing local `compose.yaml`; it exits if that file is missing:
@@ -39,7 +39,6 @@ initialization and migration services. Optional work uses profiles from the same
 | --- | --- |
 | `maintenance` | `maintenance`: explicit backup, restore, verification and retention commands |
 | `local-translation` | `local-model-init`, `local-translator`: optional Docker Model Runner translation through GGUF/llama.cpp, supported CUDA Safetensors/vLLM, or Apple Silicon MLX |
-| `model-tools` | `model-export`: export already prepared parser weights to an explicitly mounted directory |
 | `tests` | `tests`, `test-db`: disposable Linux/PostgreSQL regression suite |
 | `checks` | `checks`: repository checks with no network, dependencies or product volumes |
 
@@ -53,12 +52,10 @@ follow [tests/README.md](../../tests/README.md). Do not use an unqualified profi
 
 | Input | Purpose |
 | --- | --- |
-| `images/app.Dockerfile`, `images/parser.Dockerfile`, `images/database.Dockerfile` | Product image builds |
-| `cuda/`, `cuda-paddle/` | Separate locked environments for incompatible native dependencies |
+| `images/app.Dockerfile`, `images/database.Dockerfile` | Product image builds |
 | `mlx-backend/` | Docker-built macOS MLX payload and extraction helper |
 | `local-translation-backend/` | Translation support layered on the same payload |
-| `parser-models.lock.json` | Parser weight revisions, sizes and SHA-256 allowlist |
-| `parser-vlm-models.lock.json` | Surya, Chandra, Infinity-Parser2 Pro/Flash, TeleOCR and Xiaomi pinned files |
+| `parser-vlm-models.lock.json` | Surya OCR 2, Chandra OCR 2 and Infinity-Parser2 Pro/Flash pinned files |
 
 The shared test/check image recipe is [`tests/Dockerfile`](../../tests/Dockerfile).
 Product images exclude test fixtures.
@@ -71,7 +68,7 @@ prepares it automatically. Only the selected profile's pinned dependencies downl
 to `parser_models`; startup, settings reads and saving preferences do not download.
 The parser mounts that cache read-only. Its downloader has no PDF, DB or credential
 mounts. Optional local translation weights are prepared only on explicit use.
-For native CPU/CUDA or the lightweight cross-platform Docker Model Runner client,
+For the shared cross-platform Docker Model Runner client,
 see [extraction acceleration](extraction-acceleration.md). Declare formats supported by the host with
 `LOCAL_TRANSLATION_FORMATS`; a supported engine can appear before installation.
 Image inventories and locks are described in
@@ -90,8 +87,8 @@ volume; no provider profile or key bind files are needed. Preserve that volume
 when updating. Dispatch pauses do not disable DOI metadata lookup or explicit
 model preparation.
 
-Default CPU/CUDA parser processes have no network, database or provider secrets.
-MLX parsing reaches the provisioned Docker-managed backend. See
+The parser has no database or provider secrets. It reaches the internal preparation
+service and the provisioned Docker-managed inference backend. See
 [acceleration](extraction-acceleration.md), [MLX setup](mlx-backend.md) and
 [local translation](local-translation.md).
 

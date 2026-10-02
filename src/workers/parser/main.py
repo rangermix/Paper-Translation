@@ -13,7 +13,6 @@ from pathlib import Path
 
 from packages.ir import canonical_bytes, digest, safe_path, strict_loads
 from packages.parsers import PDFError, inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser
 from packages.parsers.spool import validate_request
 from packages.parsers.models import parser_version
 from packages.parsers.config import CPU_THREADS, MEMORY_LIMIT_BYTES
@@ -107,24 +106,19 @@ def process_request(request, source, output):
         if operation == 'inspect': payload = inspect_pdf(source,{'max_pages':request['max_pages']})
         else:
             profile = request.get('profile',{}) | {'limits':{'max_pages':request['max_pages']}}
-            from packages.parsers.profiles import PADDLE_PROFILE, VLM_PROFILES, selected_profile
+            from packages.parsers.profiles import selected_profile
             selection = selected_profile(profile)
             from packages.parsers.preparation import prepare_models
             from packages.parsers.runtime import runtime_config
-            prepare_models(selection, os.environ.get('DOCLING_ARTIFACTS_PATH', '/opt/docling/models'), runtime_config(selection))
-            if selection in VLM_PROFILES:
-                from packages.parsers.pdf_vlm import VisionParser
-                parser = VisionParser()
-            elif selection == PADDLE_PROFILE:
-                from packages.parsers.pdf_paddleocr import PaddleOCRParser
-                parser = PaddleOCRParser()
-            else:
-                parser = DoclingParser()
+            prepare_models(selection, os.environ.get('PARSER_MODEL_CACHE', '/model_cache'), runtime_config(selection, request.get('accelerator'), request.get('backend')))
+            from packages.parsers.pdf_vlm import VisionParser
+            parser = VisionParser()
             payload = parser.parse(source,request.get('asset_id','source_pdf'),output,profile)
         (Path(output)/'payload.json').write_bytes(canonical_bytes(payload))
         report_progress('finished')
     except BaseException as exc:
-        code = exc.code if isinstance(exc,PDFError) else 'PARSER_FAILED'
+        code = (exc.code if isinstance(exc, PDFError) else
+                str(exc) if isinstance(exc, ValueError) and str(exc).startswith('PARSER_') else 'PARSER_FAILED')
         (Path(output)/'error.json').write_bytes(canonical_bytes({'code':code,'message':'PDF processing failed; original is preserved'}))
     finally:
         reset_progress(progress_token)
@@ -163,11 +157,11 @@ def run_once(input_root, output_root, heartbeat=None):
                 return True
             source = safe_path(inputs,expected+'/original.pdf')
             from packages.parsers.runtime import child_executable
-            from packages.parsers.profiles import selected_profile
+            from packages.parsers.profiles import recorded_profile
             try:
-                executable = child_executable(selected_profile(request.get('profile', {})), request.get('accelerator')) if request.get('operation', 'parse') == 'parse' else sys.executable
+                executable = child_executable(recorded_profile(request.get('profile', {})), request.get('accelerator'), request.get('backend')) if request.get('operation', 'parse') == 'parse' else sys.executable
             except (PDFError, ValueError) as exc:
-                finish(result_file, request, 'failed', {'code': getattr(exc, 'code', 'PARSER_ACCELERATOR_INVALID'), 'message': 'Parser deployment configuration is unavailable'})
+                finish(result_file, request, 'failed', {'code': getattr(exc, 'code', str(exc)), 'message': 'Recorded parser deployment is unavailable; select an active full-page DMR parser in a new task'})
                 return True
             process = ParserProcess([executable, '-m', 'workers.parser.child',
                 str(candidate), str(source), str(result_file.parent)])
@@ -228,7 +222,7 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--once',action='store_true');args=parser.parse_args()
     inputs=Path(os.environ.get('PARSER_INPUTS','/inputs'));outputs=Path(os.environ.get('PARSER_OUTPUTS','/outputs'))
     outputs.mkdir(parents=True,exist_ok=True)
-    health = ModelHealth(outputs, os.environ.get('DOCLING_ARTIFACTS_PATH','/opt/docling/models'))
+    health = ModelHealth(outputs, os.environ.get('PARSER_MODEL_CACHE','/model_cache'))
     while True:
         health.heartbeat()
         worked=run_once(inputs,outputs,health.heartbeat)

@@ -8,13 +8,8 @@ import pytest
 import yaml
 
 
-def compose_mode(mode='CPU'):
-    text = Path('compose.example.yaml').read_text()
-    if mode != 'CPU':
-        text = re.sub(r'# --- BEGIN CPU MODE.*?# --- END CPU MODE ---', '', text, flags=re.S)
-        pattern = rf'# --- BEGIN {mode} MODE[^\n]*\n(.*?)# --- END {mode} MODE ---'
-        text = re.sub(pattern, lambda match: re.sub(r'^# ?', '', match[1], flags=re.M), text, flags=re.S)
-    return yaml.safe_load(text)
+def compose_mode():
+    return yaml.safe_load(Path('compose.example.yaml').read_text())
 
 
 def test_provider_setup_uses_managed_storage_without_external_defaults():
@@ -56,15 +51,11 @@ def test_test_services_only_depend_on_their_private_database():
 
 def test_optional_model_services_do_not_start_with_the_core_stack():
     services = compose_mode()['services']
-    assert {'local-model-init', 'local-translator', 'model-export'} <= services.keys()
+    assert {'local-model-init', 'local-translator'} <= services.keys()
     for name in ('local-model-init', 'local-translator'):
         assert services[name]['profiles'] == ['local-translation']
         assert services[name]['volumes'] == ['local_translation_models:/model_cache']
     assert set(services['local-translator']['depends_on']) == {'local-model-init'}
-    exporter = services['model-export']
-    assert exporter['profiles'] == ['model-tools']
-    assert exporter['network_mode'] == 'none' and exporter['read_only']
-    assert exporter['volumes'] == ['parser_models:/opt/docling/models:ro']
     assert {name for name, s in services.items() if not s.get('profiles')} == {
         'init', 'db', 'migrate', 'app', 'worker', 'parser', 'parser-models'}
 
@@ -77,86 +68,29 @@ def test_release_environment_example_names_are_consumed_by_production_compose():
     assert documented <= consumed, f'Unused deployment settings: {sorted(documented - consumed)}'
 
 
-def test_cpu_and_cuda_keep_parser_isolation_and_one_unified_image_recipe():
-    base = compose_mode()
-    gpu = compose_mode('CUDA')['services']['parser']
-    assert base['services']['parser']['networks'] == ['parser_model_control']
-    assert gpu['networks'] == ['parser_model_control'] and 'network_mode' not in gpu
-    assert base['networks']['parser_model_control']['internal'] is True
-    assert gpu['build']['args']['PARSER_FLAVOR'] == 'cuda'
-    assert gpu['deploy']['resources']['reservations']['devices'] == [
-        {'driver': 'nvidia', 'count': 1, 'capabilities': ['gpu']}]
-    recipe = Path('deployment/images/parser.Dockerfile').read_text()
-    assert 'FROM dependencies-${PARSER_FLAVOR} AS dependencies' in recipe
-    assert '/app/.venv-paddle' in recipe
-
-
-def test_mlx_is_compose_managed_and_does_not_mount_host_credentials():
-    doc = compose_mode('MLX')
-    parser = doc['services']['parser']
-    assert parser['models'] == ['paddle_extraction']
-    assert 'network_mode' not in parser
-    assert parser['networks'] == ['parser_model_control', 'model_inference']
-    assert not set(parser) & {'ports', 'secrets'}
-    assert parser['volumes'] == ['parser_inputs:/inputs:ro', 'parser_outputs:/outputs', 'parser_models:/opt/docling/models:ro']
-    assert 'PADDLE_MLX_MODEL_ID' in parser['environment']
-    assert doc['models']['paddle_extraction']['context_size'] == 8192
-    assert not Path('src/workers/mlx_server.py').exists()
-
-
-def test_cuda_dependency_graphs_are_separate_and_frozen():
-    for project, gpu_package in [('cuda', 'torch'), ('cuda-paddle', 'paddlepaddle-gpu')]:
-        root = Path('deployment') / project
-        config = tomllib.loads((root / 'pyproject.toml').read_text())
-        lock = tomllib.loads((root / 'uv.lock').read_text())
-        assert not config['tool']['uv'].get('override-dependencies')
-        packages = {row['name']: row for row in lock['package']}
-        assert gpu_package in packages
-        assert 'paddlepaddle' in packages if project == 'cuda' else 'paddlepaddle' not in packages
-        assert '+cu126' in packages['torch']['version'] if project == 'cuda' else '+cpu' in packages['torch']['version']
-
-
-def test_dmr_client_is_portable_and_model_preparation_has_no_content_or_secret_mounts():
-    doc = compose_mode('DMR')
-    parser = doc['services']['parser']
-    assert parser['build']['args']['PARSER_FLAVOR'] == 'runner'
-    assert 'platform' not in parser and 'models' not in parser
-    assert parser['networks'] == ['parser_model_control', 'model_inference']
-    manager = doc['services']['parser-models']
+def test_one_portable_application_image_with_separate_service_boundaries():
+    doc = compose_mode();services = doc['services']
+    app = services['app']
+    for name in ('worker', 'parser', 'parser-models'):
+        assert services[name]['image'] == app['image']
+        assert services[name]['build'] == app['build']
+        assert 'platform' not in services[name]
+    parser, manager = services['parser'], services['parser-models']
+    assert parser['environment']['PARSER_ACCELERATOR'] == 'dmr'
+    assert parser['networks'] == manager['networks'] == ['parser_model_control', 'model_inference']
+    assert doc['networks']['parser_model_control']['internal'] is True
+    assert parser['volumes'] == ['parser_inputs:/inputs:ro', 'parser_outputs:/outputs', 'parser_models:/model_cache:ro']
     assert manager['volumes'] == ['parser_models:/model_cache']
-    assert manager['networks'] == ['parser_model_control', 'model_inference']
-    assert not any(manager.get(key) for key in ('ports', 'secrets', 'models'))
-    recipe = Path('deployment/images/parser.Dockerfile').read_text()
+    assert not any(parser.get(k) or manager.get(k) for k in ('ports', 'secrets', 'models'))
+    assert not Path('deployment/images/parser.Dockerfile').exists()
+    recipe = Path('deployment/images/app.Dockerfile').read_text()
     assert 'download_parser_models' not in recipe and 'COPY --from=models' not in recipe
 
 
-def test_native_cpu_cuda_parser_versions_match_model_manifests():
-    native = json.loads(Path('deployment/parser-models.lock.json').read_text())
+def test_active_lock_contains_no_native_frameworks_or_archived_models():
+    packages = {row['name'] for row in tomllib.loads(Path('uv.lock').read_text())['package']}
+    assert not packages & {'docling', 'torch', 'transformers', 'onnxruntime', 'paddlepaddle', 'paddleocr', 'paddlex', 'opencv-contrib-python'}
     vision = json.loads(Path('deployment/parser-vlm-models.lock.json').read_text())
-    for path in ('uv.lock', 'deployment/cuda/uv.lock'):
-        packages = {row['name']: row for row in tomllib.loads(Path(path).read_text())['package']}
-        assert packages['docling']['version'] == native['docling_version']
-        assert packages['transformers']['version'] == vision['transformers_version']
-    tele = tomllib.loads(Path('deployment/teleocr/uv.lock').read_text())
-    packages = {row['name']: row for row in tele['package']}
-    model = next(row for row in vision['models'] if row['id'] == 'teleocr-v1')
-    assert packages['transformers']['version'] == model['transformers_version'] == '4.57.1'
-    assert 'torch' not in packages
-    recipe = Path('deployment/images/parser.Dockerfile').read_text()
-    assert '/app/.venv-tele' in recipe and 'parser-native.pth' in recipe
-
-
-def test_export_refuses_overwrite_and_verifies_before_copy(tmp_path, monkeypatch):
-    from tools.export_parser_model import export_model
-    root = tmp_path / 'weights'; root.mkdir()
-    (root / 'paddle').mkdir(); (root / 'paddle' / 'weight').write_bytes(b'locked')
-    model = {'repo_id': 'PaddlePaddle/PaddleOCR-VL-1.6', 'local_directory': 'paddle',
-        'revision': 'fixed', 'files': [{'path': 'weight'}]}
-    calls = []
-    monkeypatch.setattr('tools.export_parser_model.verify_models', lambda path, profile: calls.append(path) or {'repositories': [model]})
-    target = tmp_path / 'export'
-    assert export_model(root, target) == 'fixed'
-    assert calls == [root]
-    assert (target / 'weight').read_bytes() == b'locked'
-    with pytest.raises(ValueError, match='MODEL_EXPORT_DESTINATION_EXISTS'):
-        export_model(root, target)
+    assert {model['id'] for model in vision['models']} == {'surya-ocr-2-v1', 'chandra-ocr-2-v1', 'infinity-parser2-pro-v1', 'infinity-parser2-flash-v1'}
+    assert not Path('deployment/parser-models.lock.json').exists()
+    assert 'archive' in Path('.dockerignore').read_text().splitlines()

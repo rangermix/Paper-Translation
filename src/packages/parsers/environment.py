@@ -1,29 +1,12 @@
-"""Parser-owned capability detection; no secrets, model downloads or inference."""
+"""Parser client readiness, independent of weights and inference hardware."""
 import json
 import os
 import platform
-import subprocess
-import sys
 import time
 from pathlib import Path
+from .profiles import PROFILE_IDS, selected_profile
 
-from .profiles import (DMR_PROFILES, DOCLING_PROFILE, GRANITE_PROFILE, NATIVE_PROFILES,
-                       PADDLE_PROFILE, PROFILE_IDS, VLM_PROFILES, INFINITY_PRO_PROFILE)
-
-ACCELERATORS = ('cpu', 'cuda', 'mlx', 'dmr')
-
-
-def cuda_probe(executable, framework):
-    if not any(Path(device).exists() for device in ('/dev/nvidiactl', '/dev/dxg')) or not Path(executable).is_file():
-        return {'available': False}
-    code = ('import torch; ok=torch.cuda.is_available(); print(__import__("json").dumps({"available":ok,"name":torch.cuda.get_device_name(0) if ok else None}))'
-        if framework == 'torch' else
-        'import paddle; ok=paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count()>0; print(__import__("json").dumps({"available":ok}))')
-    try:
-        result = subprocess.run([str(executable), '-c', code], capture_output=True, text=True, timeout=12, check=True)
-        return json.loads(result.stdout.strip().splitlines()[-1])
-    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
-        return {'available': False}
+ACCELERATORS = ('dmr',)
 
 
 def memory_limit():
@@ -41,36 +24,10 @@ def memory_limit():
     return min(limits) if limits else None
 
 
-def mlx_available():
-    """Setup records image-inference proof; heartbeat rechecks model presence.
-
-    A tag or installed MLX package alone is insufficient. Only deployment setup
-    may provide this receipt after testing its Docker-managed vision backend.
-    Refresh it after any model/backend change. DMR's cached status cannot attest
-    the running package version: this remains a setup receipt, not continuous
-    image-inference proof. No inference or installation occurs in the heartbeat.
-    """
-    model_id = os.environ.get('PADDLE_MLX_MODEL_ID')
-    if not model_id or os.environ.get('PARSER_MLX_VERIFIED_MODEL_ID') != model_id:
-        return False
-    from .inspect import PDFError
-    from .runtime import runtime_config, verify_mlx_service
-    try:
-        verify_mlx_service(runtime_config(PADDLE_PROFILE, 'mlx'))
-        return True
-    except (PDFError, ValueError):
-        return False
-
-
 def detect_environment():
-    torch = cuda_probe(sys.executable, 'torch')
-    paddle = cuda_probe('/app/.venv-paddle/bin/python', 'paddle')
-    native = os.environ.get('PARSER_IMAGE_FLAVOR', 'cpu') != 'runner'
-    gpu_profiles = ([DOCLING_PROFILE, GRANITE_PROFILE, *(p for p in VLM_PROFILES if p != INFINITY_PRO_PROFILE)]
-                    if native and torch.get('available') is True else [])
-    if paddle.get('available') is True:
-        gpu_profiles.append(PADDLE_PROFILE)
-    mlx = mlx_available()
+    from .runtime import runtime_config
+    from .profiles import DEFAULT_PROFILE
+    runtime = runtime_config(DEFAULT_PROFILE)
     cpus = os.cpu_count() or 1
     try:
         quota, period = Path('/sys/fs/cgroup/cpu.max').read_text().split()
@@ -78,15 +35,12 @@ def detect_environment():
             cpus = min(cpus, int(quota) / int(period))
     except (OSError, ValueError, ZeroDivisionError):
         pass
+    # Client readiness is distinct from model/backend inference readiness. No
+    # network/model request belongs in startup or a settings-read heartbeat.
     return {'detected_at': time.time(), 'system': platform.system(), 'architecture': platform.machine(),
-        'cpu_count': cpus, 'memory_bytes': memory_limit(), 'gpu_name': torch.get('name'),
-        'default': os.environ.get('PARSER_ACCELERATOR', 'cpu'),
-        'options': [
-            {'id': 'cpu', 'profiles': list(NATIVE_PROFILES) if native else [], 'reason': None},
-            {'id': 'cuda', 'profiles': gpu_profiles, 'reason': 'CUDA_UNAVAILABLE_OR_MODEL_UNSUPPORTED'},
-            {'id': 'mlx', 'profiles': [PADDLE_PROFILE] if mlx else [],
-                'reason': None if mlx else 'MLX_IMAGE_BACKEND_UNAVAILABLE'},
-            {'id': 'dmr', 'profiles': list(DMR_PROFILES), 'reason': None}]}
+        'cpu_count': cpus, 'memory_bytes': memory_limit(), 'gpu_name': None,
+        'default': 'dmr', 'backend': runtime.backend,
+        'options': [{'id': 'dmr', 'profiles': list(PROFILE_IDS), 'reason': None}]}
 
 
 def read_environment(root=None):
@@ -106,7 +60,7 @@ def read_environment(root=None):
                     for option in env['options'])
                 or len({option['id'] for option in env['options']}) != len(env['options'])):
             return offline
-        public = {key: env[key] for key in ('detected_at', 'system', 'architecture', 'cpu_count', 'memory_bytes', 'gpu_name', 'default') if key in env}
+        public = {key: env[key] for key in ('detected_at', 'system', 'architecture', 'cpu_count', 'memory_bytes', 'gpu_name', 'default', 'backend') if key in env}
         public['options'] = [{key: option[key] for key in ('id', 'profiles', 'reason') if key in option} for option in env['options']]
         return {**public, 'online': True}
     except (OSError, ValueError, KeyError, TypeError):
@@ -114,13 +68,9 @@ def read_environment(root=None):
 
 
 def resolve_accelerator(profile, root=None):
-    """Resolve the parser's Compose mode, never a saved user device override."""
+    """Freeze DMR even while the parser is offline; never change a saved choice."""
+    selected_profile({'parser_profile_revision': profile})
     env = read_environment(root)
-    if not env['online']:
-        return None  # The parser applies its Compose configuration when available.
-    choice = env['default']
-    if choice == 'mlx' and profile != PADDLE_PROFILE:
-        choice = 'cpu'
-    if not any(option['id'] == choice and profile in option['profiles'] for option in env['options']):
+    if env['online'] and not any(option['id'] == 'dmr' and profile in option['profiles'] for option in env['options']):
         raise ValueError('PARSER_ACCELERATOR_UNAVAILABLE')
-    return choice
+    return 'dmr'

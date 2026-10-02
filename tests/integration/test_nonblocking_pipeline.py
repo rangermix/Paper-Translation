@@ -57,7 +57,7 @@ def test_import_starts_frozen_pipeline_and_replay_does_not_duplicate(client, dat
     with db.transaction() as session:
         session.add(Upload(id='new_upload', filename='new.pdf', byte_size=3822, expires_at=now()+timedelta(hours=1),
             status='verified', source_asset_id='source_pdf'))
-    body = {'source': {'kind': 'pdf_upload', 'upload_id': 'new_upload'}, 'parser_profile_revision': 'granite-docling-v1',
+    body = {'source': {'kind': 'pdf_upload', 'upload_id': 'new_upload'}, 'parser_profile_revision': 'chandra-ocr-2-v1',
         'workflow': {'translate': False, 'target_locale': 'ja'}}
     headers = {'Idempotency-Key': 'automatic-import'}
     result = client.post('/api/v1/imports', json=body, headers=headers)

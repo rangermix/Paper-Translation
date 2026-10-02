@@ -28,7 +28,7 @@ export function UploadPage({ capability }: { capability?: Capability }) {
   const defaultConsent = preparation === 'extractive' && uploadTranslationAllowed(preferences.data, profile);
   const consent = consentHash === undefined ? defaultConsent : Boolean(profile?.profile_hash && consentHash === profile.profile_hash);
   const canSubmit = ready && !savingDefault && (!translate || !preferences.data?.upload_translation_profile_hash || Boolean(profile && !provider.error));
-  const selectedParser = parser ?? preferences.data?.parser_profile_revision ?? 'paddleocr-vl-1.6-v1';
+  const selectedParser = parser ?? preferences.data?.parser_profile_revision ?? 'surya-ocr-2-v1';
   const maxBytes = capability?.limits?.max_pdf_bytes ?? 50 * 1024 * 1024; const maxBatch = capability?.limits?.max_batch_files ?? 10;
   const update = (id: string, changes: Partial<Row>) => setRows(old => old.map(row => row.id === id ? { ...row, ...changes } : row));
   function select(files: File[]) { try { setRows(validatePdfSelection(files, maxBytes, maxBatch).map(x => ({ ...x, id: crypto.randomUUID() }))); setConsentHash(undefined); setError(undefined); } catch (reason) { setError(reason as Error); } }

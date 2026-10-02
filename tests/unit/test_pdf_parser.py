@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from packages.parsers import PDFError, inspect_pdf
-from packages.parsers.pdf_docling import DoclingParser, coverage_report
+from packages.parsers.source_adapter import SourceAdapter, coverage_report
 from packages.parsers.spool import validate_request, verify_result
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,11 +54,6 @@ class PDFParsing(unittest.TestCase):
         title=next(r for r in result['text_regions'] if 'Publication' in r['text'])
         self.assertGreater(title['bbox'][0],600)
         self.assertLess(title['bbox'][1],100)
-
-    def test_models_missing_never_fallback_or_download(self):
-        with self.assertRaises(PDFError) as ctx:
-            DoclingParser(artifacts_path=self.path/'absent').parse(ROOT/'tests/fixtures/sample.pdf','asset_test',self.path/'result')
-        self.assertEqual(ctx.exception.code,'PARSER_MODELS_MISSING')
 
     def test_spool_rejects_paths_secrets_and_stale_fence(self):
         with self.assertRaises(ValueError): validate_request({'path':'../../etc/passwd','api_key':'secret'})

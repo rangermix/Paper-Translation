@@ -102,6 +102,20 @@ project identity and hardware settings. Remove retired external provider profile
 bindings after configuring the provider through the app; retain the managed
 `provider_config` volume. App, worker and maintenance must use compatible source
 and schema; migrations are additive and checksum protected.
+
+An older local copy can still reference `deployment/images/parser.Dockerfile`.
+That recipe was removed when parsing moved to the shared application image.
+Merge the current `x-parser-mode`, `parser` and `parser-models` definitions instead
+of recreating the old recipe. They use `deployment/images/app.Dockerfile`, the
+existing app image binding, `PARSER_ACCELERATOR=dmr`, a read-only parser model cache,
+and separate preparation/inference networks. Also add the cache to initialization
+and the preparation network to the app. Remove retired native parser build flags,
+GPU reservations on the client, and the obsolete `model-export` service; keep GPU
+reservations on the Docker-managed inference backend. Preserve the instance's
+explicit backend URL and translation settings. Validate with `docker compose config`
+before building. This updates configuration; restarting services is a separate
+deployment operation.
+
 Check `/health/ready`, worker/parser health and the actual selected model after
 an update. A successful build or `docker compose config` does not prove model
 inference or a complete recovery exercise.

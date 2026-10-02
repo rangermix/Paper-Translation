@@ -79,16 +79,83 @@ def test_parser_reports_corrupt_cache_as_hash_mismatch(tmp_path, monkeypatch):
         verify_cached_models(SURYA_PROFILE, tmp_path)
 
 
-def test_parser_preserves_preparation_failure_code(tmp_path, monkeypatch):
+@pytest.mark.parametrize('code', ['PARSER_DMR_BACKEND_UNAVAILABLE', 'PARSER_DMR_CONFIGURATION_FAILED'])
+def test_parser_preserves_preparation_failure_code(tmp_path, monkeypatch, code):
     from types import SimpleNamespace
     from packages.parsers.preparation import prepare_models
     def fetch(request):
         return httpx.Response(202 if request.method == 'POST' else 200,
-                             json={'status': 'failed', 'code': 'PARSER_DMR_BACKEND_UNAVAILABLE'})
+                             json={'status': 'failed', 'code': code})
     original = httpx.Client
     monkeypatch.setattr(httpx, 'Client', lambda **kwargs: original(transport=httpx.MockTransport(fetch), **kwargs))
-    with pytest.raises(PDFError, match='PARSER_DMR_BACKEND_UNAVAILABLE'):
+    with pytest.raises(PDFError, match=code):
         prepare_models(SURYA_PROFILE, tmp_path, SimpleNamespace(device='dmr', backend='vllm'))
+
+
+@pytest.mark.parametrize('profile', PROFILE_IDS)
+@pytest.mark.parametrize('backend', ['vllm', 'mlx'])
+def test_dmr_preparation_uses_allowed_engine_flags_and_exact_import(tmp_path, monkeypatch, profile, backend):
+    from packages.parsers.catalog import vlm_model
+    from packages.local_models.catalog import artifact
+    model = vlm_model(profile)
+    ident = artifact(model)['id']
+    installed = False
+    calls = []
+    # Replay the real DMR flag rejection; this previously blocked every vLLM
+    # parser after a successful download/import, before any page inference.
+    allowed_flags = {'--gpu-memory-utilization', '--max-num-seqs', '--max-num-batched-tokens'}
+    def fetch(request):
+        nonlocal installed
+        calls.append((request.method, request.url.path))
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'vllm': 'Running: vllm-metal test' if backend == 'mlx' else 'Running: vllm test'})
+        if request.url.path == '/models/' + ident:
+            return httpx.Response(200, json={'id': ident, 'config': {'format': 'safetensors'}}) if installed else httpx.Response(404)
+        if request.url.path == '/models/load':
+            assert request.content == b'synthetic pinned archive'
+            installed = True
+            return httpx.Response(200)
+        if request.url.path == '/engines/vllm/_configure':
+            body = strict_loads(request.content)
+            assert body['model'] == ident
+            assert body['context-size'] == model['context_size']
+            assert body['keep_alive'] == '30s'
+            flags = body['runtime-flags']
+            if backend == 'mlx':
+                assert flags == []
+            if any(flag.startswith('--') and flag not in allowed_flags for flag in flags):
+                return httpx.Response(500, text='runtime flag is not allowed for backend vllm')
+            return httpx.Response(200)
+        pytest.fail('Preparation must not request inference or contact another model: ' + str(request.url))
+    monkeypatch.setattr('packages.parsers.model_service.download', lambda *args: None)
+    monkeypatch.setattr('packages.local_models.download.archive', lambda *args: iter([b'synthetic pinned archive']))
+    manager = Manager(tmp_path, httpx.MockTransport(fetch), dmr='http://runner')
+    manager.states[(profile, backend)] = {'status': 'downloading'}
+    manager._prepare(profile, backend)
+    assert manager.state(profile, backend)['status'] == 'ready'
+    assert manager.receipt(profile, backend).is_file()
+    assert calls == [('GET', '/engines/status'), ('GET', '/engines/status'),
+                     ('GET', '/models/' + ident), ('POST', '/models/load'),
+                     ('GET', '/models/' + ident), ('POST', '/engines/vllm/_configure')]
+
+
+def test_rejected_dmr_configuration_has_safe_failure_code_and_no_receipt(tmp_path, monkeypatch):
+    from packages.parsers.catalog import vlm_model
+    from packages.local_models.catalog import artifact
+    ident = artifact(vlm_model(SURYA_PROFILE))['id']
+    def fetch(request):
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'vllm': 'Running: vllm test'})
+        if request.url.path == '/models/' + ident:
+            return httpx.Response(200, json={'id': ident, 'config': {'format': 'safetensors'}})
+        assert request.url.path == '/engines/vllm/_configure'
+        return httpx.Response(500, text='untrusted backend detail containing private credentials')
+    monkeypatch.setattr('packages.parsers.model_service.download', lambda *args: None)
+    manager = Manager(tmp_path, httpx.MockTransport(fetch), dmr='http://runner')
+    manager.states[(SURYA_PROFILE, 'vllm')] = {'status': 'downloading'}
+    manager._prepare(SURYA_PROFILE, 'vllm')
+    assert manager.state(SURYA_PROFILE) == {'status': 'failed', 'code': 'PARSER_DMR_CONFIGURATION_FAILED'}
+    assert not manager.receipt(SURYA_PROFILE, 'vllm').exists()
 
 
 @pytest.mark.parametrize('path', ['../escape', '/absolute', 'bad\\path', 'link/file'])

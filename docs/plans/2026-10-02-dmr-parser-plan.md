@@ -79,3 +79,15 @@ passed. One earlier scheduling-test failure was not reproduced in isolation or
 the full rerun; both outcomes are retained in the verification record. Real model
 inference and physical ARM/GPU/Metal operation remain unverified. No existing
 deployment or unrelated `apps/` files were changed.
+
+## 6. Runtime preparation correction
+
+The deployed Flash parsing job failed before page inference because DMR rejected
+the parser's `--default-chat-template-kwargs` startup flag. The cached pinned Flash
+and Surya artifacts had already downloaded and imported successfully. Remove that
+flag, preserve the existing per-request thinking control, and propagate a safe
+configuration-specific failure code. Regression tests replay DMR's rejection for
+all four profiles and both backends, and verify failed configuration never writes
+a readiness receipt. Redeploy only the verified application client change to the
+identified instance; keep its exact model/backend and persistent volumes. Verify
+cached preparation separately from any explicitly authorized real PDF inference.

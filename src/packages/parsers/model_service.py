@@ -16,6 +16,11 @@ from .profiles import PROFILE_IDS
 CONTROL_URL = 'http://parser-models:8091'
 DMR_URL = 'http://model-runner.docker.internal'
 Backend = Literal['vllm', 'mlx']
+PREPARATION_FAILURE_CODES = frozenset({
+    'PARSER_MODEL_HASH_MISMATCH', 'PARSER_MODEL_PATH', 'PARSER_MODEL_DOWNLOAD_TIMEOUT',
+    'PARSER_DMR_BACKEND_UNAVAILABLE', 'PARSER_DMR_MODEL_MISMATCH',
+    'PARSER_DMR_CONFIGURATION_FAILED',
+})
 
 
 def runner_url(value=None):
@@ -27,8 +32,10 @@ def runner_url(value=None):
 
 
 def dmr_flags(model, backend):
+    # DMR accepts a restricted set of engine flags. Chat-template options belong
+    # to the inference request, where DockerVision already disables thinking.
     return ([] if backend == 'mlx' else ['--gpu-memory-utilization', '0.8', '--max-num-seqs', '1',
-        '--max-num-batched-tokens', '2048', '--default-chat-template-kwargs', '{"enable_thinking":false}'])
+        '--max-num-batched-tokens', '2048'])
 
 
 class Manager:
@@ -94,10 +101,15 @@ class Manager:
             response.raise_for_status()
             if response.json().get('id') != ident or response.json().get('config', {}).get('format') != 'safetensors':
                 raise ValueError('PARSER_DMR_MODEL_MISMATCH')
-            response = client.post(self.dmr + '/engines/vllm/_configure', json={
-                'model': ident, 'context-size': model['context_size'], 'keep_alive': '30s',
-                'runtime-flags': dmr_flags(model, backend)})
-            response.raise_for_status()
+            try:
+                response = client.post(self.dmr + '/engines/vllm/_configure', json={
+                    'model': ident, 'context-size': model['context_size'], 'keep_alive': '30s',
+                    'runtime-flags': dmr_flags(model, backend)})
+                response.raise_for_status()
+            except httpx.HTTPError as exc:
+                # Keep a useful stage-specific code without exposing arbitrary
+                # backend response bodies, paths or exception messages.
+                raise ValueError('PARSER_DMR_CONFIGURATION_FAILED') from exc
 
     def _prepare(self, profile, backend):
         started = time.monotonic()
@@ -120,11 +132,9 @@ class Manager:
                 temporary.replace(receipt)
                 update(status='ready')
         except Exception as exc:
-            allowed = {'PARSER_MODEL_HASH_MISMATCH', 'PARSER_MODEL_PATH', 'PARSER_MODEL_DOWNLOAD_TIMEOUT',
-                       'PARSER_DMR_BACKEND_UNAVAILABLE', 'PARSER_DMR_MODEL_MISMATCH'}
             with self.lock:
                 self.states[(profile, backend)].update(status='failed',
-                    code=str(exc) if str(exc) in allowed else 'PARSER_MODEL_PREPARATION_FAILED')
+                    code=str(exc) if str(exc) in PREPARATION_FAILURE_CODES else 'PARSER_MODEL_PREPARATION_FAILED')
 
 
 def create_app(cache=None, transport=None, dmr=None):

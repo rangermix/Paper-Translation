@@ -66,6 +66,13 @@ a wrong model/backend fails instead of switching. The cache and DMR each retain 
 copy: allow about twice the download size on disk (about 141 GB for Pro), plus
 working space and backend memory. Library backups exclude re-downloadable caches.
 
+DMR restricts engine startup flags. The parser sends thinking controls through
+each inference request's `chat_template_kwargs`, without adding the rejected
+`--default-chat-template-kwargs` startup flag. A rejected configuration now reports
+`PARSER_DMR_CONFIGURATION_FAILED`; already verified cached weights can be reused
+on the next explicit preparation. Preparation readiness verifies files, imported
+identity and configuration, but does not establish successful image inference.
+
 One PDF runs at a time with bounded child resources, deadlines and fence checks.
 The parser's 16 GiB cgroup limit applies to its PDF/client work, not Docker's backend
 VRAM or Metal process. Cancellation prevents late commits; already submitted

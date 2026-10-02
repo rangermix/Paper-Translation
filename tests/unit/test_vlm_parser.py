@@ -77,6 +77,10 @@ def test_dmr_identity_mismatch_never_becomes_source_text(wrong_at, monkeypatch):
             return httpx.Response(200, json=[{'Backend': 'vllm', 'ModelID': runtime.model_id,
                 'Config': {'context-size': 1 if wrong_at == 'configuration' else model['context_size'],
                            'runtime-flags': dmr_flags(model, 'vllm')}}])
+        from packages.ir import strict_loads
+        body = strict_loads(request.content)
+        assert body['model'] == runtime.model_id
+        assert body['chat_template_kwargs'] == {'enable_thinking': False}
         return httpx.Response(200, json={'model': 'wrong', 'choices': [{'message': {'role': 'assistant', 'content': 'text'}}]})
     original = httpx.Client
     monkeypatch.setattr(httpx, 'Client', lambda **kwargs: original(transport=httpx.MockTransport(fetch), **kwargs))

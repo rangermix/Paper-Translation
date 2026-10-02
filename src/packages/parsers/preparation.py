@@ -7,7 +7,7 @@ from packages.ir import safe_path
 from .catalog import download_spec, vlm_model
 from .download import valid
 from .inspect import PDFError
-from .model_service import CONTROL_URL
+from .model_service import CONTROL_URL, PREPARATION_FAILURE_CODES
 from .profiles import VLM_PROFILES
 
 
@@ -28,8 +28,7 @@ def prepare_models(profile, root, runtime):
                     return
                 if data.get('status') == 'failed':
                     code = data.get('code', '')
-                    raise PDFError(code if code in {'PARSER_MODEL_HASH_MISMATCH', 'PARSER_MODEL_DOWNLOAD_TIMEOUT',
-                        'PARSER_DMR_BACKEND_UNAVAILABLE', 'PARSER_DMR_MODEL_MISMATCH'} else 'PARSER_MODEL_PREPARATION_FAILED')
+                    raise PDFError(code if code in PREPARATION_FAILURE_CODES else 'PARSER_MODEL_PREPARATION_FAILED')
                 time.sleep(min(1, remaining_seconds()))
     except PDFError:
         raise

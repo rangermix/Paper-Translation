@@ -69,7 +69,7 @@ def create_draft_export(draft_id: str, body: DraftExportBody, request: Request, 
         match_generation(draft, request.headers.get('If-Match'))
         source = read_snapshot(request.app.state.config.data, get_entity(session, SourceRevision, draft.source_revision_id))
         translation = translation_snapshot(session, request.app.state.config, draft, draft_mode=True)
-        snapshot = render_input(draft.document_id, source, translation, template_id='reader-v9', mode='draft')
+        snapshot = render_input(draft.document_id, source, translation, template_id='reader-v10' if source.get('schema_version') == '4.0' else 'reader-v9', mode='draft')
         validate_ir(snapshot, request.app.state.config.data)
         export_id = new_id('export')
         key = f'exports/{export_id}/draft.json'
@@ -116,7 +116,7 @@ def download_export(export_id: str, request: Request, session=Session):
 
 class PublishBody(StrictModel):
     translation_revision_id: str
-    template_id: str = 'reader-v9'
+    template_id: str | None = None
     expected_generation: int = Field(ge=1)
 
 
@@ -129,15 +129,16 @@ def publish(edition_id: str, body: PublishBody, request: Request, session=Sessio
         revision = get_entity(session, TranslationRevision, body.translation_revision_id)
         require(revision.edition_id == edition.id, 'EDITION_MISMATCH')
         from packages.templates.registry import get_template
-        get_template(body.template_id)
         from packages.editorial.drafts import render_input
         try:
             source = read_snapshot(request.app.state.config.data, get_entity(session, SourceRevision, revision.source_revision_id))
             translation = read_snapshot(request.app.state.config.data, revision)
-            validate_ir(render_input(edition.document_id, source, translation, body.template_id), request.app.state.config.data)
+            template_id=body.template_id or ('reader-v10' if source.get('schema_version')=='4.0' else 'reader-v9')
+            get_template(template_id)
+            validate_ir(render_input(edition.document_id, source, translation, template_id), request.app.state.config.data)
         except (ValueError, OSError) as exc:
             raise DomainError('PUBLICATION_INPUT_INVALID', status=409) from exc
-        job = enqueue(session, 'publish', {**body.model_dump(), 'edition_id': edition.id, 'artifact_id': new_id('artifact')}, edition.document_id)
+        job = enqueue(session, 'publish', {**body.model_dump(), 'template_id':template_id, 'edition_id': edition.id, 'artifact_id': new_id('artifact')}, edition.document_id)
         return {'id': job.id, 'job_id': job.id, 'status': job.status, 'generation': edition.generation}
     return command(session, request, body.model_dump(), execute, 202)
 
@@ -285,7 +286,7 @@ def _target_changes(x, y, source_x, source_y):
         if not isinstance(value, dict): return value
         if value.get('type') == 'protected_ref':
             require(value['ref'] in source['protected_atoms'], 'REVISION_CORRUPT')
-            return {'type': 'protected_ref', 'atom': source['protected_atoms'][value['ref']]}
+            return {'type': 'protected_ref', 'atom': source['protected_atoms'][value['ref']], **{k:v for k,v in value.items() if k not in {'type','ref','output_path'}}}
         return {key: remap.get(item, item) if key == 'target_block_id' else resolved(item, source, remap) for key, item in value.items()}
 
     groups = {'source': ('source_hash', 'context_hash'), 'review': ('review_state', 'review_record'),

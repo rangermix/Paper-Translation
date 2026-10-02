@@ -1,6 +1,6 @@
 # Full-page DMR parser implementation plan
 
-Status: implementation in progress; independent contract audit completed.
+Status: implementation and offline verification complete.
 Acceptance authority: [specification](2026-10-02-dmr-parser-spec.md).
 
 ## 1. Independent contract audit and completed specification
@@ -27,10 +27,10 @@ commands, networks and mounts. Verify removed frameworks and weights are absent.
 
 Checkpoint: shared application image built on amd64 (428,598,147 bytes reported
 by Docker); no native inference modules are installed and cold import with no
-network succeeds. Offline unit checks passed (1161 cases), focused PostgreSQL
-selection/runtime checks passed (93 cases), and six repository checks passed.
+network succeeds. The committed staged snapshot passed 1160 unit cases and 35
+focused PostgreSQL cases (1195 total), and six repository checks passed.
 These are client/dependency facts, not model inference or ARM evidence. The richer
-semantic bridge below remains in progress.
+semantic bridge is covered by the later closure checkpoint.
 
 ## 3. Versioned semantic IR and model-output decoding
 
@@ -41,6 +41,10 @@ scientific content, rich cell structure, provenance and explicit roles. Recover
 valid elements independently and persist exact response evidence/diagnostics.
 Meaningful focused fixtures must cover each matrix row and malformed boundaries.
 
+Implemented: explicit source/render schema 4.0, bounded neutral HTML/CommonMark
+semantics, recursive lowering, typed scientific/control content, table/header
+relationships and exact per-page receipts. See the [35-row closure matrix](2026-10-02-parser-gap-closure.md).
+
 ## 4. Bridge recovery, translation and product consumers
 
 Keep native evidence repair from flattening rich source. Extend source correction,
@@ -49,6 +53,11 @@ and request limits intact. Register a new reader and support rich semantics in
 preview, immutable publication and offline export without editing frozen readers.
 Preserve fields in plain-text/search projections where semantic structure cannot
 be displayed. Verify round trips and hostile markup/links with real render output.
+
+Implemented: unique semantic reconciliation across recovery/corrections, formatting
+restoration and versioned caches, schema-aware API/editor handling, reader-v10 and
+both offline export formats. Actual PostgreSQL/worker and browser boundary tests
+exercise these contracts without model inference.
 
 ## 5. Gap closure and verification checkpoint
 
@@ -60,3 +69,13 @@ Record commands, source state, results and limits under a dedicated ignored run
 directory; update current docs with source capability and actual evidence.
 Review, commit and push only completed checkpoint files. Preserve unrelated work
 and do not deploy or clean user instances.
+
+Completed: every G01–G35 row has an implemented disposition and executable evidence
+in the [closure matrix](2026-10-02-parser-gap-closure.md). The final frozen Linux/
+PostgreSQL suite passed 1916 tests with 18 missing-evidence skips and 29 passing
+subtests. Six repository checks, 18 frontend unit tests, 19 project browser tests,
+additional rich editor/offline-reader checks, and amd64/arm64 client cold starts
+passed. One earlier scheduling-test failure was not reproduced in isolation or
+the full rerun; both outcomes are retained in the verification record. Real model
+inference and physical ARM/GPU/Metal operation remain unverified. No existing
+deployment or unrelated `apps/` files were changed.

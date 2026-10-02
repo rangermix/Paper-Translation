@@ -8,9 +8,9 @@ import type { Draft, Inline, Segment } from '../types';
 import { PreparationView } from './translation-preparation';
 
 function TargetFields({ nodes, atoms, change }: { nodes: Inline[]; atoms?: Record<string, string>; change: (nodes: Inline[]) => void }) {
-  return <div className="target-fields">{nodes.map((node, index) => node.type === 'text'
-    ? <textarea aria-label={`译文文本 ${index + 1}`} rows={Math.max(2, Math.min(8, Math.ceil(node.text.length / 65)))} key={index} value={node.text}
-      onChange={e => change(nodes.map((n, i) => i === index ? { type: 'text', text: e.target.value } : n))}/>
+  return <div className="target-fields">{nodes.map((node, index) => node.type !== 'protected_ref'
+    ? <textarea aria-label={`译文文本 ${index + 1}`} rows={Math.max(2, Math.min(8, Math.ceil((node.type === 'xref' ? node.label : node.text).length / 65)))} key={index} value={node.type === 'xref' ? node.label : node.text}
+      onChange={e => change(nodes.map((n, i) => i === index ? (n.type === 'xref' ? { ...n, label: e.target.value } : { ...node, text: e.target.value }) : n))}/>
     : <span className="protected-atom" key={index}>保护内容：{atoms?.[node.ref ?? node.id ?? node.ref_id ?? ''] ?? node.ref ?? node.id ?? node.ref_id}</span>)}</div>;
 }
 
@@ -21,7 +21,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, dirty
   expanded: boolean; toggle: () => void; hidden: boolean; blocked: boolean; stale: boolean;
   navigate: (blockId: string) => void;
 }) {
-  const initial: Inline[] = segment.target_inline.length ? segment.target_inline : [{ type: 'text', text: '' }];
+  const initial: Inline[] = segment.target_inline.length ? segment.target_inline : segment.source_inline?.length ? segment.source_inline : [{ type: 'text', text: '' }];
   const [nodes, setNodes] = useState<Inline[]>(initial), [baseline, setBaseline] = useState<Inline[]>(initial);
   const [baseVersion, setBaseVersion] = useState(segment.version);
   const [reason, setReason] = useState(''), [showSource, setShowSource] = useState(false), [reviewReason, setReviewReason] = useState('');
@@ -30,7 +30,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, dirty
   const contentId = `segment-content-${segment.block_id}`;
   useEffect(() => {
     if (segment.version !== baseVersion && !dirty) {
-      const next: Inline[] = segment.target_inline.length ? segment.target_inline : [{ type: 'text', text: '' }];
+      const next: Inline[] = segment.target_inline.length ? segment.target_inline : segment.source_inline?.length ? segment.source_inline : [{ type: 'text', text: '' }];
       setNodes(next); setBaseline(next); setBaseVersion(segment.version);
     }
   }, [segment.version, segment.target_inline, baseVersion, dirty]);

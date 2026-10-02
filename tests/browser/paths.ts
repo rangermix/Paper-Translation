@@ -1,2 +1,5 @@
 import paths from '../../.agent/harness/browser_paths.cjs';
-export const { repoRoot, inputPath, outputPath, outputDirectory } = paths;
+export const repoRoot = paths.repoRoot;
+export const inputPath = paths.inputPath;
+export const outputPath = paths.outputPath;
+export const outputDirectory = paths.outputDirectory;

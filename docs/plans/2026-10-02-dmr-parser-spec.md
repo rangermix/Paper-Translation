@@ -1,6 +1,7 @@
 # Full-page DMR parsing and information preservation
 
-Status: specified; implementation and verification in progress.
+Status: implemented and verified offline; real model/hardware inference not run.
+Completed evidence: [gap closure and verification](2026-10-02-parser-gap-closure.md).
 Source baseline: `47c01be9b8c752db3d4cde89c388d57cb73aa790`.
 
 ## Requested outcome
@@ -13,7 +14,7 @@ Existing stored parser identities and saved results remain readable; removing a
 parser must never rewrite an installed migration, queued task snapshot, sealed
 source/translation revision or published resource.
 
-Surya OCR 2 is the proposed default for new preferences because it has the smallest
+Surya OCR 2 is the default for new preferences because it has the smallest
 locked model. This is a resource choice, not an OCR-quality ranking. Saved inactive
 choices are reported as inactive and require a new explicit selection for new
 parses; no job silently switches its model or backend.

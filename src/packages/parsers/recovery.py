@@ -132,9 +132,11 @@ def _complete_native_coverage(lines, bounds):
 
 
 def _repair_reference_metadata(original, native_lines, bounds):
+    if len(original)>8192:return None
     if not _complete_native_coverage(native_lines, bounds):
         return None
     native = _paragraph_text(native_lines)
+    if len(native)>8192:return None
     markers = [re.match(r'^\[(\d{1,4})\]\s+', value) for value in (original, native)]
     # Initials contain a single letter; a full name followed by a capitalized
     # title bounds the author list in this numbered bibliography format.
@@ -174,6 +176,7 @@ def _repair_text(row, regions, page):
     native_lines = _native_lines(regions)
     candidate = _paragraph_text(native_lines)
     original = row.get('orig', row.get('text', ''))
+    if len(original)>8192 or len(candidate)>8192:return None
     changes = SequenceMatcher(None, original.split(), candidate.split(), autojunk=False).get_opcodes()
     # Native extraction is often less faithful for math, font runs and PDF
     # hyphens. Only accept an insertion that retains every existing token in

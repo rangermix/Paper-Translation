@@ -6,7 +6,7 @@ import unicodedata
 from packages.domain.errors import require
 from packages.ir import digest,flatten_inline
 from packages.parsers.source_adapter import overlap
-from .corrections import _split_inline
+from .corrections import _split_inline,replacement_inline
 
 
 def _core(text):
@@ -107,7 +107,7 @@ def normalize_native_span(source,inspection,operation,evidence,reason,page_image
     left,tail=_split_inline(block['source_inline'],start,source['protected_atoms']);middle,right=_split_inline(tail,end-start,source['protected_atoms'])
     require(all(n['type']=='text' for n in middle),'SOURCE_PROTECTED_EDIT',status=422)
     old_raw=block['raw_text'];old_edits=copy.deepcopy(block['normalization_edits'])
-    block['source_inline']=left+[{'type':'text','text':replacement}]+right
+    block['source_inline']=left+replacement_inline(source,block,middle,replacement)+right
     block['normalized_text']=text[:start]+replacement+text[end:]
     block['normalization_edits']=[{'raw_start':0,'raw_end':len(old_raw),'replacement':block['normalized_text'],
         'rule_id':'native-span-'+rule+'-v1','reviewed':False,'evidence':reason}]

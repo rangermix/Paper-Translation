@@ -161,7 +161,8 @@ def recover_layout(items, pages):
         if not page:
             continue
         box = _bounds(row, page)
-        if row.get('label') in {'text', 'paragraph'} and re.fullmatch(r'\(\d{1,3}[a-z]?\)', text(row)):
+        label_pattern = r'\([A-Za-z0-9]{1,8}(?:[.-][A-Za-z0-9]{1,8}){0,3}\)' if row.get('_semantic_version')=='4.0' else r'\(\d{1,3}[a-z]?\)'
+        if row.get('label') in {'text', 'paragraph'} and re.fullmatch(label_pattern, text(row)):
             candidates = []
             for eq in items:
                 if eq.get('label') != 'formula' or len(eq.get('prov', [])) != 1:
@@ -264,6 +265,8 @@ def recover_layout(items, pages):
         if merged is None:
             continue
         before = [left, right]
+        from .rich_ir import merge_semantics
+        merge_semantics(first, second, separator=' ' if merged == left + ' ' + right else '')
         first['orig'] = first['text'] = merged
         first['prov'].extend(deepcopy(second['prov']))
         items.remove(second)

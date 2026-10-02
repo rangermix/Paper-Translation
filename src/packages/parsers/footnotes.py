@@ -127,10 +127,12 @@ def _replace_marker(nodes, start, end, label, target, atoms):
     """Split text or replace a whole number atom; preserve all other structure."""
     cursor = 0
     left, right = [], []
+    marks = []
     for node in nodes:
         value = flatten_inline([node], atoms)
         stop = cursor + len(value)
         if cursor < end and stop > start:
+            marks = node.get('marks', marks)
             if node['type'] == 'text' and 'code' not in node.get('marks', []):
                 pass
             elif not (node['type'] == 'protected_ref' and atoms[node['ref']]['kind'] == 'number'
@@ -145,7 +147,7 @@ def _replace_marker(nodes, start, end, label, target, atoms):
         else:
             right.append(node)
         cursor = stop
-    return left + [{'type': 'xref', 'label': label, 'target_block_id': target}] + right
+    return left + [{'type': 'xref', 'label': label, 'target_block_id': target, **({'marks':marks} if marks else {})}] + right
 
 
 def link_native_footnotes(source, inspection):

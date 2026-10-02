@@ -81,15 +81,45 @@ history does not appear to share a preparation it never used.
 
 ## IR and readers
 
-[document-ir.schema.json](../res/schemas/document-ir.schema.json) validates the
-internal render input. [ir/validator.py](../src/packages/ir/validator.py) additionally
+[document-ir.schema.json](../res/schemas/document-ir.schema.json) preserves the
+historical 3.0 render contract. New full-page parser sources and render inputs use
+[document-ir-v4.schema.json](../res/schemas/document-ir-v4.schema.json). Source
+snapshots without a source format version retain the 3.0 interpretation.
+[ir/validator.py](../src/packages/ir/validator.py) dispatches explicitly and additionally
 checks block ownership, reading order, source hashes, PDF coordinates, safe inline
 content, protected references and resource paths. The IR is not a public upload format.
+
+Model-specific HTML/Markdown/JSON contracts share a bounded semantic decoder before
+the model-free PDF fidelity/recovery adapter. Recursive groups preserve compound
+regions, lists and table-cell content without duplicated container text. Typed
+math, code and static controls are protected; allowlisted marks preserve scripts,
+emphasis, underline and deletion. Table headers, spans, row/column groups, caption
+and note relationships retain their meaning. Unknown roles, generated visual or
+chemical interpretations and original code transcriptions are inert annotations.
+They do not become translated source prose.
+
+Outer model rectangles use normalized 0–1000 coordinates, converted once to PDF
+points. Descendants without separately emitted coordinates inherit the enclosing
+rectangle and record `geometry: inherited`; independently recovered PDF content
+records `native`. These are region locators, not fabricated precise cell boxes.
+Each page's exact inference envelope is saved before decoding with a verified
+hash, completion state and contract/preprocessing identities. The worker promotes
+these receipts under its task/fence directory and verifies the rebased references.
+Unsupported, malformed or capacity-limited content has an explicit warning and
+original-image/raw evidence fallback; valid siblings remain available.
 
 The stored `schema_version` and registered reader template IDs identify actual
 persisted formats. They do not identify project releases. Preserve them when
 reading old revisions or rebuilding a historical template. Frozen CSS/JavaScript
 hashes are enforced by the [template registry](../src/packages/templates/registry.py).
+
+Schema 4.0 defaults to `reader-v10` and its separate semantic renderer; historical
+3.0 inputs retain the old reader path. Translation units for 4.0 preserve each
+formatting/link association using bounded plain-text units and deterministic
+restoration. API validation, the editor, source correction, search and both offline
+exports preserve the supported semantics. This may create shorter translation
+units around styled spans; actual model fluency is not established by offline
+contract tests. See the [independent audit and closure](plans/2026-10-02-parser-gap-closure.md).
 
 Models return constrained translation content; they cannot supply HTML, filenames,
 new source text or arbitrary links. Publication escapes text and only renders

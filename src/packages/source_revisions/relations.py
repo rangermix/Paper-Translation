@@ -5,7 +5,7 @@ import re
 from packages.domain.errors import require
 from packages.ir import digest,flatten_inline
 from packages.parsers.source_adapter import overlap
-from .corrections import _split_inline,_set_order
+from .corrections import _split_inline,_set_order,replacement_inline
 
 
 def annotate_footnote(source,operation,evidence,reason,page_image_verify):
@@ -139,7 +139,7 @@ def merge_native_continuation(source,inspection,operation,evidence,reason,page_i
     joined=terminal[1]+('-' if rule=='retain_line_hyphen' else '')+initial[1]
     original=[copy.deepcopy(first),copy.deepcopy(second)];intervening=list(order[a+1:b])
     first['raw_text']=first['raw_text']+'\n'+second['raw_text']
-    first['source_inline']=left_prefix+[{'type':'text','text':joined}]+right_suffix
+    first['source_inline']=left_prefix+replacement_inline(source,first,left_word+right_word,joined)+right_suffix
     first['normalized_text']=flatten_inline(first['source_inline'],source['protected_atoms'])
     first['normalization_edits']=[{'raw_start':0,'raw_end':len(first['raw_text']),'replacement':first['normalized_text'],
         'rule_id':'native-float-continuation-'+rule+'-v1','reviewed':False,'evidence':reason}]

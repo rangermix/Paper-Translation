@@ -10,12 +10,12 @@ belong in run evidence; an old test report does not describe a running instance.
 | [Workflows](workflows.md) | Translation, recovery, original-only content and task history |
 | [API](api.md) | Current route groups, schemas, concurrency and request handling |
 | [Deployment](deployment/README.md) | Compose setup, file ownership and configuration |
-| [Extraction acceleration](deployment/extraction-acceleration.md) | CPU, CUDA and Docker-managed MLX |
+| [Extraction acceleration](deployment/extraction-acceleration.md) | Full-page DMR parsers, backend preparation and portable client images |
 | [MLX backend](deployment/mlx-backend.md) | Build, installation and verification procedure |
 | [Local translation](deployment/local-translation.md) | On-demand GGUF, Safetensors/vLLM and Apple Silicon MLX models |
 | [Backup and restore](ops/restore.md) | Maintenance lock, backups and upgrades |
 | [Retention](ops/retention.md) | Cleanup policy and bounded maintenance commands |
-| [Dependencies](ops/dependencies.md) | Locks, packaged models and image inventories |
+| [Dependencies](ops/dependencies.md) | Locks, on-demand model caches and image inventories |
 | [Tests](../tests/README.md) | Reproducible checks and test evidence limits |
 | [Resources](../res/README.md) | Runtime resources and controlled seed provenance |
 
@@ -27,3 +27,8 @@ Translation consistency: [delivery specification](plans/2026-09-26-translation-c
 [options and runtime cost](plans/translation-consistency-options.md), and
 [completed implementation plan](plans/2026-09-26-translation-consistency.md). These documents
 separate the delivery scope from optional research integrations.
+
+Full-page DMR parsing: [specification](plans/2026-10-02-dmr-parser-spec.md),
+[implementation plan](plans/2026-10-02-dmr-parser-plan.md),
+[independent Astra/max audit](plans/2026-10-02-parser-gap-audit.md), and
+[gap closure and verification](plans/2026-10-02-parser-gap-closure.md).

@@ -6,6 +6,7 @@ from packages.billing.price import validate_profile
 from .languages import check_language_policy
 
 PLANNER_VERSION='protected-academic-quantities-v6'
+RICH_PLANNER_VERSION='semantic-span-units-v7'
 
 
 def _literal_pattern(literals):
@@ -17,6 +18,7 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
     check_language_policy(profile,source,target_locale)
     selected=set(block_ids) if block_ids else None
     all_blocks=source['blocks'];by={b['id']:b for b in all_blocks};atoms=source['protected_atoms'];units=[]
+    rich=source.get('schema_version')=='4.0'
     original_only=original_only_blocks(source)
     names = metadata_literals(source, original_only)
     name_pattern = _literal_pattern(names)
@@ -39,27 +41,33 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
             'next':all_blocks[index+1]['normalized_text'][:500] if index+1<len(all_blocks) and all_blocks[index+1]['id'] not in original_only else ''}
         context_hash=digest(context);normalized=[];local_atoms={};restore={}
         for node_index,node in enumerate(block['source_inline']):
+            binding={'marks':node['marks']} if node.get('marks') else {}
+            if rich and node['type'] in {'link','xref'}:
+                binding.update({'href':node['href']} if node['type']=='link' else {'target_block_id':node['target_block_id']})
+                normalized.append({'type':'text','text':node.get('text',node.get('label','')),'_binding':binding})
+                continue
             if node['type']=='text':
                 offset = 0
                 for match in literal_pattern.finditer(node['text']) if literal_pattern else ():
                     if match.start() > offset:
-                        normalized.append({'type': 'text', 'text': node['text'][offset:match.start()]})
+                        normalized.append({'type': 'text', 'text': node['text'][offset:match.start()], **({'_binding':binding} if rich else {})})
                     ref = f'metadata-{node_index}-{match.start()}'
                     while ref in atoms or ref in local_atoms:
                         ref += '-literal'
                     local_atoms[ref] = {'kind': 'variable', 'value': match[0]}
-                    restore[ref] = {'type': 'text', 'text': match[0]}
-                    normalized.append({'type': 'protected_ref', 'ref': ref})
+                    restore[ref] = {**deepcopy(node), 'text': match[0]}
+                    normalized.append({'type': 'protected_ref', 'ref': ref, **({'_binding':binding} if rich else {})})
                     offset = match.end()
                 if offset < len(node['text']):
-                    normalized.append({'type':'text','text':node['text'][offset:]})
+                    normalized.append({'type':'text','text':node['text'][offset:], **({'_binding':binding} if rich else {})})
             elif node['type']=='protected_ref':
-                normalized.append(deepcopy(node));local_atoms[node['ref']]=deepcopy(atoms[node['ref']])
+                normalized.append(deepcopy(node)|({'_binding':binding} if rich else {}));local_atoms[node['ref']]=deepcopy(atoms[node['ref']])
+                if rich:restore[node['ref']]=deepcopy(node)
                 from packages.ir.quantities import localize_quantity
                 atom = atoms[node['ref']]
                 localized = localize_quantity(atom['value'], target_locale) if atom['kind'] == 'number' else None
                 if localized:
-                    restore[node['ref']] = {'type': 'text', 'text': localized}
+                    restore[node['ref']] = {'type': 'text', 'text': localized, **({'marks':node['marks']} if node.get('marks') else {})}
             else:
                 ref=f'link-{node_index}';value=node.get('text',node.get('label',''))
                 normalized.append({'type':'protected_ref','ref':ref});local_atoms[ref]={'kind':'citation','value':value};restore[ref]=deepcopy(node)
@@ -79,6 +87,8 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
                 block_limit = max(limit, sum(widths))
         batches=[];current=[];size=0
         for node in normalized:
+            if rich and current and current[-1].get('_binding',{})!=node.get('_binding',{}):
+                batches.append(current);current=[];size=0
             text=node.get('text') if node['type']=='text' else local_atoms[node['ref']]['value']
             if node['type']=='protected_ref':
                 width=atom_size(local_atoms[node['ref']])
@@ -97,21 +107,34 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
                         elif current:
                             batches.append(current);current=[];size=0
                             continue
-                    piece,text=text[:cut],text[cut:];current.append({'type':'text','text':piece});size+=len(piece)
+                    piece,text=text[:cut],text[cut:];current.append({**node,'text':piece});size+=len(piece)
                     if cut<free:
                         batches.append(current);current=[];size=0
         if current:batches.append(current)
         for ordinal,nodes in enumerate(batches):
             refs={n['ref'] for n in nodes if n['type']=='protected_ref'}
+            binding=nodes[0].get('_binding',{}) if rich else {}
+            wire_nodes=[{k:v for k,v in n.items() if k in {'type','text','ref'}} for n in nodes] if rich else nodes
             units.append({'unit_id':f'{block["id"]}:{ordinal}','owner_block_id':block['id'],'unit_order':ordinal,'unit_count':len(batches),
                 'source_hash':block['source_hash'],'source_language':block['language'],'target_locale':target_locale,'context':context,'context_hash':context_hash,
-                'source_inline':nodes,'protected_atoms':{r:local_atoms[r] for r in refs},'restore_nodes':{r:restore[r] for r in refs if r in restore},
-                'normalization_version':source['normalization_version'],'planner_version':PLANNER_VERSION})
+                'source_inline':wire_nodes,'protected_atoms':{r:local_atoms[r] for r in refs},'restore_nodes':{r:restore[r] for r in refs if r in restore},
+                **({'formatting_context':binding} if rich else {}),
+                'normalization_version':source['normalization_version'],'planner_version':RICH_PLANNER_VERSION if rich else PLANNER_VERSION})
     if selected and selected-set(by):raise ValueError('UNKNOWN_BLOCK')
     return units
 
 
-def restore_inline(unit,nodes):return [deepcopy(unit['restore_nodes'].get(n.get('ref'),n)) for n in nodes]
+def restore_inline(unit,nodes):
+    output=[];binding=unit.get('formatting_context',{})
+    for n in nodes:
+        restored=deepcopy(unit['restore_nodes'].get(n.get('ref'),n))
+        if binding.get('marks'):restored['marks']=deepcopy(binding['marks'])
+        if restored['type']=='text' and binding.get('href'):
+            restored.update(type='link',href=binding['href'])
+        elif restored['type']=='text' and binding.get('target_block_id'):
+            label=restored.pop('text');restored.update(type='xref',target_block_id=binding['target_block_id'],label=label)
+        output.append(restored)
+    return output
 
 
 def reassemble(units,results):
@@ -126,7 +149,8 @@ def cache_shape(unit):
     refs=list(dict.fromkeys(n['ref'] for n in unit['source_inline'] if n['type']=='protected_ref'))
     mapping={ref:'a'+str(index) for index,ref in enumerate(refs)}
     nodes=[{'type':'protected_ref','ref':mapping[n['ref']]} if n['type']=='protected_ref' else n for n in unit['source_inline']]
-    return {'source_inline':nodes,'protected_atoms':{mapping[r]:unit['protected_atoms'][r] for r in refs}},mapping
+    return {'source_inline':nodes,'protected_atoms':{mapping[r]:unit['protected_atoms'][r] for r in refs},
+        **({'formatting_context':unit['formatting_context']} if 'formatting_context' in unit else {})},mapping
 
 
 def cache_key(unit,profile,glossary_revision):
@@ -136,7 +160,7 @@ def cache_key(unit,profile,glossary_revision):
         from packages.providers.local_translation import REQUEST_FORMAT_VERSION
         protocol={'request_format_version':REQUEST_FORMAT_VERSION}
     return digest({'unit':normalized,'context_hash':unit['context_hash'],'locale':unit['target_locale'],'source_language':unit['source_language'],
-        'profile':profile,'glossary_revision':glossary_revision,'normalization_version':unit['normalization_version'],'planner_version':PLANNER_VERSION,**protocol})
+        'profile':profile,'glossary_revision':glossary_revision,'normalization_version':unit['normalization_version'],'planner_version':unit.get('planner_version',PLANNER_VERSION),**protocol})
 
 
 def cache_encode(unit,nodes):

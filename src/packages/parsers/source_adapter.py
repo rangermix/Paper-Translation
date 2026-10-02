@@ -250,7 +250,7 @@ def _source_nodes(text, block_id, atoms, kind):
 class SourceAdapter:
     """Model-free PDF source construction, recovery and evidence checks."""
 
-    def adapt(self, items, inspection, local_pdf, asset_id, output_dir, *, profile=None, parser_version=None, enrichment=None, pipeline_hash=None, parser_name='pdf-source', recovery_callback=None, model_generated_source=False):
+    def adapt(self, items, inspection, local_pdf, asset_id, output_dir, *, profile=None, parser_version=None, enrichment=None, pipeline_hash=None, parser_name='pdf-source', recovery_callback=None, model_generated_source=False, semantic=False, parser_evidence=None):
         if parser_version is None:
             from .models import parser_version as locked_version
             parser_version = locked_version()
@@ -263,7 +263,6 @@ class SourceAdapter:
         # Native reconciliation can repair code glyphs. Preserve the independent
         # VLM result before that pass, and only apply it to surviving code/formula leaves.
         recognized={item.get('self_ref'):dict(item) for item in items if enrichment and item.get('label') in {'code','formula'}}
-        from .profiles import VLM_PROFILES
         if enrichment and model_generated_source:
             # VLM orig is generated text too. Coverage of protected formula/code
             # uses independent native evidence within the retained PDF crop.
@@ -279,8 +278,13 @@ class SourceAdapter:
                     bounds = box(prov, inspection['pages'])
                     native.extend(region['text'] for region in page['text_regions'] if overlap(region['bbox'], bounds) >= .9)
                 item['orig'] = '\n'.join(native)
+        if semantic:
+            for item in items:item['_semantic_version']='4.0'
         items,reconciliations=reconcile_items(items,inspection['pages'])
         items, recovery_audit = recover_items(items, inspection['pages'], local_reparse=recovery_callback, remaining_seconds=remaining_seconds)
+        if semantic:
+            from .rich_ir import limit_semantic_items
+            items=limit_semantic_items(items,inspection)
         inspection['automatic_recovery'] = inspection.get('automatic_recovery', []) + recovery_audit
         inspection['reconciliations']=reconciliations
         source_file = output/'original.pdf'
@@ -291,7 +295,7 @@ class SourceAdapter:
             'language':profile.get('language','und'),'original_asset_id':asset_id,'sha256':inspection['sha256'],
             'created_at':profile.get('created_at',datetime.now(timezone.utc).isoformat()),
             'parser':{'name':parser_name,'version':parser_version,'config_hash':config_hash},
-            'normalization_version':'identity-v1','title_block_id':'','reading_order':[], 'assets':assets,'protected_atoms':{},'blocks':[]}
+            'normalization_version':'semantic-native-v2' if semantic else 'identity-v1','title_block_id':'','reading_order':[], 'assets':assets,'protected_atoms':{},'blocks':[]}
         blocks, atoms, excluded, issues = source['blocks'],source['protected_atoms'],[],[]
         item_blocks, caption_owners = {}, {}
         pdf = pdfium.PdfDocument(local_pdf)
@@ -325,8 +329,18 @@ class SourceAdapter:
                 blocks.append(block)
                 if owner is None:source['reading_order'].append(bid)
                 return block
+            crop_assets={}
             def crop(locs,bid):
                 loc = locs[0]; scale = 3
+                region_key=digest({'page':loc['page'],'bbox':loc['bbox']})
+                if semantic and region_key in crop_assets:return crop_assets[region_key]
+                if semantic and len(assets)>=501-inspection['page_count']:
+                    aid=f'page-image-{loc["page"]}'
+                    if not any(a['id']==aid for a in assets):
+                        file=output/f'pages/page-{loc["page"]:04d}.png'
+                        assets.append({'id':aid,'media_type':'image/png','sha256':digest(file.read_bytes()),'byte_size':file.stat().st_size,'storage_key':file.relative_to(output).as_posix()})
+                    crop_assets[region_key]=aid
+                    return aid
                 left, top, right, bottom = loc['bbox']
                 width, height = loc['page_size']
                 if (right-left)*(bottom-top)*scale*scale > 40_000_000:
@@ -342,6 +356,7 @@ class SourceAdapter:
                 image.close()
                 aid = 'asset-'+bid
                 assets.append({'id':aid,'media_type':'image/png','sha256':digest(file.read_bytes()),'byte_size':file.stat().st_size,'storage_key':file.relative_to(output).as_posix()})
+                if semantic:crop_assets[region_key]=aid
                 if len(assets)>501 or sum(a['byte_size'] for a in assets[1:])>200*1024*1024: raise PDFError('PDF_ASSET_LIMIT')
                 return aid
             for item in items:
@@ -349,13 +364,17 @@ class SourceAdapter:
                 if not locs: continue  # Containers carry no content; leaf omissions remain in independent coverage.
                 text = item.get('orig',item.get('text','')) or ''
                 if label in {'page_header','page_footer'}:
+                    non_margin = False
                     for loc in locs:
                         # Only true page margins can be excluded by a layout label.
                         if (loc['bbox'][3] <= .12*loc['page_size'][1] or loc['bbox'][1] >= .88*loc['page_size'][1]
                             or loc['bbox'][2] <= .08*loc['page_size'][0] or loc['bbox'][0] >= .92*loc['page_size'][0]):
                             excluded.append({'page':loc['page'],'bbox':loc['bbox'],'reason':label,'text':text})
-                        else:issues.append({'page':loc['page'],'code':'SOURCE_PARSE_REVIEW','reason':'Non-margin text labelled decoration','text':text})
-                    continue
+                        else:
+                            non_margin = True
+                            issues.append({'page':loc['page'],'code':'SOURCE_PARSE_REVIEW','reason':'Non-margin text labelled decoration','text':text})
+                    if not semantic or not non_margin:continue
+                    label = 'text'
                 kind = {'title':'heading','section_header':'heading','list_item':'list_item','code':'code','formula':'math','picture':'figure','table':'table','caption':'caption','footnote':'footnote','reference':'reference'}.get(label,'paragraph')
                 if kind == 'heading': attrs = {'level':1 if not source['title_block_id'] else min(6,max(2,int(item.get('level',2))))}
                 elif kind == 'list_item':
@@ -374,8 +393,12 @@ class SourceAdapter:
                     if kind=='code' and recognized_item.get('code_language'):attrs['code_language']=recognized_item['code_language']
                 if kind == 'math' and item.get('_equation_number'):
                     attrs['equation_number'] = item['_equation_number']
-                if not text and kind not in {'figure','table','math','code'} and not item.get('_nb_navigation_title'):continue
+                empty_control=semantic and any(r['type']=='control' for r in (item.get('_semantic') or {}).get('runs',[]))
+                empty_group=semantic and (item.get('_semantic') or {}).get('kind')=='group'
+                if not text and kind not in {'figure','table','math','code'} and not item.get('_nb_navigation_title') and not empty_control and not empty_group:continue
                 block = make(kind,text,locs,attrs)
+                if item.get('_semantic_limited'):block['warnings'].append('该区域超过语义容量；保留原图和完整响应证据。')
+                if item.get('_semantic_recovery_ambiguous'):block['warnings'].append('原生参考文献与模型语义范围无法唯一关联；保留已证实的 PDF 文字和完整响应。')
                 if item.get('_nb_navigation_title'):
                     block['warnings'].append('未识别论文标题；导航使用首段原文，纯图像来源保留空标题。')
                 if item.get('_nb_page_fallback'):
@@ -397,7 +420,7 @@ class SourceAdapter:
                         issues.append({'code':'SOURCE_PARSE_REVIEW','reason':'Multi-region code/math requires explicit source layout correction','block_id':block['id']})
                 if kind in {'figure','table'}:
                     if kind == 'table':
-                        data = item.get('data',{}); cells = data.get('table_cells',[])
+                        data = item.get('data') or {}; cells = data.get('table_cells',[])
                         structured = table_grid_complete(data)
                         if structured:
                             attrs.update(representation='structured',rows=data['num_rows'],columns=data['num_cols'],cells=[])
@@ -452,6 +475,13 @@ class SourceAdapter:
                 else:issues.append({'code':'SOURCE_PARSE_REVIEW','reason':'Unresolved caption ownership','reference':ref})
             if not source['title_block_id']:
                 issues.append({'code':'SOURCE_PARSE_REVIEW','reason':'No reliable title was identified; source correction required'})
+            if semantic:
+                from .rich_ir import apply_semantics
+                apply_semantics(source, items, item_blocks, make, crop, parser_evidence)
+                # A compound physical layout may contain the actual first heading.
+                headings_in_source = [b for b in blocks if b['kind'] == 'heading']
+                if headings_in_source:
+                    source['title_block_id'] = headings_in_source[0]['id']
             ordered=[]
             def append_container(bid):
                 ordered.append(bid)
@@ -473,12 +503,16 @@ class SourceAdapter:
                     if bibliography and block['kind']=='paragraph':block['kind']='reference';block['translatable']=False
             from .footnotes import link_native_footnotes
             inspection['footnote_links'] = link_native_footnotes(source, inspection)
+            if semantic:
+                referenced={n['ref'] for b in blocks for n in b['source_inline'] if n['type']=='protected_ref'}
+                for ref in list(atoms):
+                    if ref not in referenced:del atoms[ref]
             for block in blocks:
                 if block['provenance'] and (block['kind'] in {'math', 'code', 'table', 'table_cell'} or any(
                         n['type'] == 'protected_ref' and atoms[n['ref']]['kind'] == 'number' for n in block['source_inline'])):
                     first = block['provenance'][0]
                     image_id = block['attributes'].get('asset_id')
-                    scope = 'region' if image_id else 'page'
+                    scope = 'region' if image_id and not (semantic and image_id.startswith('page-image-')) else 'page'
                     if image_id is None:
                         image_id = f'page-image-{first["page"]}'
                         if not any(a['id'] == image_id for a in assets):

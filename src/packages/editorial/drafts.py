@@ -82,8 +82,15 @@ def create_draft(session, config, edition, source_revision, profile, base=None):
 
 def validate_target(nodes, source, block):
     require(isinstance(nodes, list) and nodes, 'TARGET_EMPTY', status=422)
+    from packages.ir.validator import schema_validate, inline_refs
+    try:
+        for node in nodes:schema_validate(node,'inline',version=source.get('schema_version','3.0'))
+        inline_refs(nodes,source['protected_atoms'],{b['id']:b for b in source['blocks']},'target')
+    except ValueError:
+        require(False,'TARGET_AST_INVALID',status=422)
     for node in nodes:
         require(isinstance(node, dict), 'TARGET_AST_INVALID', status=422)
+        node={k:v for k,v in node.items() if k not in {'marks','output_path'}}
         if node.get('type') == 'text':
             require(set(node) == {'type', 'text'} and isinstance(node['text'], str), 'TARGET_AST_INVALID', status=422)
         elif node.get('type') == 'protected_ref':
@@ -141,6 +148,9 @@ def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode
     for block in source['blocks']:
         same_language = block.get('language', source['language']) == edition.target_locale
         retained_reason = original_only.get(block['id'])
+        if source.get('schema_version')=='4.0' and not block['normalized_text'] and any(
+                n['type']=='protected_ref' and source['protected_atoms'][n['ref']]['kind']=='control' for n in block['source_inline']):
+            retained_reason='static_control'
         retained = not block['translatable'] or same_language or bool(retained_reason)
         # Old segment/review records remain intact, but must not become a target
         # or a human-review claim for intentionally retained source content.
@@ -170,7 +180,7 @@ def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode
             'context_hash': context_hash(source, block['id']), 'status': 'retained' if retained else ('translated' if segment else 'unresolved'),
             'target_inline': segment.target_inline if segment and not retained else [], 'warnings': quality_notes.get(block['id'], []),
             'review_state': 'human_reviewed' if review else 'not_reviewed',
-            'reason': (retained_reason or ('same_language' if same_language and block['translatable'] else {'code':'original_code', 'math':'original_math', 'figure':'original_figure', 'table':'structural_container', 'table_cell':'empty_table_cell', 'reference':'original_reference'}.get(block['kind'], ''))) if retained else '',
+            'reason': (retained_reason or ('same_language' if same_language and block['translatable'] else {'code':'original_code', 'math':'original_math', 'figure':'original_figure', 'table':'structural_container', 'group':'structural_container', 'list_item':'structural_container', 'table_cell':'empty_table_cell', 'reference':'original_reference'}.get(block['kind'], ''))) if retained else '',
             'generation': generation, 'review_record': None})
         if not retained and segment is None:
             results[-1].update(status='fallback', reason='translation_unavailable',
@@ -194,12 +204,15 @@ def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode
         'sealed_at': now().isoformat(), 'results': results}
 
 
-def render_input(session, source, translation, template_id='reader-v1', mode='release'):
+def render_input(session, source, translation, template_id=None, mode='release'):
     from packages.templates.registry import get_template
+    version=source.get('schema_version','3.0')
+    template_id=template_id or ('reader-v10' if version=='4.0' else 'reader-v1')
+    require(version!='4.0' or template_id=='reader-v10','TEMPLATE_SCHEMA_INCOMPATIBLE',status=422)
     template = get_template(template_id)
     # Publication titles are source facts, independent of mutable catalog metadata.
     block = next(b for b in source['blocks'] if b['id'] == source['title_block_id'])
-    return {'schema_version': '3.0', 'document': {'id': session, 'title': block['normalized_text'],
+    return {'schema_version': version, 'document': {'id': session, 'title': block['normalized_text'],
         'notice': '来源为保存的原始 PDF。机器检查不等同于人工确认；公式和代码按声明保留。'},
         'source_revision': source, 'translation_revision': translation,
         'render': {'template_id': template_id, 'template_sha256': template['css_sha256'], 'renderer_version': template['renderer_version'],

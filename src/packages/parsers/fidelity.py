@@ -35,6 +35,7 @@ def union(boxes):
 
 
 def recover_native_text(layout,native,*,proven_accents=False):
+    if len(layout)>8192 or len(native)>8192:return None
     def core(text):
         if proven_accents:text=''.join(c for c in unicodedata.normalize('NFD',text).replace('ı','i') if not unicodedata.combining(c))
         return ''.join(c for c in unicodedata.normalize('NFKC',text) if c.isalnum())
@@ -123,6 +124,8 @@ def bibliography_columns(item,page):
         prov={'page_no':page['page'],'charspan':[0,len(text)]};set_box(prov,union([r['bbox'] for r in group]))
         output.append({'self_ref':item['self_ref']+f'/native-reference-{index}','label':'reference','orig':text,'text':text,
             'prov':[prov],'native_reference_regions':deepcopy(group)})
+        from .rich_ir import carry_reference_semantics
+        carry_reference_semantics(item,output[-1])
     return output
 
 
@@ -146,6 +149,8 @@ def reconcile_items(original,pages):
                 for index,p in enumerate(prov):
                     clone=deepcopy(item);part=text[p['charspan'][0]:p['charspan'][1]]
                     clone.update(orig=part,text=part,label='reference',self_ref=item['self_ref']+f'/part-{index}',prov=[deepcopy(p)])
+                    from .rich_ir import carry_reference_semantics
+                    carry_reference_semantics(item,clone,p['charspan'][0],p['charspan'][1])
                     clone['prov'][0]['charspan']=[0,len(part)];fragments.append(clone)
                 split_items.append(fragments[0]);deferred.extend(fragments[1:])
                 audit.append({'action':'discontinuous_reference_split','reference':item['self_ref'],'original_text':text,'original_provenance':deepcopy(prov),'fragments':[f['self_ref'] for f in fragments]});continue
@@ -224,13 +229,22 @@ def reconcile_items(original,pages):
             owner=next((g for g in graphics if g['label']=='picture' and g['prov'][0]['page_no']==p['page_no'] and overlap(b,box(g['prov'][0],pages))>=.65),None)
             if owner:
                 removed=True;audit.append({'action':'retain_text_in_graphic','reference':item.get('self_ref'),'graphic_reference':owner.get('self_ref'),'page':p['page_no'],'bbox':b,'charspan':p.get('charspan')})
+                if item.get('_semantic') and owner.get('_semantic'):
+                    owner['_semantic']['attrs'].setdefault('annotations',[]).append({'kind':'graphic_text_transcription','value':item['_semantic']['text'][:16000],'output_path':item['_semantic']['path']})
+                    if len(item.get('prov',[]))==1:
+                        from .semantic import separate_notes
+                        _,notes=separate_notes(item['_semantic']['children'])
+                        owner['_semantic']['children'].extend(deepcopy(notes))
             else:
                 keep.append(p);span=p.get('charspan',[0,len(text)]);parts.append(text[span[0]:span[1]])
         if removed:
             if not keep:continue
             # Exact charspans, not string guessing, separate cross-page merges.
             if any(not p.get('charspan') for p in item.get('prov',[])):retained.append(item);continue
+            spans=[tuple(p['charspan']) for p in keep]
             item['prov']=keep;item['orig']=item['text']=' '.join(parts);offset=0
+            from .rich_ir import carry_retained_spans
+            carry_retained_spans(item,text,spans)
             for p,part in zip(keep,parts):p['charspan']=[offset,offset+len(part)];offset+=len(part)+1
         retained.append(item)
     items=retained
@@ -258,6 +272,10 @@ def reconcile_items(original,pages):
             boxes=[box(g['prov'][0],pages) for g in group]
             if max(b[1] for b in boxes)>min(b[3] for b in boxes):continue
             set_box(owner['prov'][0],union(boxes))
+            if owner.get('_semantic'):
+                for g in group[1:]:
+                    owner['_semantic']['attrs'].setdefault('annotations',[]).extend(deepcopy(g.get('_semantic',{}).get('attrs',{}).get('annotations',[])))
+                    owner['_semantic']['children'].extend(deepcopy(g.get('_semantic',{}).get('children',[])))
             for g in group[1:]:removed_refs.add(g.get('self_ref'))
             audit.append({'action':'shared_caption_panels','references':[g.get('self_ref') for g in group],'caption_reference':ref})
         for g in graphics:g['captions']=[r for r in g.get('captions',[]) if r['$ref']!=ref]
@@ -297,7 +315,7 @@ def reconcile_items(original,pages):
         item['orig']=item['text']=current
         if item.get('label')=='section_header':
             number=re.match(r'^((?:[A-Z]\.)?\d+(?:\.\d+)*|[A-Z])(?:\.?\s)',item.get('orig',''))
-            if number:item['level']=min(6,2+number[1].count('.'))
+            if number and not item.get('_explicit_level'):item['level']=min(6,2+number[1].count('.'))
     joined=[];bibliography=False
     for item in items:
         if item.get('label') in {'section_header','title'}:
@@ -315,6 +333,8 @@ def reconcile_items(original,pages):
                             end=annotation_url_span(combined,match.start(),link['uri'])
                             if end is not None and end>len(before):
                                 fixed=combined[:match.start()]+link['uri']+combined[end:]
+                                from .rich_ir import merge_semantics
+                                merge_semantics(previous,item,separator='')
                                 previous['orig']=previous['text']=fixed;previous['prov']+=deepcopy(item['prov'])
                                 audit.append({'action':'native_url_reference_continuation','reference':previous.get('self_ref'),'continued_reference':item.get('self_ref'),'before':[before,tail],'after':fixed,'annotation_uri':link['uri']})
                                 merged=True;break

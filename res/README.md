@@ -6,6 +6,7 @@ Only application inputs belong here. Synthetic PDF/IR corpora are
 | Path | Runtime consumer |
 | --- | --- |
 | `schemas/document-ir.schema.json` | `packages.ir.validator`: render-input syntax, alongside semantic validation |
+| `schemas/document-ir-v4.schema.json` | Explicit 4.0 source/render semantics for full-page DMR output; legacy 3.0 remains unchanged |
 | `reference/reader-v1.css` | Frozen reader template registered by `packages.templates` |
 | `reference/legacy-manifest.json` | `packages.seed.legacy`: controlled seed allowlist and navigation patch |
 | `reference/reference-files.sha256.json` | Byte-integrity verification of frozen reader/seed inputs |

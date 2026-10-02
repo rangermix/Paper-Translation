@@ -13,6 +13,21 @@ as source text or page images. Recovery tasks expose before/after comparisons.
 Source-only results provide an explicit continuation action; translation uses the
 saved source rather than implying parsing already produced a translation.
 
+New parses use source format 4.0. Printed hierarchy, nested lists, rich table cells,
+header relationships, explicit math/code, marks and safe links are decoded before
+native recovery. Inline math and code remain protected literals; static form states
+remain readable without becoming active inputs. Captions and notes use explicit
+nested ownership or a unique typed same-page association. Ambiguous relationships
+remain independent with a warning. Nested content records its inherited outer
+rectangle when precise child coordinates are absent.
+
+Exact page responses, completion state and decoder diagnostics are saved before
+interpretation, then promoted with verified hashes under the parser task/fence.
+Truncated or malformed output preserves complete independent siblings and the
+original page. Unknown roles and generated figure/chemical descriptions remain
+bounded, labeled auxiliary evidence. Capacity limits are explicit; they do not
+turn incomplete output into a complete-page claim.
+
 Native page/column edges can join a continuing sentence across a floating figure
 or footnote when the original glyphs support both ends. Complete sentences and
 intervening headings remain separate. Same-baseline equation numbers and nearby
@@ -76,6 +91,14 @@ Content checks produce hints and comparison evidence. They do not require manual
 approval to seal, publish or export. Invalid executable content is rejected or
 safely represented before rendering; nonblocking quality does not relax file,
 version or secret boundaries. Successfully sealed revisions are immutable.
+
+Source 4.0 translation splits at formatting/link boundaries and restores those
+associations deterministically after the bounded text response. Editing visible
+labels preserves marks, destinations and protected references. The new `reader-v10`
+renders nested structures, table headers, bare math literals and note navigation;
+publication and both offline exports retain these semantics. Old snapshots and
+reader resources are not rewritten. Offline tests establish preservation contracts,
+not trained-model OCR or translation quality.
 
 ## Original-only academic content
 

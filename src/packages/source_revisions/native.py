@@ -92,7 +92,15 @@ def apply_native_corrections(source, inspection, operations, evidence, reason, e
             block['normalized_text'] = proposed
             block['normalization_edits'] = [] if native == proposed else [{'raw_start': 0, 'raw_end': len(native), 'replacement': proposed,
                 'rule_id': 'native-pdf-whitespace-v1', 'reviewed': False, 'evidence': reason}]
-            block['source_inline'] = _source_nodes(proposed, block['id'], result['protected_atoms'], block['kind'])
+            if result.get('schema_version')=='4.0':
+                from packages.parsers.rich_ir import reconcile_saved_inline
+                restored,ambiguous=reconcile_saved_inline(block['source_inline'],result['protected_atoms'],proposed)
+                if ambiguous:
+                    block['warnings'].append('原 PDF 修复无法明确关联语义范围；保留修正前来源及对照证据。')
+                    restored=_source_nodes(proposed,block['id'],result['protected_atoms'],block['kind'])
+                block['source_inline']=[{k:v for k,v in n.items() if k in {'type','text','ref','href','label','target_block_id','marks','output_path'}} for n in restored]
+            else:
+                block['source_inline'] = _source_nodes(proposed, block['id'], result['protected_atoms'], block['kind'])
             block['provenance'] = [_locator(result, p, r) for p, r in regions]
         elif kind == 'recover_region':
             require(set(op) == {'kind', 'page', 'bbox', 'quote', 'after_block_id'}, 'SOURCE_OPERATION_INVALID', status=422)

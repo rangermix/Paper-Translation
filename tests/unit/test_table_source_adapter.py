@@ -11,7 +11,7 @@ from packages.ir import validate_ir, validate_source
 from packages.parsers.inspect import inspect_pdf
 from packages.parsers.source_adapter import SourceAdapter, vlm_text_issues
 from packages.parsers.vlm_output import item as layout_item
-PADDLE_MODEL = 'authored/table-recognition-double'
+TABLE_FIXTURE_MODEL = 'authored/table-recognition-double'
 from packages.parsers.table_html import parse_table_html
 from packages.publisher.renderer import render_html
 from packages.translation.planner import plan_units
@@ -92,7 +92,7 @@ def adapt_table(tmp_path, html=MERGED):
         for index, row in enumerate(result['parsing_res_list'])]
     return SourceAdapter().adapt(items, inspection, pdf, 'asset_test', tmp_path / 'parsed',
         profile={'language': 'en'}, parser_name='authored-table', parser_version='fixture-v1',
-        enrichment={'model': PADDLE_MODEL, 'revision': 'a' * 40}, model_generated_source=True)
+        enrichment={'model': TABLE_FIXTURE_MODEL, 'revision': 'a' * 40}, model_generated_source=True)
 
 
 def as_ir(source):

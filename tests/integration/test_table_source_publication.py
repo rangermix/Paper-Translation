@@ -1,4 +1,4 @@
-"""Paddle cells, including blanks, pass the real DB/QA/publisher/export path."""
+"""Authored neutral table cells, including blanks, pass the real DB/QA/publisher/export path."""
 import re
 import shutil
 
@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from packages.domain.models import SegmentVersion, SourceAsset
 from tests.support import seed_editor
-from tests.unit.test_paddle_tables import adapt_table, as_ir
+from tests.unit.test_table_source_adapter import adapt_table, as_ir
 from tests.integration.test_publication_lifecycle import drain, seal_and_publish
 
 pytestmark = pytest.mark.postgres
@@ -38,7 +38,7 @@ def seed_table(database, tmp_path, damage=None, cell_text='64'):
 def test_cells_publish_and_export_with_spans_and_original_image(client, database, tmp_path):
     db, cfg = database
     ir = seed_table(database, tmp_path)
-    artifact, path = seal_and_publish(client, db, cfg, 1, 1, 'paddle-table')
+    artifact, path = seal_and_publish(client, db, cfg, 1, 1, 'source-table')
     html = path.read_text('utf-8')
     assert '状态组' in html and 'rowspan="2" colspan="1"' in html and 'rowspan="1" colspan="2"' in html
     assert 'original-comparison' in html and '查看原文' in html
@@ -49,7 +49,7 @@ def test_cells_publish_and_export_with_spans_and_original_image(client, database
         assert session.scalar(select(SegmentVersion).where(SegmentVersion.block_id == blank['id'])) is None
     drain(db, cfg)
     queued = client.post(f'/api/v1/artifacts/{artifact}/exports', json={'format': 'single_html', 'include_source': False},
-        headers={'Idempotency-Key': 'export-paddle-table'})
+        headers={'Idempotency-Key': 'export-source-table'})
     assert queued.status_code == 202, queued.text
     drain(db, cfg)
     exported = client.get('/api/v1/exports/' + queued.json()['id'] + '/download')

@@ -16,6 +16,11 @@ the instance; the default published address is loopback.
   and Granite inference are removed; Paddle, Xiaomi and TeleOCR are archived.
 - Recover extraction gaps using original-PDF evidence, show unresolved content
   beside page images, and expose saved parse results for later translation.
+  New source format 4.0 retains nested blocks/lists, rich table cells and headers,
+  math/code, script and text formatting, safe links, printed captions and notes,
+  plus verifiable per-page response evidence. Nested content inherits the real
+  enclosing rectangle when the model supplies no finer coordinates. Generated
+  figure/chemical descriptions stay labeled auxiliary evidence.
 - Translate through a saved API service or the optional local translation service
   with platform-supported GGUF, Safetensors/vLLM, or Apple Silicon MLX models.
   All languages are selectable; model quality for each language is not guaranteed
@@ -38,6 +43,7 @@ the instance; the default published address is loopback.
 - Seal immutable revisions, publish static bilingual readers, switch historical
   publications, and export self-contained HTML or a resource bundle. Draft exports
   clearly preserve missing translations as original content.
+  New 4.0 sources use `reader-v10`; old source contracts and readers remain valid.
 - Keep task stages, actual model identities, timings, redacted logs, attempts and
   uncertain outcomes. Clearing finished task history changes list visibility only.
   The [task model](task-model.md) defines which operations appear as main tasks

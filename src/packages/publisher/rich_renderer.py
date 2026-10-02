@@ -16,7 +16,7 @@ from packages.translation.languages import language_name
 
 from packages.paths import ROOT
 CSS_HASH = '51dacbcd96a21214ed83a62cad870a6281eb20db1aa260f3a7d782c58fdd18a8'
-RENDERER_VERSION = 'reader-python-9.0.0'
+RENDERER_VERSION = 'reader-python-10.0.0'
 EXTENSIONS = {'image/png':'.png', 'image/jpeg':'.jpg', 'image/webp':'.webp', 'application/pdf':'.pdf'}
 
 
@@ -35,45 +35,43 @@ def math_markup(value, *, display=False):
 
 
 def inline(nodes, atoms, *, typeset=False, references=None, note_links=None):
-    def reference_link(content, targets):
-        return (f'<a class="reference-link" href="#b-{esc(targets[0])}" '
-            f'data-reference-targets="{esc(" ".join(targets))}">{content}</a>')
-
     if references:
-        pieces = []
-        for segment, targets in references.segments(nodes, atoms):
-            content = inline(segment, atoms, typeset=typeset, note_links=note_links)
-            pieces.append(reference_link(content, targets) if targets else content)
-        return ''.join(pieces)
-
-    out = []
-    for node in nodes:
-        kind = node['type']
-        if kind == 'text':
-            text = esc(node['text'])
-            for mark in node.get('marks', []):
-                tag = {'strong':'strong','emphasis':'em','code':'code'}[mark]
-                text = f'<{tag}>{text}</{tag}>'
-            out.append(text)
-        elif kind == 'protected_ref':
-            atom = atoms[node['ref']]
-            content = math_markup(atom['value']) if typeset and atom['kind'] == 'math' and atom['value'].strip().startswith(('$','\\(','\\[')) else esc(atom['value'])
-            out.append(f'<span class="protected" data-kind="{esc(atom["kind"])}">{content}</span>')
-        elif kind == 'link':
-            out.append(f'<a href="{esc(node["href"])}" rel="noreferrer noopener">{esc(node["text"])}</a>')
-        elif kind == 'xref':
-            target = node['target_block_id']
-            if note_links and target in note_links:
-                marker = ' data-footnote-marker' if re.fullmatch(r'[0-9]{1,3}|[*†‡§¶]', node['label']) else ''
-                out.append(f'<a class="footnote-link" href="#{esc(note_links[target])}" role="doc-noteref"{marker}>{esc(node["label"])}</a>')
+        pieces=[];run=[]
+        def flush():
+            for segment,targets in references.segments(run,atoms):
+                content=inline(segment,atoms,typeset=typeset,note_links=note_links)
+                if targets:content=f'<a class="reference-link" href="#b-{esc(targets[0])}" data-reference-targets="{esc(" ".join(targets))}">{content}</a>'
+                pieces.append(content)
+            run.clear()
+        for n in nodes:
+            if n['type']=='text' and 'code' not in n.get('marks',[]) or n['type']=='protected_ref' and atoms[n['ref']]['kind'] in {'citation','number'}:run.append(n)
             else:
-                out.append(f'<a href="#b-{esc(target)}">{esc(node["label"])}</a>')
+                flush();pieces.append(inline([n],atoms,typeset=typeset,note_links=note_links))
+        flush();return ''.join(pieces)
+    out=[]
+    for node in nodes:
+        kind=node['type']
+        if kind=='text':content=esc(node['text'])
+        elif kind=='protected_ref':
+            atom=atoms[node['ref']]
+            content=math_markup(atom['value']) if atom['kind']=='math' else esc(atom['value'])
+            if atom.get('options'):
+                content+='<span class="static-options">'+''.join('<span'+(' aria-current="true"' if o['selected'] else '')+'>'+esc(o['label'])+'</span>' for o in atom['options'])+'</span>'
+            content=f'<span class="protected" data-kind="{esc(atom["kind"])}">{content}</span>'
+        elif kind=='link':content=f'<a href="{esc(node["href"])}" rel="noreferrer noopener">{esc(node["text"])}</a>'
+        else:
+            note=' class="footnote-link" role="doc-noteref"' if note_links and node['target_block_id'] in note_links else ''
+            content=f'<a href="#b-{esc(node["target_block_id"])}"{note}>{esc(node["label"])}</a>'
+        for mark in node.get('marks',[]):
+            tag={'strong':'strong','emphasis':'em','code':'code','underline':'u','deletion':'del','subscript':'sub','superscript':'sup'}[mark]
+            content=f'<{tag}>{content}</{tag}>'
+        out.append(content)
     return ''.join(out)
 
 
 def render_toc(source, blocks, *, original_labels=False):
     tree, stack = [], []
-    for bid in source['reading_order']:
+    for bid in [b['id'] for b in sorted(blocks.values(),key=lambda b:b['order'])]:
         block = blocks[bid]
         if block['kind'] != 'heading' or bid == source['title_block_id']:
             continue
@@ -93,17 +91,12 @@ def render_toc(source, blocks, *, original_labels=False):
 
 
 def render_html(ir, asset_paths, *, include_source=False):
-    if ir['render']['template_id'] == 'reader-v10':
-        from .rich_renderer import render_html as render_rich
-        return render_rich(ir, asset_paths, include_source=include_source)
-    if ir['source_revision'].get('schema_version') == '4.0':
-        raise ValueError('TEMPLATE_SCHEMA_INCOMPATIBLE')
     validate_ir(ir)
     source, tr = ir['source_revision'], ir['translation_revision']
     blocks = {b['id']:b for b in source['blocks']}
     results = {r['block_id']:r for r in tr['results']}
     atoms = source['protected_atoms']
-    sidenotes = ir['render']['template_id'] in {'reader-v8', 'reader-v9'}
+    sidenotes = ir['render']['template_id'] in {'reader-v8', 'reader-v9', 'reader-v10'}
     named_fonts = sidenotes or ir['render']['template_id'] == 'reader-v7'
     font_selection = named_fonts or ir['render']['template_id'] == 'reader-v6'
     margins = font_selection or ir['render']['template_id'] == 'reader-v5'
@@ -178,13 +171,15 @@ def render_html(ir, asset_paths, *, include_source=False):
         if block['kind'] == 'table_cell' and not block['normalized_text'].strip():
             return ''  # The table-level original supplies comparison for empty cells.
         notes = block['warnings'] + results[block['id']]['warnings']
+        annotations=block['attributes'].get('annotations',[])
+        auxiliary=''.join('<details class="parser-annotation"><summary>模型辅助信息 · '+esc(a['kind'])+'</summary><pre>'+esc(a['value'])+'</pre></details>' for a in annotations)
         if enhanced and (block['kind'] == 'table' or margins and block['kind'] == 'figure'):
             notes = list(dict.fromkeys(notes + [note for child in blocks.values() if child['owner_id'] == block['id']
                 for note in child['warnings'] + results[child['id']]['warnings']]))
         rendered = ''.join(f'<p class="note">{esc(note)}</p>' for note in notes)
         if modern and notes:
             rendered = f'<details class="block-notes"><summary>{len(notes)} 项内容提示</summary>{rendered}</details>'
-        return rendered + (comparison(block) if include_comparison else '')
+        return rendered + auxiliary + (comparison(block) if include_comparison else '')
     def margin_notes(content):
         label = '脚注、参考文献与内容提示' if sidenotes else '内容提示与原文对照'
         return f'<aside class="reader-notes" aria-label="{label}">' + content + '</aside>' if content else ''
@@ -192,22 +187,47 @@ def render_html(ir, asset_paths, *, include_source=False):
         content = []
         for target, anchor in note_links.get(bid, {}).items():
             label = footnotes[target][bid][1]
-            attrs = f' data-block-id="{esc(target)}" data-kind="footnote"' if anchor == 'b-' + target else ''
+            # A single canonical note remains in its semantic location. Context
+            # cards use distinct anchors even for the first referring block.
+            anchor='b-'+target+'-at-'+bid
+            attrs = ''
             content.append(f'<section class="footnote-card" id="{esc(anchor)}" data-note-target="{esc(target)}"{attrs} role="doc-footnote" tabindex="-1">'
                 f'<div class="sidenote-heading">脚注 · {esc(label)} <a href="#b-{esc(bid)}" aria-label="返回引用位置">↩</a></div>'
                 + pair(blocks[target]) + warnings(blocks[target]) + '</section>')
         return ''.join(content)
     def frame(block, content, *, tag='section', css='pair', notes=None):
         attrs = f'id="b-{esc(block["id"])}" data-block-id="{esc(block["id"])}" data-kind="{block["kind"]}"'
+        if block['kind']=='footnote':attrs+=' role="doc-footnote" tabindex="-1"'
         notes = warnings(block) if notes is None else notes
         if sidenotes:
             notes = block_footnotes(block['id']) + ''.join(block_footnotes(cid) for cid in children.get(block['id'], [])) + notes
         if margins:
             return f'<div class="reader-block"><{tag} class="{css}" {attrs}>{content}</{tag}>' + margin_notes(notes) + '</div>'
         return f'<{tag} class="{css}" {attrs}>{content}{notes}</{tag}>'
-    def render(bid):
+    def render(bid, *, in_list=False):
         block = blocks[bid]; kind = block['kind']; a = block['attributes']
         attrs = f'id="b-{esc(bid)}" data-block-id="{esc(bid)}" data-kind="{kind}"'
+        if bid==source['title_block_id']:return ''
+        if kind=='group':
+            if a.get('separator')=='horizontal':return f'<hr {attrs}>'
+            children_ids=a.get('children_block_ids',[])
+            if a['group_type']=='list':
+                tag='ol' if a.get('list_ordered') else 'ul'
+                settings=(f' start="{a.get("list_start",1)}"' + (' reversed' if a.get('list_reversed') else '')) if tag=='ol' else ''
+                if tag=='ol' and a.get('list_marker') in {'1','a','A','i','I'}:settings+=f' type="{a["list_marker"]}"'
+                if tag=='ol' and a.get('list_marker')==')':settings+=' class="semantic-list-custom"'
+                return f'<section class="semantic-group" {attrs}><{tag}{settings}>'+''.join(render(cid,in_list=True) for cid in children_ids)+f'</{tag}>'+warnings(block)+'</section>'
+            return f'<section class="semantic-group" {attrs}>'+''.join(render(cid) for cid in children_ids)+warnings(block)+'</section>'
+        if kind=='list_item' and in_list:
+            value=f' value="{a["list_index"]}"' if a.get('list_ordered') and 'list_index' in a else ''
+            owner=blocks.get(block['owner_id'])
+            if owner and owner['attributes'].get('list_marker')==')':value+=f' data-marker="{esc(str(a.get("list_index",1))+")")}"'
+            return f'<li {attrs}{value}><div class="pair">'+pair(block)+'</div>'+''.join(render(cid) for cid in a.get('children_block_ids',[]))+warnings(block)+'</li>'
+        if kind=='table_cell':
+            return ''.join(render(cid) for cid in a.get('children_block_ids',[])) if a.get('children_block_ids') else pair(block)
+        if kind=='code' and a.get('representation')=='plain':
+            language=f' class="language-{esc(a["code_language"])}"' if a.get('code_language') else ''
+            return frame(block,'<pre><code'+language+'>'+esc(block['normalized_text'])+'</code></pre>'+''.join(render(cid) for cid in a.get('caption_block_ids',[])))
         if kind == 'heading':
             level = max(2,min(6,a['level']))
             result = results[bid]
@@ -231,19 +251,29 @@ def render_html(ir, asset_paths, *, include_source=False):
                             continue
                         cell = starts[(row,col)]; cid = cell['content_block_id']
                         notes = '' if enhanced else warnings(blocks[cid])
-                        cells.append(f'<td id="b-{esc(cid)}" data-block-id="{esc(cid)}" data-kind="table_cell" rowspan="{cell["row_span"]}" colspan="{cell["column_span"]}">{pair(blocks[cid])}{notes}</td>')
+                        tag='th' if cell.get('role')=='header' else 'td'
+                        scope=f' scope="{esc(cell["scope"])}"' if cell.get('scope') else ''
+                        headers=' headers="'+esc(' '.join('b-'+hid for hid in cell.get('header_block_ids',[])))+'"' if cell.get('header_block_ids') else ''
+                        cells.append(f'<{tag} id="b-{esc(cid)}" data-block-id="{esc(cid)}" data-kind="table_cell" rowspan="{cell["row_span"]}" colspan="{cell["column_span"]}"{scope}{headers}>{render(cid)}{notes}</{tag}>')
                     rows.append('<tr>'+''.join(cells)+'</tr>')
-                inner = '<div class="table-wrap" style="overflow-x:auto;max-width:100%"><table><tbody>'+''.join(rows)+'</tbody></table></div>'
+                groups=a.get('row_groups') or [{'kind':'body','start_row':0,'end_row':len(rows)}]
+                sections=[]
+                for group in groups:
+                    tag={'head':'thead','body':'tbody','foot':'tfoot'}[group['kind']]
+                    sections.append('<'+tag+'>'+''.join(rows[group['start_row']:group['end_row']])+'</'+tag+'>')
+                columns=''.join(f'<colgroup span="{g["end_column"]-g["start_column"]}"></colgroup>' for g in a.get('column_groups',[]))
+                inner='<div class="table-wrap"><table>'+columns+''.join(sections)+'</table></div>'
                 if enhanced:
                     inner = '<p class="table-key">原文在上 · 译文在下 · 数值保留原文</p>' + inner
                 if a.get('asset_id') and not enhanced:
                     inner += '<details><summary>查看原 PDF 表格</summary>' + original_image(block, a['asset_id'], alternative=a.get('comparison_asset_id')) + '</details>'
-            return frame(block, f'{inner}<figcaption>{captions}</figcaption>', tag='figure')
+            notes=''.join(render(cid) for cid in a.get('note_block_ids',[]))
+            return frame(block, f'{inner}<figcaption>{captions}</figcaption>'+notes, tag='figure')
         if kind in {'code','math'}:
             auxiliary = ''
             if enhanced and kind == 'math' and a.get('representation') == 'latex':
                 number = f'<span class="equation-number">{esc(a["equation_number"])}</span>' if a.get('equation_number') else ''
-                return frame(block, f'<div class="equation-row">{math_markup(block["normalized_text"],display=True)}{number}</div>')
+                return frame(block, f'<div class="equation-row">{math_markup(block["normalized_text"],display=True)}{number}</div>'+''.join(render(cid) for cid in a.get('caption_block_ids',[])+a.get('note_block_ids',[])))
             if modern and (a.get('asset_id') or a.get('comparison_asset_id')):
                 inner = original_image(block,a.get('asset_id'),alternative=a.get('comparison_asset_id'))
                 if block['normalized_text']:
@@ -273,7 +303,7 @@ def render_html(ir, asset_paths, *, include_source=False):
     toc = render_toc(source, blocks, original_labels=margins)
     metadata = []
     if margins:
-        for bid in source['reading_order'][source['reading_order'].index(title) + 1:]:
+        for bid in source['reading_order'][source['reading_order'].index(title) + 1:] if title in source['reading_order'] else []:
             reason = retained.get(bid) or (results[bid]['reason'] if results[bid]['status'] == 'retained' else '')
             if reason not in {'original_author_list', 'original_affiliation', 'original_contact', 'original_identifier'}:
                 break
@@ -321,7 +351,7 @@ def render_html(ir, asset_paths, *, include_source=False):
             sections.append('<div class="reader-block">' + content + margin_notes(details) + '</div>' if margins else content)
             bibliography.clear()
         for bid in source['reading_order']:
-            if bid == title or bid in metadata or sidenotes and bid in footnotes:
+            if bid == title or bid in metadata:
                 continue
             if retained.get(bid) == 'original_reference':
                 flush_list()
@@ -400,155 +430,3 @@ def render_html(ir, asset_paths, *, include_source=False):
             '<header class="hero" id="b-'+esc(title)+'" data-block-id="'+esc(title)+'" data-kind="heading"><div class="kicker">对照文库 · '+esc(language_name(source['language']))+' / '+esc(language_name(tr['target_language']))+'</div>'
             '<h1 data-language="target">'+title_markup+'</h1><p class="original-title" data-language="source">'+source_title_markup+'</p>'+title_metadata+'<p class="note">'+esc(ir['document']['notice'])+'</p>'+draft_notice+('' if margins else warnings(blocks[title]))+'</header>'+(title_notes+'</div>' if margins else '')+
             '<p id="reader-storage-notice" class="note" hidden>浏览器存储不可用；正文仍可完整阅读。</p><div class="layout"><aside class="toc" aria-label="文章目录"><h2>目录</h2>'+toc+('' if margins else panel)+'</aside><article>'+body+'</article></div></body></html>\n').encode('utf-8')
-
-
-class Publisher:
-    def build(self, ir, asset_root, output_dir, *, include_source=False, qa_fingerprint=None):
-        validate_ir(ir, asset_root)
-        from packages.templates.registry import get_template
-        from packages.domain.errors import DomainError
-        try:
-            template = get_template(ir['render']['template_id'])
-        except DomainError as exc:
-            raise ValueError(exc.code) from exc
-        if ir['render']['template_sha256'] != template['css_sha256']:
-            raise ValueError('TEMPLATE_HASH_MISMATCH')
-        if any(block['kind'] not in template['kinds'] for block in ir['source_revision']['blocks']):
-            raise ValueError('TEMPLATE_UNSUPPORTED_KIND')
-        css, js = (ROOT/template['css_path']).read_bytes(), (ROOT/template['js_path']).read_bytes()
-        if digest(css) != template['css_sha256'] or digest(js) != template['js_sha256']:
-            raise ValueError('TEMPLATE_HASH_MISMATCH')
-        target = Path(output_dir)
-        if target.exists():
-            raise FileExistsError('immutable artifact exists')
-        target.parent.mkdir(parents=True,exist_ok=True)
-        staging = Path(tempfile.mkdtemp(prefix='.build-',dir=target.parent))
-        try:
-            files = {'reader.css':css, 'reader.js':js}
-            types = {'index.html':'text/html','reader.css':'text/css','reader.js':'text/javascript'}
-            for extra in template.get('extra_assets', []):
-                content = (ROOT / extra['source']).read_bytes()
-                if digest(content) != extra['sha256']:
-                    raise ValueError('TEMPLATE_HASH_MISMATCH')
-                files[extra['path']] = content
-                types[extra['path']] = extra['media_type']
-            paths = {}
-            original = ir['source_revision']['original_asset_id']
-            for asset in ir['source_revision']['assets']:
-                if asset['id'] == original and not include_source:
-                    continue
-                if ir['translation_revision'].get('content_policy') == 'nonblocking-v1' and asset['id'] != original and not safe_path(asset_root,asset['storage_key'],must_exist=False).exists():
-                    continue
-                path = ('original.pdf' if asset['id'] == original else 'assets/'+asset['sha256']+EXTENSIONS[asset['media_type']])
-                paths[asset['id']] = path
-                files[path] = safe_path(asset_root,asset['storage_key']).read_bytes()
-                types[path] = asset['media_type']
-            files['index.html'] = render_html(ir,paths,include_source=include_source)
-            manifest = {'schema_version':'1.0','document_id':ir['document']['id'], 'source_revision_id':ir['source_revision']['id'], 'translation_revision_id':ir['translation_revision']['id'], 'target_locale':ir['translation_revision']['target_language'], 'template_id':template['id'],'template_sha256':template['css_sha256'],'template_version':template['version'],'template_js_sha256':template['js_sha256'],'renderer_version':template['renderer_version'],'renderer_sha256':template['renderer_sha256'], 'source_snapshot_hash':digest(ir['source_revision']),'translation_snapshot_hash':digest(ir['translation_revision']),'settings_hash':ir['render']['settings_hash'],'mode':ir['render']['mode'],'include_source':include_source,
-                        'files':[{'path':path,'media_type':types[path],'byte_size':len(content),'sha256':digest(content)} for path,content in sorted(files.items())]}
-            manifest['content_digest'] = digest(manifest['files'])
-            manifest['qa_fingerprint'] = qa_fingerprint
-            for path,content in files.items():
-                file = safe_path(staging,path,must_exist=False); file.parent.mkdir(parents=True,exist_ok=True)
-                with file.open('xb') as handle:
-                    handle.write(content); handle.flush(); os.fsync(handle.fileno())
-            (staging/'manifest.json').write_bytes(canonical_bytes(manifest))
-            verify_artifact(staging)
-            # Same parent/volume rename only; caller separately commits Edition CAS.
-            staging.rename(target)
-            return manifest
-        finally:
-            if staging.exists():
-                shutil.rmtree(staging)
-
-
-def verify_artifact(artifact_dir):
-    root = Path(artifact_dir)
-    manifest = strict_loads(safe_path(root,'manifest.json').read_bytes())
-    names = [entry['path'] for entry in manifest['files']]
-    if len(names) != len(set(names)) or 'index.html' not in names:
-        raise ValueError('invalid artifact manifest')
-    if digest(manifest['files']) != manifest['content_digest']:
-        raise ValueError('artifact manifest digest mismatch')
-    for entry in manifest['files']:
-        path = safe_path(root,entry['path'])
-        if path.stat().st_size != entry['byte_size'] or digest(path.read_bytes()) != entry['sha256']:
-            raise ValueError('artifact file hash mismatch: '+entry['path'])
-    return manifest
-
-
-def export_files(artifact_dir, include_source):
-    root = Path(artifact_dir)
-    manifest = verify_artifact(root)
-    files = {entry['path']:safe_path(root,entry['path']).read_bytes() for entry in manifest['files']}
-    if manifest.get('legacy'):
-        files.pop('legacy-original.html',None)
-        text=files['index.html'].decode('utf-8').replace(manifest['navigation_patch']['to'],'')
-        if not include_source:
-            original=manifest['original_pdf_path']
-            text=re.sub(r'<a\b[^>]*href="'+re.escape(original)+r'"[^>]*>.*?</a>','',text,flags=re.S)
-            files.pop(original,None)
-        files['index.html']=text.encode('utf-8')
-        manifest['include_source']=include_source
-        manifest['files']=[entry for entry in manifest['files'] if entry['path'] in files]
-        for entry in manifest['files']:
-            entry['byte_size']=len(files[entry['path']]);entry['sha256']=digest(files[entry['path']])
-        manifest['content_digest']=digest(manifest['files'])
-        files['manifest.json']=canonical_bytes(manifest)
-        return manifest,files
-    if include_source and not manifest['include_source']:
-        raise ValueError('ASSET_MISSING: artifact has no original PDF')
-    if not include_source and manifest['include_source']:
-        content = files['index.html'].decode('utf-8')
-        content = re.sub(r'<a href="original\.pdf" download>原始 PDF</a>', '', content)
-        content = re.sub(r'<a data-original-reference href="original\.pdf">.*?</a>', '<span>对照图暂不可用；本次导出未包含原 PDF。</span>', content)
-        files['index.html'] = content.encode('utf-8')
-        files.pop('original.pdf',None)
-        manifest['include_source'] = False
-        manifest['files'] = [entry for entry in manifest['files'] if entry['path'] in files]
-        for entry in manifest['files']:
-            entry['byte_size'] = len(files[entry['path']]); entry['sha256'] = digest(files[entry['path']])
-        manifest['content_digest'] = digest(manifest['files'])
-    files['manifest.json'] = canonical_bytes(manifest)
-    return manifest, files
-
-
-def export_bundle(artifact_dir, destination, *, include_source=False):
-    target = Path(destination)
-    manifest, files = export_files(artifact_dir,include_source)
-    with zipfile.ZipFile(target,'x',compression=zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
-        for name, content in sorted(files.items()):
-            info = zipfile.ZipInfo(name,date_time=(1980,1,1,0,0,0))
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.create_system = 3
-            info.external_attr = 0o100644 << 16
-            archive.writestr(info,content,compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
-    return target
-
-
-def export_single_html(artifact_dir, destination, *, include_source=False):
-    target = Path(destination)
-    manifest, files = export_files(artifact_dir,include_source)
-    content = files['index.html'].decode('utf-8')
-    if manifest.get('legacy'):
-        content=content.replace('<head>','<head><meta http-equiv="Content-Security-Policy" content="'+esc(manifest['content_security_policy'])+'">',1)
-    else:
-        css = files['reader.css'].decode('utf-8')
-        content = content.replace('<link rel="stylesheet" href="reader.css">','<style>'+css+'</style>')
-        hashes = []
-        for path in re.findall(r'<script src="([A-Za-z0-9._/-]+)" defer></script>', content):
-            # HTML parsing normalizes line endings before CSP hashes inline text.
-            js = files[path].decode('utf-8').replace('\r\n','\n').replace('\r','\n')
-            content = content.replace(f'<script src="{path}" defer></script>','<script defer>'+js+'</script>')
-            hashes.append("'sha256-" + base64.b64encode(__import__('hashlib').sha256(js.encode()).digest()).decode() + "'")
-        content = content.replace("script-src 'self'", 'script-src ' + ' '.join(hashes))
-        if 'math-LICENSE.txt' in files:
-            notice = files['math-LICENSE.txt'].decode('utf-8')
-            content = content.replace('</body>', '<pre hidden data-vendor-license="KaTeX">' + esc(notice) + '</pre></body>')
-    for entry in manifest['files']:
-        if entry['media_type'].startswith('image/') or entry['media_type'] == 'application/pdf':
-            uri = 'data:'+entry['media_type']+';base64,'+base64.b64encode(files[entry['path']]).decode()
-            content = content.replace('"'+entry['path']+'"','"'+uri+'"')
-    with target.open('xb') as handle:
-        handle.write(content.encode('utf-8'))
-    return target

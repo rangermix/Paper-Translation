@@ -1,8 +1,8 @@
 import type { Inline, Locator } from './types';
 export function inlineText(nodes: Inline[] = [], atoms: Record<string, string> = {}): string {
-  return nodes.map(node => node.type === 'text' ? node.text : atoms[node.ref ?? node.id ?? node.ref_id ?? ''] ?? `[${node.ref ?? node.id ?? node.ref_id ?? '保护内容'}]`).join('');
+  return nodes.map(node => node.type === 'text' || node.type === 'link' ? node.text : node.type === 'xref' ? node.label : atoms[node.ref ?? node.id ?? node.ref_id ?? ''] ?? `[${node.ref ?? node.id ?? node.ref_id ?? '保护内容'}]`).join('');
 }
-export function replaceTextNodes(nodes: Inline[], values: string[]): Inline[] { let i = 0; return nodes.map(n => n.type === 'text' ? { type: 'text', text: values[i++] ?? n.text } : n); }
+export function replaceTextNodes(nodes: Inline[], values: string[]): Inline[] { let i = 0; return nodes.map(n => n.type === 'text' || n.type === 'link' ? { ...n, text: values[i++] ?? n.text } : n.type === 'xref' ? { ...n, label: values[i++] ?? n.label } : n); }
 export function codePointOffset(text: string, utf16Offset: number) { return Array.from(text.slice(0, utf16Offset)).length; }
 export function sourceTextEdit(before: string, after: string) {
   const old = Array.from(before), next = Array.from(after);

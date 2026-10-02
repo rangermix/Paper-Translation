@@ -64,16 +64,20 @@ def test_ready_detects_missing_dependency_and_referenced_data_corruption(client,
 
 
 def test_ready_requires_parser_manifest_before_accepting_parse_work(client, database, monkeypatch, tmp_path):
-    from packages.parsers import models
+    from packages.parsers import catalog
     db, cfg = database
     seed_editor(db, cfg)
     with db.transaction() as session:
         session.add_all([Heartbeat(id='worker'), Heartbeat(id='parser')])
     assert client.get('/health/ready').status_code == 200
-    monkeypatch.setattr(models, 'LOCK_PATH', tmp_path / 'missing-parser-manifest.json')
-    failed = client.get('/health/ready')
-    assert failed.status_code == 503
-    assert failed.json()['error']['code'] == 'DEPENDENCY_INTEGRITY_FAILURE'
+    monkeypatch.setattr(catalog, 'VLM_LOCK_PATH', tmp_path / 'missing-parser-manifest.json')
+    catalog.vlm_lock.cache_clear()  # Simulate cold load of the immutable image manifest.
+    try:
+        failed = client.get('/health/ready')
+        assert failed.status_code == 503
+        assert failed.json()['error']['code'] == 'DEPENDENCY_INTEGRITY_FAILURE'
+    finally:
+        catalog.vlm_lock.cache_clear()
 
 
 def test_candidate_cannot_apply_after_new_source_is_selected(client, database):

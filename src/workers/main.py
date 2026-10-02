@@ -153,6 +153,8 @@ def parse_spool(db, cfg, lease):
         if source:
             for asset in source['assets']:
                 asset['storage_key'] = prefix + '/' + asset['storage_key']
+            for page in source.get('parser',{}).get('evidence',{}).get('pages',[]):
+                page['path']=prefix+'/'+page['path']
             validate_source(source, asset_root=cfg.data)
         images = {str(p['page']): prefix + '/' + p['page_image'] for p in payload['inspection']['pages'] if p.get('page_image')}
         doc.generation += 1

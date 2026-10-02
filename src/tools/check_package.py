@@ -144,7 +144,8 @@ def check_seed_links():
 def main():
     checks = []
     actions = [
-        ('Runtime IR schema syntax', lambda: jsonschema.Draft202012Validator.check_schema(load('res/schemas/document-ir.schema.json'))),
+        ('Runtime IR schema syntax', lambda: [jsonschema.Draft202012Validator.check_schema(load(path)) for path in
+            ('res/schemas/document-ir.schema.json','res/schemas/document-ir-v4.schema.json')]),
         ('Authored fixture syntax, semantics and asset bytes', check_fixture),
         ('Frozen seed resources and registered reader templates', check_resources),
         ('Product and test Compose boundaries (static only)', check_compose),

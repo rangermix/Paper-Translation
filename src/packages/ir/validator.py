@@ -14,6 +14,7 @@ from .retention import original_only_blocks
 
 from packages.paths import ROOT
 SCHEMA = json.loads((ROOT / 'res/schemas/document-ir.schema.json').read_text('utf-8'))
+SCHEMA4 = json.loads((ROOT / 'res/schemas/document-ir-v4.schema.json').read_text('utf-8'))
 RASTER_TYPES = {'image/png', 'image/jpeg', 'image/webp'}
 PROSE = {'heading', 'paragraph', 'list_item', 'caption', 'table_cell', 'footnote'}
 
@@ -56,9 +57,13 @@ def strict_loads(value):
         raise IRValidationError(str(exc)) from exc
 
 
-def schema_validate(value, definition=None):
+def schema_validate(value, definition=None, *, version=None):
     canonical_bytes(value)  # jsonschema does not reject every nonfinite number itself.
-    schema = SCHEMA if definition is None else {'$ref': f'#/$defs/{definition}', '$defs': SCHEMA['$defs']}
+    if version is None:
+        version = value.get('schema_version', '3.0') if isinstance(value, dict) else '3.0'
+    require(version in {'3.0', '4.0'}, 'unknown schema version')
+    contract = SCHEMA4 if version == '4.0' else SCHEMA
+    schema = contract if definition is None else {'$ref': f'#/$defs/{definition}', '$defs': contract['$defs']}
     errors = sorted(jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).iter_errors(value), key=lambda e: str(list(e.path)))
     if errors:
         error = errors[0]
@@ -124,8 +129,10 @@ def empty_table_cell(block):
 
 def validate_source(source, document=None, asset_root=None, *, allow_missing_images=False):
     schema_validate(source, 'source_revision')
+    rich = source.get('schema_version') == '4.0'
     blocks, assets, atoms = source['blocks'], source['assets'], source['protected_atoms']
     require(len(blocks) <= 10000 and sum(len(b['normalized_text']) for b in blocks) <= 1_000_000, 'source capacity exceeded')
+    if rich:require(len(atoms)<=100000 and sum(len(b['source_inline']) for b in blocks)<=200000,'semantic inline capacity exceeded')
     require(len(assets) <= 501, 'asset count exceeded')
     by, ab = {b['id']: b for b in blocks}, {a['id']: a for a in assets}
     require(len(by) == len(blocks), 'duplicate block IDs')
@@ -134,6 +141,14 @@ def validate_source(source, document=None, asset_root=None, *, allow_missing_ima
     original = ab.get(source['original_asset_id'])
     require(original and original['media_type'] == 'application/pdf' and original['sha256'] == source['sha256'], 'invalid original PDF binding')
     require(sum(a['byte_size'] for a in assets if a is not original) <= 200 * 1024 * 1024, 'asset bytes exceeded')
+    if rich:
+        pages=source['parser'].get('evidence',{}).get('pages',[])
+        require(len({p['page'] for p in pages})==len(pages),'duplicate parser evidence page')
+        require(sum(p['byte_size'] for p in pages)<=80_000_000,'parser evidence capacity exceeded')
+        for page in pages:
+            file=safe_path(asset_root or ROOT,page['path'],must_exist=asset_root is not None)
+            if asset_root is not None:
+                require(file.stat().st_size==page['byte_size'] and digest(file.read_bytes())==page['sha256'],'parser evidence hash mismatch')
     for asset in assets:
         safe_path(asset_root or ROOT, asset['storage_key'], must_exist=False)
         require(asset['media_type'] in RASTER_TYPES | {'application/pdf'}, 'unsupported asset media type')
@@ -160,7 +175,7 @@ def validate_source(source, document=None, asset_root=None, *, allow_missing_ima
     require(set(source['reading_order']) == roots and len(source['reading_order']) == len(roots), 'root reading order mismatch')
     require(source['reading_order'] == sorted(roots, key=lambda i: by[i]['order']), 'reading order disagrees with block order')
     title = by.get(source['title_block_id'])
-    require(title and title['id'] in roots and title['kind'] == 'heading', 'invalid title block')
+    require(title and (rich or title['id'] in roots) and title['kind'] == 'heading', 'invalid title block')
     if document is not None:
         require(document['title'] == title['normalized_text'], 'source title drift')
     for block in blocks:
@@ -175,10 +190,20 @@ def validate_source(source, document=None, asset_root=None, *, allow_missing_ima
             current = by[current['parent_id']]
         owner = by.get(block['owner_id'])
         if block['owner_id'] is not None:
-            require(owner and owner['owner_id'] is None, 'invalid owner', path)
-            require((kind == 'caption' and owner['kind'] in {'figure','table'}) or (kind == 'table_cell' and owner['kind'] == 'table'), 'illegal owner kind', path)
+            require(owner and (rich or owner['owner_id'] is None), 'invalid owner', path)
+            require((rich and owner['kind'] in {'group','list_item','table_cell'}) or
+                (kind == 'caption' and owner['kind'] in ({'figure','table','math','code'} if rich else {'figure','table'})) or
+                (rich and kind == 'footnote' and owner['kind'] in {'figure','table','math'}) or
+                (kind == 'table_cell' and owner['kind'] == 'table'), 'illegal owner kind', path)
+            owned_seen, owned = set(), block
+            while owned['owner_id'] is not None:
+                require(owned['id'] not in owned_seen and owned['owner_id'] in by, 'ownership cycle or missing owner', path)
+                require(len(owned_seen)<64,'ownership depth exceeded',path)
+                owned_seen.add(owned['id']); owned = by[owned['owner_id']]
         require(kind != 'table_cell' or owner, 'table cell cannot be a root', path)
-        require(kind not in PROSE or block['translatable'] or empty_table_cell(block), 'prose cannot disable translation', path)
+        require(kind not in PROSE or block['translatable'] or empty_table_cell(block) or
+            (rich and not block['normalized_text'] and (attributes.get('children_block_ids') or
+                any(n['type']=='protected_ref' and atoms.get(n['ref'],{}).get('kind')=='control' for n in block['source_inline']))), 'prose cannot disable translation', path)
         text, previous = block['raw_text'], 0
         for edit in block['normalization_edits']:
             require(previous <= edit['raw_start'] <= edit['raw_end'] <= len(text), 'invalid code point edit interval', path)
@@ -208,10 +233,26 @@ def validate_source(source, document=None, asset_root=None, *, allow_missing_ima
         require(len(captions) == len(set(captions)), 'duplicate caption reference', path)
         for cid in captions:
             require(cid in by and by[cid]['kind'] == 'caption' and by[cid]['owner_id'] == block['id'], 'caption ownership mismatch', path)
-        if kind == 'caption' and owner:
+        if kind == 'caption' and owner and owner['kind'] in {'figure','table','math','code'}:
             require(block['id'] in owner['attributes'].get('caption_block_ids', []), 'orphan caption', path)
         if kind == 'table_cell':
             require(block['id'] in [c['content_block_id'] for c in owner['attributes'].get('cells', [])], 'orphan cell', path)
+        if rich:
+            children = attributes.get('children_block_ids', [])
+            for cid in children:
+                require(cid in by and by[cid]['owner_id'] == block['id'], 'child ownership mismatch', path)
+            if kind in {'group','list_item','table_cell'}:
+                require(set(children) == {b['id'] for b in blocks if b['owner_id'] == block['id']}, 'unlisted owned child', path)
+            if kind == 'group':
+                require(not text and not block['source_inline'] and not block['translatable'], 'group duplicates leaf content', path)
+            for nid in attributes.get('note_block_ids', []):
+                require(nid in by and by[nid]['kind'] == 'footnote' and by[nid]['owner_id'] == block['id'], 'note ownership mismatch', path)
+            if kind=='footnote' and owner and owner['kind'] in {'figure','table','math'}:
+                require(block['id'] in owner['attributes'].get('note_block_ids',[]),'orphan scoped note',path)
+            previous=0
+            for group in attributes.get('column_groups',[]):
+                require(kind=='table' and previous<=group['start_column']<group['end_column']<=attributes['columns'],'invalid column group',path)
+                previous=group['end_column']
         if kind == 'table' and attributes['representation'] == 'structured':
             require(attributes['rows'] * attributes['columns'] <= 100000, 'table grid too large', path)
             cells, covered = set(), set()
@@ -219,12 +260,23 @@ def validate_source(source, document=None, asset_root=None, *, allow_missing_ima
                 cid = cell['content_block_id']
                 require(cid in by and by[cid]['kind'] == 'table_cell' and by[cid]['owner_id'] == block['id'] and cid not in cells, 'invalid table cell reference', path)
                 cells.add(cid)
+                if rich:
+                    for hid in cell.get('header_block_ids', []):
+                        require(hid in by and by[hid]['owner_id'] == block['id'] and any(c['content_block_id'] == hid and c.get('role') == 'header' for c in attributes['cells']), 'invalid header association', path)
                 require(cell['row'] + cell['row_span'] <= attributes['rows'] and cell['column'] + cell['column_span'] <= attributes['columns'], 'cell out of bounds', path)
                 for row in range(cell['row'], cell['row'] + cell['row_span']):
                     for col in range(cell['column'], cell['column'] + cell['column_span']):
                         require((row,col) not in covered, 'overlapping table cells', path)
                         covered.add((row,col))
             require(len(covered) == attributes['rows'] * attributes['columns'], 'table coverage gap', path)
+            if rich:
+                groups=attributes.get('row_groups', [])
+                previous=0
+                for group in groups:
+                    require(0 <= group['start_row'] < group['end_row'] <= attributes['rows'], 'row group outside table', path)
+                    require(group['start_row']==previous,'row group overlap or gap',path)
+                    previous=group['end_row']
+                if groups:require(previous==attributes['rows'],'row group coverage gap',path)
         if kind == 'math':
             require(attributes['representation'] in {'plain','latex','image'}, 'unsupported math representation', path)
             require('asset_id' in attributes if attributes['representation'] == 'image' else bool(text.strip()), 'math has no reliable representation', path)
@@ -236,6 +288,7 @@ def validate_source(source, document=None, asset_root=None, *, allow_missing_ima
 def validate_ir(value, asset_root=None):
     schema_validate(value)
     source, translation = value['source_revision'], value['translation_revision']
+    require(value['schema_version'] == source.get('schema_version', '3.0'), 'source/render version mismatch')
     validate_source(source, value['document'], asset_root,
         allow_missing_images=value['translation_revision'].get('content_policy') == 'nonblocking-v1')
     require(translation['source_revision_id'] == source['id'], 'translation bound to another source')
@@ -270,7 +323,10 @@ def validate_ir(value, asset_root=None):
                 require(a == b, f'{node_type} multiplicity mismatch', path)
         else:
             require(not result['target_inline'] and bool(result['reason'].strip()), 'invalid retained result', path)
-            require(block['kind'] in {'code','math','figure','reference','table'} or empty_table_cell(block)
+            require(block['kind'] in {'code','math','figure','reference','table','group'} or empty_table_cell(block)
+                or (source.get('schema_version') == '4.0' and not block['normalized_text'] and
+                    result['reason']=='static_control' and any(n['type']=='protected_ref' and atoms[n['ref']]['kind']=='control' for n in block['source_inline']))
+                or (source.get('schema_version') == '4.0' and block['attributes'].get('children_block_ids') and not block['normalized_text'])
                 or result['reason'] == original_only.get(rid)
                 or (result['reason'] == 'same_language' and block['language'] == translation['target_language']),
                 'required prose cannot be retained', path)

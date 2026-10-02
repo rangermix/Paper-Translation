@@ -240,11 +240,12 @@ def test_parse_commit_and_import_do_not_deadlock(client, database, monkeypatch):
     seed_editor(db, cfg)
     replacement(db, cfg)
     with db.transaction() as session:
-        enqueue(session, 'parse', {'source_asset_id': 'source_pdf', 'base_revision_id': 'src_fixture'}, 'doc_fixture')
+        enqueue(session, 'parse', {'source_asset_id': 'source_pdf', 'base_revision_id': 'src_fixture',
+            'parser_profile_revision': 'surya-ocr-2-v1', 'parser_accelerator': 'dmr', 'parser_backend': 'vllm'}, 'doc_fixture')
     lease = claim(db)
     output = cfg.parser_outputs / lease.task_id / str(lease.fence)
     output.mkdir(parents=True)
-    payload = canonical_bytes({'source_revision': None, 'inspection': {'pages': [], 'page_count': 1},
+    payload = canonical_bytes({'parser_profile_revision': 'surya-ocr-2-v1', 'source_revision': None, 'inspection': {'pages': [], 'page_count': 1},
         'coverage': {'can_translate': False, 'unresolved': [{'reason': 'Controlled authored spool'}]}})
     (output / 'payload.json').write_bytes(payload)
     (output / 'result.json').write_bytes(canonical_bytes({'task_id': lease.task_id, 'fence': lease.fence,
@@ -313,11 +314,12 @@ def test_deleted_document_cannot_regain_late_parser_files(client, database, monk
     db, cfg = database
     seed_editor(db, cfg)
     with db.transaction() as session:
-        enqueue(session, 'parse', {'source_asset_id': 'source_pdf', 'base_revision_id': 'src_fixture'}, 'doc_fixture')
+        enqueue(session, 'parse', {'source_asset_id': 'source_pdf', 'base_revision_id': 'src_fixture',
+            'parser_profile_revision': 'surya-ocr-2-v1', 'parser_accelerator': 'dmr', 'parser_backend': 'vllm'}, 'doc_fixture')
     lease = claim(db)
     output = cfg.parser_outputs / lease.task_id / str(lease.fence)
     output.mkdir(parents=True)
-    payload = canonical_bytes({'source_revision': None, 'inspection': {'pages': [], 'page_count': 1},
+    payload = canonical_bytes({'parser_profile_revision': 'surya-ocr-2-v1', 'source_revision': None, 'inspection': {'pages': [], 'page_count': 1},
         'coverage': {'can_translate': False, 'unresolved': [{'reason': 'Controlled late output text'}]}})
     (output/'payload.json').write_bytes(payload)
     (output/'result.json').write_bytes(canonical_bytes({'task_id': lease.task_id, 'fence': lease.fence,

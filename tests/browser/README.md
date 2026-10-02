@@ -19,6 +19,9 @@ npm --prefix src/apps/web run test:browser
 
 `npm --prefix src/apps/web run test:browser -- --list` collects the suite without
 requiring a local evidence archive.
+To use an already installed Google Chrome, set `LIBRARY_BROWSER_CHANNEL=chrome`;
+omitting it keeps Playwright's bundled Chromium default. Keep the same explicit
+test URL and output directory.
 
 ## Live acceptance instance
 

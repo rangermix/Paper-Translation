@@ -55,7 +55,7 @@ def _mapping_index(source):
                 return [resolve(item) for item in value]
             if isinstance(value, dict):
                 if value.get('type') == 'protected_ref':
-                    return {'type': 'protected_ref', 'resolved': resolve(atoms[value['ref']])}
+                    return {'type': 'protected_ref', 'resolved': resolve(atoms[value['ref']]), **{name:resolve(item,name) for name,item in value.items() if name not in {'type','ref','output_path'}}}
                 return {name: resolve(item, name) for name, item in value.items()}
             return value
 
@@ -203,12 +203,28 @@ def _split_inline(nodes, offset, atoms):
     return left, right
 
 
+def replacement_inline(source, block, nodes, replacement):
+    """Preserve styles where a PDF-evidence edit has a unique span association."""
+    if not replacement:return []
+    if source.get('schema_version')!='4.0':return [{'type':'text','text':replacement}]
+    from packages.parsers.rich_ir import reconcile_runs
+    restored,ambiguous=reconcile_runs(nodes,replacement)
+    if ambiguous:
+        block['warnings'].append('修正文字跨越不同格式范围；未猜测新格式。旧来源修订保留原格式。')
+        return [{'type':'text','text':replacement}]
+    return [{k:v for k,v in n.items() if k in {'type','text','marks','output_path'}} for n in restored]
+
+
 def _set_order(source, root_order):
     by = {b['id']: b for b in source['blocks']}
-    order = []
-    for root in root_order:
-        order.append(by[root])
-        order.extend(b for b in source['blocks'] if b['owner_id'] == root)
+    order = [];seen=set();children={}
+    for child in source['blocks']:children.setdefault(child['owner_id'],[]).append(child['id'])
+    def visit(bid):
+        require(bid not in seen,'SOURCE_ORDER_INVALID',status=422);seen.add(bid)
+        order.append(by[bid])
+        listed=by[bid]['attributes'].get('children_block_ids',[])
+        for child in listed+[cid for cid in children.get(bid,[]) if cid not in listed]:visit(child)
+    for root in root_order:visit(root)
     require(len(order) == len(source['blocks']), 'SOURCE_ORDER_INVALID', status=422)
     for index, block in enumerate(order):
         block['order'] = index
@@ -244,12 +260,13 @@ def apply_corrections(source, operations, evidence, reason):
             left, tail = _split_inline(block['source_inline'], start, result['protected_atoms'])
             middle, right = _split_inline(tail, end - start, result['protected_atoms'])
             require(all(n['type'] == 'text' for n in middle), 'SOURCE_PROTECTED_EDIT', 'A mechanical text edit cannot remove protected content.', status=422)
-            block['source_inline'] = left + ([{'type': 'text', 'text': replacement}] if replacement else []) + right
+            block['source_inline'] = left + replacement_inline(result,block,middle,replacement) + right
             _normalization(block, normalized, evidence, reason)
         elif kind == 'split':
             require(set(op) == {'kind', 'block_id', 'offset'}, 'SOURCE_OPERATION_INVALID', status=422)
             block = by.get(op['block_id'])
-            require(block is not None and block['id'] in evidenced and block['kind'] == 'paragraph' and block['owner_id'] is None, 'SOURCE_SPLIT_UNSUPPORTED', status=422)
+            require(block is not None and block['id'] in evidenced and block['kind'] == 'paragraph' and
+                (block['owner_id'] is None or result.get('schema_version')=='4.0' and block['id'] in by[block['owner_id']]['attributes'].get('children_block_ids',[])), 'SOURCE_SPLIT_UNSUPPORTED', status=422)
             offset = op['offset']
             require(type(offset) is int and 0 < offset < len(block['normalized_text']), 'SOURCE_OFFSET_INVALID', status=422)
             require(block['raw_text'] == block['normalized_text'], 'SOURCE_SPLIT_MAPPING_REQUIRED', 'Split a mechanically normalized block only after an explicit raw-to-normalized mapping is available.', status=422)
@@ -264,7 +281,8 @@ def apply_corrections(source, operations, evidence, reason):
             _normalization(other, other['raw_text'], evidence, reason)
             result['blocks'].append(other)
             root_order = list(result['reading_order'])
-            root_order.insert(root_order.index(block['id']) + 1, other['id'])
+            siblings=root_order if block['owner_id'] is None else by[block['owner_id']]['attributes']['children_block_ids']
+            siblings.insert(siblings.index(block['id']) + 1, other['id'])
             _set_order(result, root_order)
             structural.append({'kind': 'split', 'old_block_ids': [block['id']], 'new_block_ids': [block['id'], other['id']]})
         elif kind == 'merge':
@@ -272,9 +290,13 @@ def apply_corrections(source, operations, evidence, reason):
             ids = op['block_ids']
             require(isinstance(ids, list) and 2 <= len(ids) <= 100 and len(set(ids)) == len(ids) and set(ids) <= by.keys(), 'SOURCE_MERGE_INVALID', status=422)
             blocks = [by[bid] for bid in ids]
-            require(all(b['kind'] == 'paragraph' and b['owner_id'] is None for b in blocks) and len({b['parent_id'] for b in blocks}) == 1 and bool(set(ids) & evidenced), 'SOURCE_MERGE_UNSUPPORTED', status=422)
-            at = result['reading_order'].index(ids[0])
-            require(result['reading_order'][at:at + len(ids)] == ids, 'SOURCE_MERGE_NOT_ADJACENT', status=422)
+            require(all(b['kind'] == 'paragraph' for b in blocks) and len({b['owner_id'] for b in blocks})==1 and
+                (blocks[0]['owner_id'] is None or result.get('schema_version')=='4.0') and len({b['parent_id'] for b in blocks}) == 1 and bool(set(ids) & evidenced), 'SOURCE_MERGE_UNSUPPORTED', status=422)
+            owner=by.get(blocks[0]['owner_id'])
+            siblings=owner['attributes'].get('children_block_ids',[]) if owner else result['reading_order']
+            require(ids[0] in siblings,'SOURCE_MERGE_UNSUPPORTED',status=422)
+            at = siblings.index(ids[0])
+            require(siblings[at:at + len(ids)] == ids, 'SOURCE_MERGE_NOT_ADJACENT', status=422)
             first = blocks[0]
             raw, nodes = '', []
             for b in blocks:
@@ -287,6 +309,7 @@ def apply_corrections(source, operations, evidence, reason):
             _normalization(first, flatten_inline(nodes, result['protected_atoms']), evidence, reason)
             first['provenance'] = list({digest(loc): loc for b in blocks for loc in b['provenance']}.values())
             result['blocks'] = [b for b in result['blocks'] if b['id'] not in ids[1:]]
+            if owner:owner['attributes']['children_block_ids']=[cid for cid in siblings if cid not in ids[1:]]
             for b in result['blocks']:
                 for node in b['source_inline']:
                     if node.get('target_block_id') in ids[1:]:

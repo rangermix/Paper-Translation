@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "adapter_version": "full-page-dmr-v2",
+  "adapter_version": "full-page-dmr-v3-semantic",
   "models": [
     {
       "id": "surya-ocr-2-v1",

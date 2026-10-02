@@ -5,25 +5,63 @@ import base64
 import io
 import os
 from pathlib import Path
-import re
 
 import httpx
 from packages.ir import canonical_bytes, digest
 from .catalog import vlm_lock, vlm_model
 from .inspect import PDFError, inspect_pdf
 from .source_adapter import SourceAdapter
-from .preparation import model_directory
 from .profiles import (CHANDRA_PROFILE, INFINITY_FLASH_PROFILE, INFINITY_PRO_PROFILE,
                        SURYA_PROFILE, VLM_PROFILES, selected_profile)
 from .runtime import runtime_config
-from .vlm_output import bbox, html_items, item, json_items, markdown_items, otsl_table, strip_fences
+from .vlm_output import html_items, json_items, strip_fences
+from .semantic import VERSION as DECODER_VERSION
+from .page_prompts import CHANDRA_LAYOUT_PROMPT
 
 PROMPTS = {
     SURYA_PROFILE: 'OCR this image to HTML. Each block is a div with data-label and data-bbox (x0 y0 x1 y1, normalized 0-1000).',
-    CHANDRA_PROFILE: 'OCR this image to HTML, arranged as layout blocks.  Each layout block should be a div with the data-bbox attribute representing the bounding box of the block in x0 y0 x1 y1 format.  Bboxes are normalized 0-1000. The data-label attribute is the label for the block.\nUse the following labels: Caption, Footnote, Equation-Block, List-Group, Page-Header, Page-Footer, Image, Section-Header, Table, Text, Complex-Block, Code-Block, Form, Table-Of-Contents, Figure, Chemical-Block, Diagram, Bibliography, Blank-Page.\nInline math: Surround math with <math>...</math> tags. Math expressions should be rendered in KaTeX-compatible LaTeX. Use display for block math.\nTables: Use colspan and rowspan attributes to match table structure.\nText: join lines together properly into paragraphs using <p>...</p> tags. Reading order should be correct and natural.',
     INFINITY_FLASH_PROFILE: '- Extract layout information from the provided PDF image.\n- For each layout element, output its bbox, category, and the text content within the bbox.\n- Bbox format: [x1, y1, x2, y2].\n- Allowed layout categories: [\'header\', \'title\', \'text\', \'figure\', \'table\', \'formula\', \'figure_caption\', \'table_caption\', \'formula_caption\', \'figure_footnote\', \'table_footnote\', \'page_footnote\', \'footer\'].\n- Text extraction and formatting:\n  1) For \'figure\', the text field must be an empty string.\n  2) For \'formula\', format text as LaTeX.\n  3) For \'table\', format text as HTML.\n  4) For all other categories (e.g., text, title), format text as Markdown.\n- The output text must be exactly the original text from the image, with no translation or rewriting.\n- Sort all layout elements in human reading order.\n- Final output must be a single JSON object.',
 }
 PROMPTS[INFINITY_PRO_PROFILE] = PROMPTS[INFINITY_FLASH_PROFILE]
+PROMPTS[CHANDRA_PROFILE] = CHANDRA_LAYOUT_PROMPT
+CONTRACT_REVISIONS = {
+    SURYA_PROFILE: 'a2363d3311773a2b6145a40458043211c50c52f4',
+    CHANDRA_PROFILE: 'd4f7467435aa4137d9539f000ddf0b7ced3eb43f',
+    INFINITY_PRO_PROFILE: '9a93df02e725ee98ccd545d02580ec2c12c203ae',
+    INFINITY_FLASH_PROFILE: '9a93df02e725ee98ccd545d02580ec2c12c203ae',
+}
+
+
+def response_evidence(value, runtime, model):
+    """Injected offline inference has unknown completion/engine metadata."""
+    if isinstance(value, str):
+        return {'content': value, 'response': None, 'raw_response': None,
+                'finish_reason': None, 'usage': None, 'engine_version': None,
+                'model_artifact_id': runtime.model_id, 'backend': runtime.backend}
+    if not isinstance(value, dict) or not isinstance(value.get('content'), str):
+        raise PDFError('PARSER_OUTPUT_INVALID')
+    return value
+
+
+def decode_response(raw_response,runtime):
+    """Keep unusable completions as evidence; a changed model identity is fatal."""
+    from packages.ir import strict_loads
+    result={'content':'','response':None,'raw_response':raw_response,'finish_reason':None,'usage':None,
+        'model_artifact_id':runtime.model_id,'backend':runtime.backend,'engine_version':None}
+    try:body=strict_loads(raw_response)
+    except ValueError:return result|{'inference_error':'invalid_response_json'}
+    result['response']=body
+    if not isinstance(body,dict):return result|{'inference_error':'invalid_response_shape'}
+    if body.get('model') != runtime.model_id:raise PDFError('PARSER_DMR_MODEL_MISMATCH')
+    choices=body.get('choices',[])
+    if not isinstance(choices,list) or len(choices)!=1 or not isinstance(choices[0],dict):return result|{'inference_error':'invalid_choices'}
+    choice=choices[0];message=choice.get('message')
+    result.update(finish_reason=choice.get('finish_reason') if isinstance(choice.get('finish_reason'),str) else None,usage=body.get('usage'))
+    if not isinstance(message,dict) or message.get('role')!='assistant' or message.get('tool_calls') or message.get('refusal'):
+        return result|{'inference_error':'unusable_message'}
+    content=message.get('content')
+    if not isinstance(content,str) or len(content)>1_000_000:return result|{'inference_error':'invalid_content'}
+    return result|{'content':content}
 
 
 class DockerVision:
@@ -52,22 +90,27 @@ class DockerVision:
                 raise PDFError('PARSER_DMR_MODEL_MISMATCH')
             buffer = io.BytesIO()
             image.save(buffer, format='PNG')
-            response = client.post(runtime.server_url + '/chat/completions', json={
+            request = {
                 'model': runtime.model_id, 'messages': [{'role': 'user', 'content': [
                     {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode()}},
                     {'type': 'text', 'text': prompt}]}], 'temperature': 0, 'max_tokens': 8192,
-                'chat_template_kwargs': {'enable_thinking': False}, 'stream': False})
-            response.raise_for_status()
-            body = response.json()
-            if body.get('model') != runtime.model_id:
-                raise PDFError('PARSER_DMR_MODEL_MISMATCH')
-            choices = body.get('choices', [])
-            if len(choices) != 1:
-                raise PDFError('PARSER_OUTPUT_INVALID')
-            message = choices[0].get('message', {})
-            if message.get('role') != 'assistant' or message.get('tool_calls') or message.get('refusal'):
-                raise PDFError('PARSER_OUTPUT_INVALID')
-            return strip_fences(message.get('content'))
+                'chat_template_kwargs': {'enable_thinking': False}, 'stream': False}
+            # Read a bounded, non-SSE response. A large server response must not
+            # first become an unbounded allocation in httpx.post().
+            try:
+                with client.stream('POST', runtime.server_url + '/chat/completions', json=request) as response:
+                    response.raise_for_status()
+                    chunks = []
+                    size = 0
+                    for chunk in response.iter_bytes(chunk_size=65536):
+                        size += len(chunk)
+                        if size > 2_000_000:
+                            raise PDFError('PARSER_OUTPUT_LIMIT')
+                        chunks.append(chunk)
+                    raw_response = b''.join(chunks).decode('utf-8')
+            except httpx.HTTPError as error:
+                return response_evidence('',runtime,self.model)|{'inference_error':type(error).__name__}
+            return decode_response(raw_response,runtime)
 
 
 class VisionParser:
@@ -89,6 +132,12 @@ class VisionParser:
         infer = factory(model, self.artifacts_path, runtime)
         report_progress('model_loaded', model=local_identity(selection, vlm_lock()))
         items, outputs = [], []
+        output = Path(output_dir)
+        output.mkdir(parents=True, exist_ok=True)
+        evidence = {'decoder_version': DECODER_VERSION, 'contract_revision': CONTRACT_REVISIONS[selection],
+            'backend': runtime.backend, 'engine_version': None,
+            'preprocessing': 'PDFium RGB PNG; scale<=2; page<=16M pixels; top-left 0-1000 layout rectangles', 'pages': []}
+        from packages.storage import atomic_write
         import pypdfium2 as pdfium
         with pdfium.PdfDocument(local_pdf) as pdf:
             for page in inspection['pages']:
@@ -100,14 +149,41 @@ class VisionParser:
                     try:
                         image = bitmap.to_pil().convert('RGB')
                         try:
-                            raw = strip_fences(infer(image, PROMPTS[selection]))
-                            outputs.append({'page': page['page'], 'output': raw})
+                            envelope = response_evidence(infer(image, PROMPTS[selection]), runtime, model)
+                            raw = envelope['content']
+                            record = {'page': page['page'], 'profile': selection, 'revision': model['revision'],
+                                'decoder_version': DECODER_VERSION, 'contract_revision': CONTRACT_REVISIONS[selection], 'page_size': page['page_size'],
+                                'render_size': list(image.size), 'prompt_sha256': digest(PROMPTS[selection].encode()), **envelope}
+                            # Literal paths index this decoder input by Unicode
+                            # code point; DOM paths refer to its repaired tree.
+                            record['decoder_payload'] = strip_fences(raw) if len(raw)<=1_000_000 else None
+                            key = f'evidence/page-{page["page"]:04d}.response.json'
+                            encoded = canonical_bytes(record)
+                            if len(encoded) > 6_000_000 or sum(p['byte_size'] for p in evidence['pages']) + len(encoded) > 80_000_000:
+                                raise PDFError('PARSER_OUTPUT_LIMIT')
+                            atomic_write(output, key, encoded)
+                            evidence['pages'].append({'page': page['page'], 'path': key, 'sha256': digest(encoded),
+                                'byte_size': len(encoded), 'finish_reason': envelope['finish_reason'][:40] if isinstance(envelope.get('finish_reason'),str) else None})
+                            outputs.append({'page': page['page'], 'response_path': key, 'sha256': digest(encoded)})
+                            # Update the manifest before attempting to decode this page.
+                            atomic_write(output, 'vision-parser.json', canonical_bytes({'profile': selection, 'revision': model['revision'], 'pages': outputs}))
+                            diagnostics = []
+                            if envelope.get('inference_error'):
+                                page['parse_failed']=True
+                                diagnostics.append({'code':'MODEL_PAGE_FAILED','output_path':'/','reason':str(envelope['inference_error'])[:500]+'; original page retained; no automatic retry'})
+                            if envelope.get('finish_reason') not in {None, 'stop'}:
+                                diagnostics.append({'code': 'PARSER_OUTPUT_INCOMPLETE', 'output_path': '/',
+                                    'reason': ('Inference ended with ' + str(envelope['finish_reason']))[:500]})
                             try:
-                                recognized = html_items(raw, page) if model['output'] == 'html' else json_items(raw, page)
+                                recognized = html_items(raw, page, diagnostics) if model['output'] == 'html' else json_items(raw, page, diagnostics)
                             except (PDFError, ValueError, TypeError, KeyError):
                                 recognized = []
                                 page['parse_failed'] = True
                                 inspection.setdefault('warnings', []).append({'code': 'PARSER_PARTIAL_RESULT'})
+                            if diagnostics:
+                                page['decoder_diagnostics'] = diagnostics
+                                inspection.setdefault('warnings', []).extend({'page': page['page'], **d} for d in diagnostics)
+                            atomic_write(output, f'evidence/page-{page["page"]:04d}.decode.json', canonical_bytes({'page': page['page'], 'diagnostics': diagnostics}))
                             items.extend(recognized)
                         finally:
                             image.close()
@@ -117,13 +193,12 @@ class VisionParser:
                     native.close()
                 page['ocr_attempted'] = True
                 report_progress('page_completed', page=page['page'], phase='model_inference')
-        output = Path(output_dir)
-        output.mkdir(parents=True, exist_ok=True)
-        (output / 'vision-parser.json').write_bytes(canonical_bytes({'profile': selection, 'revision': model['revision'], 'pages': outputs}))
-        fingerprint = digest({'adapter': vlm_lock()['adapter_version'], 'model': model, 'prompt': PROMPTS[selection], **runtime.identity()})
+        fingerprint = digest({'adapter': vlm_lock()['adapter_version'], 'decoder': DECODER_VERSION,
+            'schema': '4.0', 'model': model, 'contract_revision': CONTRACT_REVISIONS[selection], 'prompt': PROMPTS[selection], 'max_tokens': 8192,
+            'preprocessing': evidence['preprocessing'], **runtime.identity()})
         result = SourceAdapter().adapt(items, inspection, local_pdf, asset_id, output, profile=profile,
             parser_version=vlm_lock()['adapter_version'], parser_name=selection.removesuffix('-v1'),
             enrichment={'model': model['repo'], 'revision': model['revision']}, pipeline_hash=fingerprint,
-            model_generated_source=True)
+            model_generated_source=True, semantic=True, parser_evidence=evidence)
         result['parser_profile_revision'] = selection
         return result

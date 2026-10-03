@@ -91,3 +91,16 @@ all four profiles and both backends, and verify failed configuration never write
 a readiness receipt. Redeploy only the verified application client change to the
 identified instance; keep its exact model/backend and persistent volumes. Verify
 cached preparation separately from any explicitly authorized real PDF inference.
+
+The subsequent real job exposed a second-page `IMMUTABLE_CONFLICT`: the parser
+updated a staging evidence index with the immutable-write default. Keep that
+fenced staging index atomic and mutable; individual page responses and promoted
+source/publication resources remain immutable. Preserve bounded, content-free
+failure codes, messages and page/phase/backend context through the child, worker,
+API and job detail. Stop on backend execution faults after recording the failed
+page evidence; malformed model content remains a nonblocking quality finding.
+Show the error before execution logs, including English messages and technical
+details. Validate multi-page parsing with injected output, error persistence in
+an isolated database, and desktop/mobile rendered job details. Existing failed
+jobs may receive an explicitly labeled diagnostic supplement, retaining their
+original code and execution outcome. These checks do not certify CUDA inference.

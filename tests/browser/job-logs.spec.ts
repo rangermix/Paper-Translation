@@ -11,7 +11,8 @@ const entries = Array.from({ length: 112 }, (_, index) => ({
   details: { note: `页面 ${index + 1} 的完整执行详情`, unit_id: 'unit_' + 'a'.repeat(180) },
 }));
 
-async function setup(page: Page, theme = 'light') {
+async function setup(page: Page, theme = 'light', failure?: { code: string; message: string; details?: Record<string, unknown> }) {
+  const selected = failure ? { ...job, status: 'failed', error: failure } : job;
   const errors: string[] = [], queries: URLSearchParams[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (['error', 'warning'].includes(message.type())) errors.push(message.text()); });
@@ -21,8 +22,8 @@ async function setup(page: Page, theme = 'light') {
     let json: unknown = { items: [] };
     if (path === '/capabilities') json = { phase: 'M2', source_mime_types: ['application/pdf'] };
     if (path === '/settings/preferences') json = { theme, locale: 'zh-Hans', publish_policy: 'manual_approval' };
-    if (path === '/jobs') json = { items: [job], next_cursor: null };
-    if (path === '/jobs/job_logs') json = job;
+    if (path === '/jobs') json = { items: [selected], next_cursor: null };
+    if (path === '/jobs/job_logs') json = selected;
     if (path === '/jobs/job_logs/logs') {
       queries.push(url.searchParams);
       const limit = Number(url.searchParams.get('limit') ?? 50), cursor = Number(url.searchParams.get('cursor') ?? 0);
@@ -38,6 +39,31 @@ async function setup(page: Page, theme = 'light') {
   await expect(page.getByRole('heading', { name: '解析原文 · Attention Is All You Need' })).toBeVisible();
   return { errors, queries };
 }
+
+test('failed job exposes its message and code before logs, with expandable technical details', async ({ page }) => {
+  const message = 'Docker Model Runner could not initialize the selected model. <script>window.errorExecuted=true</script>';
+  const { errors } = await setup(page, 'light', { code: 'PARSER_DMR_BACKEND_INIT_FAILED', message,
+    details: { page: 1, phase: 'model_inference', backend: 'vllm', http_status: 500 } });
+  const alert = page.getByRole('alert', { name: '任务错误' });
+  await expect(alert).toBeVisible();
+  await expect(alert).toContainText('无法启动所选模型');
+  await expect(alert).toContainText(message);
+  await expect(alert.locator('code')).toHaveText('PARSER_DMR_BACKEND_INIT_FAILED');
+  expect(await alert.evaluate(element => Boolean(element.compareDocumentPosition(document.querySelector('.job-records')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(alert.locator('pre')).toBeHidden();
+  await alert.getByText('错误技术详情', { exact: true }).click();
+  await expect(alert.locator('pre')).toContainText('"http_status": 500');
+  await expect(alert.locator('pre')).toContainText('"page": 1');
+  await expect(alert.locator('script')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { errorExecuted?: boolean }).errorExecuted)).toBeUndefined();
+  await page.screenshot({ path: outputDirectory('job-failure-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await alert.scrollIntoViewIfNeeded();
+  await expect(alert.locator('code')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: outputDirectory('job-failure-mobile.png') });
+  expect(errors).toEqual([]);
+});
 
 for (const theme of ['light', 'dark']) {
   test(`task logs ${theme}: compact rows expand by click and keyboard on desktop and mobile`, async ({ page }) => {

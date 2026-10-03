@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 
 from packages.domain.errors import DomainError
-from packages.domain.models import Task
+from packages.domain.models import Attempt, Job, Task
 from packages.ir import canonical_bytes
 from packages.jobs.queue import claim
 from tests.support import seed_editor
@@ -47,3 +47,29 @@ def test_worker_waits_beyond_fifteen_minutes_using_frozen_timeout(client, databa
         worker.parse_spool(db, cfg, lease)
     assert error.value.code == expected
     assert captured['timeout_seconds'] == (timeout or 900)
+
+
+def test_parser_failure_message_context_and_attempt_finish_reach_job_detail(client, database, monkeypatch):
+    db, cfg = database
+    seed_editor(db, cfg)
+    response = client.post('/api/v1/documents/doc_fixture/parse', json={'source_asset_id': 'source_pdf'},
+        headers={'If-Match': '"1"', 'Idempotency-Key': 'parser-failure-detail'})
+    assert response.status_code == 202
+    lease = claim(db)
+    failure = {'code': 'PARSER_DMR_BACKEND_INIT_FAILED', 'message': 'Docker Model Runner could not initialize the selected model.',
+               'details': {'page': 1, 'phase': 'model_inference', 'backend': 'vllm', 'http_status': 500}}
+    def failed_result(root, descriptor, source):
+        directory = cfg.parser_outputs / lease.task_id / str(lease.fence)
+        directory.mkdir(parents=True)
+        result = {key: descriptor[key] for key in ('task_id', 'fence', 'source_sha256')}
+        result.update(status='failed', operation='parse', files=[], error=failure)
+        (directory / 'result.json').write_bytes(canonical_bytes(result))
+    monkeypatch.setattr(worker, 'write_request', failed_result)
+    worker.execute(db, cfg, lease)
+    detail = client.get('/api/v1/jobs/' + lease.job_id).json()
+    assert detail['status'] == 'failed' and detail['error'] == failure
+    assert detail['attempts'][0]['status'] == 'known_failed'
+    assert detail['attempts'][0]['finished_at'] is not None
+    with db.transaction() as session:
+        job = session.get(Job, lease.job_id)
+        assert session.get(Attempt, lease.attempt_id).finished_at <= job.finished_at

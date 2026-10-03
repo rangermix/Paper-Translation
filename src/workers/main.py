@@ -89,7 +89,10 @@ def parse_spool(db, cfg, lease):
                 progress_cursor = updates[-1]['sequence']
         if (output_dir / 'result.json').exists():
             result = verify_result(output_dir, descriptor)
-            require(result['status'] == 'succeeded', (result.get('error') or {}).get('code', 'PARSER_FAILED'))
+            if result['status'] != 'succeeded':
+                from packages.parsers.errors import safe_failure
+                error = safe_failure(result.get('error'))
+                raise DomainError(error['code'], error['message'], details=error.get('details'))
             require('payload.json' in {f['path'] for f in result['files']}, 'PARSER_OUTPUT_MISSING_PAYLOAD')
             payload_entry = next(entry for entry in result['files'] if entry['path'] == 'payload.json')
             payload_bytes = safe_path(output_dir, 'payload.json', must_exist=True).read_bytes()
@@ -339,7 +342,11 @@ def execute(db, cfg, lease):
                     return
                 else:
                     task.status, job.status = 'failed', 'failed'
-                job.error = {'code': code}
+                    if attempt.state == 'created':
+                        attempt.state = 'known_failed'
+                    attempt.finished_at = now()
+                job.error = ({'code': code, 'message': exc.message, 'details': exc.details}
+                             if lease.kind in {'parse', 'inspect'} and isinstance(exc, DomainError) else {'code': code})
                 if lease.kind == 'inspect' and lease.payload.get('upload_id'):
                     upload = session.get(Upload, lease.payload['upload_id'])
                     upload.status, upload.error = 'failed', {'code': code}

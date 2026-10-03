@@ -117,9 +117,9 @@ def process_request(request, source, output):
         (Path(output)/'payload.json').write_bytes(canonical_bytes(payload))
         report_progress('finished')
     except BaseException as exc:
-        code = (exc.code if isinstance(exc, PDFError) else
-                str(exc) if isinstance(exc, ValueError) and str(exc).startswith('PARSER_') else 'PARSER_FAILED')
-        (Path(output)/'error.json').write_bytes(canonical_bytes({'code':code,'message':'PDF processing failed; original is preserved'}))
+        from packages.parsers.errors import exception_failure
+        from packages.parsers.progress import failure_context
+        (Path(output)/'error.json').write_bytes(canonical_bytes(exception_failure(exc, failure_context())))
     finally:
         reset_progress(progress_token)
 

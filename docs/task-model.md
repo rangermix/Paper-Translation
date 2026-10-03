@@ -121,6 +121,12 @@ redispatch.
 - Content-quality findings and recoverable metadata/quality-check failures are
   warnings. Execution failures, invalid files/paths, version conflicts and missing
   external-processing authorization retain their existing handling.
+- A recorded failure appears near the top of job details, before execution logs,
+  with its error code and message. Available technical context is expandable.
+  Parser execution failures preserve bounded page, phase, backend and HTTP-status
+  context without exposing PDF text, credentials or backend exception bodies.
+  Failed attempts have a recorded finish time; content-quality warnings continue
+  through the existing nonblocking workflow.
 - Progress, duration, model identity and cost belong to their recorded scope.
   Do not present one child's values as totals for the whole operation, or add the
   same request cost both to a main task and to its related successor.

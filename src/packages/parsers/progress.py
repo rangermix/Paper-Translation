@@ -20,6 +20,11 @@ def reset_progress(token):
     _writer.reset(token)
 
 
+def failure_context():
+    writer = _writer.get()
+    return dict(writer.get('context', {})) if writer else {}
+
+
 def remaining_seconds():
     writer = _writer.get()
     if writer is None:
@@ -30,7 +35,10 @@ def remaining_seconds():
 
 def report_progress(operation, *, page=None, model=None, phase=None):
     writer = _writer.get()
-    if writer is None or operation not in OPERATIONS or writer['sequence'] >= MAX_EVENTS:
+    if writer is None or operation not in OPERATIONS:
+        return
+    writer['context'] = {'phase': phase or operation, **({'page': page} if page is not None else {})}
+    if writer['sequence'] >= MAX_EVENTS:
         return
     request = writer['request']
     value = {k: request[k] for k in ('task_id', 'fence', 'source_sha256')}

@@ -6,8 +6,22 @@ import type { ExecutionTimes, Job, ModelIdentity, TaskLog } from '../types';
 import { jobOperation } from './job-presentation';
 import { JobChildren } from './job-children';
 import { RecoveryComparison } from './recovery-comparison';
+import { errorMessage } from '../messages';
 
 const terminal = new Set(['completed', 'succeeded', 'completed_with_warnings', 'partially_completed', 'cancelled', 'failed']);
+export function JobFailure({ job }: { job: Job }) {
+  const error = job.error;
+  if (!error) return null;
+  const summary = errorMessage(error.code, error.message);
+  return <div role="alert" aria-label="任务错误" className="notice error-notice job-failure">
+    <strong>任务未完成</strong><p>{summary}</p>
+    {error.message && error.message !== summary && <p>{error.message}</p>}
+    <p>错误代码：<code>{error.code}</code></p>
+    {error.details && Object.keys(error.details).length > 0 && <details><summary>错误技术详情</summary>
+      <pre className="job-config">{JSON.stringify(error.details, null, 2)}</pre>
+    </details>}
+  </div>;
+}
 export function modelLabel(model?: ModelIdentity | null, historical = false) {
   if (model?.kind === 'none') return '无需模型';
   if (model?.kind === 'historical_unknown' || historical) return '历史记录未保存';

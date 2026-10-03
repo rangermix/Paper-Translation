@@ -36,6 +36,11 @@ parses; no job silently switches its model or backend.
   as executable HTML. Quality findings remain nonblocking.
 - New information contracts receive new compatibility identifiers; the existing
   schema 3.0 and reader resources remain available without in-place modification.
+- Multipage parsing atomically updates its fenced staging evidence index;
+  individual page receipts and promoted resources remain immutable. Backend
+  execution faults stop after retaining the failed page receipt and propagate
+  bounded error code, message and technical context to the job detail, before
+  execution logs. Content-quality findings retain their nonblocking handling.
 
 ## Useful-information acceptance contract
 

@@ -99,7 +99,12 @@ class DockerVision:
             # first become an unbounded allocation in httpx.post().
             try:
                 with client.stream('POST', runtime.server_url + '/chat/completions', json=request) as response:
-                    response.raise_for_status()
+                    try:
+                        response.raise_for_status()
+                    except httpx.HTTPStatusError as error:
+                        from .errors import inference_failure
+                        return response_evidence('',runtime,self.model)|{'inference_error':type(error).__name__,
+                            'inference_failure': inference_failure(error, runtime.backend)}
                     chunks = []
                     size = 0
                     for chunk in response.iter_bytes(chunk_size=65536):
@@ -109,7 +114,9 @@ class DockerVision:
                         chunks.append(chunk)
                     raw_response = b''.join(chunks).decode('utf-8')
             except httpx.HTTPError as error:
-                return response_evidence('',runtime,self.model)|{'inference_error':type(error).__name__}
+                from .errors import inference_failure
+                return response_evidence('',runtime,self.model)|{'inference_error':type(error).__name__,
+                    'inference_failure': inference_failure(error, runtime.backend)}
             return decode_response(raw_response,runtime)
 
 
@@ -166,7 +173,14 @@ class VisionParser:
                                 'byte_size': len(encoded), 'finish_reason': envelope['finish_reason'][:40] if isinstance(envelope.get('finish_reason'),str) else None})
                             outputs.append({'page': page['page'], 'response_path': key, 'sha256': digest(encoded)})
                             # Update the manifest before attempting to decode this page.
-                            atomic_write(output, 'vision-parser.json', canonical_bytes({'profile': selection, 'revision': model['revision'], 'pages': outputs}))
+                            # This index is a checkpoint in this fenced staging
+                            # directory. Page receipts and promoted files stay immutable.
+                            atomic_write(output, 'vision-parser.json', canonical_bytes({'profile': selection, 'revision': model['revision'], 'pages': outputs}), immutable=False)
+                            if envelope.get('inference_failure'):
+                                from .errors import safe_failure
+                                error = safe_failure(envelope['inference_failure'])
+                                raise PDFError(error['code'], error['message'],
+                                    {**error.get('details', {}), 'page': page['page']})
                             diagnostics = []
                             if envelope.get('inference_error'):
                                 page['parse_failed']=True

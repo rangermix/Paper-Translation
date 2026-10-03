@@ -182,9 +182,17 @@ existing Docker Desktop WSL2 engine. Its pinned backend image rebuilds the Pytho
 environment with vLLM 0.19.1 and CUDA 13.0 PyTorch wheels, including locked package
 hashes. The final image uses a clean, pinned NVIDIA CUDA base, retaining the Runner
 and its rebuilt environment without Docker Desktop's reserved internal-service
-label. It verifies a CUDA tensor operation before exposing the Runner API.
+label. Before exposing the Runner API, it verifies a CUDA tensor operation and
+BF16/FP16 linear projections with bias, including their output values.
 The host must support NVIDIA GPU passthrough; no Linux GPU driver is installed by
 this deployment. No translation weights or inference requests occur at startup.
+
+The runtime library path keeps DMR's application libraries and the host driver
+paths, without prepending `/usr/local/cuda/lib64`. PyTorch's locked wheel libraries
+must resolve their own CUDA dependencies consistently: mixing wheel cuBLAS with
+the system toolkit's nvJitLink can fail vision-model startup with
+`CUBLAS_STATUS_NOT_INITIALIZED` even when elementwise CUDA operations pass.
+[Upstream diagnosis](https://github.com/vllm-project/vllm/issues/38666#issuecomment-4173335892).
 
 This avoids observed upstream setup failures: Model Runner CLI v1.2.6 tests
 the Docker Engine's operating-system string for exact equality with `Docker Desktop`,

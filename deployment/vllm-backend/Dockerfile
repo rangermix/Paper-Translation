@@ -25,11 +25,13 @@ COPY --from=environment /opt/vllm-env /opt/vllm-env
 COPY --from=environment --chown=modelrunner:modelrunner /app /app
 COPY --chown=modelrunner:modelrunner startup.py /app/vllm-cuda-startup.py
 COPY --chown=modelrunner:modelrunner start.sh /app/vllm-cuda-start.sh
+# PyTorch wheels carry a consistent CUDA library set. Prepending the system
+# toolkit here mixes its nvJitLink with wheel cuBLAS and breaks BF16/FP16 GEMM.
 ENV MODEL_RUNNER_SOCK=/var/run/model-runner/model-runner.sock \
     MODEL_RUNNER_PORT=12434 \
     LLAMA_SERVER_PATH=/app \
     LLAMA_ARG_HOST=0.0.0.0 \
-    LD_LIBRARY_PATH=/app:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 \
+    LD_LIBRARY_PATH=/app:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 \
     HOME=/home/modelrunner \
     MODELS_PATH=/models
 WORKDIR /app

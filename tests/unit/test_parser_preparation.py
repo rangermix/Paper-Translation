@@ -115,6 +115,9 @@ def test_dmr_preparation_uses_allowed_engine_flags_and_exact_import(tmp_path, mo
             assert request.content == b'synthetic pinned archive'
             installed = True
             return httpx.Response(200)
+        if request.url.path == '/engines/_configure':
+            assert request.url.params['model'] == ident
+            return httpx.Response(200, json=[])
         if request.url.path == '/engines/vllm/_configure':
             body = strict_loads(request.content)
             assert body['model'] == ident
@@ -136,7 +139,54 @@ def test_dmr_preparation_uses_allowed_engine_flags_and_exact_import(tmp_path, mo
     assert manager.receipt(profile, backend).is_file()
     assert calls == [('GET', '/engines/status'), ('GET', '/engines/status'),
                      ('GET', '/models/' + ident), ('POST', '/models/load'),
-                     ('GET', '/models/' + ident), ('POST', '/engines/vllm/_configure')]
+                     ('GET', '/models/' + ident), ('GET', '/engines/_configure'),
+                     ('POST', '/engines/vllm/_configure')]
+
+
+@pytest.mark.parametrize('backend', ['vllm', 'mlx'])
+@pytest.mark.parametrize('changed', [None, 'model', 'backend', 'mode', 'context', 'flags', 'keep_alive'])
+def test_preparation_reuses_only_exact_existing_configuration(tmp_path, monkeypatch, backend, changed):
+    from packages.parsers.catalog import vlm_model
+    from packages.parsers.model_service import dmr_flags
+    from packages.local_models.catalog import artifact
+    model = vlm_model(SURYA_PROFILE)
+    ident = artifact(model)['id']
+    config = {'context-size': model['context_size'], 'keep_alive': '30s',
+              'runtime-flags': dmr_flags(model, backend) or None}
+    row = {'Backend': 'vllm', 'ModelID': ident, 'Mode': 'completion', 'Config': config}
+    if changed == 'model':
+        row['ModelID'] = 'sha256:' + '0' * 64
+    elif changed == 'backend':
+        row['Backend'] = 'llama.cpp'
+    elif changed == 'mode':
+        row['Mode'] = 'embedding'
+    elif changed == 'context':
+        config['context-size'] = 4096
+    elif changed == 'flags':
+        config['runtime-flags'] = ['--max-num-seqs', '4']
+    elif changed == 'keep_alive':
+        config['keep_alive'] = '5m'
+    events = []
+    def fetch(request):
+        if request.url.path == '/engines/status':
+            return httpx.Response(200, json={'vllm': 'Running: vllm-metal test' if backend == 'mlx' else 'Running: vllm test'})
+        if request.url.path == '/models/' + ident:
+            return httpx.Response(200, json={'id': ident, 'config': {'format': 'safetensors'}})
+        if request.url.path == '/engines/_configure':
+            assert request.url.params['model'] == ident
+            events.append('configuration_checked')
+            return httpx.Response(200, json=[row])
+        assert request.method == 'POST' and request.url.path == '/engines/vllm/_configure'
+        assert strict_loads(request.content) == {'model': ident, 'context-size': model['context_size'],
+                                                'keep_alive': '30s', 'runtime-flags': dmr_flags(model, backend)}
+        events.append('configuration_posted')
+        return httpx.Response(200)
+    monkeypatch.setattr('packages.parsers.model_service.download', lambda *args: events.append('hashes_rechecked'))
+    manager = Manager(tmp_path, httpx.MockTransport(fetch), dmr='http://runner')
+    manager.states[(SURYA_PROFILE, backend)] = {'status': 'downloading'}
+    manager._prepare(SURYA_PROFILE, backend)
+    assert manager.state(SURYA_PROFILE, backend)['status'] == 'ready'
+    assert events == ['hashes_rechecked', 'configuration_checked'] + (['configuration_posted'] if changed else [])
 
 
 def test_rejected_dmr_configuration_has_safe_failure_code_and_no_receipt(tmp_path, monkeypatch):
@@ -148,6 +198,8 @@ def test_rejected_dmr_configuration_has_safe_failure_code_and_no_receipt(tmp_pat
             return httpx.Response(200, json={'vllm': 'Running: vllm test'})
         if request.url.path == '/models/' + ident:
             return httpx.Response(200, json={'id': ident, 'config': {'format': 'safetensors'}})
+        if request.url.path == '/engines/_configure':
+            return httpx.Response(200, json=[])
         assert request.url.path == '/engines/vllm/_configure'
         return httpx.Response(500, text='untrusted backend detail containing private credentials')
     monkeypatch.setattr('packages.parsers.model_service.download', lambda *args: None)

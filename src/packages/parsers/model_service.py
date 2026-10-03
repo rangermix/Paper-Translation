@@ -102,9 +102,27 @@ class Manager:
             if response.json().get('id') != ident or response.json().get('config', {}).get('format') != 'safetensors':
                 raise ValueError('PARSER_DMR_MODEL_MISMATCH')
             try:
-                response = client.post(self.dmr + '/engines/vllm/_configure', json={
-                    'model': ident, 'context-size': model['context_size'], 'keep_alive': '30s',
-                    'runtime-flags': dmr_flags(model, backend)})
+                desired = {'context-size': model['context_size'], 'keep_alive': '30s',
+                           'runtime-flags': dmr_flags(model, backend)}
+                response = client.get(self.dmr + '/engines/_configure', params={'model': ident})
+                response.raise_for_status()
+                configurations = response.json()
+                if not isinstance(configurations, list):
+                    raise ValueError('PARSER_DMR_CONFIGURATION_FAILED')
+                for row in configurations:
+                    if not isinstance(row, dict):
+                        continue
+                    config = row.get('Config')
+                    if (row.get('Backend') == 'vllm' and row.get('ModelID') == ident
+                            and row.get('Mode') == 'completion' and isinstance(config, dict)
+                            and config.get('context-size') == desired['context-size']
+                            and config.get('keep_alive') == desired['keep_alive']
+                            and (config.get('runtime-flags') or []) == desired['runtime-flags']):
+                        # Even an unchanged _configure POST starts DMR's short
+                        # background preload, which can cancel a slow cold start.
+                        return
+                response = client.post(self.dmr + '/engines/vllm/_configure',
+                                       json={'model': ident, **desired})
                 response.raise_for_status()
             except httpx.HTTPError as exc:
                 # Keep a useful stage-specific code without exposing arbitrary

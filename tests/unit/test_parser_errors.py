@@ -1,6 +1,8 @@
 import httpx
+import pytest
 
 from packages.domain.errors import DomainError
+from packages.ir import IRValidationError
 from packages.parsers.errors import exception_failure, inference_failure, safe_failure
 
 
@@ -34,3 +36,30 @@ def test_timeout_and_connection_failure_have_distinct_codes_without_request_urls
         error = inference_failure(exception, 'vllm')
         assert error['code'] == code
         assert 'private-secret' not in str(error) and 'private body' not in str(error)
+
+
+def test_ir_failure_reports_fixed_reason_and_block_location():
+    error = exception_failure(IRValidationError('prose cannot disable translation', '$.blocks.b385'),
+                              {'phase': 'parser_result_validation'})
+    assert error['code'] == 'PARSER_IR_INVALID'
+    assert 'could not be saved' in error['message']
+    assert error['details'] == {'phase': 'parser_result_validation', 'exception_type': 'IRValidationError',
+        'validation_reason': 'prose cannot disable translation', 'validation_path': '$.blocks.b385'}
+    assert safe_failure(error) == error
+
+
+@pytest.mark.parametrize('path,expected', [('/private/token=secret', '$'),
+    ('$.blocks.3.private_source_text.normalized_text', '$.blocks.3.*.normalized_text'),
+    ('$.blocks.b12.attributes.cells.4', '$.blocks.b12.attributes.cells.4')])
+def test_ir_failure_does_not_expose_dynamic_schema_messages_or_path_keys(path, expected):
+    error = exception_failure(IRValidationError('Bearer private-secret: private PDF text is invalid', path))
+    assert error['details']['validation_reason'] == 'schema or structure mismatch'
+    assert error['details']['validation_path'] == expected
+    assert 'private' not in str(error) and 'secret' not in str(error)
+
+
+def test_untrusted_ir_spool_rejects_arbitrary_message_and_nonstring_reason():
+    error = safe_failure({'code': 'PARSER_IR_INVALID', 'message': 'private PDF text',
+        'details': {'validation_reason': ['private PDF text'], 'validation_path': '/private/file.pdf'}})
+    assert error['details'] == {'validation_reason': 'schema or structure mismatch', 'validation_path': '$'}
+    assert 'private' not in str(error)

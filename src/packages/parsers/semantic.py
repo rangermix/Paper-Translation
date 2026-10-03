@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from lxml import html as dom
 from markdown_it import MarkdownIt
 
-VERSION = 'full-page-semantic-v1'
+VERSION = 'full-page-semantic-v2'
 MAX_DEPTH, MAX_NODES, MAX_TEXT = 32, 10000, 1_000_000
 MARKS = {'b':'strong','strong':'strong','i':'emphasis','em':'emphasis','u':'underline',
          'del':'deletion','s':'deletion','sub':'subscript','sup':'superscript','code':'code'}
@@ -330,19 +330,20 @@ def html_semantics(parser, outer, role, depth=0):
         def caption(c):
             if c['children']:
                 for nested in c['children']:caption(nested)
-            else:c['kind']='caption';c['attrs']['caption_type']=role.split('_')[0] if '_' in role and role.split('_')[0] in {'figure','table','formula','code','image'} else 'unspecified'
+            elif c['kind']!='group':c['kind']='caption';c['attrs']['caption_type']=role.split('_')[0] if '_' in role and role.split('_')[0] in {'figure','table','formula','code','image'} else 'unspecified'
         for c in children:caption(c)
     if 'footnote' in role:
         def footnote(c):
             if c['children']:
                 for nested in c['children']:footnote(nested)
-            else:c['kind']='footnote';c['attrs']['note_scope']=role.split('_')[0] if '_' in role and role.split('_')[0] in {'page','figure','table','formula','image'} else 'unspecified'
+            # A horizontal rule is an empty layout group, not empty prose.
+            elif c['kind']!='group':c['kind']='footnote';c['attrs']['note_scope']=role.split('_')[0] if '_' in role and role.split('_')[0] in {'page','figure','table','formula','image'} else 'unspecified'
         for c in children:footnote(c)
     if role in {'bibliography','reference','ref_text'}:
         def reference(c):
             if c['children']:
                 for nested in c['children']:reference(nested)
-            else:c['kind']='reference'
+            elif c['kind']!='group':c['kind']='reference'
         for c in children:reference(c)
     if len(children)==1:
         children[0]['attrs'].update(attrs);return children[0]

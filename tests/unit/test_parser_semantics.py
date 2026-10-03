@@ -52,6 +52,28 @@ def test_compound_blocks_nested_lists_explicit_heading_and_inherited_geometry(tm
     assert all(not b['normalized_text'] for b in source['blocks'] if b['kind']=='group')
 
 
+@pytest.mark.parametrize('role', ['Footnote', 'Caption', 'Reference'])
+@pytest.mark.parametrize('profile', ['surya-ocr-2-v1', 'infinity-parser2-flash-v1'])
+def test_note_roles_preserve_horizontal_separators_as_nonprose(tmp_path, role, profile):
+    if profile == 'surya-ocr-2-v1':
+        raw = document(layout(role, '<hr/><p>Printed note content</p>'))
+    else:
+        raw = json.dumps([
+            {'category': 'title', 'bbox': [0, 0, 1000, 80], 'text': 'Fixture title'},
+            {'category': role.lower(), 'bbox': [0, 100, 1000, 900],
+             'text': '---\n\nPrinted note content'},
+        ])
+    source = parse(raw, tmp_path, profile)['source_revision']
+    validate_source(source, asset_root=tmp_path)
+    separator = next(b for b in source['blocks'] if b['attributes'].get('separator') == 'horizontal')
+    assert separator['kind'] == 'group' and not separator['normalized_text']
+    assert not separator['translatable']
+    prose = next(b for b in source['blocks'] if b['normalized_text'] == 'Printed note content')
+    assert prose['kind'] == role.lower()
+    assert separator['owner_id'] == prose['owner_id']
+    assert separator['provenance'][0]['geometry'] == 'inherited'
+
+
 def test_rich_tables_preserve_header_roles_groups_math_and_nested_cell_content(tmp_path):
     table='<table><caption>Results</caption><thead><tr><th id="c" scope="col">Name</th><th scope="col">Value</th></tr></thead><tbody><tr><td headers="c"><p><b>Method</b></p><ul><li>Nested <math>n^2</math></li></ul></td><td>H<sub>2</sub>O</td></tr></tbody></table>'
     source=parse(document(layout('Table',table)),tmp_path)['source_revision'];validate_source(source,asset_root=tmp_path)

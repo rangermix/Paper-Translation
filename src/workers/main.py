@@ -20,7 +20,7 @@ from packages.domain.db import Database, get_document, get_entity, lock_lifecycl
 from packages.domain.errors import DomainError, require
 from packages.domain.models import (Artifact, Document, Edition, Export, Heartbeat, Job,
     SourceAsset, SourceDraft, SourceRevision, Task, TranslationRevision, Upload, new_id, now)
-from packages.ir import canonical_bytes, digest, strict_loads, validate_source
+from packages.ir import IRValidationError, canonical_bytes, digest, strict_loads, validate_source
 from packages.jobs.queue import assert_current, claim, emit, finish, recover_expired, renew
 from packages.parsers.spool import verify_result, write_request
 from packages.publisher import Publisher, export_bundle, export_single_html, verify_artifact
@@ -316,7 +316,14 @@ def execute(db, cfg, lease):
         else:
             raise DomainError('TASK_KIND_UNKNOWN')
     except Exception as exc:
-        code = exc.code if isinstance(exc, DomainError) else 'WORKER_FAILED'
+        error = {'code': exc.code if isinstance(exc, DomainError) else 'WORKER_FAILED'}
+        if lease.kind in {'parse', 'inspect'}:
+            if isinstance(exc, IRValidationError):
+                from packages.parsers.errors import exception_failure
+                error = exception_failure(exc, {'phase': 'parser_result_validation'})
+            elif isinstance(exc, DomainError):
+                error = {'code': exc.code, 'message': exc.message, 'details': exc.details}
+        code = error['code']
         log.error('task_failed task=%s fence=%s code=%s type=%s', lease.task_id, lease.fence, code, type(exc).__name__)
         with db.transaction() as session:
             lock_lifecycle(session, allow_maintenance=True)
@@ -345,8 +352,7 @@ def execute(db, cfg, lease):
                     if attempt.state == 'created':
                         attempt.state = 'known_failed'
                     attempt.finished_at = now()
-                job.error = ({'code': code, 'message': exc.message, 'details': exc.details}
-                             if lease.kind in {'parse', 'inspect'} and isinstance(exc, DomainError) else {'code': code})
+                job.error = error
                 if lease.kind == 'inspect' and lease.payload.get('upload_id'):
                     upload = session.get(Upload, lease.payload['upload_id'])
                     upload.status, upload.error = 'failed', {'code': code}

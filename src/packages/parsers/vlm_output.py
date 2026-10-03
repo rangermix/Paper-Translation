@@ -189,7 +189,9 @@ def json_items(raw,page,diagnostics=None):
                     def role_leaf(n):
                         if n['children']:
                             for child in n['children']:role_leaf(child)
-                        else:
+                        elif n['kind']!='group':
+                            # Markdown horizontal rules retain their layout
+                            # identity inside captions, notes and references.
                             n['kind']=label
                             if label=='caption':n['attrs']['caption_type']=scope if scope in {'figure','table','formula','code','image'} else 'unspecified'
                             elif label=='footnote':n['attrs']['note_scope']=scope if scope in {'page','figure','table','formula','image'} else 'unspecified'

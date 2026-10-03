@@ -75,6 +75,31 @@ def test_packaging_preserves_weights_and_model_digest(tmp_path):
         assert tar.extractfile('blobs/sha256/' + desc['digest'].split(':')[1]).read() == payload
 
 
+@pytest.mark.parametrize('size', [8 ** 11 - 1, 8 ** 11, 10_591_220_088])
+def test_packaging_streams_large_weight_headers_with_exact_size(tmp_path, size):
+    from packages.local_models.download import archive
+    model, _ = fixture_model()
+    model['files'][0]['size'] = size
+    name = 'blobs/sha256/' + model['files'][0]['sha256']
+    # No weight file exists: producing and parsing the header needs no payload,
+    # including Chandra's single 10,591,220,088-byte safetensors member.
+    stream = archive(model, tmp_path)
+    header = next(stream)
+    stream.close()
+    assert len(header) <= 1536
+    with tarfile.open(fileobj=io.BytesIO(header), mode='r|') as tar:
+        member = tar.next()
+        assert member.name == name
+        assert member.size == size
+        assert member.mode == 0o644
+        assert member.isfile()
+    if size < 8 ** 11:
+        original = tarfile.TarInfo(name)
+        original.size = size
+        original.mode = 0o644
+        assert header == original.tobuf(format=tarfile.USTAR_FORMAT)
+
+
 def test_unknown_models_and_paths_are_rejected(tmp_path):
     from packages.local_models.catalog import get_model
     from packages.local_models.download import download

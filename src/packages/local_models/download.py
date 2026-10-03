@@ -68,7 +68,9 @@ def archive(model, root):
                 ('manifest.json', package['manifest'], len(package['manifest']))]
     for name, source, size in entries:
         info = tarfile.TarInfo(name); info.size = size; info.mode = 0o644
-        yield info.tobuf(format=tarfile.USTAR_FORMAT)
+        # PAX adds an extended size header for individual weights >= 8 GiB;
+        # ordinary members keep their USTAR bytes and OCI identities unchanged.
+        yield info.tobuf(format=tarfile.PAX_FORMAT)
         with (source.open('rb') if isinstance(source, Path) else io.BytesIO(source)) as handle:
             while chunk := handle.read(1024 * 1024):
                 yield chunk

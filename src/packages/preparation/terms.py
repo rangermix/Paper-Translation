@@ -4,11 +4,11 @@ import re
 
 from packages.ir import digest
 from packages.glossaries import term_matches
+from packages.translation.abbreviations import DEFINITION as ACRONYM, expansion as acronym_expansion
 
-VERSION = 'source-terms-v1'
+VERSION = 'source-terms-v2'
 STOP = set('a an the and or of to in on for with by from as is are be we our this that these those each it its into using use used has have not'.split())
 DEFINITION = re.compile(r'\b(?:we\s+(?:define|call)\s+(.{1,100}?)\s+(?:as|the)|(.{1,100}?)\s+(?:is defined as|refers to|denotes|means))\b', re.I)
-ACRONYM = re.compile(r'([A-Za-z][A-Za-z -]{3,120})\s*\(([A-Z][A-Za-z0-9-]{1,12})\)')
 
 
 def scope_map(blocks):
@@ -52,11 +52,9 @@ def extract(blocks, evidence, scopes, max_concepts=48, *, stats=None):
                 if quote_ids:
                     add(match[1] or match[2], scopes[block['id']], 'definition', quote_ids, score=100)
             for match in ACRONYM.finditer(sentence):
-                words = match[1].split()
                 acronym = match[2]
                 # Match the shortest preceding suffix with the right initials.
-                expansion = next((' '.join(words[-n:]) for n in range(2, min(len(words), 12) + 1)
-                    if ''.join(w[0] for w in words[-n:] if w.casefold() not in {'of', 'the', 'and'}).casefold() == acronym.casefold()), None)
+                expansion = acronym_expansion(match)
                 if expansion:
                     ids = [e['id'] for e in evidence_by_block[block['id']] if match[0] in e['quote']]
                     if ids:

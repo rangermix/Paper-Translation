@@ -98,7 +98,10 @@ def _name_count(text):
     # Superscript affiliation markers also delimit names in a typeset byline.
     # Restrict this to marker syntax; ordinary mathematical text is not a name.
     text = _TEX_AFFILIATION_MARKER.sub(';', text)
-    text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*⋆∗†‡§¶✉]', '', text)
+    # Some parsers flatten adjacent superscript runs to ``Alice Smith1 Bob
+    # Jones2``. The markers still delimit full names even when the PDF contains
+    # no commas; dropping them would merge an entire byline into one long name.
+    text = re.sub(r'\d+(?:\s*,\s*\d+)*|[*⋆∗†‡§¶✉]', ';', text)
     names = [part.strip() for part in re.split(r'\s+(?:and|und|et|y)\s+|[,;，；、&\n]', text) if part.strip()]
     for name in names:
         if re.fullmatch(r'[\u3400-\u9fff]{2,4}', name):
@@ -111,6 +114,22 @@ def _name_count(text):
             if not letters.isalpha() or not (explicit or letters[0].isupper() or word in {'de', 'del', 'van', 'von', 'der', 'da', 'dos', 'di', 'la'}):
                 return 0
     return max(len(names), 2) if explicit and names else len(names)
+
+
+def _author_markers(block, atoms):
+    # A plain digit suffix can be part of a model name or a numeric statement.
+    # Numeric-only bylines need neighbouring metadata or actual script evidence,
+    # before NFKC folds printed superscript digits into ordinary ASCII digits.
+    text = block.get('normalized_text', '')
+    if re.search(r'\w[*⋆∗†‡§¶⁰¹²³⁴⁵⁶⁷⁸⁹]', text) or _TEX_AFFILIATION_MARKER.search(text):
+        return True
+    for node in block.get('source_inline', []):
+        if 'superscript' not in node.get('marks', []):
+            continue
+        value = atoms.get(node.get('ref'), {}).get('value', '') if node['type'] == 'protected_ref' else node.get('text', node.get('label', ''))
+        if re.fullmatch(r'[\d\s,*⋆∗†‡§¶✉]+', value) and re.search(r'[\d*⋆∗†‡§¶✉]', value):
+            return True
+    return False
 
 
 def _alphanumeric_identifier(text):
@@ -202,7 +221,7 @@ def original_only_blocks(source):
         adjacent_metadata = (following is not None and following['kind'] in TEXT_KINDS
             and following.get('owner_id') is None and (_affiliation(_text(following), after_author=True)
                 or _identifier_reason(_text(following))))
-        author_markers = bool(re.search(r'[\w][\d*⋆∗†‡§¶]', text) or _TEX_AFFILIATION_MARKER.search(text))
+        author_markers = _author_markers(block, source.get('protected_atoms', {}))
         if names and (adjacent_metadata or after_author or _AUTHOR_LABEL.match(text) or author_markers):
             reasons[bid] = 'original_author_list'
             after_author = True

@@ -4,9 +4,10 @@ from packages.ir import canonical_bytes,digest,flatten_inline
 from packages.ir.retention import metadata_literals, original_only_blocks, title_identifier_literals
 from packages.billing.price import validate_profile
 from .languages import check_language_policy
+from .abbreviations import source_literals as abbreviation_literals
 
-PLANNER_VERSION='protected-academic-quantities-v6'
-RICH_PLANNER_VERSION='semantic-span-units-v7'
+PLANNER_VERSION='source-abbreviation-units-v7'
+RICH_PLANNER_VERSION='semantic-abbreviation-units-v8'
 
 
 def _literal_pattern(literals):
@@ -21,6 +22,8 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
     rich=source.get('schema_version')=='4.0'
     original_only=original_only_blocks(source)
     names = metadata_literals(source, original_only)
+    names = sorted(set(names) | set(abbreviation_literals([b for b in all_blocks if b['id'] not in original_only])),
+                   key=lambda value: (-len(value), value))
     name_pattern = _literal_pattern(names)
     table_names = sorted(set(names) | set(title_identifier_literals(source)), key=lambda value: (-len(value), value))
     table_name_pattern = _literal_pattern(table_names)
@@ -44,22 +47,21 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
             binding={'marks':node['marks']} if node.get('marks') else {}
             if rich and node['type'] in {'link','xref'}:
                 binding.update({'href':node['href']} if node['type']=='link' else {'target_block_id':node['target_block_id']})
-                normalized.append({'type':'text','text':node.get('text',node.get('label','')),'_binding':binding})
-                continue
-            if node['type']=='text':
+            if node['type']=='text' or rich and node['type'] in {'link','xref'}:
+                text = node.get('text',node.get('label',''))
                 offset = 0
-                for match in literal_pattern.finditer(node['text']) if literal_pattern else ():
+                for match in literal_pattern.finditer(text) if literal_pattern else ():
                     if match.start() > offset:
-                        normalized.append({'type': 'text', 'text': node['text'][offset:match.start()], **({'_binding':binding} if rich else {})})
+                        normalized.append({'type': 'text', 'text': text[offset:match.start()], **({'_binding':binding} if rich else {})})
                     ref = f'metadata-{node_index}-{match.start()}'
                     while ref in atoms or ref in local_atoms:
                         ref += '-literal'
                     local_atoms[ref] = {'kind': 'variable', 'value': match[0]}
-                    restore[ref] = {**deepcopy(node), 'text': match[0]}
+                    restore[ref] = {**deepcopy(node), 'type': 'text', 'text': match[0]}
                     normalized.append({'type': 'protected_ref', 'ref': ref, **({'_binding':binding} if rich else {})})
                     offset = match.end()
-                if offset < len(node['text']):
-                    normalized.append({'type':'text','text':node['text'][offset:], **({'_binding':binding} if rich else {})})
+                if offset < len(text):
+                    normalized.append({'type':'text','text':text[offset:], **({'_binding':binding} if rich else {})})
             elif node['type']=='protected_ref':
                 normalized.append(deepcopy(node)|({'_binding':binding} if rich else {}));local_atoms[node['ref']]=deepcopy(atoms[node['ref']])
                 if rich:restore[node['ref']]=deepcopy(node)
@@ -155,10 +157,11 @@ def cache_shape(unit):
 
 def cache_key(unit,profile,glossary_revision):
     normalized,_=cache_shape(unit)
-    protocol={}
+    from packages.providers.content import REQUEST_FORMAT_VERSION as CONTENT_VERSION
+    protocol={'content_version':CONTENT_VERSION}
     if profile.get('api_protocol') == 'local_translation':
         from packages.providers.local_translation import REQUEST_FORMAT_VERSION
-        protocol={'request_format_version':REQUEST_FORMAT_VERSION}
+        protocol['request_format_version']=REQUEST_FORMAT_VERSION
     return digest({'unit':normalized,'context_hash':unit['context_hash'],'locale':unit['target_locale'],'source_language':unit['source_language'],
         'profile':profile,'glossary_revision':glossary_revision,'normalization_version':unit['normalization_version'],'planner_version':unit.get('planner_version',PLANNER_VERSION),**protocol})
 

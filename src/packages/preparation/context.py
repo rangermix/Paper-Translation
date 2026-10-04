@@ -5,7 +5,7 @@ from packages.glossaries import term_matches
 from packages.ir import canonical_bytes, digest
 from .terms import scope_map
 
-VERSION = 'paper-context-v1'
+VERSION = 'paper-context-v2'
 
 
 def translation_context_mode(profile):
@@ -41,21 +41,22 @@ def select_context(preparation, source, block_id, text, *, max_bytes=3200):
     entries = list(explicit)
     targets = {}
     for concept in selected:
-        for form in [concept['source'], *concept['aliases']]:
-            if concept.get('target'):
-                targets.setdefault(form.casefold(), set()).add(concept['target'])
+        # Acronym aliases explain a concept; they are not requests to replace
+        # each abbreviated occurrence with the translated full expression.
+        if concept.get('target'):
+            targets.setdefault(concept['source'].casefold(), set()).add(concept['target'])
     ambiguous = {form for form, choices in targets.items() if len(choices) > 1}
     for concept in selected:
         if not concept.get('target'):
             continue
-        for form in [concept['source'], *concept['aliases']]:
-            if form.casefold() not in ambiguous and term_matches(text, {'source': form}) and not any(e['source'].casefold() == form.casefold() for e in explicit):
-                entry = {'source': form, 'target': concept['target'], 'mode': 'preferred',
-                         'concept_id': concept['id'], 'scope': concept['scope'],
-                         'evidence_ids': concept['evidence_ids'], 'origin': 'model',
-                         'note': 'Model suggestion; verify against source definition.'}
-                if entry not in entries:
-                    entries.append(entry)
+        form = concept['source']
+        if form.casefold() not in ambiguous and term_matches(text, {'source': form}) and not any(e['source'].casefold() == form.casefold() for e in explicit):
+            entry = {'source': form, 'target': concept['target'], 'mode': 'preferred',
+                     'concept_id': concept['id'], 'scope': concept['scope'],
+                     'evidence_ids': concept['evidence_ids'], 'origin': 'model',
+                     'note': 'Model suggestion; verify against source definition.'}
+            if entry not in entries:
+                entries.append(entry)
     wanted = {eid for c in selected for eid in c['evidence_ids']}
     excerpts = [e for e in preparation['evidence'] if e['id'] in wanted]
     result = {'revision': preparation['revision'], 'glossary': entries,

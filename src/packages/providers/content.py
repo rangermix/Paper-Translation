@@ -1,5 +1,8 @@
 """Protocol-independent request data; transport and model templates stay separate."""
 from .contract import ProviderFailure
+from packages.translation.abbreviations import INSTRUCTIONS as ABBREVIATION_INSTRUCTIONS
+
+REQUEST_FORMAT_VERSION = 'source-form-translation-v2'
 
 
 def request_content(units, glossary, review, instructions, schema):
@@ -13,6 +16,8 @@ def request_content(units, glossary, review, instructions, schema):
         'source_inline': u['source_inline'], 'protected_atoms': u['protected_atoms'],
         'context': u['context'], **({'target_text': u['review_target_text']} if review else {})
     } for u in units], 'glossary': glossary}
+    if not review:
+        instructions += ' ' + ABBREVIATION_INSTRUCTIONS
     if not review and any(u.get('preparation_revision') and not u.get('preparation_context_omitted') for u in units):
         instructions += ' Use context only to interpret the source unit. Never translate or reproduce background context in the target. Explicit glossary choices take precedence over automatic suggestions.'
     return content, instructions, schema

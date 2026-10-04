@@ -100,11 +100,20 @@ version or secret boundaries. Successfully sealed revisions are immutable.
 
 Source 4.0 translation splits at formatting/link boundaries and restores those
 associations deterministically after the bounded text response. Editing visible
-labels preserves marks, destinations and protected references. The new `reader-v10`
-renders nested structures, table headers, bare math literals and note navigation;
+labels preserves marks, destinations and protected references. The new `reader-v11`
+renders nested structures, table headers and bare math literals. Author and
+affiliation lines stay in their original form beside the titles. References and
+footnotes appear in the margin, with clickable destinations and a collected
+footnote section at the bottom;
 publication and both offline exports retain these semantics. Old snapshots and
 reader resources are not rewritten. Offline tests establish preservation contracts,
 not trained-model OCR or translation quality.
+
+Translation follows the abbreviation form printed in each source occurrence.
+A full expression with its abbreviation translates the expression and retains
+the abbreviation; later abbreviation-only occurrences retain their spelling,
+case and plural form. Source-defined abbreviations are protected during request
+planning. Automatic terminology suggestions do not expand acronym aliases.
 
 ## Original-only academic content
 

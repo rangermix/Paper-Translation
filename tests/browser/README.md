@@ -56,6 +56,7 @@ or invalid artifact remains a failure.
 | `LIBRARY_READER_FONT_EVIDENCE` | Directory with `single.html` and `bundle/index.html` generated using `reader-v7` and the authored fixture in `tests/unit/test_reader_v5.py` |
 | `LIBRARY_READER_SIDENOTES_EVIDENCE` | Directory with `single.html`, `bundle/index.html`, `table.html` and `native.html`, generated with `reader-v9` from `sidenote_fixture()`, `table_reference_fixture()` and `native_sidenote_fixture()` in `tests/unit/test_reader_sidenotes.py`; covers contextual notes/references, authored native PDF markers, offline exports, keyboard, mobile, print and no-JavaScript fallback |
 | `LIBRARY_DRAFT_HTML` | The actual worker-generated unfinished-draft HTML file |
+| `LIBRARY_READER_V11_EVIDENCE` | Directory with `single.html` and `bundle/index.html`, generated with `reader-v11` from `rich_sidenote_fixture()` in `tests/unit/test_reader_v11.py`; covers original title metadata, nested citations, printed/explicit footnotes, collected notes, offline exports, keyboard, mobile, print and no-JavaScript navigation |
 | `ORIGINAL_ONLY_READER_ROOT` | Directory containing `reading.html` and `artifact/index.html` for the source-only workflow |
 
 These artifacts are evidence, not replacement application fixtures. Skipped

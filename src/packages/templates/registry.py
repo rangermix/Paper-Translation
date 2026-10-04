@@ -52,10 +52,16 @@ def list_templates():
         'css_sha256':'0223b6aad13f7505e872ece50285109b81069a5d57ca5ea571d7bf16f6c223e2', 'js_sha256':'d9c098ae5884cb498a093dae44d2b52400ef1d095c47b04d4314e68298b5b40a', 'renderer_version':'reader-python-10.0.0',
         'renderer_sha256':digest((root/'src/packages/publisher/rich_renderer.py').read_bytes()),
         'schema_versions':['3.0','4.0']}
-    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
+    v11 = {**v10, 'id':'reader-v11', 'version':'11',
+        'css_path':'src/packages/templates/reader-v11.css', 'js_path':'src/packages/templates/reader-v11.js',
+        'css_sha256':'198a0ec29b829583ad9860357d8d17586f7f899c3bddf7455bb4333c6c958f01',
+        'js_sha256':'66c98c7d5a66270b8c8e97f2e731793b1d8ae80324ad42e2670d8a43f0e533a4',
+        'renderer_version':'reader-python-11.0.0',
+        'renderer_sha256':digest((root/'src/packages/publisher/reader_v11.py').read_bytes())}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10]
+    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11]
 
 
 def get_template(template_id):

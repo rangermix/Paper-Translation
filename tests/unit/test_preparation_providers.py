@@ -69,13 +69,14 @@ def test_analysis_preserves_new_source_spelling_and_bounds_raw_summary():
         validate_analysis({'summary': [{'text': 'x' + ' ' * 10000, 'evidence_ids': [evidence['id']]}], 'terms': []}, request)
 
 
-def test_off_mode_preserves_legacy_instructions():
+def test_off_mode_keeps_source_abbreviation_rule_without_preparation_context():
     from packages.providers.openai_responses import INSTRUCTIONS
+    from packages.translation.abbreviations import INSTRUCTIONS as ABBREVIATION_INSTRUCTIONS
     from packages.translation.planner import plan_units
     from test_translation import source
     p = profile()
     unit = plan_units(source(), 'zh-Hans', p)[0]
-    assert request_body([unit], p, [])['instructions'] == INSTRUCTIONS
+    assert request_body([unit], p, [])['instructions'] == INSTRUCTIONS + ' ' + ABBREVIATION_INSTRUCTIONS
 
 
 def test_preparation_overhead_cannot_break_a_previously_fitting_request():

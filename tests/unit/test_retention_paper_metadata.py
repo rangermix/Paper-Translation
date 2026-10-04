@@ -44,6 +44,82 @@ def test_tex_markers_on_affiliations_do_not_hide_organisation_evidence():
     }
 
 
+def test_numeric_affiliation_markers_delimit_full_names_without_commas():
+    from packages.ir.retention import metadata_literals
+    src = paper([
+        ('authors', 'paragraph',
+            'Alice Smith1,∗ Bob Jones1,∗ Carol Lee2,∗ David Wu1 Eve Zhao1 Frank Li1\n'
+            'Grace Chen1 Harry Wang2,† Iris Liu1,†'),
+        ('orgs', 'paragraph', '1ByteDance 2Peking University'),
+        ('abstract', 'heading', 'Abstract'),
+        ('body', 'paragraph', 'We evaluate the system.'),
+    ])
+    before = deepcopy(src)
+    assert original_only_blocks(src) == {
+        'authors': 'original_author_list', 'orgs': 'original_affiliation',
+    }
+    assert planned_ids(src) == {src['title_block_id'], 'abstract', 'body'}
+    assert {'Alice Smith', 'Bob Jones', 'Carol Lee', 'David Wu', 'Eve Zhao',
+        'Frank Li', 'Grace Chen', 'Harry Wang', 'Iris Liu'} <= set(metadata_literals(src))
+    assert src == before
+
+
+def test_semantic_superscript_byline_skips_translation_without_changing_source(tmp_path):
+    from tests.unit.test_parser_semantics import document, layout, parse
+    raw = document(layout('Text', '<p>Alice Smith<sup>1,∗</sup> '
+        'Bob Jones<sup>1,∗</sup> Carol Lee<sup>2</sup> David Wu<sup>1</sup> '
+        'Eve Zhao<sup>1</sup> Frank Li<sup>1,†</sup></p>')
+        + layout('Text', '<p><sup>1</sup>ByteDance <sup>2</sup>Peking University</p>')
+        + layout('Section-Header', '<h2>Abstract</h2>')
+        + layout('Text', '<p>We evaluate the system.</p>'))
+    src = parse(raw, tmp_path)['source_revision']
+    before = deepcopy(src)
+    by_text = {b['normalized_text']: b for b in src['blocks']}
+    authors = next(b for b in src['blocks'] if b['normalized_text'].startswith('Alice Smith'))
+    organisations = by_text['1ByteDance 2Peking University']
+    assert any('superscript' in node.get('marks', []) for node in authors['source_inline'])
+    assert original_only_blocks(src) == {
+        authors['id']: 'original_author_list', organisations['id']: 'original_affiliation',
+    }
+    assert not {authors['id'], organisations['id']} & planned_ids(src)
+    assert by_text['We evaluate the system.']['id'] in planned_ids(src)
+    assert src == before
+
+
+@pytest.mark.parametrize('text', [
+    'Global Batch Size4 Micro Batch Size8',
+    'Image Recognition Model1 Neural Language Model2',
+    'We train models on 100 GPUs and report 3 runs.',
+    'Model 3 performs better than model 2.',
+])
+def test_plain_numeric_front_matter_without_metadata_evidence_remains_translatable(text):
+    src = paper([('body', 'paragraph', text),
+        ('next', 'paragraph', 'We evaluate the results.')])
+    assert 'body' not in original_only_blocks(src)
+    assert 'body' in planned_ids(src)
+
+
+def test_plain_numeric_author_line_still_requires_neighbouring_affiliation():
+    src = paper([('authors', 'paragraph', 'Alice Smith1 Bob Jones2 Carol Lee1 David Wu1'),
+        ('orgs', 'paragraph', '1Example University 2Example Institute')])
+    assert original_only_blocks(src) == {
+        'authors': 'original_author_list', 'orgs': 'original_affiliation',
+    }
+
+
+@pytest.mark.parametrize('after_heading', [False, True])
+def test_semantic_superscripts_provide_front_matter_evidence_but_not_body_metadata(tmp_path, after_heading):
+    from tests.unit.test_parser_semantics import document, layout, parse
+    section = layout('Section-Header', '<h2>Introduction</h2>') if after_heading else ''
+    raw = document(section + layout('Text', '<p>Alice Smith<sup>1</sup> '
+        'Bob Jones<sup>2</sup> Carol Lee<sup>1</sup> David Wu<sup>1</sup></p>')
+        + layout('Text', '<p>We evaluate the results.</p>'))
+    src = parse(raw, tmp_path)['source_revision']
+    authors = next(b for b in src['blocks'] if b['normalized_text'].startswith('Alice Smith'))
+    assert (original_only_blocks(src).get(authors['id']) == 'original_author_list') is not after_heading
+    assert (authors['id'] in planned_ids(src)) is after_heading
+
+
 @pytest.mark.parametrize('text', [
     r'Neural Networks $x^2$',
     r'Model Confidence $^{p}$',

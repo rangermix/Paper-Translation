@@ -18,9 +18,10 @@ def profile(model='hy-mt2-1.8b-q8'):
 
 def test_native_milmmt_prompt_does_not_request_json():
     from packages.providers.registry import request_body
+    from packages.translation.abbreviations import INSTRUCTIONS
     p = profile('milmmt-46-4b-q4')
     body = request_body([TEST_UNIT], p, [])
-    assert body['prompt'] == 'Translate this from English to Chinese (Simplified):\nEnglish: Hello.\nChinese (Simplified):'
+    assert body['prompt'] == INSTRUCTIONS + '\nTranslate this from English to Chinese (Simplified):\nEnglish: Hello.\nChinese (Simplified):'
     assert body['add_special_tokens'] is False
     assert 'response_format' not in body
 

@@ -6,9 +6,10 @@ import httpx
 
 from packages.ir import canonical_bytes, strict_loads
 from packages.local_models.catalog import ENDPOINT, canonical_response_model, get_model, select_backend
+from packages.translation.abbreviations import INSTRUCTIONS as ABBREVIATION_INSTRUCTIONS
 from .contract import ProviderFailure, normalize_request_id
 
-REQUEST_FORMAT_VERSION = 'local-translation-v5'
+REQUEST_FORMAT_VERSION = 'local-translation-v6'
 
 _NUMERIC_CITATION = re.compile(
     r'[\[［【]\s*[0-9]+[a-z]?(?:\s*[,，、;；\-–—−]\s*[0-9]+[a-z]?)*\s*[\]］】]')
@@ -93,7 +94,7 @@ def request_body(units, profile, glossary, *, review=False):
         keep_markers += 'Copy every numeric citation exactly, including brackets, separators, and repetitions. '
     terms = 'Use these translation terms: ' + canonical_bytes(glossary).decode() + '\n' if glossary else ''
     if model['family'] == 'milmmt':
-        prompt = keep_markers + terms + f'Translate this from {origin} to {target}:\n{origin}: {source}\n{target}:'
+        prompt = keep_markers + terms + ABBREVIATION_INSTRUCTIONS + '\n' + f'Translate this from {origin} to {target}:\n{origin}: {source}\n{target}:'
         body = {'prompt': prompt, 'add_special_tokens': False}
     else:
         # Prepared context is bounded and selected by the preparation policy;
@@ -108,6 +109,7 @@ def request_body(units, profile, glossary, *, review=False):
         prompt = (background + terms + f'Please translate the following text into {target}. '
             'Output only the translated text, without any additional explanation. ' + keep_markers
             + f'Translate all ordinary prose and number words into {target}.'
+            + ' ' + ABBREVIATION_INSTRUCTIONS
             + '\n[Source Text]\n' + source)
         body = {'messages': [{'role': 'user', 'content': prompt}]}
     # UTF-8 byte count bounds token count conservatively; reserve output and template overhead.

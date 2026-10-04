@@ -72,10 +72,14 @@ def render_snapshot(src):
     return render_input('document-rich',src,translation)
 
 
-def test_rich_reader_and_offline_export_preserve_structure_and_escape_auxiliary(tmp_path):
+@pytest.mark.parametrize('template_id', ['reader-v10', 'reader-v11'])
+def test_rich_reader_and_offline_export_preserve_structure_and_escape_auxiliary(tmp_path, template_id):
     from packages.publisher import Publisher, export_single_html, export_bundle, verify_artifact
-    src=source(tmp_path);ir=render_snapshot(src);validate_ir(ir,asset_root=tmp_path)
-    assert ir['schema_version']=='4.0' and ir['render']['template_id']=='reader-v10'
+    src=source(tmp_path);ir=render_snapshot(src)
+    assert ir['render']['template_id']=='reader-v11'
+    ir=render_input('document-rich',src,ir['translation_revision'],template_id)
+    validate_ir(ir,asset_root=tmp_path)
+    assert ir['schema_version']=='4.0' and ir['render']['template_id']==template_id
     from packages.domain.errors import DomainError
     with pytest.raises(DomainError) as error:render_input('doc',src,ir['translation_revision'],'reader-v9')
     assert error.value.code == 'TEMPLATE_SCHEMA_INCOMPATIBLE'

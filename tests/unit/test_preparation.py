@@ -172,6 +172,22 @@ def test_shared_acronym_keeps_section_specific_meaning():
     prepared = freeze(pack, 'zh-Hans', 'empty-v1', [], proposals={c['id']: c['source'] for c in concepts})
     targets = select_context(prepared, source, 'use1', 'DP sends data')['glossary']
     concept = next(c for c in concepts if c['scope'] == 'systems')
-    assert targets == [{'source': 'DP', 'target': 'Data parallelism', 'mode': 'preferred',
-                        'concept_id': concept['id'], 'scope': 'systems', 'evidence_ids': concept['evidence_ids'], 'origin': 'model',
-                        'note': 'Model suggestion; verify against source definition.'}]
+    assert targets == []
+    evidence = select_context(prepared, source, 'use1', 'DP sends data')['evidence']
+    assert any(item['id'] in concept['evidence_ids'] for item in evidence)
+    assert not any('Dynamic programming' in item['quote'] for item in evidence)
+
+
+def test_plural_acronym_translates_only_the_written_full_expression():
+    from packages.preparation.collection import collect
+    from packages.preparation.context import freeze, select_context
+    source = paper()
+    block = next(b for b in source['blocks'] if b['id'] == 'abbr')
+    block['normalized_text'] = 'Large language models (LLMs) generate text. LLMs can be small.'
+    collection = collect(source)
+    concept = next(c for c in collection['concepts'] if c['source'] == 'Large language models')
+    assert concept['aliases'] == ['LLMs']
+    prepared = freeze(collection, 'zh-Hans', 'empty-v1', [], proposals={concept['id']: '大型语言模型'})
+    expanded = select_context(prepared, source, 'abbr', block['normalized_text'])
+    assert [(e['source'], e['target']) for e in expanded['glossary']] == [('Large language models', '大型语言模型')]
+    assert select_context(prepared, source, 'use1', 'LLMs generate text.')['glossary'] == []

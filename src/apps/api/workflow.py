@@ -88,7 +88,7 @@ def job_view(session, job, *, details=True, workflow=None):
     tasks = list(session.scalars(select(Task).where(Task.job_id == job.id)))
     results = [t.result for t in tasks if t.status == 'succeeded' and t.result]
     result = {k: v for item in results for k, v in item.items() if k in ('artifact_id', 'export_id', 'import_id', 'document_id')}
-    error = job.error and {**job.error, 'message': job.error.get('message', job.error.get('code', 'Job error').replace('_', ' ').capitalize())}
+    error = {**job.error, 'message': job.error.get('message', job.error.get('code', 'Job error').replace('_', ' ').capitalize())} if job.error else None
     return {**family, 'id': job.id, 'job_id': job.id, 'document_id': job.document_id, 'stage': job.stage,
         **job_identity(session, job),
         **time_view(job), 'config_snapshot': job.config_snapshot, 'actual_model': job.actual_model,

@@ -104,6 +104,27 @@ def test_failed_lifecycle_is_visible_in_error_filter(database, client):
             TaskLog.details['status'].as_string() == 'failed')).level == 'error'
 
 
+@pytest.mark.parametrize('stored_error', [None, {}])
+def test_finished_job_without_current_error_uses_null_in_every_view(database, client, stored_error):
+    db, _ = database
+    recovered = [{'error': {'code': 'INSTANCE_CONCURRENCY_LIMIT'},
+                  'reason': 'all_translation_units_succeeded'}]
+    with db.transaction() as session:
+        job = Job(id='recovered_translation', stage='translate', status='completed_with_warnings',
+                  error=stored_error, progress={'recovered_errors': recovered})
+        session.add(job)
+    detail = client.get('/api/v1/jobs/recovered_translation').json()
+    listing = client.get('/api/v1/jobs?top_level_only=true').json()['items'][0]
+    events = client.get('/api/v1/jobs/recovered_translation/events').text
+    snapshot = json.loads(next(line[6:] for line in events.splitlines() if line.startswith('data: ')))
+    for view in (detail, listing, snapshot):
+        assert view['status'] == 'completed_with_warnings'
+        assert view['error'] is None
+        assert view['progress']['recovered_errors'] == recovered
+    with db.transaction() as session:
+        assert session.get(Job, 'recovered_translation').error == stored_error
+
+
 def test_historical_info_failures_filter_and_download_consistently_without_rewrite(database, client):
     from packages.domain.models import TaskLog
     db, _ = database

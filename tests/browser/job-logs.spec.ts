@@ -11,8 +11,8 @@ const entries = Array.from({ length: 112 }, (_, index) => ({
   details: { note: `页面 ${index + 1} 的完整执行详情`, unit_id: 'unit_' + 'a'.repeat(180) },
 }));
 
-async function setup(page: Page, theme = 'light', failure?: { code: string; message: string; details?: Record<string, unknown> }) {
-  const selected = failure ? { ...job, status: 'failed', error: failure } : job;
+async function setup(page: Page, theme = 'light', failure?: { code: string; message: string; details?: Record<string, unknown> }, overrides: Record<string, unknown> = {}) {
+  const selected = { ...(failure ? { ...job, status: 'failed', error: failure } : job), ...overrides };
   const errors: string[] = [], queries: URLSearchParams[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (['error', 'warning'].includes(message.type())) errors.push(message.text()); });
@@ -38,6 +38,25 @@ async function setup(page: Page, theme = 'light', failure?: { code: string; mess
   await expect(page).toHaveTitle(/对照文库/);
   await expect(page.getByRole('heading', { name: '解析原文 · Attention Is All You Need' })).toBeVisible();
   return { errors, queries };
+}
+
+for (const error of [null, {}]) {
+  test(`completed job with ${error === null ? 'null' : 'empty'} error keeps warnings without a failure alert`, async ({ page }) => {
+    const { errors } = await setup(page, 'light', undefined, {
+      status: 'completed_with_warnings', error,
+      verified_blocks: 172, total_blocks: 172, verified_units: 336, total_units: 336,
+      progress: { recovered_errors: [{ error: { code: 'INSTANCE_CONCURRENCY_LIMIT' }, reason: 'all_translation_units_succeeded' }] },
+    });
+    await expect(page.getByRole('heading', { name: '执行记录', exact: true })).toBeVisible();
+    await expect(page.getByRole('alert', { name: '任务错误' })).toHaveCount(0);
+    await expect(page.getByText('任务未完成', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('已完成，有提示', { exact: true }).first()).toBeVisible();
+    await expect(page.locator('dd').filter({ hasText: /^172 \/ 172$/ })).toBeVisible();
+    await expect(page.locator('dd').filter({ hasText: /^336 \/ 336$/ })).toBeVisible();
+    await page.getByRole('combobox', { name: '等级', exact: true }).selectOption('warning');
+    await expect(page.locator('.task-logs > li').first()).toContainText('记录 1：');
+    expect(errors).toEqual([]);
+  });
 }
 
 test('failed job exposes its message and code before logs, with expandable technical details', async ({ page }) => {

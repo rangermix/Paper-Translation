@@ -11,7 +11,7 @@ import { errorMessage } from '../messages';
 const terminal = new Set(['completed', 'succeeded', 'completed_with_warnings', 'partially_completed', 'cancelled', 'failed']);
 export function JobFailure({ job }: { job: Job }) {
   const error = job.error;
-  if (!error) return null;
+  if (!error || Object.keys(error).length === 0) return null;
   const summary = errorMessage(error.code, error.message);
   return <div role="alert" aria-label="任务错误" className="notice error-notice job-failure">
     <strong>任务未完成</strong><p>{summary}</p>

@@ -35,7 +35,10 @@ the instance; the default published address is loopback.
 - Prepare a source-grounded paper context and scoped terminology before translation.
   New requests default to deterministic extraction with no extra model call. Optional
   API analysis or a separate pinned MiniCPM5-1B local analyst adds a bounded analysis
-  request. Inspect the draft, segment or candidate preparation and its source evidence;
+  request. Settings selects the independent local analyst and inference backend,
+  including GGUF/llama.cpp or MLX where supported by the deployment. New tasks freeze
+  this selection; changing it does not replace an existing task's analyst.
+  Inspect the draft, segment or candidate preparation and its source evidence;
   generated wording remains an unreviewed suggestion.
 - Edit translations, request selected candidates, maintain terminology and explicit
   translation memories, correct source extraction, and optionally review segments

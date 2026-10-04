@@ -6,8 +6,12 @@ const profile = { generation: 1, configured: true, dispatch_configuration_ready:
   model_id: 'configured-translator', profile_revision: 'profile', profile_hash: 'b'.repeat(64),
   semantic_review_enabled: true, cost_control_enabled: false, currency: 'USD' };
 const analyst = { id: 'minicpm5-1b-q4', label: 'MiniCPM5-1B Q4', model_id: `sha256:${'1'.repeat(64)}`,
-  runtime: 'mlx', bits: 4, repo: 'synthetic/analyst', revision: 'a'.repeat(40),
+  family: 'minicpm5', family_label: 'MiniCPM5', parameter_size: '1B', quantization: 'Q4', format: 'mlx',
+  runtime: 'mlx', bits: 4, default_backend: 'mlx', inference_backends: ['mlx'], repo: 'synthetic/analyst', revision: 'a'.repeat(40),
   download_bytes: 618659840, status: 'not_downloaded' };
+const ggufAnalyst = { ...analyst, id: 'minicpm5-1b-q4-k-m-gguf', label: 'MiniCPM5-1B Q4_K_M GGUF',
+  model_id: `sha256:${'2'.repeat(64)}`, runtime: 'llama.cpp', format: 'gguf', quantization: 'Q4_K_M',
+  default_backend: 'llama.cpp', inference_backends: ['llama.cpp'] };
 const estimates = {
   off: { additional_requests: 0, additional_cost_micro: 0, backend: 'none' },
   extractive: { additional_requests: 0, additional_cost_micro: 0, backend: 'deterministic' },
@@ -50,8 +54,10 @@ async function setup(page: Page, localTranslator = false, summary = true,
     else if (!path.includes('/chunks/')) writes.push({ path, body: request.postDataJSON() });
     const values: Record<string, unknown> = {
       '/capabilities': { phase: 'M2', source_mime_types: ['application/pdf'] },
-      '/settings/provider': currentProfile, '/settings/preferences': { generation: 1, locale: 'zh-Hans', theme: 'light' },
-      '/settings/local-models': { models: [analyst] }, '/documents/doc': document, '/drafts/draft': draft,
+      '/settings/provider': currentProfile, '/settings/preferences': { generation: 1, locale: 'zh-Hans', theme: 'light',
+        local_analyst_model_id: analyst.model_id, local_analyst_backend: 'mlx' },
+      // The saved analyst deliberately is not the first catalog row.
+      '/settings/local-models': { models: [ggufAnalyst, analyst] }, '/documents/doc': document, '/drafts/draft': draft,
       '/imports/parsed/preflight': source,
       '/imports/saved/preflight': { ...source, status: 'sealed', translation_targets: [{ draft_id: 'draft', target_locale: 'zh-Hans' }] },
       '/editions/edition/preflight': { ...source, locale: 'zh-Hans', profile: currentProfile },
@@ -119,8 +125,52 @@ test('local analyst preparation is explicit and does not replace the configured 
   await expect(dialog.getByText('configured-local-translator', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('region', { name: '本地分析模型' })).toContainText('MiniCPM5-1B Q4');
   expect(writes).toEqual([]);
+  const prepareRequest = page.waitForRequest(request => request.method() === 'POST' && request.url().includes('/prepare'));
   await dialog.getByRole('button', { name: '准备本地分析模型', exact: true }).click();
   await expect.poll(() => writes).toEqual([{ path: '/settings/local-models/minicpm5-1b-q4/prepare', body: {} }]);
+  expect(new URL((await prepareRequest).url()).searchParams.get('backend')).toBe('mlx');
+});
+
+test('saved GGUF analyst and backend are shown without replacing the local translator', async ({ page }) => {
+  const { errors, writes } = await setup(page, true);
+  await page.route('**/api/v1/settings/preferences', route => route.fulfill({ json: {
+    generation: 2, locale: 'zh-Hans', theme: 'light', local_analyst_model_id: ggufAnalyst.model_id,
+    local_analyst_backend: 'llama.cpp',
+  }, headers: { ETag: '"2"' } }));
+  await page.goto('/#/preflight/saved');
+  await page.getByRole('button', { name: /开始翻译 ·/ }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('翻译前准备', { exact: true }).selectOption('local');
+  const local = dialog.getByRole('region', { name: '本地分析模型', exact: true });
+  await expect(local.getByText(ggufAnalyst.label, { exact: true })).toBeVisible();
+  await expect(local).toContainText('GGUF');
+  await expect(local).toContainText('llama.cpp');
+  await expect(local).not.toContainText('MLX');
+  await expect(local.getByRole('link')).toHaveAttribute('href', '#/settings');
+  await expect(dialog.getByText('configured-local-translator', { exact: true })).toBeVisible();
+  expect(writes).toEqual([]);
+  const prepareRequest = page.waitForRequest(request => request.method() === 'POST' && request.url().includes('/prepare'));
+  await local.getByRole('button', { name: '准备本地分析模型', exact: true }).click();
+  expect(new URL((await prepareRequest).url()).search).toBe('?backend=llama.cpp');
+  expect(writes).toEqual([{ path: `/settings/local-models/${ggufAnalyst.id}/prepare`, body: {} }]);
+  expect(errors).toEqual([]);
+});
+
+test('an unavailable saved analyst is identified without silently using the first catalog model', async ({ page }) => {
+  const { errors, writes } = await setup(page);
+  await page.route('**/api/v1/settings/preferences', route => route.fulfill({ json: {
+    generation: 2, locale: 'zh-Hans', theme: 'light', local_analyst_model_id: 'sha256:retired-model', local_analyst_backend: 'mlx',
+  }, headers: { ETag: '"2"' } }));
+  await page.goto('/#/preflight/parsed');
+  await page.getByLabel('翻译前准备', { exact: true }).selectOption('local');
+  const local = page.getByRole('region', { name: '本地分析模型', exact: true });
+  await expect(local).toContainText('不可用');
+  await expect(local.getByText(ggufAnalyst.label, { exact: true })).toHaveCount(0);
+  await expect(local.getByText(analyst.label, { exact: true })).toHaveCount(0);
+  await expect(local.getByRole('link')).toHaveAttribute('href', '#/settings');
+  await expect(local.getByRole('button', { name: '准备本地分析模型', exact: true })).toHaveCount(0);
+  expect(writes).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
 test('provider analysis exposes an extra estimate and off mode is sent explicitly', async ({ page }) => {

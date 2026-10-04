@@ -23,7 +23,7 @@ def dispatch_profile(job, task):
     if task.payload.get('phase') == 'preparation' and job.payload.get('preparation_options', {}).get('mode') == 'local':
         profile = job.payload.get('analysis_profile', {})
         from packages.providers.local_analysis import profile as local_profile
-        require(profile == local_profile(profile.get('model_id')), 'PROVIDER_PROFILE_STALE')
+        require(profile == local_profile(profile.get('model_id'), profile.get('local_backend')), 'PROVIDER_PROFILE_STALE')
         return profile
     return job.payload.get('profile', {})
 

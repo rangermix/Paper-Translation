@@ -58,7 +58,7 @@ def test_runtime_state_cannot_replace_pinned_catalog_metadata(monkeypatch):
     assert body['models'][1]['code'] == 'LOCAL_MODEL_FORMAT_UNSUPPORTED'
 
 
-@pytest.mark.parametrize('formats,count', [('gguf', 0), ('gguf,mlx', 1)])
+@pytest.mark.parametrize('formats,count', [('gguf', 1), ('gguf,mlx', 2)])
 def test_outage_preserves_separate_analysis_catalog(monkeypatch, formats, count):
     monkeypatch.setenv('LOCAL_TRANSLATION_FORMATS', formats)
     calls = []

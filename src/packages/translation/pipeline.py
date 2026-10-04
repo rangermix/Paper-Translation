@@ -41,7 +41,7 @@ def freeze_pipeline(options, asset_id, preferences=None):
         require(options.translate and options.external_processing_confirmed and options.preparation.mode == 'extractive'
             and (preferences or {}).get('upload_translation_profile_hash') == digest(profile),
             'UPLOAD_TRANSLATION_DEFAULT_STALE', '上传默认授权已更改，请重新读取设置或为本次上传确认授权。')
-    return {**options.model_dump(exclude={'preparation'}), **(freeze_options(options.preparation, profile) if options.translate else {}),
+    return {**options.model_dump(exclude={'preparation'}), **(freeze_options(options.preparation, profile, preferences) if options.translate else {}),
         'profile': copy.deepcopy(profile), 'source_asset_id': asset_id,
         'confirmed_at': now().isoformat() if options.external_processing_confirmed else None,
         'origin': 'upload_workflow'}

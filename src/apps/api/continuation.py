@@ -109,7 +109,7 @@ def continue_translation(draft_id: str, body: TranslateEdition, request: Request
                 previous.status = 'cancelled'
                 previous.progress = previous.progress | {'continued_draft_id': draft.id}
                 emit(session, previous)
-        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'draft_id': draft.id, 'profile': profile, 'locale': edition.target_locale,
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile, session.get(Settings, 'singleton').preferences), 'draft_id': draft.id, 'profile': profile, 'locale': edition.target_locale,
             'glossary_revision': glossary['revision'], 'glossary': glossary['entries'],
             'source_language': source['language'], 'confirmed_at': now().isoformat(), 'origin': 'explicit_continuation',
             'continued_from_draft_id': old.id}

@@ -3,7 +3,8 @@ import { api } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
 import { money, resourceId } from '../domain';
 import { useAction, useResource } from '../hooks';
-import type { PreparationEstimates, PreparationMode, PreparationPack, PreparationProgress, Provider, TranslationContextMode } from '../types';
+import type { Preferences, PreparationEstimates, PreparationMode, PreparationPack, PreparationProgress, Provider, TranslationContextMode } from '../types';
+import { inferenceLabels, modelStatusLabels, type LocalModel } from './local-models';
 import './translation-preparation.css';
 
 export function preparationAllowed(mode: PreparationMode, profile?: Provider) {
@@ -38,27 +39,27 @@ export function PreparationControls({ value, onChange, profile, estimates, disab
   </section>;
 }
 
-type Analyst = { id: string; label: string; model_id: string; runtime: string; bits: number; download_bytes: number;
-  status?: string; downloaded_bytes?: number; total_bytes?: number };
-const modelStatus: Record<string, string> = { ready: '已下载', not_downloaded: '首次使用时下载', downloading: '正在下载',
-  loading: '正在加载', failed: '准备失败，可重试', unavailable: '本地模型服务未就绪' };
-
 function LocalAnalyst({ disabled }: { disabled: boolean }) {
-  const result = useResource<{ models: Analyst[] }>('/settings/local-models?purpose=analysis', 5000);
+  const result = useResource<{ models: LocalModel[] }>('/settings/local-models?purpose=analysis', 5000);
+  const preferences = useResource<Preferences>('/settings/preferences');
   const action = useAction();
-  const model = result.data?.models?.[0];
+  const model = result.data?.models?.find(row => row.model_id === preferences.data?.local_analyst_model_id);
+  const backend = preferences.data?.local_analyst_backend ?? model?.default_backend ?? model?.runtime ?? '';
+  const compatible = Boolean(model && (model.inference_backends ?? [model.runtime]).includes(backend));
+  const state = model?.backend_states?.[backend] ?? model;
   return <section className="notice local-analyst" aria-label="本地分析模型">
     <strong>本地分析模型</strong>
     {model ? <>
-      <p><strong>{model.label}</strong> · MLX {model.bits} bit</p>
-      <p role="status">{modelStatus[model.status ?? 'unavailable'] ?? '状态待刷新'} · 下载约 {Math.round(model.download_bytes / 1024 / 1024)} MiB</p>
-      {model.status === 'downloading' && model.total_bytes ? <progress aria-label="分析模型下载进度" value={model.downloaded_bytes ?? 0} max={model.total_bytes}/> : null}
-      <button className="btn" type="button" disabled={disabled || action.pending || ['downloading', 'loading'].includes(model.status ?? '')}
-        onClick={() => void action.run(async () => { await api(`/settings/local-models/${resourceId(model.id)}/prepare`, { method: 'POST', body: {} }); result.reload(); })}>准备本地分析模型</button>
-    </> : result.loading ? <Loading/> : <p>分析模型状态暂不可用。</p>}
+      <p><strong>{model.label}</strong> · {model.format?.toUpperCase()} {model.quantization ?? `${model.bits} bit`} · {inferenceLabels[backend] ?? backend}</p>
+      <p role="status">{compatible ? modelStatusLabels[state?.status ?? 'unavailable'] ?? '状态待刷新' : '已保存的推理后端在当前部署中不可用'} · 下载约 {Math.round(model.download_bytes / 1024 / 1024)} MiB</p>
+      {state?.status === 'downloading' && state.total_bytes ? <progress aria-label="分析模型下载进度" value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
+      <button className="btn" type="button" disabled={disabled || action.pending || !compatible || Boolean(preferences.error || result.error) || ['downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}
+        onClick={() => void action.run(async () => { await api(`/settings/local-models/${resourceId(model.id)}/prepare?backend=${encodeURIComponent(backend)}`, { method: 'POST', body: {} }); result.reload(); })}>准备本地分析模型</button>
+    </> : result.loading || preferences.loading ? <Loading/> : <p>已保存的分析模型在当前部署中不可用，请到设置选择支持的模型和推理后端。</p>}
+    <a href="#/settings">设置总结模型</a>
     <p className="field-note">在本机 Docker Model Runner 中分析，之后继续使用上述翻译服务。首次使用或点击准备时下载权重；下载、加载与生成会增加耗时。</p>
     <p className="field-note">选择 API 翻译时，选中的来源摘录、概述和术语也会随翻译请求发送到上述 API 地址。</p>
-    <ErrorNotice error={result.error} retry={result.reload}/><ActionFeedback {...action}/>
+    <ErrorNotice error={result.error} retry={result.reload}/><ErrorNotice error={preferences.error} retry={preferences.reload}/><ActionFeedback {...action}/>
   </section>;
 }
 

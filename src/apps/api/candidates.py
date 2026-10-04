@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from packages.domain.db import get_document, get_entity
 from packages.domain.errors import match_generation, require
-from packages.domain.models import Candidate, Draft, Edition, SourceRevision, new_id
+from packages.domain.models import Candidate, Draft, Edition, Settings, SourceRevision, new_id
 from packages.editorial.drafts import context_hash, current_review, current_segments, edit_segment
 from packages.ir import digest
 from packages.ir.retention import original_only_blocks
@@ -62,7 +62,7 @@ def create_candidate(draft_id: str, body: CandidateRequest, request: Request, se
                 'reviewed': bool(current_review(session, draft, segments[bid])) if bid in segments else False} for bid in body.block_ids}})
         session.add(candidate)
         session.flush()
-        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'budget_micro': budget, 'candidate_id': candidate.id, 'draft_id': draft.id, 'source_revision_id': source_entity.id,
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile, session.get(Settings, 'singleton').preferences), 'budget_micro': budget, 'candidate_id': candidate.id, 'draft_id': draft.id, 'source_revision_id': source_entity.id,
             'source_hash': digest(source), 'profile': profile, 'locale': edition.target_locale,
             'base_glossary_revision': draft.glossary_revision, 'glossary': glossary['entries'], 'publish_policy': 'manual_approval'}
         job = enqueue(session, 'candidate', payload, draft.document_id)

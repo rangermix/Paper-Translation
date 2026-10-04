@@ -107,10 +107,16 @@ when the draft has one. Packs bind exact source revision/hash, locale, evidence,
 concepts, glossary, algorithm versions and optional analyst identity. The endpoint
 does not invoke models or download weights.
 
-`GET /settings/local-models?purpose=analysis` lists the pinned analyst separately
-from the default translation catalogue. The existing explicit
-`POST /settings/local-models/{id}/prepare` prepares either type. Reading status never
-starts downloads. Job `progress` includes `preparation_status`, `preparation_requests`,
+`GET /settings/local-models?purpose=analysis` lists pinned analysts separately
+from the default translation catalogue. `GET /settings/preferences` includes
+`local_analyst_model_id` (the pinned artifact identity) and `local_analyst_backend`.
+Save both using `PATCH /settings/preferences` with the current `If-Match`; only
+analysis models and compatible deployment backends are accepted. This does not
+change the translation provider, download weights or invoke a model. Local
+preparation snapshots these settings when a new task is created.
+The existing explicit `POST /settings/local-models/{id}/prepare?backend=ENGINE`
+prepares either type. Reading status never starts downloads.
+Job `progress` includes `preparation_status`, `preparation_requests`,
 `preparation_terms` (proposed equivalents), `preparation_warnings`,
 `preparation_context_mode` and `preparation_omitted_units`.
 

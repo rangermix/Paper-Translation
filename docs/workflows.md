@@ -69,9 +69,15 @@ saved permission on the server, including changes made in another browser tab.
 All translation entry points offer **翻译前准备**. The default collects exact source
 excerpts, headings, definitions and term candidates without another model call.
 **当前 API 模型** adds one bounded summary/wording request to that saved provider.
-**独立本地小模型** uses MiniCPM5-1B Q4 through Docker Model Runner, then continues
-with the selected API or local translator. It downloads its pinned weights only
-on explicit preparation or use. **不做论文级准备** retains the legacy flow.
+**独立本地小模型** uses the analyst saved under **设置 → 翻译前总结模型** through
+Docker Model Runner, then continues with the selected API or local translator.
+Choose its model family, quantization, format and inference backend independently
+of the translator. The pinned MiniCPM5-1B catalogue offers GGUF Q4_K_M/llama.cpp
+and MLX Q4 where the deployment supports them. The translation dialog shows the
+saved choice and links back to settings. Saving does not download or invoke a model;
+explicit preparation or first use downloads the pinned weights. Each new task
+freezes the selected analyst, so subsequent settings changes do not alter it.
+**不做论文级准备** retains the legacy flow.
 
 Explicit glossary entries take precedence over generated preferred wording.
 Changing the preparation mode resets the form's content confirmation. Local analysis

@@ -390,6 +390,29 @@
           "size": 417
         }
       ]
+    },
+    {
+      "id": "minicpm5-1b-q4-k-m-gguf",
+      "label": "MiniCPM5-1B Q4_K_M GGUF analyst",
+      "family": "minicpm5",
+      "parameter_size": "1B",
+      "quantization": "Q4_K_M",
+      "purpose": "analysis",
+      "bits": 4,
+      "runtime": "llama.cpp",
+      "inference_backends": ["llama.cpp"],
+      "format": "gguf",
+      "repo": "openbmb/MiniCPM5-1B-GGUF",
+      "revision": "3d55fac80935ae6456986ad2384b5cbcc4d6c948",
+      "context_size": 8192,
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": "MiniCPM5-1B-Q4_K_M.gguf",
+          "sha256": "81b64d05a23b17b34c475f42b3e72fbde62d4b92cc34541f7a8031d0752deafa",
+          "size": 688065920
+        }
+      ]
     }
   ]
 }

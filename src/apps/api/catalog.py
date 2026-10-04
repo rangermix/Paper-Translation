@@ -105,9 +105,11 @@ def preferences(session=Session):
 
 def preferences_view(settings):
     from packages.parsers.profiles import RETIRED_PROFILES
+    from packages.providers.local_analysis import selection
     choice = preferred_profile(settings.preferences)
     return {'generation': settings.generation, 'theme': 'system', 'upload_translation_profile_hash': None,
         **editable_preferences(settings),
+        **selection(settings.preferences),
         'parser_profile_revision': choice,
         'parser_profile_status': RETIRED_PROFILES.get(choice, {}).get('status', 'active'),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)}
@@ -143,6 +145,8 @@ def patch_dispatch_settings(body: DispatchSettings, request: Request, session=Se
 
 
 class Preferences(StrictModel):
+    local_analyst_model_id: str | None = Field(None, pattern='^sha256:[0-9a-f]{64}$')
+    local_analyst_backend: Literal['mlx', 'llama.cpp', 'vllm'] | None = None
     upload_translation_profile_hash: str | None = Field(None, pattern='^[0-9a-f]{64}$')
     parser_profile_revision: ParserProfile | None = None
     parser_timeout_seconds: int | None = Field(None, strict=True,
@@ -173,6 +177,12 @@ def patch_preferences(body: Preferences, request: Request, session=Session):
         merged['upload_translation_profile_hash'] = body.upload_translation_profile_hash
     if body.parser_profile_revision is not None:
         frozen_parser_runtime(preferred_profile(merged))
+    if {'local_analyst_model_id', 'local_analyst_backend'} & body.model_fields_set:
+        from packages.providers.local_analysis import selection, validate_selection
+        require(all(getattr(body, key) is not None for key in body.model_fields_set
+                    if key.startswith('local_analyst_')), 'LOCAL_ANALYST_CONFIG')
+        merged.update(validate_selection({**selection(settings.preferences),
+            **{key: value for key, value in body.model_dump(exclude_none=True).items() if key.startswith('local_analyst_')}}))
     settings.preferences = merged
     settings.generation += 1
     return response(preferences_view(settings))

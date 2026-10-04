@@ -476,7 +476,7 @@ def translate_edition(edition_id: str, body: TranslateEdition, request: Request,
         glossary = effective_glossary(session, doc.id, source['language'], edition.target_locale)
         profile = {**profile, 'glossary_revision': glossary['revision'], 'glossary_entries': glossary['entries']}
         draft = create_draft(session, request.app.state.config, edition, revision, profile)
-        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'budget_micro': budget, 'draft_id': draft.id, 'locale': edition.target_locale, 'profile': profile,
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile, session.get(Settings, 'singleton').preferences), 'budget_micro': budget, 'draft_id': draft.id, 'locale': edition.target_locale, 'profile': profile,
             'glossary_revision': glossary['revision'], 'glossary': glossary['entries'], 'source_language': source['language'],
             'confirmed_at': now().isoformat(), 'origin': 'manual_ui'}
         job = enqueue(session, 'translate', payload, doc.id)
@@ -511,7 +511,7 @@ def confirm(import_id: str, body: ConfirmPreflight, request: Request, session=Se
         glossary = effective_glossary(session, revision.document_id, source_language, body.locale)
         profile = {**profile, 'glossary_revision': glossary['revision'], 'glossary_entries': glossary['entries']}
         draft = create_draft(session, request.app.state.config, edition, revision, profile)
-        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': revision.id, 'source_hash': digest(source),
+        payload = {**body.model_dump(exclude={'preparation'}), **freeze_options(body.preparation, profile, session.get(Settings, 'singleton').preferences), 'budget_micro': budget, 'draft_id': draft.id, 'source_revision_id': revision.id, 'source_hash': digest(source),
             'profile': profile, 'glossary_revision': glossary['revision'], 'glossary': glossary['entries'],
             'confirmed_at': now().isoformat(), 'origin': 'manual_ui'}
         job = enqueue(session, 'translate', payload, revision.document_id)

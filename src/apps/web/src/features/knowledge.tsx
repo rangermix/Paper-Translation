@@ -7,6 +7,7 @@ import { resourceId } from '../domain';
 import { useAction, useResource } from '../hooks';
 import { ProviderSettings } from './provider-settings';
 import { ParserSettings } from './parser-select';
+import { AnalystSettings } from './analyst-settings';
 import { UploadTranslationDefault } from './upload-translation-default';
 import { ProviderDestination } from './provider-destination';
 import './settings.css';
@@ -40,6 +41,7 @@ export function Settings({ onTheme }: { onTheme: (theme: string) => void }) {
     <div className="settings-aside">
     <ErrorNotice error={result.error} retry={result.reload}/>
     <ParserSettings preferences={result.data} loading={result.loading} onSaved={result.setData} reload={result.reload}/>
+    <AnalystSettings preferences={result.data} loading={result.loading} onSaved={result.setData}/>
     <section className="panel" aria-labelledby="upload-default-title"><h2 id="upload-default-title">上传翻译</h2>
       <ProviderDestination profile={provider.data}/>
       <UploadTranslationDefault preferences={result.data} provider={provider.data} disabled={Boolean(result.error || provider.error)}

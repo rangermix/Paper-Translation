@@ -58,8 +58,11 @@ already sent.
 [preparation/](../src/packages/preparation/) separates exact source collection,
 scoped term identification, optional structured analysis and request context selection.
 The default extractive mode uses no generative model. API analysis uses the selected
-provider; local analysis uses a separately frozen MiniCPM5-1B profile through the
-existing local service. No external summary/retrieval connector runs implicitly.
+provider; local analysis freezes its own selected model and backend from instance
+preferences into each new task's analysis profile, through the existing local
+service. Preferences select a pinned MiniCPM5-1B GGUF or MLX model supported by
+the deployment; saved historical profiles are not rewritten. No external
+summary/retrieval connector runs implicitly.
 
 Preparation finishes before translation units are scheduled. Each analysis request
 has its own task, permit, model identity and validated checkpoint. Known unusable

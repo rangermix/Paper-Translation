@@ -24,7 +24,7 @@ def test_catalog_has_exact_requested_quantizations_and_immutable_files():
         ('Hy-MT2-7B Q4_K_M GGUF', 4),
         ('MiLMMT-46-1B Q4_K_M GGUF', 4), ('MiLMMT-46-4B Q4_K_M GGUF', 4),
         ('MiLMMT-46-12B Q4_K_M GGUF', 4),
-        ('MiniCPM5-1B Q4 analyst', 4)]
+        ('MiniCPM5-1B Q4 analyst', 4), ('MiniCPM5-1B Q4_K_M GGUF analyst', 4)]
     for model in entries:
         assert model['runtime'] in {'mlx', 'vllm', 'llama.cpp'}
         assert model['parameter_size'] and model['quantization']

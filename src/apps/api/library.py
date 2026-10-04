@@ -419,7 +419,7 @@ def parse(document_id: str, body: ParseRequest, request: Request, session=Sessio
             **frozen_parser_runtime(selection),
             'parser_timeout_seconds': selected_timeout_seconds(preferences), 'base_revision_id': doc.current_source_id,
             'source_language': doc.source_language,
-            'workflow': freeze_pipeline(body.workflow, doc.source_asset_id) if body.workflow else None}, doc.id)
+            'workflow': freeze_pipeline(body.workflow, doc.source_asset_id, preferences) if body.workflow else None}, doc.id)
         doc.status = 'parsing'
         doc.generation += 1
         return {'job_id': job.id, 'id': job.id, 'status': job.status, 'generation': doc.generation}

@@ -26,8 +26,8 @@ def test_analyst_is_separate_from_the_translation_catalog():
         'hy-mt2-1.8b-q8', 'milmmt-46-4b-q4', 'hy-mt2-7b-q4', 'milmmt-46-12b-q4',
         'hy-mt2-1.8b-bf16-vllm', 'hy-mt2-1.8b-q4-k-m-gguf', 'hy-mt2-7b-q4-k-m-gguf',
         'milmmt-46-1b-q4-k-m-gguf', 'milmmt-46-4b-q4-k-m-gguf', 'milmmt-46-12b-q4-k-m-gguf']
-    assert [m['id'] for m in public_models(purpose='analysis')] == [MODEL]
-    assert len(public_models(purpose='all')) == 11
+    assert [m['id'] for m in public_models(purpose='analysis')] == [MODEL, 'minicpm5-1b-q4-k-m-gguf']
+    assert len(public_models(purpose='all')) == 12
     analyst = get_model(MODEL)
     assert get_model(artifact(analyst)['id']) == analyst
     assert analyst['repo'] == 'openbmb/MiniCPM5-1B-MLX'
@@ -48,7 +48,7 @@ def test_analyst_catalog_get_does_not_prepare_or_download(tmp_path):
     with TestClient(create_app(cache=tmp_path, transport=httpx.MockTransport(handle), formats='gguf,mlx,safetensors')) as client:
         response = client.get('/models?purpose=analysis')
         assert response.status_code == 200
-        assert [m['id'] for m in response.json()['models']] == [MODEL]
+        assert [m['id'] for m in response.json()['models']] == [MODEL, 'minicpm5-1b-q4-k-m-gguf']
         assert len(client.get('/models').json()['models']) == 10
         assert client.get('/models?purpose=arbitrary').status_code == 422
     assert list(tmp_path.iterdir()) == []

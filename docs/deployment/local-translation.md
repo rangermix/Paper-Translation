@@ -56,13 +56,23 @@ their repository revisions, file sizes and LFS SHA-256 values are pinned separat
 from the MLX variants. They use the same native translation completion prompt.
 Catalog entries do not assert that inference has been tested on this instance.
 
-Translation preparation also offers a separate **MiniCPM5-1B Q4 analyst**, pinned
-to [openbmb/MiniCPM5-1B-MLX](https://huggingface.co/openbmb/MiniCPM5-1B-MLX)
-revision `9879b18bf2928355fcdf4287635388a3665a40cb`.
-The seven verified files total 617,970,878 bytes (about 590 MiB), before DMR's imported
-copy and runtime allocations. It is selected in translation preparation, separately
-from the translator in service settings. It can prepare context for an API translator
-as well as a local one. This is not a CPU/CUDA analyst backend.
+Translation preparation offers an independent **MiniCPM5-1B analyst**, configured
+under **设置 → 翻译前总结模型** separately from the translation service:
+
+- GGUF Q4_K_M uses llama.cpp. The official
+  [openbmb/MiniCPM5-1B-GGUF](https://huggingface.co/openbmb/MiniCPM5-1B-GGUF)
+  revision `3d55fac80935ae6456986ad2384b5cbcc4d6c948` pins one 688,065,920-byte
+  GGUF file, before DMR's imported copy and runtime allocations.
+- MLX Q4 uses vLLM Metal on Apple Silicon. The
+  [openbmb/MiniCPM5-1B-MLX](https://huggingface.co/openbmb/MiniCPM5-1B-MLX)
+  revision `9879b18bf2928355fcdf4287635388a3665a40cb` pins seven files totaling
+  617,970,878 bytes (about 590 MiB).
+
+The selector offers the formats/backends declared by the deployment. Choose
+**独立本地小模型** in translation preparation to use the saved analyst with either
+an API or local translator. New tasks freeze this choice; later settings changes
+do not retarget existing tasks. Catalog availability does not certify inference
+on the selected hardware.
 
 Apple Silicon uses MLX safetensors through the same Docker Model Runner
 vLLM Metal backend as the full-page parsers. These are MLX affine quantizations, not GGUF.

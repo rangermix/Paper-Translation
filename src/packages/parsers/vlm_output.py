@@ -5,6 +5,7 @@ import json
 import math
 import re
 from collections import Counter
+from difflib import SequenceMatcher
 
 from packages.ir import strict_loads
 from .inspect import PDFError
@@ -67,7 +68,7 @@ def physical(semantic,role,bounds,page,index):
     if semantic['kind'] in {'math','code'} and not semantic['text'].strip():
         semantic=node('figure',children=semantic['children'],attrs=semantic['attrs']|{'annotations':semantic['attrs'].get('annotations',[])+[
             {'kind':'empty_literal','value':'Empty math/code output; original region retained','output_path':semantic['path']}]},path=semantic['path'])
-    label='picture' if semantic['kind']=='figure' else LABELS.get(role,'text')
+    label={'figure':'picture','code':'code'}.get(semantic['kind'],LABELS.get(role,'text'))
     value=item(label, '' if semantic['kind']=='figure' else semantic['text'],bounds,page,index,semantic.get('data'))
     value['_semantic']=semantic
     value['_model_provenance']=[dict(p,bbox=dict(p['bbox'])) for p in value['prov']]
@@ -130,6 +131,55 @@ def complete_json_prefix(value,diagnostics):
     return entries
 
 
+def printed_markdown_semantics(text, semantic, page, bounds, diagnostics, path):
+    """Disambiguate printed punctuation using only the same PDF region.
+
+    A layout model may omit code fences. Do not guess a programming language or
+    make that region nontranslatable: retain its literal text when native glyphs
+    contradict Markdown's removal of emphasis delimiters. Matching is bounded,
+    whitespace-insensitive and requires a unique local context on both sides.
+    """
+    from .fidelity import overlap
+    from .glyphs import region_text
+    if len(text)>8192 or text==semantic['text']:return semantic
+    pending=[semantic];has_emphasis=False
+    while pending:
+        current=pending.pop();pending.extend(current['children'])
+        if any(set(r.get('marks',[]))&{'strong','emphasis'} for r in current['runs']):
+            has_emphasis=True;break
+    if not has_emphasis:return semantic
+    regions=[r for r in page.get('text_regions',[]) if overlap(r['bbox'],bounds)>=.9]
+    native=region_text(regions)
+    if not native or len(native)>16384:return semantic
+    # PDF mathematical asterisks and the model's ASCII asterisks are compared
+    # only as evidence; neither the raw model text nor native glyphs are edited.
+    def compact(value):return ''.join(c for c in value if not c.isspace()).replace('∗','*')
+    raw, rendered, original=map(compact,(text,semantic['text'],native))
+    if raw==rendered:return semantic
+    positions=[i for i,c in enumerate(text) if not c.isspace()]
+    protected=set()
+    def block_marker(index):
+        start=text.rfind('\n',0,index)+1;end=text.find('\n',index)
+        line=text[start:end if end>=0 else len(text)]
+        return (text[index]=='*' and not text[start:index].strip() and text[index+1:index+2].isspace()
+            or bool(re.fullmatch(r'[ \t]*(?:\*[ \t]*){3,}|[ \t]*(?:_[ \t]*){3,}',line)))
+    for tag,start,end,_,_ in SequenceMatcher(None,raw,rendered,autojunk=False).get_opcodes():
+        if tag!='delete' or not set(raw[start:end])<={'*','_'}:continue
+        if any(block_marker(i) for i in positions[start:end]):continue
+        before,after=raw[max(0,start-8):start],raw[end:end+8]
+        context=before+raw[start:end]+after
+        if raw==original or (sum(c.isalnum() for c in before)>=4 and sum(c.isalnum() for c in after)>=4
+                and raw.count(context)==original.count(context)==1):
+            protected.update(positions[start:end])
+    if not protected:return semantic
+    # Escape only proven printed delimiters for the decoder. Other Markdown
+    # (including real bold text and block structure) retains its meaning.
+    escaped=''.join(('\\' if i in protected else '')+c for i,c in enumerate(text))
+    diagnostic(diagnostics,'PRINTED_MARKDOWN_LITERAL',path,
+        'Emphasis delimiters present in the native PDF are retained as literal text; other Markdown formatting is unchanged')
+    return markdown_semantics(escaped,diagnostics,path)
+
+
 def json_items(raw,page,diagnostics=None):
     diagnostics=diagnostics if diagnostics is not None else []
     value=strip_fences(raw)
@@ -158,6 +208,11 @@ def json_items(raw,page,diagnostics=None):
             label=LABELS.get(role,'text')
             if label=='picture':semantic=node('figure',attrs={'model_role':role,**({'annotations':[{'kind':'derived_visual','value':text[:16000],'output_path':path}]} if text else {})},path=path)
             elif label=='formula':semantic=node('math',[{'type':'math','text':text,'path':path}],attrs={'model_role':role},path=path)
+            elif label=='code':
+                semantic=node('code',[{'type':'code','text':text,'path':path+'/text'}],attrs={'model_role':role},path=path)
+                if re.match(r'^\s*(`{3,}|~{3,})',text):
+                    fenced=markdown_semantics(text,[],path+'/text')
+                    if fenced['kind']=='code':semantic=fenced;semantic['attrs']['model_role']=role
             elif label=='table':
                 parser=HTMLSemantics(text,diagnostics);tables=parser.tree.xpath('.//table')
                 try:
@@ -181,7 +236,9 @@ def json_items(raw,page,diagnostics=None):
                     semantic=node('table',attrs={'annotations':[{'kind':'unsupported_table','value':text[:16000],'output_path':path}]},path=path)
                 semantic['attrs']['model_role']=role
             else:
-                semantic=markdown_semantics(text,diagnostics,path+'/text');semantic['attrs']['model_role']=role
+                semantic=markdown_semantics(text,diagnostics,path+'/text')
+                if label=='text':semantic=printed_markdown_semantics(text,semantic,page,bounds,diagnostics,path+'/text')
+                semantic['attrs']['model_role']=role
                 if label in {'title','section_header'} and semantic['kind']!='group':
                     semantic['kind']='heading';semantic['attrs'].setdefault('level',1 if label=='title' else 2)
                 if label in {'caption','footnote','reference'}:

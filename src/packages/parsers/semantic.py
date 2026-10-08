@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from lxml import html as dom
 from markdown_it import MarkdownIt
 
-VERSION = 'full-page-semantic-v2'
+VERSION = 'full-page-semantic-v3'
 MAX_DEPTH, MAX_NODES, MAX_TEXT = 32, 10000, 1_000_000
 MARKS = {'b':'strong','strong':'strong','i':'emphasis','em':'emphasis','u':'underline',
          'del':'deletion','s':'deletion','sub':'subscript','sup':'superscript','code':'code'}
@@ -371,7 +371,9 @@ def markdown_semantics(value, diagnostics, path='/text'):
             elif t.type in {'text','code_inline','softbreak','hardbreak'}:
                 text=t.content if t.type not in {'softbreak','hardbreak'} else '\n'
                 run={'type':'code' if t.type=='code_inline' else 'text','text':text,'path':path}
-                if marks:run['marks']=list(marks)
+                # Keep every opener on the stack, but IR marks are a set.
+                # Closing a nested emphasis must still leave its parent active.
+                if marks:run['marks']=list(dict.fromkeys(marks))
                 if link and run['type']=='text':
                     if safe_url(link):run.update(type='link',href=link)
                     elif link.startswith('#') and re.fullmatch(r'#[A-Za-z0-9._:-]{1,160}',link):run.update(type='xref',target_key=link[1:])

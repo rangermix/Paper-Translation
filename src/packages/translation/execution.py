@@ -118,7 +118,13 @@ def plan_tasks(db,cfg,lease):
             session.add(Task(id=new_id('task'),job_id=job.id,kind=lease.kind,payload={'unit':unit,'base_version':versions[unit['owner_block_id']],'repair_count':0}))
         job.progress=job.progress | {'total_units':len(units),'verified_units':0,'total_blocks':len({u['owner_block_id'] for u in units}),'verified_blocks':0,'requests':job.progress.get('requests',0),'cache_hits':0}
         if job.payload.get('preparation'):
-            job.progress = job.progress | {'preparation_context_mode': job.payload['preparation']['translation_context_mode'],
+            context_mode = job.payload['preparation']['translation_context_mode']
+            unit_modes = {u.get('preparation_context_mode') for u in units} - {None}
+            if 'background_and_terms' in unit_modes:
+                context_mode = 'background_and_terms'
+            elif 'terms_only' in unit_modes:
+                context_mode = 'terms_only'
+            job.progress = job.progress | {'preparation_context_mode': context_mode,
                 'preparation_omitted_units': sum(bool(u.get('preparation_context_omitted')) for u in units)}
         session.flush();finish(session,lease,{'planned_units':len(units)})
         if not units:

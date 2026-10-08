@@ -64,6 +64,47 @@ def test_extractive_freezes_context_without_extra_model_call(database):
         assert all(s.provenance_json['preparation_revision'] == pack['revision'] for s in session.scalars(select(SegmentVersion)))
 
 
+@pytest.mark.parametrize('block_ids,pack_mode,expected,omitted', [
+    (['title'], 'background_and_terms', 'terms_only', False),
+    (['fn1'], 'background_and_terms', 'terms_only', False),
+    (['title', 'p1'], 'background_and_terms', 'background_and_terms', False),
+    (['code'], 'background_and_terms', 'background_and_terms', False),
+    (['code'], 'terms_only', 'terms_only', False),
+    (['title'], 'background_and_terms', 'background_and_terms', True),
+])
+def test_preparation_progress_reports_actual_unit_modes_without_changing_pack(database, monkeypatch, block_ids, pack_mode, expected, omitted):
+    from packages.preparation.collection import collect
+    from packages.preparation.context import freeze
+    from packages.translation.execution import plan_tasks
+    from tests.unit.test_local_translation_provider import profile as local_profile
+    db, cfg = database
+    source = setup_library(db, cfg)
+    profile = local_profile()
+    pack = freeze(collect(source), 'zh-Hans', 'empty-v1', [], context_mode=pack_mode)
+    if omitted:
+        from packages.preparation import context
+        apply = context.apply_to_units
+        def omit(*args):
+            units = apply(*args)
+            for unit in units:
+                unit.update(preparation_context_mode='omitted', preparation_context_omitted=True)
+            return units
+        monkeypatch.setattr(context, 'apply_to_units', omit)
+    with db.transaction() as session:
+        job = session.get(Job, 'job')
+        job.payload = job.payload | {'profile': profile, 'block_ids': block_ids, 'preparation': pack}
+    # Exercise real planning and context selection without dispatching a model.
+    plan_tasks(db, cfg, claim(db))
+    with db.transaction() as session:
+        job = session.get(Job, 'job')
+        assert job.progress['preparation_context_mode'] == expected
+        assert job.progress['preparation_omitted_units'] == int(omitted)
+        assert job.payload['preparation'] == pack
+        modes = {t.payload['unit']['preparation_context_mode'] for t in session.scalars(select(Task)) if 'unit' in t.payload}
+        assert modes == ({'omitted'} if omitted else {'terms_only', 'background_and_terms'} if len(block_ids) > 1 else
+                         set() if block_ids == ['code'] else {'terms_only'})
+
+
 def test_model_preparation_is_accounted_before_fanout(database):
     db, cfg = database
     setup_library(db, cfg); enable(db, 'provider')

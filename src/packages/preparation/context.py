@@ -5,13 +5,14 @@ from packages.glossaries import term_matches
 from packages.ir import canonical_bytes, digest
 from .terms import scope_map
 
-VERSION = 'paper-context-v2'
+VERSION = 'paper-context-v3'
 
 
-def translation_context_mode(profile):
+def translation_context_mode(profile, block_kind=None):
     if profile.get('api_protocol') == 'local_translation':
         from packages.local_models.catalog import get_model
-        if get_model(profile['model_id'])['family'] == 'milmmt':
+        family = get_model(profile['model_id'])['family']
+        if family == 'milmmt' or (family == 'hy' and block_kind in {'heading', 'footnote'}):
             return 'terms_only'
     return 'background_and_terms'
 
@@ -91,12 +92,14 @@ def apply_to_units(preparation, source, units, profile):
     from packages.providers.contract import ProviderFailure
     from packages.providers.registry import request_body
     from packages.ir import flatten_inline
+    blocks = {block['id']: block for block in source['blocks']}
     for unit in units:
         original_context = deepcopy(unit['context'])
         selected = select_context(preparation, source, unit['owner_block_id'],
                                   flatten_inline(unit['source_inline'], unit['protected_atoms']))
         unit['preparation_revision'] = preparation['revision']
-        unit['preparation_context_mode'] = translation_context_mode(profile)
+        unit['preparation_context_mode'] = translation_context_mode(
+            profile, blocks.get(unit['owner_block_id'], {}).get('kind'))
         unit['glossary_entries'] = selected.pop('glossary')
         unit['context'] = {'heading': unit['context'].get('heading', ''), 'paper': selected}
         while True:
@@ -127,5 +130,6 @@ def apply_to_units(preparation, source, units, profile):
                 selected['omitted'] += 1
         unit['context_hash'] = digest({'context': unit['context'], 'glossary': unit['glossary_entries'],
                                       'preparation_revision': unit['preparation_revision'],
+                                      'mode': unit['preparation_context_mode'],
                                       'omitted': unit.get('preparation_context_omitted', False)})
     return units

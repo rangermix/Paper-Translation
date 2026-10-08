@@ -107,3 +107,38 @@ def test_context_changes_cache_identity_and_reports_terms_only_adapter():
     units = [apply_to_units(pack, src, plan_units(src, 'zh-Hans', p, ['use1']), p)[0] for pack in packs]
     assert cache_key(units[0], p, 'empty-v1') != cache_key(units[1], p, 'empty-v1')
     assert all(u['preparation_context_mode'] == 'terms_only' for u in units)
+
+
+@pytest.mark.parametrize('kind', ['heading', 'footnote', 'paragraph'])
+def test_hy_short_structural_units_use_terms_only_without_changing_frozen_preparation(kind):
+    from packages.preparation.collection import collect
+    from packages.preparation.context import apply_to_units, freeze
+    from packages.translation.planner import plan_units
+    from test_local_translation_provider import profile as local_profile
+    from packages.ir import digest
+    src, p = paper(), local_profile()
+    block = next(b for b in src['blocks'] if b['id'] == 'use1')
+    block['kind'] = kind
+    pack = freeze(collect(src), 'zh-Hans', 'manual-v1', [{'source': 'rank', 'target': '编号', 'mode': 'must'}],
+                  summary=[{'text': 'Unrelated global background.', 'evidence_ids': []}])
+    before_source, before_pack, before_profile = copy.deepcopy(src), copy.deepcopy(pack), copy.deepcopy(p)
+    unit = apply_to_units(pack, src, plan_units(src, 'zh-Hans', p, ['use1']), p)[0]
+    expected = 'background_and_terms' if kind == 'paragraph' else 'terms_only'
+    assert unit['preparation_context_mode'] == expected
+    prompt = request_body([unit], p, unit['glossary_entries'])['messages'][0]['content']
+    assert 'rank translates to 编号' in prompt
+    assert ('Unrelated global background.' in prompt) == (kind == 'paragraph')
+    assert ('[Source Text]' in prompt) == (kind == 'paragraph')
+    assert unit['context']['paper']['summary'] == pack['summary']
+    assert unit['context_hash'] == digest({'context': unit['context'], 'glossary': unit['glossary_entries'],
+        'preparation_revision': unit['preparation_revision'], 'mode': expected, 'omitted': False})
+    assert (src, pack, p) == (before_source, before_pack, before_profile)
+
+
+def test_heading_context_policy_is_scoped_to_hy_family():
+    from packages.preparation.context import translation_context_mode
+    from test_local_translation_provider import profile as local_profile
+    assert translation_context_mode(profile(), 'heading') == 'background_and_terms'
+    assert translation_context_mode(local_profile(), 'heading') == 'terms_only'
+    assert translation_context_mode(local_profile(), 'paragraph') == 'background_and_terms'
+    assert translation_context_mode(local_profile()) == 'background_and_terms'

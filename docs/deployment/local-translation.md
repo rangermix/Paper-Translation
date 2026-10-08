@@ -121,11 +121,18 @@ or kana when that script is unexpected for the target locale and absent from the
 source and applicable glossary terms. It preserves legitimate Korean/Japanese
 targets, source names and quotations. This is a narrow script check, not a
 translation-accuracy certificate; it neither substitutes words nor retries a
-model request automatically. Prepared Hy-MT requests use bounded background following
-the upstream [background/source pattern](https://huggingface.co/tencent/Hy-MT2-1.8B#hy-mt2-translation-task-instruction-examples-chinese-english-comparison).
+model request automatically. Hy-MT plain requests follow the native instruction-and-source
+format without a source label. Prepared prose uses bounded summary and evidence text
+following the upstream [background/source pattern](https://huggingface.co/tencent/Hy-MT2-1.8B/blob/9a341cd1b679d3efd23b46e847b01745a71ed792/README.md#hy-mt2-translation-task-instruction-examples-chinese-english-comparison).
+Hy-MT headings and footnotes receive applicable terms only, preventing whole-paper
+background from replacing short source text. Their frozen preparation remains available
+as provenance; the unit context mode records this projection. Native terminology wording
+preserves glossary requirements, preferred translations, retained terms and forbidden wording.
 MiLMMT receives applicable terms only. Legacy requests still omit neighboring prose.
-Preparation changes participate in cache identity; the unchanged legacy prompt keeps
-its existing request-format version.
+Unambiguous numeric citations and parenthesized list numbers travel as source literals;
+restoration recovers their original protected references and typography. Other protected
+values and ambiguous literal spellings keep opaque markers. Request format
+`local-translation-v7` and the per-unit context mode participate in cache identity.
 
 ## Compose deployment
 

@@ -58,10 +58,13 @@ def list_templates():
         'js_sha256':'66c98c7d5a66270b8c8e97f2e731793b1d8ae80324ad42e2670d8a43f0e533a4',
         'renderer_version':'reader-python-11.0.0',
         'renderer_sha256':digest((root/'src/packages/publisher/reader_v11.py').read_bytes())}
-    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11):
+    v12 = {**v11, 'id':'reader-v12', 'version':'12',
+        'renderer_version':'reader-python-12.0.0',
+        'renderer_sha256':digest((root/'src/packages/publisher/reader_v12.py').read_bytes())}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11]
+    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12]
 
 
 def get_template(template_id):

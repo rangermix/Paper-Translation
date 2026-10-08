@@ -53,6 +53,19 @@ def test_bracketed_prose_is_not_mistaken_for_a_numeric_citation():
                    for n in block['source_inline'] if n['type'] == 'protected_ref')
 
 
+@pytest.mark.parametrize('label', ['(1)', '( 2 )', '（3）'])
+def test_numeric_parentheses_survive_translation_as_one_printed_label(label):
+    from packages.providers.local_translation import source_text, target_inline
+    src, block = parsed(f'Three modules. {label} Build operators.')
+    before = deepcopy(src)
+    unit = plan_units(src, 'zh-Hans', profile(), [block['id']])[0]
+    assert list(unit['protected_atoms'].values()) == [{'kind': 'number', 'value': label}]
+    _, markers = source_text(unit)
+    translated = target_inline('三个模块。' + next(iter(markers)) + '构建算子。', unit)
+    assert flatten_inline(restore_inline(unit, translated), src['protected_atoms']) == f'三个模块。{label}构建算子。'
+    assert src == before
+
+
 @pytest.mark.parametrize('original,target', [('8.3 billion','83亿'),('3.9B','39亿'),('355M','3.55亿'),('1.2 billion','12亿')])
 def test_chinese_quantities_restore_exact_values_without_mutating_source(original,target):
     src,block=parsed(f'A model with {original} parameters.')

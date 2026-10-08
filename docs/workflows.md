@@ -40,6 +40,13 @@ also correct one misrecognized word; conflicting evidence stays visible.
 Native evidence also repairs unambiguous same-column ordering and split
 references. Reference numbers and author characters are corrected only when
 complete native lines and the unchanged citation body identify the same entry.
+Merged bibliography areas are split at verified printed entry markers, enabling
+grouped citations such as `[1, 12, 21]` to link to each original entry. Run-in
+headings and list boundaries are repaired only when the PDF supports the join or
+split. Numeric labels such as `(1)` keep their parentheses during translation.
+Plain code retains PDF-supported lines and spacing and is never translated.
+Annotated code diagrams or code whose transcription conflicts with the PDF use
+the corresponding original crop; their labels are not duplicated as body prose.
 An unknown native glyph can be reconciled only when its embedded font encoding
 and an independent extraction agree at the same position; genuine question marks
 and ambiguous mappings stay unchanged.
@@ -100,7 +107,7 @@ version or secret boundaries. Successfully sealed revisions are immutable.
 
 Source 4.0 translation splits at formatting/link boundaries and restores those
 associations deterministically after the bounded text response. Editing visible
-labels preserves marks, destinations and protected references. The new `reader-v11`
+labels preserves marks, destinations and protected references. The new `reader-v12`
 renders nested structures, table headers and bare math literals. Author and
 affiliation lines stay in their original form beside the titles. References and
 footnotes appear in the margin, with clickable destinations and a collected

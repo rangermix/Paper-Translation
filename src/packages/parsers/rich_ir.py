@@ -54,7 +54,9 @@ def merge_semantics(first, second, separator=' '):
     a,b=deepcopy(a or fallback(first)),deepcopy(b or fallback(second))
     if second.get('_model_provenance'):
         first.setdefault('_model_provenance',[]).extend(deepcopy(second['_model_provenance']))
-    if a['kind']==b['kind'] and a['kind'] in {'paragraph','reference'} and not a['children'] and not b['children']:
+    same_prose = a['kind']==b['kind'] and a['kind'] in {'paragraph','reference'}
+    list_continuation = a['kind']=='list_item' and b['kind']=='paragraph'
+    if (same_prose or list_continuation) and not a['children'] and not b['children']:
         a['runs'] += ([{'type':'text','text':separator,'path':a['path']}] if separator else []) + b['runs']
         a['text']=visible(a['runs']);first['_semantic']=a
     else:first['_semantic']=node('group',children=[a,b],attrs={'group_type':'layout'},path=a['path'])

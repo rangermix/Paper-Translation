@@ -26,7 +26,7 @@ def _bounds(item, page):
 
 
 def _overlap(a, b):
-    return max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1])) / max(1, (a[2] - a[0]) * (a[3] - a[1]))
+    return max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1])) / max(1e-9, (a[2] - a[0]) * (a[3] - a[1]))
 
 
 def _item(ref, label, text, bounds, page, **extra):
@@ -40,6 +40,10 @@ def _compact(text):
 
 def _matches(region, row):
     text = _compact(region['text'])
+    # List punctuation is already represented by semantic list structure.
+    # Reintroducing its PDF glyph into a child paragraph creates a second bullet.
+    if text in {'•', '·', '▪', '◦'} and _has_semantic_list(row.get('_semantic')):
+        return True
     original = _compact(row.get('orig', row.get('text', '')))
     # A PDF line's discretionary hyphen may be exposed as U+0002. Only
     # ignore a trailing marker when the remaining text exists in the parser
@@ -47,6 +51,11 @@ def _matches(region, row):
     if re.search(r'[^\W\d_][-\x02]$', text):
         text = text[:-1]
     return bool(text) and text in original
+
+
+def _has_semantic_list(tree):
+    return bool(tree and (tree['kind'] == 'list_item' or tree.get('attrs', {}).get('group_type') == 'list' or
+                         any(_has_semantic_list(child) for child in tree.get('children', []))))
 
 
 def _union(boxes):
@@ -59,7 +68,8 @@ def _furniture_label(text, bounds, page):
     width, height = page['page_size']
     text = text.strip()
     if re.fullmatch(r'[0-9]{1,4}', text):
-        if bounds[1] >= height * .94:
+        if bounds[1] >= height * .94 or (bounds[3] >= height * .94 and
+                (bounds[1] + bounds[3]) / 2 >= height * .94 and width * .4 <= bounds[0] <= bounds[2] <= width * .6):
             return 'page_footer'
         if bounds[3] <= height * .06:
             return 'page_header'
@@ -173,6 +183,8 @@ def _repair_reference_metadata(original, native_lines, bounds):
 def _repair_text(row, regions, page):
     if _has_columns(regions, page['page_size'][0]):
         return None  # A broad model box is not proof of a single paragraph.
+    if _has_semantic_list(row.get('_semantic')):
+        regions = [r for r in regions if _compact(r['text']) not in {'•', '·', '▪', '◦'}]
     native_lines = _native_lines(regions)
     candidate = _paragraph_text(native_lines)
     original = row.get('orig', row.get('text', ''))
@@ -252,6 +264,15 @@ def _page_order(items, page):
 
 def recover_items(items, pages, *, local_reparse=None, remaining_seconds=None):
     result, audit = deepcopy(items), []
+    from .code_recovery import recover_code_regions
+    result, code_audit = recover_code_regions(result, pages)
+    audit.extend(code_audit)
+    from .reference_recovery import recover_references
+    result, reference_audit = recover_references(result, pages)
+    audit.extend(reference_audit)
+    from .layout_recovery import recover_inline_layout
+    result, inline_audit = recover_inline_layout(result, pages)
+    audit.extend(inline_audit)
     remaining_seconds = remaining_seconds or (lambda: float('inf'))
     for page in pages:
         started, at = time.monotonic(), datetime.now(timezone.utc).isoformat()

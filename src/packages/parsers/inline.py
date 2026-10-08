@@ -8,7 +8,11 @@ _YEAR = r'(?:19|20)\d{2}[a-z]?'
 _NUMERIC_CITATION = r'\[\s*\d+[a-z]?(?:\s*[,;\-–—]\s*\d+[a-z]?)*\s*\]'
 _CITATION = rf'{_NUMERIC_CITATION}|\({_AUTHOR},\s*{_YEAR}(?:\s*;\s*(?:{_AUTHOR},\s*)?{_YEAR})*\)|{_AUTHOR}\s+\({_YEAR}(?:\s*;\s*{_YEAR})*\)'
 _MATH = r'(?<![\\$])(?P<delimiter>\${1,2})(?!\$)(?:\\.|[^$\n]){1,4096}?(?P=delimiter)(?!\$)|\\\([^\n]{1,4096}?\\\)|\\\[[^\n]{1,4096}?\\\]'
-TOKEN = re.compile(rf'(?P<url>https?://[^\s<>"\x00-\x20]+)|(?P<math>{_MATH})|(?P<citation>{_CITATION})|(?P<quantity>{MAGNITUDE})|(?P<scalar>−→|[←→⇒⇐↔≤≥≠≈√∞]|(?<![A-Za-z0-9_])(?:\d+(?:[.,]\d+)*%?)(?![A-Za-z0-9_]))')
+# Keep the printed delimiters of numeric labels with their number. Sending
+# "(" and ")" as separate prose around an opaque number lets a translator drop
+# them, turning enumerators and equation labels into bare digits.
+_PAREN_NUMBER = r'(?<![A-Za-z0-9_])(?:\(\s*\d{1,3}\s*\)|（\s*\d{1,3}\s*）)'
+TOKEN = re.compile(rf'(?P<url>https?://[^\s<>"\x00-\x20]+)|(?P<math>{_MATH})|(?P<citation>{_CITATION})|(?P<quantity>{MAGNITUDE})|(?P<scalar>{_PAREN_NUMBER}|−→|[←→⇒⇐↔≤≥≠≈√∞]|(?<![A-Za-z0-9_])(?:\d+(?:[.,]\d+)*%?)(?![A-Za-z0-9_]))')
 PLAIN_TOKEN = re.compile(TOKEN.pattern.replace(rf'(?P<math>{_MATH})|', ''))
 
 

@@ -9,6 +9,106 @@ from .recovery import _bounds, _complete_native_coverage, _matches, _native_line
 VERSION = 'native-layout-relations-v2'
 
 
+def recover_inline_layout(items, page_list):
+    """Recover run-in headings and bullet boundaries from their native baselines."""
+    from .rich_ir import merge_semantics, slice_semantics
+    pages = {p['page']: p for p in page_list}
+    audit = []
+    def record(action, before, after, page, proof):
+        at = datetime.now(timezone.utc).isoformat()
+        audit.append(dict(origin='automatic_recovery', rule_version=VERSION, page=page,
+            action=action, before=before, after=after, native_evidence=proof,
+            started_at=at, finished_at=at, elapsed_ms=0, model=None))
+    def text(row):
+        return row.get('orig', row.get('text', '')).strip()
+    def local(row):
+        if len(row.get('prov', [])) != 1:
+            return None
+        page = pages.get(row['prov'][0]['page_no'])
+        return page if page and row.get('label') in {'text', 'paragraph'} else None
+    # A model can complete a short run-in heading's hyphenated final word and
+    # put the following prose in another block. The native suffix and body on
+    # the SAME baseline prove that this is one paragraph, not a section break.
+    for first, second in list(zip(items, items[1:])):
+        page = local(first)
+        if not page or local(second) is not page or first not in items or second not in items:
+            continue
+        left, right = text(first), text(second)
+        if not 8 <= len(left) <= 180 or not right:
+            continue
+        lb, rb = _bounds(first, page), _bounds(second, page)
+        if abs(lb[0] - rb[0]) > 12 or not -3 <= rb[1] - lb[3] <= 15:
+            continue
+        left_lines = _native_lines([r for r in page['text_regions'] if _overlap(r['bbox'], lb) >= .6])
+        right_regions = [r for r in page['text_regions'] if _overlap(r['bbox'], rb) >= .6]
+        right_lines = _native_lines(right_regions)
+        if not left_lines or not right_lines:
+            continue
+        stem = re.search(r'([A-Za-z]+)[\-\x02\u00ad]$', left_lines[-1]['text'].strip())
+        suffix = re.match(r'([a-z]+)([.,;:]?)\s+(\S.*)', right_lines[0]['text'].strip())
+        if not stem or not suffix or not left.endswith(stem[1] + suffix[1] + suffix[2]):
+            continue
+        if not right.startswith(suffix[3].rstrip('-\x02\u00ad')):
+            continue
+        # The heading's complete native prefix must match its emitted wording;
+        # coincidental suffixes or missing heading text do not authorize a join.
+        core = lambda s: ''.join(c for c in s if c.isalnum())
+        native_left = core(' '.join(line['text'] for line in left_lines))
+        if core(left) != native_left + suffix[1]:
+            continue
+        first_line = right_lines[0]['bbox']
+        if first_line[1] - left_lines[-1]['bbox'][3] > max(1, first_line[3] - first_line[1]) * .8:
+            continue
+        merge_semantics(first, second)
+        merged = left + ' ' + right
+        first['orig'] = first['text'] = merged
+        first['prov'][0]['bbox'] = dict(zip(('l', 't', 'r', 'b'), _union([lb, rb])), coord_origin='TOPLEFT')
+        items.remove(second)
+        record('native_run_in_paragraph', [left, right], [merged], page['page'], [*left_lines, right_lines[0]])
+
+    # Bullet glyphs printed at distinct baselines establish list boundaries even
+    # when the model has flattened them into a single paragraph. Exact model
+    # slices retain its source text and marks; geometry comes from native lines.
+    expanded = []
+    for item in items:
+        page = local(item); original = text(item); tree = item.get('_semantic')
+        markers = list(re.finditer(r'(?:^|\s)([•▪◦])\s*', original))
+        if not page or len(markers) < 2 or markers[0].start() != 0 or (tree and tree['children']):
+            expanded.append(item); continue
+        bounds = _bounds(item, page)
+        regions = [r for r in page['text_regions'] if _overlap(r['bbox'], bounds) >= .6]
+        glyphs = sorted((r for r in regions if r['text'].strip() in {'•', '▪', '◦'}), key=lambda r: r['bbox'][1])
+        if len(glyphs) != len(markers) or any(abs(r['bbox'][0] - glyphs[0]['bbox'][0]) > 2 for r in glyphs):
+            expanded.append(item); continue
+        parts = []; valid = True
+        for i, (marker, glyph) in enumerate(zip(markers, glyphs)):
+            start = marker.end(); end = markers[i + 1].start() if i + 1 < len(markers) else len(original)
+            while end > start and original[end - 1].isspace(): end -= 1
+            part = original[start:end]
+            bottom = glyphs[i + 1]['bbox'][1] if i + 1 < len(glyphs) else bounds[3] + 1
+            proof = [r for r in regions if glyph['bbox'][1] - 5 <= r['bbox'][1] < bottom - 5 and r['text'].strip() not in {'•', '▪', '◦'}]
+            native_lines = _native_lines(proof)
+            opening = re.findall(r'\w+', part)[:3]
+            if not native_lines or re.findall(r'\w+', native_lines[0]['text'])[:3] != opening:
+                valid = False; break
+            clone = deepcopy(item)
+            clone.update(self_ref=item['self_ref'] + f'/native-list-{i}', label='list_item', orig=part, text=part, enumerated=False)
+            clone['prov'][0]['bbox'] = dict(zip(('l', 't', 'r', 'b'), _union([glyph['bbox'], *[r['bbox'] for r in proof]])), coord_origin='TOPLEFT')
+            if tree:
+                semantic = slice_semantics(tree, start, end)
+                if not semantic:
+                    valid = False; break
+                semantic['kind'] = 'list_item'; semantic['attrs']['list_ordered'] = False
+                clone['_semantic'] = semantic
+            parts.append(clone)
+        if valid:
+            expanded.extend(parts)
+            record('native_bullet_list', [original], [text(r) for r in parts], page['page'], regions)
+        else:
+            expanded.append(item)
+    return expanded, audit
+
+
 def _line_edge(lines, *, last=False):
     """Choose the outer run on a baseline, independent of math/font ascent."""
     edge = lines[-1 if last else 0]
@@ -200,9 +300,10 @@ def recover_layout(items, pages):
         first, second = body[index:index + 2]
         index += 1
         prose_pair = first.get('label') in {'text','paragraph'} and second.get('label') in {'text','paragraph'}
+        list_pair = first.get('label') == 'list_item' and second.get('label') in {'text','paragraph'}
         reference_pair = (first.get('label') == second.get('label') == 'reference' and
                           re.match(r'^\[\d+\]\s+', text(first)) and not re.match(r'^\[\d+\]', text(second)))
-        if first not in items or not (prose_pair or reference_pair):
+        if first not in items or not (prose_pair or list_pair or reference_pair):
             continue
         if not first.get('prov') or not second.get('prov'):
             continue

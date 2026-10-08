@@ -240,7 +240,7 @@ def _source_nodes(text, block_id, atoms, kind):
                 nodes.append({'type':'link','href':url,'text':url});end=match.start()+len(url);continue
             nodes.append({'type':'text','text':match.group()});end=match.end();continue
         atom_id = f'{block_id}-n{index}'
-        atom_kind = 'citation' if match.lastgroup == 'citation' else 'number' if match.lastgroup == 'quantity' or match.lastgroup == 'scalar' and match.group()[0].isdigit() else 'math'
+        atom_kind = 'citation' if match.lastgroup == 'citation' else 'number' if match.lastgroup == 'quantity' or match.lastgroup == 'scalar' and match.group().lstrip('(（ ').strip()[:1].isdigit() else 'math'
         atoms[atom_id] = {'kind':atom_kind,'value':match.group()}
         nodes.append({'type':'protected_ref','ref':atom_id}); end = match.end()
     if end < len(text): nodes.append({'type':'text','text':text[end:]})
@@ -272,6 +272,11 @@ class SourceAdapter:
             for item in items:
                 if item.get('label') not in {'code', 'formula'}:
                     continue
+                if item.get('label') == 'code':
+                    # Recovery must compare native evidence with the actual
+                    # model transcription, not the native text placed in orig
+                    # below and later copied into text by reconciliation.
+                    item['_code_model_transcription'] = item.get('text', '')
                 native = []
                 for prov in item.get('prov', []):
                     page = inspection['pages'][prov['page_no'] - 1]
@@ -384,7 +389,7 @@ class SourceAdapter:
                 elif kind in {'math','code'}: attrs = {'representation':'image'} if len(locs)==1 else {}
                 elif kind in {'figure','table'}:attrs = {'caption_block_ids':[]}
                 else:attrs = {}
-                recognized_item=recognized.get(item.get('self_ref'),{}) if kind in {'math','code'} else {}
+                recognized_item=recognized.get(item.get('self_ref'),{}) if kind in {'math','code'} and not item.get('_native_code') else {}
                 recognized_text=recognized_item.get('text','') or ''
                 if recognized_text.strip():
                     attrs['recognition']=enrichment | {'original_text':text}

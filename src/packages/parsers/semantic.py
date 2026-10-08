@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from lxml import html as dom
 from markdown_it import MarkdownIt
 
-VERSION = 'full-page-semantic-v3'
+VERSION = 'full-page-semantic-v4'
 MAX_DEPTH, MAX_NODES, MAX_TEXT = 32, 10000, 1_000_000
 MARKS = {'b':'strong','strong':'strong','i':'emphasis','em':'emphasis','u':'underline',
          'del':'deletion','s':'deletion','sub':'subscript','sup':'superscript','code':'code'}
@@ -352,6 +352,17 @@ def html_semantics(parser, outer, role, depth=0):
 
 
 def markdown_semantics(value, diagnostics, path='/text'):
+    # Some page models put the opening fence, language and entire listing on
+    # one line. CommonMark treats this as inline code, which would make the
+    # listing a translatable paragraph. Preserve the explicit code boundary;
+    # PDF recovery can restore its physical lines without guessing syntax.
+    compact_fence = re.fullmatch(r'\s*(`{3,}|~{3,})([A-Za-z][A-Za-z0-9_+.-]{0,39})[ \t]+([^\r\n]+?)[ \t]*\1\s*', value)
+    if compact_fence:
+        if len(diagnostics)<100:
+            diagnostics.append({'code':'CODE_FENCE_LINEBREAKS_MISSING','output_path':path,
+                'reason':'Code fence has no line breaks; retain code identity and recover layout only from the original PDF'})
+        return node('code',[{'type':'code','text':compact_fence[3],'path':path}],
+                    attrs={'code_language':compact_fence[2]},path=path)
     tokens=MarkdownIt('commonmark',{'html':False}).parse(value)
     if len(tokens)>MAX_NODES:raise ValueError('markdown node capacity')
     inline_nodes=0

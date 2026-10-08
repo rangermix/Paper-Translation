@@ -116,7 +116,7 @@ persisted formats. They do not identify project releases. Preserve them when
 reading old revisions or rebuilding a historical template. Frozen CSS/JavaScript
 hashes are enforced by the [template registry](../src/packages/templates/registry.py).
 
-Schema 4.0 defaults to `reader-v11` and its separate semantic renderer; historical
+Schema 4.0 defaults to `reader-v12` and its separate semantic renderer; historical
 3.0 inputs retain the old reader path. Translation units for 4.0 preserve each
 formatting/link association using bounded plain-text units and deterministic
 restoration. API validation, the editor, source correction, search and both offline

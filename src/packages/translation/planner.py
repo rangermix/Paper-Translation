@@ -5,9 +5,10 @@ from packages.ir.retention import metadata_literals, original_only_blocks, title
 from packages.billing.price import validate_profile
 from .languages import check_language_policy
 from .abbreviations import source_literals as abbreviation_literals
+from .code_literals import source_literals as code_literals
 
-PLANNER_VERSION='source-abbreviation-units-v7'
-RICH_PLANNER_VERSION='semantic-abbreviation-units-v8'
+PLANNER_VERSION='source-code-literal-units-v8'
+RICH_PLANNER_VERSION='semantic-code-literal-units-v9'
 
 
 def _literal_pattern(literals):
@@ -27,6 +28,7 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
     name_pattern = _literal_pattern(names)
     table_names = sorted(set(names) | set(title_identifier_literals(source)), key=lambda value: (-len(value), value))
     table_name_pattern = _literal_pattern(table_names)
+    code_labels = code_literals(source)
     limit=profile.get('max_unit_characters',2000)
     if profile.get('api_protocol') == 'local_translation':
         from packages.local_models.catalog import get_model
@@ -39,6 +41,12 @@ def plan_units(source,target_locale,profile,block_ids=None,*,nonblocking=False):
         if selected is not None and block['id'] not in selected:continue
         if not block['translatable'] or block['id'] in original_only or block['language']==target_locale:continue
         literal_pattern = table_name_pattern if block['kind'] == 'table_cell' else name_pattern
+        if block['id'] in code_labels:
+            # Preserve the whole label, including its parentheses, without
+            # changing the immutable source nodes or making prose original-only.
+            code_pattern = '|'.join(re.escape(value) for value in code_labels[block['id']])
+            literal_pattern = re.compile('(?:' + code_pattern + ')' +
+                ('|' + literal_pattern.pattern if literal_pattern else ''))
         context={'heading':by[block['parent_id']]['normalized_text'] if block['parent_id'] and block['parent_id'] not in original_only else '',
             'previous':all_blocks[index-1]['normalized_text'][-500:] if index and all_blocks[index-1]['id'] not in original_only else '',
             'next':all_blocks[index+1]['normalized_text'][:500] if index+1<len(all_blocks) and all_blocks[index+1]['id'] not in original_only else ''}

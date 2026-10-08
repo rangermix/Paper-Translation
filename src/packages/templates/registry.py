@@ -61,10 +61,33 @@ def list_templates():
     v12 = {**v11, 'id':'reader-v12', 'version':'12',
         'renderer_version':'reader-python-12.0.0',
         'renderer_sha256':digest((root/'src/packages/publisher/reader_v12.py').read_bytes())}
-    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12):
+    v13 = {**v12, 'id':'reader-v13', 'version':'13',
+        'css_path':'src/packages/templates/reader-v13.css', 'js_path':'src/packages/templates/reader-v13.js',
+        'css_sha256':'c8fb66b25404f4e190fe8f0bc595184a40b3ef1cff9d9e8fab88c66187f4a5bf', 'js_sha256':'d0434e374b27651c23c71b2bc09aeb0582833fa49792a7f2ccedd3be2dc1c046',
+        'renderer_version':'reader-python-13.0.0',
+        'renderer_sha256':digest((root/'src/packages/publisher/reader_v13.py').read_bytes()),
+        'extra_assets': v12['extra_assets'] + [
+            {'source':'res/vendor/reader-fonts/JetBrainsMono-Bold.woff2', 'path':'fonts/JetBrainsMono-Bold.woff2',
+             'media_type':'font/woff2', 'sha256':'c503cc5ec5f8b2c7666b7ecda1adf44bd45f2e6579b2eba0fc292150416588a2'},
+            {'source':'res/vendor/reader-fonts/JetBrainsMono-BoldItalic.woff2', 'path':'fonts/JetBrainsMono-BoldItalic.woff2',
+             'media_type':'font/woff2', 'sha256':'3a013466c0eee979fb9d42c2d7a8887cd3645dc8b897cfc5b71781cf982efc5a'},
+            {'source':'res/vendor/reader-fonts/JetBrainsMono-Italic.woff2', 'path':'fonts/JetBrainsMono-Italic.woff2',
+             'media_type':'font/woff2', 'sha256':'cb6a1b246318ed3885d7dffa14a2609297fe80e9b8e500bea33b52fa312a36a4'},
+            {'source':'res/vendor/reader-fonts/JetBrainsMono-OFL.txt', 'path':'fonts/JetBrainsMono-OFL.txt',
+             'media_type':'text/plain', 'sha256':'30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad'},
+            {'source':'res/vendor/reader-fonts/JetBrainsMono-Regular.woff2', 'path':'fonts/JetBrainsMono-Regular.woff2',
+             'media_type':'font/woff2', 'sha256':'a9cb1cd82332b23a47e3a1239d25d13c86d16c4220695e34b243effa999f45f2'},
+            {'source':'res/vendor/reader-fonts/MiSans-Bold.woff2', 'path':'fonts/MiSans-Bold.woff2',
+             'media_type':'font/woff2', 'sha256':'1c5a7515b61bc82baaa2e2c2fdae2032479fb9a99e09d4d021dc17314fc5939b'},
+            {'source':'res/vendor/reader-fonts/MiSans-LICENSE.txt', 'path':'fonts/MiSans-LICENSE.txt',
+             'media_type':'text/plain', 'sha256':'979ed309aec1118d2724fb683a0b36d2e96571fc94d2d6dce9aba7dae852e9aa'},
+            {'source':'res/vendor/reader-fonts/MiSans-Regular.woff2', 'path':'fonts/MiSans-Regular.woff2',
+             'media_type':'font/woff2', 'sha256':'d704c1a932c0bd7e8a071d276cd81c0ed0c9fecfa26ac234f4bed0559fe1cb2d'}
+        ]}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12]
+    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13]
 
 
 def get_template(template_id):

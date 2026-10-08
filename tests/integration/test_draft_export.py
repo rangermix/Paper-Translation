@@ -33,6 +33,7 @@ def test_explicit_draft_export_freezes_missing_blocks_without_publication(client
     exported = client.get(result['download_url'])
     assert exported.status_code == 200
     assert 'DRAFT' in exported.text and '缺失 1 块译文' in exported.text
+    assert 'data-theme-select' in exported.text and '跟随系统' in exported.text
     assert 'Later target sentinel' not in exported.text
     with db.transaction() as session:
         assert session.scalar(select(func.count()).select_from(Artifact)) == 0

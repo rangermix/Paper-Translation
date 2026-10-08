@@ -1,0 +1,56 @@
+{
+  "retrieved": "2026-10-09",
+  "misans": {
+    "source": "https://hyperos.mi.com/font-download/MiSans.zip",
+    "archive_sha256": "b6aa1fc827035922612df8edf36e5609bca1c5441e25cd57572204569b7b81d9",
+    "members": [
+      "MiSans/woff2/MiSans-Regular.woff2",
+      "MiSans/woff2/MiSans-Bold.woff2"
+    ],
+    "modifications": "None; official WOFF2 bytes retained without subsetting or conversion.",
+    "license_source": "https://hyperos.mi.com/font-download/MiSans字体知识产权许可协议.pdf",
+    "license_text": "Full bilingual text extracted from the official PDF with pypdf."
+  },
+  "jetbrains_mono": {
+    "repository": "https://github.com/JetBrains/JetBrainsMono",
+    "version": "2.304",
+    "commit": "cd5227bd1f61dff3bbd6c814ceaf7ffd95e947d9",
+    "directory": "fonts/webfonts/",
+    "license": "OFL-1.1",
+    "modifications": "None."
+  },
+  "files": {
+    "JetBrainsMono-Bold.woff2": {
+      "sha256": "c503cc5ec5f8b2c7666b7ecda1adf44bd45f2e6579b2eba0fc292150416588a2",
+      "byte_size": 94588
+    },
+    "JetBrainsMono-BoldItalic.woff2": {
+      "sha256": "3a013466c0eee979fb9d42c2d7a8887cd3645dc8b897cfc5b71781cf982efc5a",
+      "byte_size": 98152
+    },
+    "JetBrainsMono-Italic.woff2": {
+      "sha256": "cb6a1b246318ed3885d7dffa14a2609297fe80e9b8e500bea33b52fa312a36a4",
+      "byte_size": 95864
+    },
+    "JetBrainsMono-OFL.txt": {
+      "sha256": "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
+      "byte_size": 4399
+    },
+    "JetBrainsMono-Regular.woff2": {
+      "sha256": "a9cb1cd82332b23a47e3a1239d25d13c86d16c4220695e34b243effa999f45f2",
+      "byte_size": 92164
+    },
+    "MiSans-Bold.woff2": {
+      "sha256": "1c5a7515b61bc82baaa2e2c2fdae2032479fb9a99e09d4d021dc17314fc5939b",
+      "byte_size": 5081104
+    },
+    "MiSans-LICENSE.txt": {
+      "sha256": "979ed309aec1118d2724fb683a0b36d2e96571fc94d2d6dce9aba7dae852e9aa",
+      "byte_size": 9815
+    },
+    "MiSans-Regular.woff2": {
+      "sha256": "d704c1a932c0bd7e8a071d276cd81c0ed0c9fecfa26ac234f4bed0559fe1cb2d",
+      "byte_size": 4858624
+    }
+  }
+}

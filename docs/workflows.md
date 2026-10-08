@@ -107,13 +107,31 @@ version or secret boundaries. Successfully sealed revisions are immutable.
 
 Source 4.0 translation splits at formatting/link boundaries and restores those
 associations deterministically after the bounded text response. Editing visible
-labels preserves marks, destinations and protected references. The new `reader-v12`
+labels preserves marks, destinations and protected references. The new `reader-v13`
 renders nested structures, table headers and bare math literals. Author and
 affiliation lines stay in their original form beside the titles. References and
 footnotes appear in the margin, with clickable destinations and a collected
 footnote section at the bottom;
 publication and both offline exports retain these semantics. Old snapshots and
-reader resources are not rewritten. Offline tests establish preservation contracts,
+reader resources are not rewritten. New publications and draft exports use
+`reader-v13` for both 3.0 and 4.0 sources. Its theme selector offers system (the
+default), light and dark modes. System mode responds immediately to the browser's
+system color preference, including in offline exports and without JavaScript.
+Explicit light/dark preferences already saved in the browser remain selected;
+choosing system restores automatic switching. Printing always uses light colors.
+Default body text uses MiSans; code blocks and inline code use JetBrains Mono.
+The separate code-font selector also offers Fira Code, Cascadia Code, Source Code
+Pro, IBM Plex Mono, Consolas, Menlo and the system monospace font. MiSans and
+JetBrains Mono are bundled as pinned, unmodified WOFF2 resources with their
+licenses and attribution. Other font choices use installed fonts with fallbacks.
+Published pages load the bundled fonts from this application; both offline formats
+embed them in CSS data URLs without third-party requests. The bundled font files
+add about 10.3 MB (13.8 MB after base64 encoding in single HTML exports).
+The line-height selector offers 1.4, 1.72 (default), 2 and 2.4 times the text size.
+Body font, code font and line height are saved independently in the browser.
+Existing publications can use the new theme selector by rebuilding with
+`reader-v13` from their saved translation, without translating again.
+Offline tests establish preservation contracts,
 not trained-model OCR or translation quality.
 
 Translation follows the abbreviation form printed in each source occurrence.

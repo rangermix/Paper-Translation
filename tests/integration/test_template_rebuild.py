@@ -21,7 +21,8 @@ pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(database):
+@pytest.mark.parametrize('template_id', ['reader-v2', 'reader-v13'])
+def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(database, template_id):
     db, cfg = database
     fixture = json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))
     source_template, translation_template = fixture['source_revision'], fixture['translation_revision']
@@ -58,7 +59,7 @@ def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(databa
             for file in (cfg.data/key).rglob('*'):
                 if file.is_file():
                     previous_files[file] = digest(file.read_bytes())
-            payload = {'translation_revision_id': tr_id, 'template_id': 'reader-v2', 'artifact_id': f'new_{i}',
+            payload = {'translation_revision_id': tr_id, 'template_id': template_id, 'artifact_id': f'new_{i}',
                 'edition_id': edition_id, 'expected_generation': 1}
             session.add(Job(id=f'rebuild_{i}', document_id=doc_id, stage='rebuild', payload=payload))
             session.flush()
@@ -89,5 +90,5 @@ def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(databa
             assert edition.current_artifact_id == f'new_{i}' and edition.generation == 2
             artifact = session.get(Artifact, f'new_{i}')
             manifest = verify_artifact(cfg.data/artifact.storage_key)
-            assert manifest['template_id'] == 'reader-v2'
+            assert manifest['template_id'] == template_id
             assert manifest['translation_snapshot_hash'] == session.get(TranslationRevision, f'translation_{i}').snapshot_hash

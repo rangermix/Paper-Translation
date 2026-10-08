@@ -58,7 +58,7 @@ def test_recovered_references_enable_grouped_citations_and_ranges_without_partia
     assert index.resolve('[1990]') == []
 
 
-@pytest.mark.parametrize('template', ['reader-v11', 'reader-v12'])
+@pytest.mark.parametrize('template', ['reader-v11', 'reader-v12', 'reader-v13'])
 def test_recovered_references_publish_complete_grouped_links_in_both_languages(template):
     from packages.publisher.renderer import render_html
     from test_reader_sidenotes import add_reference, refresh, set_inline, sidenote_fixture

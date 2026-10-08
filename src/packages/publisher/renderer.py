@@ -93,6 +93,9 @@ def render_toc(source, blocks, *, original_labels=False):
 
 
 def render_html(ir, asset_paths, *, include_source=False):
+    if ir['render']['template_id'] == 'reader-v13':
+        from .reader_v13 import render_html as render_themed
+        return render_themed(ir, asset_paths, include_source=include_source)
     if ir['render']['template_id'] == 'reader-v12':
         from .reader_v12 import render_html as render_rich
         return render_rich(ir, asset_paths, include_source=include_source)
@@ -511,10 +514,22 @@ def export_files(artifact_dir, include_source):
         files['index.html'] = content.encode('utf-8')
         files.pop('original.pdf',None)
         manifest['include_source'] = False
-        manifest['files'] = [entry for entry in manifest['files'] if entry['path'] in files]
-        for entry in manifest['files']:
-            entry['byte_size'] = len(files[entry['path']]); entry['sha256'] = digest(files[entry['path']])
-        manifest['content_digest'] = digest(manifest['files'])
+    # Bundle exports are also opened as file:// pages, where external fonts may
+    # be blocked by the browser's origin policy. Embed only registered resources
+    # already validated by verify_artifact; never fetch a font during export.
+    css = files['reader.css'].decode('utf-8')
+    for entry in manifest['files']:
+        if entry['media_type'] != 'font/woff2':
+            continue
+        reference = 'url("' + entry['path'] + '")'
+        if reference in css:
+            uri = 'data:font/woff2;base64,' + base64.b64encode(files.pop(entry['path'])).decode('ascii')
+            css = css.replace(reference, 'url("' + uri + '")')
+    files['reader.css'] = css.encode('utf-8')
+    manifest['files'] = [entry for entry in manifest['files'] if entry['path'] in files]
+    for entry in manifest['files']:
+        entry['byte_size'] = len(files[entry['path']]); entry['sha256'] = digest(files[entry['path']])
+    manifest['content_digest'] = digest(manifest['files'])
     files['manifest.json'] = canonical_bytes(manifest)
     return manifest, files
 

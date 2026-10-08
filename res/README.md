@@ -12,6 +12,7 @@ Only application inputs belong here. Synthetic PDF/IR corpora are
 | `reference/reference-files.sha256.json` | Byte-integrity verification of frozen reader/seed inputs |
 | `reference/legacy/` | Two seed HTML readers, their original PDFs and every referenced figure |
 | `vendor/katex-0.18.7/` | Pinned offline math runtime, MIT license, registry integrity and file hashes for reader-v4 |
+| `vendor/reader-fonts/` | Unmodified MiSans and JetBrains Mono WOFF2 fonts, licenses and pinned source/hash provenance for reader-v13; served locally and embedded in offline exports |
 
 The optional `python -m packages.maintenance seed-legacy` command imports exactly
 the reviewed, hash-listed seed papers into the selected instance. This is a

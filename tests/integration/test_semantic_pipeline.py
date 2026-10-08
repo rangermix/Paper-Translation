@@ -70,7 +70,7 @@ def test_api_edit_cas_seal_publish_export_and_search_keep_semantics(client,datab
     drain(db,cfg)
     with db.transaction() as session:
         edition=session.get(Edition,'edition_fixture');artifact=session.get(Artifact,edition.current_artifact_id)
-        assert artifact and artifact.template_id=='reader-v12'
+        assert artifact and artifact.template_id=='reader-v13'
         artifact_id=artifact.id
         entries=session.scalars(select(SearchEntry)).all()
         assert any('重要的内容' in e.target_text for e in entries)

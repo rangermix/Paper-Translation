@@ -46,7 +46,8 @@ the instance; the default published address is loopback.
 - Seal immutable revisions, publish static bilingual readers, switch historical
   publications, and export self-contained HTML or a resource bundle. Draft exports
   clearly preserve missing translations as original content.
-  New 4.0 sources use `reader-v12`; old source contracts and readers remain valid.
+  New publications and draft exports use `reader-v13`, with system/light/dark
+  themes; old source contracts and readers remain valid.
 - Keep task stages, actual model identities, timings, redacted logs, attempts and
   uncertain outcomes. Clearing finished task history changes list visibility only.
   The [task model](task-model.md) defines which operations appear as main tasks

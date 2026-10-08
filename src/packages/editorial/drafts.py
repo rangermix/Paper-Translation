@@ -207,8 +207,8 @@ def translation_snapshot(session, config, draft, *, revision_id=None, draft_mode
 def render_input(session, source, translation, template_id=None, mode='release'):
     from packages.templates.registry import get_template
     version=source.get('schema_version','3.0')
-    template_id=template_id or ('reader-v12' if version=='4.0' else 'reader-v1')
-    require(version!='4.0' or template_id in {'reader-v10', 'reader-v11', 'reader-v12'},'TEMPLATE_SCHEMA_INCOMPATIBLE',status=422)
+    template_id=template_id or ('reader-v13' if version=='4.0' else 'reader-v1')
+    require(version!='4.0' or template_id in {'reader-v10', 'reader-v11', 'reader-v12', 'reader-v13'},'TEMPLATE_SCHEMA_INCOMPATIBLE',status=422)
     template = get_template(template_id)
     # Publication titles are source facts, independent of mutable catalog metadata.
     block = next(b for b in source['blocks'] if b['id'] == source['title_block_id'])

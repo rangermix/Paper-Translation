@@ -5,3 +5,7 @@
 src/packages/domain/migrations/012.json -text whitespace=cr-at-eol
 src/packages/templates/reader-v3.css -text whitespace=cr-at-eol
 src/packages/templates/reader-v3.js -text whitespace=cr-at-eol
+# Bundled fonts and licenses are hash-pinned vendor bytes. Preserve upstream
+# license whitespace and extracted PDF line endings instead of reformatting them.
+res/vendor/reader-fonts/*.woff2 binary
+res/vendor/reader-fonts/*.txt -text -whitespace

@@ -9,6 +9,59 @@ from .recovery import _bounds, _complete_native_coverage, _matches, _native_line
 VERSION = 'native-layout-relations-v2'
 
 
+def recover_duplicate_regions(items, page_list):
+    """Discard only misplaced duplicates with independent native coverage proof.
+
+    Identical wording can legitimately appear twice. A duplicate is removable
+    only when one occurrence matches its native PDF text, the other does not,
+    and ALL native content under the misplaced box already belongs elsewhere.
+    """
+    pages = {page['page']: page for page in page_list}
+    groups = {}
+    audit = []
+    for item in items:
+        value = item.get('orig', item.get('text', '')).strip()
+        tree = item.get('_semantic')
+        if (item.get('label') not in {'text', 'paragraph'} or len(item.get('prov', [])) != 1 or
+                len(value) < 80 or tree and (tree['children'] or any(r['type'] in {'math', 'code', 'control'} for r in tree['runs']))):
+            continue
+        groups.setdefault((item['prov'][0]['page_no'], comparison_text(value)), []).append(item)
+    for (number, _), group in groups.items():
+        if len(group) < 2 or number not in pages:
+            continue
+        page = pages[number]
+        candidates = []
+        for item in group:
+            bounds = _bounds(item, page)
+            proof = [r for r in page.get('text_regions', []) if _overlap(r['bbox'], bounds) >= .6 and any(c.isalnum() for c in r['text'])]
+            size = sum(sum(c.isalnum() for c in r['text']) for r in proof)
+            supported = sum(sum(c.isalnum() for c in r['text']) for r in proof if _matches(r, item))
+            candidates.append((item, proof, supported / size if size >= 40 else None))
+        verified = [(item, proof) for item, proof, support in candidates if support is not None and support >= .85]
+        if len(verified) != 1:
+            continue
+        retained, retained_proof = verified[0]
+        for item, proof, support in candidates:
+            if support is None or support > .1 or item is retained:
+                continue
+            def represented(region):
+                return any(other is not item and other is not retained and
+                           any(loc.get('page_no') == number for loc in other.get('prov', [])) and _bounds(other, page) and
+                           _overlap(region['bbox'], _bounds(other, page)) >= .6 and
+                           (other.get('label') in {'picture', 'table', 'formula', 'code'} or _matches(region, other))
+                           for other in items)
+            if not all(represented(region) for region in proof):
+                continue
+            items.remove(item)
+            at = datetime.now(timezone.utc).isoformat()
+            audit.append(dict(origin='automatic_recovery', rule_version=VERSION, page=number,
+                action='native_misplaced_duplicate', before=item.get('orig', item.get('text', '')), after=[],
+                item_ref=item.get('self_ref'), retained_ref=retained.get('self_ref'),
+                native_evidence=proof, retained_native_evidence=retained_proof,
+                started_at=at, finished_at=at, elapsed_ms=0, model=None))
+    return items, audit
+
+
 def recover_inline_layout(items, page_list):
     """Recover run-in headings and bullet boundaries from their native baselines."""
     from .rich_ir import merge_semantics, slice_semantics

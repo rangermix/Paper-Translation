@@ -286,10 +286,16 @@ def reconcile_items(original,pages):
     for item in items:
         if item.get('label') in {'picture','table','formula'}:continue
         from .glyphs import region_text
+        from .recovery import _has_semantic_list
         chunks=[];proven_accents=False
         for p in item.get('prov',[]):
             b=box(p,pages);regions=pages[p['page_no']-1].get('text_regions',[])
-            chunks.append(region_text([r for r in regions if overlap(r['bbox'],b)>=.8]))
+            proof=[r for r in regions if overlap(r['bbox'],b)>=.8]
+            # A semantic list already owns the printed marker. Punctuation
+            # recovery must not insert that glyph into its paragraph content.
+            if _has_semantic_list(item.get('_semantic')):
+                proof=[r for r in proof if r['text'].strip() not in {'•','·','▪','◦'}]
+            chunks.append(region_text(proof))
             proven_accents|=any(a.get('action')=='native_latin_accent_composition' and overlap(a['base']['bbox'],b)>=.8
                                for a in pages[p['page_no']-1].get('glyph_reconciliations',[]))
         before=item.get('orig',item.get('text','')) or '';native=' '.join(chunks)

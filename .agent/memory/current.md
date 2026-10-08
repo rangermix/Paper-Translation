@@ -49,7 +49,7 @@ it does not maintain a retired milestone-completion catalog.
 Disposable offline probes generate their overrides inside unique run directories.
 
 Test doubles, static checks and historical hardware/model runs have limited scopes.
-Real API keys require explicit test budget and content-egress authorization.
+Saving API keys does not authorize reading their secret bytes.
 Existing dated notes describe only their recorded commit/environment. No cleanup
 operation here is production deployment or new inference proof.
 

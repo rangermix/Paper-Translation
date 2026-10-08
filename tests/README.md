@@ -1,7 +1,7 @@
 # Running repository tests
 
 Run from the repository root. The default suite uses test doubles for Providers;
-it does not grant real model, credential or outbound-content authorization.
+passing it does not verify real model services or hardware.
 
 ## Repository checks
 

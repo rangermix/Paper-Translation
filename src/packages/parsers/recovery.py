@@ -270,7 +270,9 @@ def recover_items(items, pages, *, local_reparse=None, remaining_seconds=None):
     from .reference_recovery import recover_references
     result, reference_audit = recover_references(result, pages)
     audit.extend(reference_audit)
-    from .layout_recovery import recover_inline_layout
+    from .layout_recovery import recover_duplicate_regions, recover_inline_layout
+    result, duplicate_audit = recover_duplicate_regions(result, pages)
+    audit.extend(duplicate_audit)
     result, inline_audit = recover_inline_layout(result, pages)
     audit.extend(inline_audit)
     remaining_seconds = remaining_seconds or (lambda: float('inf'))

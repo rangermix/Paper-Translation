@@ -18,6 +18,7 @@ def setup(db, count=1, price=None):
     with db.transaction() as session:
         settings = session.get(Settings, 'singleton')
         settings.instance_budget_micro = 0; settings.dispatch_disabled = False
+        settings.preferences = {'resources': {'master_concurrency': max(2, count)}}
         for i in range(count):
             profile = {'cost_control_enabled': False}
             if price is not None: profile['price'] = price
@@ -25,7 +26,10 @@ def setup(db, count=1, price=None):
                 payload={'profile': profile, 'external_processing_confirmed': True}))
             session.flush()
             session.add(Task(id=f'off-task-{i}', job_id=f'off-job-{i}', kind='translate'))
-    return [claim(db) for _ in range(count)]
+    leases = [claim(db) for _ in range(count)]
+    with db.transaction() as session:
+        session.get(Settings, 'singleton').preferences = {'resources': {'master_concurrency': 2}}
+    return leases
 
 
 @pytest.mark.parametrize('usage', [None, {'input_tokens': 10, 'output_tokens': 20}, {'input_tokens': 'unknown'}])

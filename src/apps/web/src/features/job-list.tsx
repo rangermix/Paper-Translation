@@ -1,3 +1,4 @@
+import { resourceReasons } from './resource-settings';
 import { modelLabel, duration } from './job-records';
 import { useEffect, useRef, useState } from 'react';
 import { api, etagFor } from '../api';
@@ -62,6 +63,7 @@ function JobRow({ job, selected }: { job: Job; selected: boolean }) {
     <div className={`job-state ${tone}`}>
       <span className="job-status"><span className="dot"/>{statusLabel(status)}</span>
       {progress && <div className="job-progress"><small>{progress.label}</small><progress aria-label={progress.label} value={progress.value} max={progress.total}/></div>}
+      {job.progress?.resource_wait && ['pending', 'running'].includes(job.status) && <small>{resourceReasons[job.progress.resource_wait] ?? '等待资源'}</small>}
       {job.error && job.stage !== 'cleanup' && <span className="job-error-summary" title={job.error.message}>{job.error.message}</span>}
     </div>
     <div className="job-created">{created ? <time dateTime={job.created_at} title={created.full}><span>{created.date}</span><span>{created.time}</span></time> : <span>时间未提供</span>}</div>

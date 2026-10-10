@@ -94,11 +94,13 @@ def get_model(identifier):
 
 
 def public_models(*, purpose='translation'):
+    from packages.resources.models import reference
     if purpose not in ('translation', 'analysis', 'all'):
         raise ValueError('LOCAL_MODEL_PURPOSE')
     return [{**{key: m[key] for key in ('id', 'label', 'family', 'bits', 'runtime', 'repo', 'revision', 'license', 'context_size', 'parameter_size', 'quantization')},
              'family_label': FAMILY_LABELS[m['family']],
              'inference_backends': list(compatible_backends(m)), 'default_backend': m['runtime'],
              'format': selectable_format(m),
-             'model_id': artifact(m)['id'], 'download_bytes': sum(f['size'] for f in m['files'])}
+             'model_id': artifact(m)['id'], 'download_bytes': sum(f['size'] for f in m['files']),
+             'memory_reference': reference(m)}
             for m in models() if purpose == 'all' or m.get('purpose', 'translation') == purpose]

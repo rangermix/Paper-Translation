@@ -10,6 +10,13 @@ from tests.integration.test_translation_execution import setup_library
 from workers.main import execute
 
 
+@pytest.fixture(autouse=True)
+def parallel_units(database):
+    db, _ = database
+    with db.transaction() as session:
+        session.get(Settings, 'singleton').preferences = {'resources': {'subjob_concurrency': 2}}
+
+
 @pytest.mark.parametrize('code,status', [('DISPATCH_DISABLED', 'waiting_config'),
     ('PROVIDER_PROFILE_STALE', 'waiting_config'), ('BUDGET_PAUSED', 'waiting_budget'),
     ('INSTANCE_CONCURRENCY_LIMIT', 'pending')])

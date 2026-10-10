@@ -45,7 +45,10 @@ def authorize(session,lease,reserved_micro,price):
     existing=session.scalar(select(Permit).where(Permit.attempt_id==lease.attempt_id))
     require(existing is None,'DISPATCH_ALREADY_AUTHORIZED')
     active=session.scalars(select(Permit).where(Permit.state=='reserved')).all()
-    require(len(active)<2,'INSTANCE_CONCURRENCY_LIMIT',retryable=True)
+    from packages.resources.policy import policy, WORKER_LIMIT
+    resources = policy(settings.preferences)
+    limit = min(WORKER_LIMIT, resources['master_concurrency'] * resources['subjob_concurrency'])
+    require(len(active)<limit,'INSTANCE_CONCURRENCY_LIMIT',retryable=True)
     if controlled:
         for limit,totals in [(settings.instance_budget_micro,budget_totals(session,controlled_only=True)),(job.budget_micro,budget_totals(session,job.id,controlled_only=True))]:
             require(type(limit) is int and all(value is not None for value in totals.values()) and limit-sum(totals.values())>=reserved_micro,'BUDGET_PAUSED')

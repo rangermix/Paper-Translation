@@ -8,8 +8,11 @@ from packages.local_models.catalog import public_models
 
 
 def catalog_client(monkeypatch, handler):
+    from apps.api.common import session_dependency
+    from types import SimpleNamespace
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[session_dependency] = lambda: SimpleNamespace(scalars=lambda _: [])
     client = TestClient(app)
     original_client = httpx.Client
     monkeypatch.setattr(httpx, 'Client', lambda **kwargs:

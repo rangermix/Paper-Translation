@@ -275,6 +275,7 @@ services:
   # http://vllm-runner:12434 and declare Safetensors for supported NVIDIA hosts.
   # LOCAL_GGUF_DMR_URL can explicitly select its llama.cpp backend for GGUF.
   # This endpoint is private to the model network and does not replace native DMR.
+  # Its private port 12435 supplies read-only RAM/VRAM telemetry for shared budgets.
   vllm-runner:
     profiles: [local-vllm]
     image: "${LOCAL_VLLM_RUNNER_IMAGE:-local/paper-translation-vllm-cuda:0.19.1}"

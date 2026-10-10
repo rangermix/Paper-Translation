@@ -1,4 +1,18 @@
 .settings-page .page-head { margin-bottom: 18px; }
+.settings-page .resource-panel { margin-bottom: 18px; }
+.resource-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.resource-meters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.resource-meter { display: grid; gap: 6px; font-size: 12px; }
+.resource-meter span { color: var(--muted); }
+.resource-meter meter { width: 100%; height: 12px; }
+.resource-table-scroll { overflow-x: auto; }
+.resource-table-scroll table { width: 100%; min-width: 560px; text-align: left; border-collapse: collapse; }
+.resource-table-scroll th, .resource-table-scroll td { padding: 8px; border-bottom: 1px solid var(--line); }
+.model-memory { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; }
+.model-memory p { margin: 0; line-height: 1.7; }
+.model-memory p + p { margin-top: 5px; color: var(--muted); }
+@media (max-width: 900px) { .resource-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .resource-fields, .resource-meters { grid-template-columns: minmax(0, 1fr); } }
 .settings-page .page-head h1 { margin: 0; font-size: 32px; }
 .settings-layout {
   display: grid;

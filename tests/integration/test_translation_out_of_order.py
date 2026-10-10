@@ -6,7 +6,7 @@ import threading
 import pytest
 from sqlalchemy import func, select
 
-from packages.domain.models import Draft, Job, Permit, SegmentVersion, Task
+from packages.domain.models import Draft, Job, Permit, SegmentVersion, Task, Settings
 from packages.ir import flatten_inline
 from packages.jobs.queue import claim
 from packages.providers.fake import FakeProvider
@@ -21,6 +21,7 @@ def test_parallel_late_first_unit_reassembles_in_original_order(database):
     source = setup_library(db, cfg)
     profile = PROFILE | {'max_unit_characters': 8}
     with db.transaction() as session:
+        session.get(Settings, 'singleton').preferences = {'resources': {'master_concurrency': 1, 'subjob_concurrency': 8}}
         job = session.get(Job, 'job')
         job.payload = job.payload | {'block_ids': ['p1'], 'profile': profile}
         session.get(Draft, 'draft').profile = profile

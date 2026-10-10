@@ -78,6 +78,41 @@ The parser's 16 GiB cgroup limit applies to its PDF/client work, not Docker's ba
 VRAM or Metal process. Cancellation prevents late commits; already submitted
 inference may finish. No CPU/CUDA inference framework is installed at runtime.
 
+## Memory budgets and concurrency
+
+Settings → **资源与并发** controls shared RAM/VRAM admission budgets (80% by
+default), simultaneous main operations (default 2), and units per operation
+(default 1). Auto mode reduces those ceilings using remaining RAM/VRAM; all modes
+check the model estimate against measured usage before dispatch. A resident model
+is charged once, and pending loads reserve their estimated allocation. Waiting
+does not consume an attempt. Existing requests finish when a limit is lowered.
+The parser remains serial; llama.cpp can serve concurrent units using its shared
+context/cache. Model loading waits for active local requests to finish. The
+worker's global ceiling is 16; backend slot limits may be lower.
+
+The managed CUDA Runner exposes private read-only telemetry on port 12435 inside
+`model_inference`, with no host port or Docker socket. Rebuild both the application
+image and `deployment/vllm-backend` when updating an existing CUDA instance. RAM
+is the memory visible to Docker's Linux host/VM, not Windows Task Manager's total;
+VRAM is GPU 0, including other processes. Missing GPU telemetry holds local CUDA
+work in the queue. External/native runners need equivalent capacity telemetry
+configured through `RESOURCE_MONITOR_URL` in the parser and model services before
+automatic GPU admission is available. MLX references count unified memory once;
+Linux VM RAM telemetry does not measure a native macOS Metal process.
+
+These are admission budgets with estimated headroom, not OS-enforced quotas or
+guarantees against other programs allocating memory after a sample. Existing
+container cgroup limits still apply independently. Estimates in Settings use
+locked weight sizes, full configured context and working-space allowances; they
+are deliberately labelled estimates rather than measured peaks.
+
+The pinned CUDA vLLM 0.19.1 image bounds its single-request KV allocation using
+vLLM's own attention-group calculation: one full context plus a null block.
+The image build fails if the expected upstream implementation changes. Parser
+startup also requests a model-sized fraction of device memory instead of an
+independent 80% for every model. This removes the unused full-device cache
+reservation while keeping model identity, quantization and context unchanged.
+
 ## Retired choices and immutable history
 
 Docling/Granite inference is removed. PaddleOCR-VL, Xiaomi and TeleOCR support is

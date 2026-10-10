@@ -29,12 +29,23 @@ def emit(session, job):
     session.flush()  # Return the same transactional timestamps that readers will see.
 
 
-def claim(db, lease_seconds=60):
+def claim(db, lease_seconds=60, *, capacity=None):
     with db.transaction() as session:
         session.execute(text('SELECT pg_advisory_xact_lock_shared(798205424)'))
         settings = session.get(Settings, 'singleton')
         if not settings or settings.maintenance:
             return None
+        # Serialize admission with every lifecycle transition; independent
+        # workers cannot both reserve the same remaining capacity.
+        lock_lifecycle(session)
+        session.refresh(settings)
+        if settings.maintenance:
+            return None
+        from packages.resources.policy import policy
+        from packages.resources.scheduler import admission, owner
+        resource_policy = policy(settings.preferences)
+        active = [(owner(session, j), j, t) for j, t in session.execute(
+            select(Job, Task).join(Task, Task.job_id == Job.id).where(Task.status == 'leased'))]
         eligible = exists(select(Task.id).where(Task.job_id == Job.id, Task.status == 'pending', Task.available_at <= now()))
         last_claim = (select(Attempt.job_id, func.max(Attempt.created_at).label('at'))
             .group_by(Attempt.job_id).subquery())
@@ -46,15 +57,27 @@ def claim(db, lease_seconds=60):
             & (Job.stage.in_(['translate', 'translating', 'candidate', 'semantic_review']))
             & (Job.error['code'].astext == 'PROVIDER_PROFILE_STALE')
             & (Job.payload['profile']['config_revision'].astext.is_not(None)))
-        job = session.scalar(select(Job).outerjoin(last_claim, last_claim.c.job_id == Job.id)
+        candidates = session.scalars(select(Job).outerjoin(last_claim, last_claim.c.job_id == Job.id)
             .where((Job.status.in_(['pending', 'running']) | frozen_config_wait), eligible)
             .order_by(func.coalesce(last_claim.c.at, Job.created_at), Job.created_at, Job.id)
-            .with_for_update(of=Job, skip_locked=True).limit(1))
-        if not job:
-            return None
-        task = session.scalar(select(Task).where(Task.job_id == job.id, Task.status == 'pending', Task.available_at <= now())
-            .order_by(Task.created_at, Task.id).with_for_update(skip_locked=True).limit(1))
-        if not task:
+            .with_for_update(of=Job, skip_locked=True))
+        job = task = None
+        for candidate in candidates:
+            pending = session.scalar(select(Task).where(Task.job_id == candidate.id, Task.status == 'pending', Task.available_at <= now())
+                .order_by(Task.created_at, Task.id).with_for_update(skip_locked=True).limit(1))
+            if pending is None:
+                continue
+            reason = admission(resource_policy, capacity, active, (owner(session, candidate), candidate, pending))
+            if reason:
+                if candidate.progress.get('resource_wait') != reason:
+                    candidate.progress = {**candidate.progress, 'resource_wait': reason}
+                    emit(session, candidate)
+                continue
+            job, task = candidate, pending
+            if 'resource_wait' in job.progress:
+                job.progress = {k: v for k, v in job.progress.items() if k != 'resource_wait'}
+            break
+        if task is None:
             return None
         if job.document_id and task.kind != 'cleanup':
             get_document(session, job.document_id)

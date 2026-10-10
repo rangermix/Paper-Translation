@@ -14,7 +14,7 @@ router = APIRouter(prefix='/api/v1')
 
 
 @router.get('/settings/local-models')
-def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
+def local_models(purpose: Literal['translation', 'analysis'] = 'translation', session=Session):
     import httpx
     from packages.local_models.catalog import ENDPOINT, configured_backends, configured_formats, public_models
     from .common import response
@@ -48,13 +48,20 @@ def local_models(purpose: Literal['translation', 'analysis'] = 'translation'):
                 entry = state if backend == model['default_backend'] else {'status': 'unavailable', 'code': code or 'LOCAL_MODEL_SERVICE_UNAVAILABLE'}
             model['backend_states'][backend] = {key: entry[key] for key in
                 ('status', 'code', 'backend', 'downloaded_bytes', 'total_bytes') if key in entry}
+    from packages.resources.preparation import queued
+    pending = {(job.payload['model_id'], job.payload['backend']) for job in queued(session, 'prepare_local_model') if job.status == 'pending'}
+    for model in models:
+        for backend in model['inference_backends']:
+            if (model['id'], backend) in pending:
+                model['backend_states'][backend] = {'status': 'queued'}
+                if backend == model['default_backend']:
+                    model['status'] = 'queued'
     return response({'models': models, **({'code': code} if code else {})})
 
 
 @router.post('/settings/local-models/{identifier}/prepare', status_code=202)
 def prepare_local_model(identifier: str, request: Request, backend: Literal['llama.cpp', 'vllm', 'mlx'] | None = None, session=Session):
-    import httpx
-    from packages.local_models.catalog import ENDPOINT, configured_backends, configured_formats, get_model, select_backend, selectable_format
+    from packages.local_models.catalog import configured_backends, configured_formats, get_model, select_backend, selectable_format
     from .common import command
     try:
         model = get_model(identifier)
@@ -67,16 +74,8 @@ def prepare_local_model(identifier: str, request: Request, backend: Literal['lla
     require(selectable_format(model) in configured_formats(), 'LOCAL_MODEL_FORMAT_UNSUPPORTED', status=409)
     require(selected in configured_backends(), 'LOCAL_MODEL_BACKEND_UNSUPPORTED', status=409)
     def execute():
-        lock_lifecycle(session)
-        try:
-            with httpx.Client(timeout=15, trust_env=False, follow_redirects=False) as client:
-                result = client.post(ENDPOINT.rsplit('/v1/', 1)[0] + '/models/' + model['id'] + '/prepare',
-                                     **({'params': {'backend': selected}} if backend is not None else {}))
-                result.raise_for_status()
-                state = result.json()
-            return {k: state[k] for k in ('status', 'code', 'downloaded_bytes', 'total_bytes') if k in state}
-        except (httpx.HTTPError, ValueError, KeyError, TypeError):
-            raise DomainError('LOCAL_MODEL_SERVICE_UNAVAILABLE', status=503) from None
+        from packages.resources.preparation import enqueue
+        return enqueue(session, 'prepare_local_model', {'model_id': model['id'], 'backend': selected})
     return command(session, request, {'backend': selected} if backend is not None else {}, execute, 202)
 
 

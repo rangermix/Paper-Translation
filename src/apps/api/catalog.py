@@ -16,6 +16,7 @@ from packages.templates import list_templates
 from packages.translation.languages import canonical_locale
 from packages.parsers.profiles import ParserProfile, preferred_profile
 from packages.parsers.timeouts import MIN_PARSE_TIMEOUT_SECONDS, MAX_PARSE_TIMEOUT_SECONDS, selected_timeout_seconds
+from packages.resources.policy import ResourcePolicy
 from .common import StrictModel, command, page, response
 from .library import Session, edition_view, frozen_parser_runtime
 
@@ -34,7 +35,7 @@ def parser_model_backend():
 
 
 @router.get('/settings/parser-models')
-def parser_models():
+def parser_models(session=Session):
     import httpx
     from packages.parsers.catalog import public_models
     from packages.parsers.model_service import CONTROL_URL
@@ -50,6 +51,11 @@ def parser_models():
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
         for row in rows:
             row['status'] = 'unavailable'
+    from packages.resources.preparation import queued
+    pending = {job.payload['parser_profile_revision']: job for job in queued(session, 'prepare_parser_model')}
+    for row in rows:
+        if row['id'] in pending and pending[row['id']].status == 'pending':
+            row['status'] = 'queued'
     return response({'models': rows})
 
 
@@ -62,17 +68,42 @@ def prepare_parser_model(body: ParserModelPreparation, request: Request, session
     def execute():
         writable(session)
         frozen_parser_runtime(body.parser_profile_revision)
-        import httpx
-        from packages.parsers.model_service import CONTROL_URL
-        try:
-            with httpx.Client(timeout=10, trust_env=False, follow_redirects=False) as client:
-                result = client.post(CONTROL_URL + '/models/' + body.parser_profile_revision + '/prepare',
-                                     params={'backend': parser_model_backend()})
-                require(result.status_code == 202, 'PARSER_MODEL_PREPARATION_FAILED')
-                return result.json()
-        except (httpx.HTTPError, ValueError):
-            require(False, 'PARSER_MODEL_PREPARATION_FAILED', '解析模型准备服务不可用，请检查部署配置。')
+        from packages.resources.preparation import enqueue
+        return enqueue(session, 'prepare_parser_model', {
+            'parser_profile_revision': body.parser_profile_revision, 'backend': parser_model_backend()})
     return command(session, request, body.model_dump(), execute, 202)
+
+
+@router.get('/settings/resources')
+def resource_status(session=Session):
+    import httpx
+    from packages.parsers.model_service import CONTROL_URL
+    from packages.resources.policy import policy, WORKER_LIMIT
+    from packages.resources.scheduler import limits, owner
+    from packages.domain.models import Task
+    capacity = {'ram_total_bytes': None, 'ram_used_bytes': None, 'vram_total_bytes': None,
+                'vram_used_bytes': None, 'ram_scope': 'unavailable', 'resident_models': []}
+    try:
+        with httpx.Client(timeout=6, trust_env=False, follow_redirects=False) as client:
+            result = client.get(CONTROL_URL + '/resources')
+            result.raise_for_status()
+            capacity.update(result.json())
+    except (httpx.HTTPError, ValueError, TypeError):
+        pass
+    saved = policy(session.get(Settings, 'singleton').preferences)
+    masters, children = limits(saved, capacity)
+    active = list(session.execute(select(Job, Task).join(Task, Task.job_id == Job.id).where(Task.status == 'leased')))
+    waiting = list(session.scalars(select(Job).where(Job.status.in_(['pending', 'running']),
+        Job.progress['resource_wait'].astext.is_not(None))))
+    from packages.local_models.catalog import public_models as local_models
+    from packages.parsers.catalog import public_models as parser_models
+    references = [{k: row[k] for k in ('id', 'label', 'memory_reference')}
+                  for row in [*parser_models(), *local_models(purpose='all')]]
+    return response({**capacity, 'policy': saved, 'effective_master_concurrency': masters,
+        'effective_subjob_concurrency': children, 'worker_limit': WORKER_LIMIT,
+        'active_master_jobs': len({owner(session, job) for job, _ in active}),
+        'active_subjobs': len(active), 'model_references': references,
+        'waiting_jobs': [{'id': job.id, 'reason': job.progress['resource_wait']} for job in waiting]})
 
 
 @router.get('/settings/provider')
@@ -106,10 +137,12 @@ def preferences(session=Session):
 def preferences_view(settings):
     from packages.parsers.profiles import RETIRED_PROFILES
     from packages.providers.local_analysis import selection
+    from packages.resources.policy import policy
     choice = preferred_profile(settings.preferences)
     return {'generation': settings.generation, 'theme': 'system', 'upload_translation_profile_hash': None,
         **editable_preferences(settings),
         **selection(settings.preferences),
+        'resources': policy(settings.preferences),
         'parser_profile_revision': choice,
         'parser_profile_status': RETIRED_PROFILES.get(choice, {}).get('status', 'active'),
         'parser_timeout_seconds': selected_timeout_seconds(settings.preferences)}
@@ -145,6 +178,7 @@ def patch_dispatch_settings(body: DispatchSettings, request: Request, session=Se
 
 
 class Preferences(StrictModel):
+    resources: ResourcePolicy | None = None
     local_analyst_model_id: str | None = Field(None, pattern='^sha256:[0-9a-f]{64}$')
     local_analyst_backend: Literal['mlx', 'llama.cpp', 'vllm'] | None = None
     upload_translation_profile_hash: str | None = Field(None, pattern='^[0-9a-f]{64}$')
@@ -164,10 +198,14 @@ class Preferences(StrictModel):
 
 @router.patch('/settings/preferences')
 def patch_preferences(body: Preferences, request: Request, session=Session):
-    writable(session)
+    from packages.domain.db import lock_lifecycle
+    lock_lifecycle(session)
     settings = session.scalar(select(Settings).where(Settings.id == 'singleton').with_for_update().execution_options(populate_existing=True))
     match_generation(settings, request.headers.get('If-Match'))
     merged = {**editable_preferences(settings), **body.model_dump(exclude_none=True)}
+    if body.resources is not None:
+        from packages.resources.policy import policy
+        merged['resources'] = {**policy(settings.preferences), **body.resources.model_dump(exclude_unset=True)}
     if 'upload_translation_profile_hash' in body.model_fields_set:
         if body.upload_translation_profile_hash is not None:
             from packages.providers.settings import configuration_view

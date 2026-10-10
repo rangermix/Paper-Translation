@@ -43,7 +43,8 @@ def test_explicit_prepare_is_idempotent_and_does_not_change_preferences(client, 
     first = client.post('/api/v1/settings/parser-models/prepare', json=body, headers=headers)
     replay = client.post('/api/v1/settings/parser-models/prepare', json=body, headers=headers)
     assert first.status_code == replay.status_code == 202
-    assert first.json() == replay.json() and len(requests) == 1
+    assert first.json() == replay.json() and len(requests) == 0
+    assert first.json()['status'] == 'queued'
     assert client.get('/api/v1/settings/preferences').json() == before
 
 

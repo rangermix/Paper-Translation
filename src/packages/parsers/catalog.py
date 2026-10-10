@@ -32,11 +32,12 @@ def manifest_id(profile):
 
 
 def public_models():
+    from packages.resources.models import reference
     result = []
     for row in PARSER_PROFILES:
         spec = download_spec(row['id'])
         model = vlm_model(row['id'])
         result.append({**row, 'download_bytes': sum(f['size'] for f in spec),
                        'revision': model.get('revision'), 'license': model.get('license'),
-                       'manifest_id': digest(spec)})
+                       'manifest_id': digest(spec), 'memory_reference': reference(model)})
     return result

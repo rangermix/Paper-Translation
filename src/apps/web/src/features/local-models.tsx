@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { ErrorNotice } from '../components';
+import { ModelMemory, type MemoryReference } from './resource-settings';
 
 export type LocalModel = { id: string; label: string; model_id: string; family: string; family_label: string;
   parameter_size: string; bits: number; quantization: string; format: string; runtime: string; repo: string;
-  revision: string; download_bytes: number; inference_backends?: string[]; default_backend?: string;
+  revision: string; download_bytes: number; inference_backends?: string[]; default_backend?: string; memory_reference?: MemoryReference;
   backend_states?: Record<string, ModelState>; status?: string; downloaded_bytes?: number; total_bytes?: number; code?: string };
 type ModelState = { status?: string; downloaded_bytes?: number; total_bytes?: number; code?: string };
 type Choice = { family: string; size: string; format: string; model: string; backend: string };
@@ -12,7 +13,7 @@ const empty: Choice = { family: '', size: '', format: '', model: '', backend: ''
 export const inferenceLabels: Record<string, string> = { 'llama.cpp': 'llama.cpp', vllm: 'vLLM（CUDA）', mlx: 'vLLM Metal（MLX）' };
 const sizeOf = (model: LocalModel) => `${model.parameter_size} · ${model.quantization.startsWith('BF') ? model.quantization : `Q${model.bits}`}`;
 export const modelStatusLabels: Record<string, string> = { ready: '已下载', not_downloaded: '首次使用时下载', downloading: '正在下载',
-  loading: '正在加载', failed: '准备失败，可重试', unavailable: '本地模型服务未就绪' };
+  queued: '已排队，等待资源', loading: '正在加载', failed: '准备失败，可重试', unavailable: '本地模型服务未就绪' };
 const backendLabels: Record<string, string> = { LOCAL_GGUF_UNAVAILABLE: 'llama.cpp 后端未就绪',
   LOCAL_VLLM_UNAVAILABLE: 'vLLM 后端未就绪', LOCAL_MLX_UNAVAILABLE: 'MLX 后端未就绪',
   LOCAL_CUDA_PROBE_MISSING: 'Docker Runner 缺少 CUDA 检测组件',
@@ -137,8 +138,9 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
       {state?.code === 'LOCAL_CUDA_PROBE_MISSING' && <p className="field-note">Docker Model Runner 已启用，但缺少 GPU 检测组件。请修复 Docker Desktop 的推理组件后刷新状态。</p>}
       {state?.code === 'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED' && <p className="field-note">这台设备可通过 Linux／WSL2 的 CUDA vLLM 部署运行 Safetensors；当前连接的 Runner 没有提供该后端。启用 Runner 开关不会自动接入另一种部署。</p>}
       <p className="local-model-id mono">{selected.model_id}</p>
+      <ModelMemory reference={selected.memory_reference} unified={backend === 'mlx'}/>
       {state?.status === 'downloading' && state.total_bytes ? <progress aria-label="模型下载进度" value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
-      <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={!compatible || pending || ['downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>
+      <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={!compatible || pending || ['queued', 'downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>
       </>}
     <details className="settings-details"><summary>本地模型说明</summary>
       <p>通过 Docker Model Runner 在本机{role}，无需密钥。首次使用或明确准备时下载所选模型；切换格式不会自动下载。</p>

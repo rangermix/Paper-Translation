@@ -38,7 +38,9 @@ class Database:
             schema = os.environ['TEST_DATABASE_SCHEMA']
             require(re.fullmatch(r'library_test_[a-f0-9]+', schema), 'TEST_SCHEMA_INVALID')
             connect_args = {'options': '-csearch_path=' + schema}
-        self.engine = create_engine(config.database_url, pool_pre_ping=True, pool_size=5, max_overflow=5, connect_args=connect_args)
+        # Up to 16 workers each hold a maintenance guard connection. Leave room
+        # for their short result/heartbeat transactions without pool starvation.
+        self.engine = create_engine(config.database_url, pool_pre_ping=True, pool_size=5, max_overflow=35, connect_args=connect_args)
         self.session_factory = sessionmaker(self.engine, expire_on_commit=False)
         from packages.jobs.history import track_lifecycle
         event.listen(self.session_factory, 'before_flush', track_lifecycle)

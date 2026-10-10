@@ -1,5 +1,6 @@
 """Compose-only model cache and inference bridge. No DB, documents or credentials."""
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import threading
 import time
@@ -20,12 +21,50 @@ RUNTIME_FLAGS = ['--gpu-memory-utilization', '0.8', '--max-num-seqs', '1', '--ma
 Backend = Literal['llama.cpp', 'vllm', 'mlx']
 
 
+class InferenceGate:
+    """Parallel llama.cpp requests; exclusive model loading and Metal handoff."""
+    def __init__(self):
+        self.condition = threading.Condition()
+        self.readers = self.writers = 0
+        self.writing = False
+
+    def __enter__(self):
+        with self.condition:
+            self.writers += 1
+            try:
+                self.condition.wait_for(lambda: not self.writing and self.readers == 0)
+                self.writing = True
+            finally:
+                self.writers -= 1
+        return self
+
+    def __exit__(self, *_):
+        with self.condition:
+            self.writing = False
+            self.condition.notify_all()
+
+    @contextmanager
+    def shared(self):
+        with self.condition:
+            self.condition.wait_for(lambda: not self.writing and self.writers == 0)
+            self.readers += 1
+        try:
+            yield
+        finally:
+            with self.condition:
+                self.readers -= 1
+                self.condition.notify_all()
+
+
 def engine(model, backend=None):
     return 'vllm' if select_backend(model, backend) in ('mlx', 'vllm') else 'llama.cpp'
 
 
 def runtime_flags(model, backend=None):
-    return RUNTIME_FLAGS if engine(model, backend) == 'vllm' else []
+    from packages.resources.models import vllm_fraction
+    if engine(model, backend) != 'vllm':
+        return []
+    return [RUNTIME_FLAGS[0], vllm_fraction(model) if select_backend(model, backend) == 'vllm' else '0.8', *RUNTIME_FLAGS[2:]]
 
 
 class Completion(BaseModel):
@@ -57,7 +96,7 @@ class Manager:
                 raise ValueError('LOCAL_MODEL_RUNNER_URL_INVALID')
         self.states = {}
         self.lock = threading.RLock()
-        self.inference_lock = threading.Lock()
+        self.inference_lock = InferenceGate()
 
 
     def client(self, timeout=10):
@@ -322,7 +361,7 @@ def create_app(*, cache=None, transport=None, formats=None, vllm_dmr=None, gguf_
         # No downloads or reconfiguration after dispatch. This call either runs the exact model or fails.
         if manager.state(model, backend=body.backend)['status'] != 'ready':
             raise HTTPException(503, 'LOCAL_MODEL_NOT_READY')
-        with manager.inference_lock:
+        with (manager.inference_lock.shared() if select_backend(model, body.backend) == 'llama.cpp' else manager.inference_lock):
             try:
                 manager.reserve_gpu(model, body.backend)
                 if not manager.configuration_matches(model, body.backend):

@@ -59,6 +59,24 @@ per-engine `backend_states` independently of installation/readiness.
 selected engine and rejects unsupported model/deployment combinations. The
 backend participates in the command's idempotency payload and task snapshots.
 
+`GET /settings/preferences` includes `resources`: `max_ram_percent` and
+`max_vram_percent` (10–100, default 80), `master_concurrency` (1–8, default 2),
+`subjob_concurrency` (1–8 per main operation, default 1), and `auto_concurrency`
+(default true). Patch these with the preferences ETag; omitted nested fields keep
+their saved values. Resource policy governs subsequent admission, without changing
+model/context/provider snapshots or interrupting work already running.
+
+`GET /settings/resources` reports read-only capacity, current admission ceilings,
+active counts, waiting reasons and model references. Catalog entries also include
+`memory_reference`: locked weight bytes, estimated full-context FP16 KV cache,
+working-space allowance, RAM/VRAM estimates and unified-memory indication.
+References are planning estimates, not measured peaks. Settings operations never
+prepare weights. Explicit parser/local model preparation returns a durable
+`{status: "queued", job_id}` receipt and waits for the same shared budget as jobs.
+Queued preparation can be cancelled; a sidecar download/preload already running
+retains its reservation until completion and rejects pause/cancel with
+`MODEL_PREPARATION_IN_PROGRESS`.
+
 `/health/live` reports HTTP liveness. `/health/ready` checks the database schema,
 storage integrity, bundled templates, frontend and current worker/parser heartbeats.
 A liveness response alone does not establish readiness or successful inference.

@@ -93,6 +93,26 @@ consent, local preparation, independent evidence scopes and responsive views.
 These checks make no real analyst or translator inference calls. Measure summary
 and translation quality, latency and memory only in a separately authorized run.
 
+## Resource admission and CUDA cache allocation
+
+`tests/unit/test_resources.py` and `tests/integration/test_resource_controls.py`
+cover shared model accounting, RAM/VRAM waits, simultaneous claims, settings CAS,
+and queued explicit preparation. `tests/browser/resource-settings.spec.ts` covers
+desktop/mobile settings, validation, persistence, conflicts and missing telemetry.
+
+The pinned CUDA image's actual KV allocator can be checked without loading weights
+or granting GPU access. Build the backend image first, then run from the repo root:
+
+```sh
+docker build -t local/paper-translation-vllm-cuda:0.19.1 deployment/vllm-backend
+docker run --rm --network none --entrypoint /opt/vllm-env/bin/python \
+  --mount "type=bind,src=$PWD/tests/runtime/check_vllm_cache.py,dst=/tmp/check_cache.py,readonly" \
+  local/paper-translation-vllm-cuda:0.19.1 /tmp/check_cache.py
+```
+
+This checks full and hybrid attention, padding, the null block and unchanged
+multi-request allocation. It does not establish GPU startup or parser quality.
+
 ## Historical evidence
 
 Some acceptance tests replay archived parser output or independent human review

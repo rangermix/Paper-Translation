@@ -25,6 +25,8 @@ COPY --from=environment /opt/vllm-env /opt/vllm-env
 COPY --from=environment --chown=modelrunner:modelrunner /app /app
 COPY --chown=modelrunner:modelrunner startup.py /app/vllm-cuda-startup.py
 COPY --chown=modelrunner:modelrunner start.sh /app/vllm-cuda-start.sh
+COPY --chown=modelrunner:modelrunner resources.py patch_cache.py /app/
+RUN /opt/vllm-env/bin/python /app/patch_cache.py
 # PyTorch wheels carry a consistent CUDA library set. Prepending the system
 # toolkit here mixes its nvJitLink with wheel cuBLAS and breaks BF16/FP16 GEMM.
 ENV MODEL_RUNNER_SOCK=/var/run/model-runner/model-runner.sock \
@@ -36,7 +38,7 @@ ENV MODEL_RUNNER_SOCK=/var/run/model-runner/model-runner.sock \
     MODELS_PATH=/models
 WORKDIR /app
 USER modelrunner
-EXPOSE 12434
+EXPOSE 12434 12435
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -fsS "http://localhost:${MODEL_RUNNER_PORT}/engines/status" || exit 1
 ENTRYPOINT ["/bin/sh", "/app/vllm-cuda-start.sh"]

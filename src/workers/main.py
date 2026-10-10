@@ -294,6 +294,9 @@ def execute(db, cfg, lease):
     try:
         if lease.kind in ('inspect', 'parse'):
             parse_spool(db, cfg, lease)
+        elif lease.kind in ('prepare_parser_model', 'prepare_local_model'):
+            from packages.resources.preparation import execute as prepare_model
+            prepare_model(db, lease)
         elif lease.kind in ('publish', 'rebuild'):
             publish(db, cfg, lease)
         elif lease.kind == 'export':
@@ -383,7 +386,9 @@ def main():
         stopping.set()
     signal.signal(signal.SIGTERM, stop_claiming)
     signal.signal(signal.SIGINT, stop_claiming)
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    from packages.resources.policy import WORKER_LIMIT
+    from packages.resources.telemetry import worker_capacity
+    with ThreadPoolExecutor(max_workers=WORKER_LIMIT) as pool:
         futures = set()
         while not stopping.is_set():
             try:
@@ -406,8 +411,8 @@ def main():
                         pass  # The previous pulse expires; invalid input cannot mark readiness.
                 recover_expired(db)
                 futures = {f for f in futures if not f.done()}
-                if len(futures) < 4 and not stopping.is_set():
-                    lease = claim(db, cfg.lease_seconds)
+                if len(futures) < WORKER_LIMIT and not stopping.is_set():
+                    lease = claim(db, cfg.lease_seconds, capacity=worker_capacity(cfg))
                     if lease:
                         futures.add(pool.submit(execute, db, cfg, lease))
                 if args.once:

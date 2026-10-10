@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
 import { useAction, useResource } from '../hooks';
+import { ModelMemory, type MemoryReference } from './resource-settings';
 import type { ParserAccelerator, ParserEnvironment, ParserProfileRevision, Preferences } from '../types';
 
 const runtimeLabels: Record<ParserAccelerator, string> = { cpu: 'CPU（已停用）', cuda: 'CUDA（已停用）', mlx: '原生 MLX（已停用）', dmr: 'Docker Model Runner' };
@@ -22,9 +23,9 @@ export function isActiveParserProfile(value: string): boolean {
 }
 
 type ParserModel = { id: ParserProfileRevision; download_bytes: number; status?: string; downloaded_bytes?: number;
-  total_bytes?: number; code?: string; license?: string | null };
+  total_bytes?: number; code?: string; license?: string | null; memory_reference?: MemoryReference };
 const modelStatus: Record<string, string> = { ready: '已准备', not_downloaded: '首次使用时下载',
-  downloading: '正在下载', loading: '正在准备推理后端', failed: '准备失败，可重试', unavailable: '模型准备服务不可用' };
+  queued: '已排队，等待资源', downloading: '正在下载', loading: '正在准备推理后端', failed: '准备失败，可重试', unavailable: '模型准备服务不可用' };
 
 export function ParserSelect({ id, label, value, onChange, disabled = false, showDescription = true }: {
   id: string; label: string; value: ParserProfileRevision; onChange: (value: ParserProfileRevision) => void; disabled?: boolean; showDescription?: boolean;
@@ -55,7 +56,7 @@ export function ParserSettings({ preferences, loading, onSaved, reload }: {
   const device = detected?.options?.find(option => option.id === effectiveDefault);
   const runtimeAvailable = isActiveParserProfile(selected) && (!detected?.online || Boolean(device?.profiles.includes(selected)));
   const model = models.data?.models?.find(row => row.id === selected);
-  const preparing = model?.status === 'downloading' || model?.status === 'loading';
+  const preparing = ['queued', 'downloading', 'loading'].includes(model?.status ?? '');
   return <section className="panel parser-panel" aria-label="PDF 解析"><h2>PDF 解析</h2>
     {detected?.online && effectiveDefault && <p className="settings-hint parser-device">运行设备：{runtimeLabels[effectiveDefault]} · Compose</p>}
     {!environment.loading && !detected?.online && <p className="settings-hint" role="status">解析环境暂不可用，请检查解析服务。</p>}
@@ -70,6 +71,7 @@ export function ParserSettings({ preferences, loading, onSaved, reload }: {
         {model && <p role="status">{modelStatus[model.status ?? 'not_downloaded']} · 下载约 {(model.download_bytes / 10 ** 9).toFixed(2)} GB
           {preparing && model.total_bytes ? ` · ${((model.downloaded_bytes ?? 0) / model.total_bytes * 100).toFixed(1)}%` : ''}</p>}
         {model?.status === 'failed' && <p className="field-note" role="alert">准备失败（{model.code}），请检查磁盘空间、网络与推理后端后重试。</p>}
+        <ModelMemory reference={model?.memory_reference}/>
         <button className="btn" type="button" disabled={!runtimeAvailable || preparing || prepare.pending || !detected?.online}
           onClick={() => void prepare.run(async () => {
             await api('/settings/parser-models/prepare', { method: 'POST', body: { parser_profile_revision: selected } });

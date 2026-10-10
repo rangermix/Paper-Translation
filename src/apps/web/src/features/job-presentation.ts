@@ -8,6 +8,7 @@ const operations: Record<string, string> = {
   'seed-legacy': '导入受控种子论文', 'maintenance-on': '进入维护模式', 'maintenance-off': '退出维护模式',
   'enable-dispatch': '启用外部请求', 'set-budget': '设置实例预算',
   provider_test: '测试 API 连接 / 密钥',
+  prepare_parser_model: '准备解析模型', prepare_local_model: '准备本地模型',
   inspect: '检查 PDF', inspecting: '检查 PDF', parse: '解析原文', parsing: '解析原文',
   translate: '全文翻译', translating: '全文翻译', candidate: '局部重译', semantic_review: '语义检查',
   export: '导出阅读版本', publish: '构建并发布', rebuild: '重建阅读版式', cleanup: '文档删除与文件清理',
@@ -15,6 +16,7 @@ const operations: Record<string, string> = {
 };
 export function jobOperation(stage: string) { return operations[stage] ?? '后台任务'; }
 export function jobName(job: Job) {
+  if (job.stage === 'prepare_parser_model' || job.stage === 'prepare_local_model') return jobOperation(job.stage);
   if (job.stage === 'cleanup' || job.content_deleted) return `已删除文档 · ${job.id.replace(/^job_/, '').slice(-8)}`;
   if (['maintenance', 'backup', 'restore'].includes(job.stage)) return '文库实例';
   return job.stage === 'provider_test' ? 'AI 服务连接测试' : job.title?.trim() || job.filename?.trim() || '未命名 PDF';

@@ -203,17 +203,20 @@ def test_prepare_api_binds_backend_to_query_and_idempotency_payload(monkeypatch)
     original_client = httpx.Client
     monkeypatch.setattr(httpx, 'Client', lambda **kwargs: original_client(transport=httpx.MockTransport(
         lambda request: calls.append(request) or httpx.Response(202, json={'status': 'loading'})), **kwargs))
-    monkeypatch.setattr(provider_settings, 'lock_lifecycle', lambda _: None)
+    queued = []
+    monkeypatch.setattr('packages.resources.preparation.enqueue', lambda session, kind, payload:
+        queued.append((kind, payload)) or {'status': 'queued', 'job_id': 'prepare-test'})
     commands = []
     monkeypatch.setattr(common, 'command', lambda session, request, payload, execute, status:
         commands.append(payload) or execute())
     request = Request({'type': 'http'})
-    assert provider_settings.prepare_local_model(model['id'], request, backend='vllm', session=object()) == {'status': 'loading'}
-    assert calls[0].url.params['backend'] == 'vllm' and commands == [{'backend': 'vllm'}]
+    assert provider_settings.prepare_local_model(model['id'], request, backend='vllm', session=object()) == {'status': 'queued', 'job_id': 'prepare-test'}
+    assert queued == [('prepare_local_model', {'model_id': model['id'], 'backend': 'vllm'})]
+    assert not calls and commands == [{'backend': 'vllm'}]
     monkeypatch.setenv('LOCAL_TRANSLATION_BACKENDS', 'llama.cpp')
     with pytest.raises(DomainError) as error:
         provider_settings.prepare_local_model(model['id'], request, backend='vllm', session=object())
-    assert error.value.code == 'LOCAL_MODEL_BACKEND_UNSUPPORTED' and len(calls) == 1
+    assert error.value.code == 'LOCAL_MODEL_BACKEND_UNSUPPORTED' and not calls and len(queued) == 1
 
 
 def test_provider_prepare_polls_the_same_backend_without_document_content(monkeypatch):

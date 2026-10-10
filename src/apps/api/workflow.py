@@ -531,6 +531,10 @@ def control(job_id: str, action: Literal['pause', 'resume', 'cancel'], body: Emp
         match_generation(job, request.headers.get('If-Match'))
         from packages.domain.workflow import TERMINAL_STATES
         require(job.status not in TERMINAL_STATES, 'JOB_TERMINAL')
+        # Preparation is delegated to a sidecar that cannot cancel a download or
+        # preload mid-flight. Keep its resource reservation until it finishes.
+        require(not (job.stage in ('prepare_parser_model', 'prepare_local_model') and job.status == 'running'),
+            'MODEL_PREPARATION_IN_PROGRESS', '模型正在准备，完成后将自动释放资源名额；排队中的准备任务可以取消。', status=409)
         if action == 'resume':
             require(not job.progress.get('source_superseded'), 'SOURCE_STALE')
             require(job.status in ('paused', 'waiting_config', 'waiting_budget'), 'JOB_NOT_RESUMABLE')

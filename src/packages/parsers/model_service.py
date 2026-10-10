@@ -32,9 +32,10 @@ def runner_url(value=None):
 
 
 def dmr_flags(model, backend):
+    from packages.resources.models import vllm_fraction
     # DMR accepts a restricted set of engine flags. Chat-template options belong
     # to the inference request, where DockerVision already disables thinking.
-    return ([] if backend == 'mlx' else ['--gpu-memory-utilization', '0.8', '--max-num-seqs', '1',
+    return ([] if backend == 'mlx' else ['--gpu-memory-utilization', vllm_fraction(model), '--max-num-seqs', '1',
         '--max-num-batched-tokens', '2048'])
 
 
@@ -167,6 +168,11 @@ def create_app(cache=None, transport=None, dmr=None):
     @app.get('/health')
     def health():
         return {'status': 'ok'}
+
+    @app.get('/resources')
+    def resources():
+        from packages.resources.telemetry import capacity
+        return capacity()
 
     @app.get('/models')
     def catalog(backend: Backend = 'vllm'):

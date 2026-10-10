@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import event, select, text
 
 from packages.domain.models import Attempt, Job, Task, now
-from packages.jobs.queue import claim
+from packages.jobs.queue import claim, finish
 
 pytestmark = pytest.mark.postgres
 
@@ -25,12 +25,17 @@ def test_concurrent_fair_claims_never_duplicate_tasks(database):
             session.add(Task(id=f'task_{i}', job_id=f'job_{i//3}', kind='unit'))
     found = []
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for _ in range(8):
+        for _ in range(24):
             barrier = threading.Barrier(6)
             def one():
                 barrier.wait(timeout=10)
                 return claim(db)
-            found.extend(lease for lease in pool.map(lambda _: one(), range(6)) if lease)
+            batch = [lease for lease in pool.map(lambda _: one(), range(6)) if lease]
+            found.extend(batch)
+            # Release the configured admission slots before the next batch.
+            with db.transaction() as session:
+                for lease in batch:
+                    finish(session, lease)
             if len(found) == 24:
                 break
     assert len(found) == len({lease.task_id for lease in found}) == 24

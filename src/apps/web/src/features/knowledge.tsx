@@ -7,6 +7,7 @@ import { resourceId } from '../domain';
 import { useAction, useResource } from '../hooks';
 import { ProviderSettings } from './provider-settings';
 import { ParserSettings } from './parser-select';
+import { ResourceSettings } from './resource-settings';
 import { AnalystSettings } from './analyst-settings';
 import { UploadTranslationDefault } from './upload-translation-default';
 import { ProviderDestination } from './provider-destination';
@@ -36,6 +37,7 @@ export function Settings({ onTheme }: { onTheme: (theme: string) => void }) {
   const prefs = { ...result.data, ...edits };
   const theme = prefs.theme === 'paper' ? 'light' : prefs.theme ?? 'system';
   return <div className="settings-page"><PageHead title="设置"/>
+    <ResourceSettings preferences={result.data} onSaved={result.setData} reload={result.reload}/>
     <div className="settings-layout">
     <ProviderSettings provider={provider.data} loading={provider.loading} error={provider.error} reload={provider.reload} onSaved={provider.setData} onDispatchSaved={result.reload}/>
     <div className="settings-aside">

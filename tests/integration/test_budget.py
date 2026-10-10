@@ -77,6 +77,7 @@ def test_three_simultaneous_dispatch_reservations_enforce_two_active_limit(datab
     with db.transaction() as session:
         settings = session.get(Settings, 'singleton')
         settings.instance_budget_micro, settings.dispatch_disabled = 1000, False
+        settings.preferences = {'resources': {'master_concurrency': 3}}
         for index in range(3):
             job = Job(id=f'cap_job{index}', stage='translate', budget_micro=1000,
                 payload={'external_processing_confirmed': True, 'profile': {'price': price}})
@@ -84,6 +85,9 @@ def test_three_simultaneous_dispatch_reservations_enforce_two_active_limit(datab
             session.flush()
             session.add(Task(id=f'cap_task{index}', job_id=job.id, kind='translate'))
     leases = [claim(db) for _ in range(3)]
+    # Already admitted work still encounters a newly lowered dispatch limit.
+    with db.transaction() as session:
+        session.get(Settings, 'singleton').preferences = {'resources': {'master_concurrency': 2}}
     barrier = Barrier(3)
     def reserve(lease):
         barrier.wait(timeout=10)

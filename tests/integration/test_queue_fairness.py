@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 
-from packages.domain.models import Job, Task, now
+from packages.domain.models import Job, Task, Settings, now
 from packages.jobs.queue import claim, finish
 
 pytestmark = pytest.mark.postgres
@@ -12,6 +12,7 @@ pytestmark = pytest.mark.postgres
 def test_small_jobs_get_a_turn_between_large_job_units(database):
     db, _ = database
     with db.transaction() as session:
+        session.get(Settings, 'singleton').preferences = {'resources': {'subjob_concurrency': 2}}
         session.add(Job(id='bulk_job', stage='translate', created_at=now()-timedelta(minutes=1)))
         session.add(Job(id='small_job', stage='translate'))
         session.flush()

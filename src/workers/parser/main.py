@@ -39,6 +39,8 @@ class ModelHealth:
             self.checked_at, self.version = time.monotonic(), parser_version()
         payload = {'timestamp': time.time(), 'service_ready': True, 'parser_version': self.version,
             'memory_limit_bytes': self.memory_limit, 'environment': self.environment}
+        from packages.resources.telemetry import capacity
+        payload['resources'] = capacity()
         if active_task:
             payload['active_task'] = active_task
         temporary = self.outputs/'heartbeat.tmp'

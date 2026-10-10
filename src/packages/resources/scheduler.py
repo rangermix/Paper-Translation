@@ -3,7 +3,7 @@
 This is a scheduler guard, not an OS quota: other programs can allocate memory
 after a sample. Existing work is never killed to satisfy a changed setting.
 """
-from .models import GIB, task_model
+from .models import GIB, loading_reference, task_model
 from .policy import WORKER_LIMIT
 
 
@@ -68,6 +68,10 @@ def admission(policy, capacity, active, candidate):
         if selected:
             models[selected['id']] = selected
     resident = set(capacity.get('resident_models', []))
+    for ident in capacity.get('loading_models', []):
+        pending = loading_reference(ident)
+        if pending:
+            models[ident] = pending
     # Small per-request scratch allowance is separate from the shared KV pool.
     vram_extra = sum(GIB // 8 for _, j, t in [*active, candidate]
                      if (selected := task_model(j, t)) and not selected['unified_memory'])

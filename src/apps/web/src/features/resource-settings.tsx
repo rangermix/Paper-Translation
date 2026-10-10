@@ -48,7 +48,7 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
   const status = useResource<Capacity>('/settings/resources', 5000);
   const action = useAction();
   const fields = [
-    ['max_ram_percent', 'RAM 使用上限（%）', 10, 100], ['max_vram_percent', 'VRAM 使用上限（%）', 10, 100],
+    ['max_ram_percent', 'RAM 使用上限（%）', 1, 100], ['max_vram_percent', 'VRAM 使用上限（%）', 1, 100],
     ['master_concurrency', '主任务并发上限', 1, 8], ['subjob_concurrency', '每个主任务的子任务并发上限', 1, 8],
   ] as const;
   const valid = fields.every(([key, , min, max]) => Number.isInteger(values[key]) && values[key] >= min && values[key] <= max);

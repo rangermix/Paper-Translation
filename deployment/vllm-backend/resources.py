@@ -13,7 +13,7 @@ def snapshot():
     result = {'ram_total_bytes': memory['MemTotal'],
               'ram_used_bytes': memory['MemTotal'] - memory['MemAvailable'],
               'ram_scope': 'docker_host', 'vram_total_bytes': None, 'vram_used_bytes': None,
-              'observed_at': time.time(), 'resident_models': [], 'inventory_complete': False}
+              'observed_at': time.time(), 'resident_models': [], 'loading_models': [], 'inventory_complete': False}
     try:
         output = subprocess.run(['nvidia-smi', '--query-gpu=memory.total,memory.used',
             '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=2, check=True)
@@ -25,7 +25,8 @@ def snapshot():
     try:
         with build_opener(ProxyHandler({})).open('http://127.0.0.1:12434/engines/ps', timeout=1) as response:
             rows = json.loads(response.read(65536))
-        result.update(resident_models=[row['model_name'] for row in rows if not row.get('loading')], inventory_complete=True)
+        result.update(resident_models=[row['model_name'] for row in rows if not row.get('loading')],
+                      loading_models=[row['model_name'] for row in rows if row.get('loading')], inventory_complete=True)
     except (OSError, ValueError, KeyError, TypeError):
         pass
     return result

@@ -60,7 +60,7 @@ selected engine and rejects unsupported model/deployment combinations. The
 backend participates in the command's idempotency payload and task snapshots.
 
 `GET /settings/preferences` includes `resources`: `max_ram_percent` and
-`max_vram_percent` (10–100, default 80), `master_concurrency` (1–8, default 2),
+`max_vram_percent` (1–100, default 80), `master_concurrency` (1–8, default 2),
 `subjob_concurrency` (1–8 per main operation, default 1), and `auto_concurrency`
 (default true). Patch these with the preferences ETag; omitted nested fields keep
 their saved values. Resource policy governs subsequent admission, without changing

@@ -63,6 +63,7 @@ for (const width of [1440, 390]) test(`resource limits save and persist without 
   await expect(panel.getByRole('cell', { name: 'Hy-MT2 7B Q4' })).toBeVisible();
   await expect(page.getByLabel('模型内存参考').first()).toContainText('KV 缓存约 1.0 GiB');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: outputDirectory(`resources-${width}.png`), fullPage: true });
   await panel.screenshot({ path: outputDirectory(`resources-panel-${width}.png`) });
   expect(errors).toEqual([]);

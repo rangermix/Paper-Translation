@@ -22,7 +22,7 @@ def row(owner='one', model='hy-mt2-7b-q4-k-m-gguf', kind='translate'):
 
 def test_defaults_and_strict_policy_validation():
     assert policy() == dict(max_ram_percent=80, max_vram_percent=80, master_concurrency=2, subjob_concurrency=1, auto_concurrency=True)
-    for change in [{'max_ram_percent': 101}, {'max_vram_percent': 9}, {'master_concurrency': 0},
+    for change in [{'max_ram_percent': 101}, {'max_vram_percent': 0}, {'master_concurrency': 0},
                    {'subjob_concurrency': 9}, {'auto_concurrency': 'true'}, {'max_ram_percent': True}, {'extra': 1}]:
         with pytest.raises(ValidationError):
             ResourcePolicy(**change)
@@ -48,6 +48,12 @@ def test_loading_reservations_prevent_simultaneous_overcommit():
     snapshot = capacity(vram_used_bytes=8 * GIB)
     assert admission(policy(), snapshot, [], row()) is None
     assert admission(policy(), snapshot, [row()], row('two', 'milmmt-46-4b-q4-k-m-gguf')) == 'VRAM_BUDGET_LIMIT'
+
+
+def test_asynchronous_preload_retains_budget_after_prepare_job_finishes():
+    ident = artifact(get_model('hy-mt2-7b-q4-k-m-gguf'))['id']
+    snapshot = capacity(vram_used_bytes=8 * GIB, loading_models=[ident])
+    assert admission(policy(), snapshot, [], row('two', 'milmmt-46-4b-q4-k-m-gguf')) == 'VRAM_BUDGET_LIMIT'
 
 
 def test_budgets_apply_even_when_auto_concurrency_disabled():

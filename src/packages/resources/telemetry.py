@@ -29,7 +29,7 @@ def capacity():
             return dict(_cached)
         result = {**local_memory(), 'vram_total_bytes': None, 'vram_used_bytes': None,
                   'source': 'docker_host', 'observed_at': time.time(),
-                  'resident_models': [], 'inventory_complete': False}
+                  'resident_models': [], 'loading_models': [], 'inventory_complete': False}
         try:
             url = os.environ.get('RESOURCE_MONITOR_URL', 'http://vllm-runner:12435/resources')
             with build_opener(ProxyHandler({})).open(url, timeout=4) as response:
@@ -44,22 +44,6 @@ def capacity():
             pass
         _cached, _at = result, time.monotonic()
         return dict(result)
-
-
-def runner_view(roots):
-    import httpx
-    result = capacity()
-    resident = set()
-    complete = True
-    for root in set(roots):
-        try:
-            with httpx.Client(timeout=2, trust_env=False) as client:
-                response = client.get(root + '/engines/ps')
-                response.raise_for_status()
-                resident.update(row['model_name'] for row in response.json())
-        except (httpx.HTTPError, ValueError, KeyError, TypeError):
-            complete = False
-    return {**result, 'resident_models': sorted(resident), 'inventory_complete': complete}
 
 
 def worker_capacity(cfg):

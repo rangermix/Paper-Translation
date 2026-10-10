@@ -41,7 +41,7 @@ def vllm_fraction(model):
     total = capacity().get('vram_total_bytes')
     if not total:
         return '0.8'  # The managed CUDA engine still caps KV allocation itself.
-    return str(min(.8, max(.05, math.ceil(reference(model)['vram_bytes'] / total * 1000) / 1000)))
+    return str(min(.99, max(.05, math.ceil(reference(model)['vram_bytes'] / total * 1000) / 1000)))
 
 
 def _task_model(job, task):
@@ -75,3 +75,13 @@ def task_model(job, task):
         # Legacy/invalid selections must reach their normal execution validator,
         # which rejects them before inference, rather than wedging the queue.
         return None
+
+
+def loading_reference(identifier):
+    """A DMR asynchronous preload outlives its configuration/prepare receipt."""
+    from packages.local_models.catalog import artifact, models
+    from packages.parsers.catalog import vlm_lock
+    for model in [*models(), *vlm_lock()['models']]:
+        if artifact(model)['id'] == identifier:
+            return {'id': identifier, **reference(model, backend='vllm')}
+    return None

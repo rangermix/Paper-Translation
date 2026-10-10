@@ -14,6 +14,7 @@ from packages.publisher.history import checked_manifest, commit_publication
 from packages.storage import file_hash, read_snapshot, safe_path, write_snapshot
 from .common import StrictModel, command, page, response
 from .library import Session, edition_view, enqueue
+from .reader_assets import font_url, registered_font
 
 router = APIRouter()
 
@@ -46,6 +47,13 @@ def artifact_file(artifact_id: str, relative_path: str, request: Request, sessio
     entry = next((f for f in manifest['files'] if f['path'] == relative_path), None)
     require(entry is not None, 'NOT_FOUND', status=404)
     path = safe_path(directory, relative_path, must_exist=True)
+    if entry['media_type'] == 'font/woff2':
+        font = registered_font(entry['sha256'], path.name)
+        if font is not None and font['path'] == relative_path:
+            # Keep published bytes intact, including offline-relative CSS URLs.
+            # The alias is private; only the shared vendor font is public-cacheable.
+            return RedirectResponse(font_url(font), status_code=307,
+                headers={'Cache-Control': 'private, max-age=31536000, immutable'})
     headers = {'ETag': f'"{entry["sha256"]}"', 'Cache-Control': 'private, no-cache'}
     if entry['media_type'] == 'text/html' and manifest.get('content_security_policy'):
         headers['Content-Security-Policy'] = manifest['content_security_policy']

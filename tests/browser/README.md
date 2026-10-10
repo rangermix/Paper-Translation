@@ -38,6 +38,14 @@ written by `live-resilience.spec.ts`, or looks for it under the current output
 directory's `live/` subdirectory. These runtime checks do not certify a schema
 version or real-provider behavior.
 
+`reader-font-cache.spec.ts` is a read-only check against two published `reader-v13`
+artifacts with code blocks. Set `LIBRARY_READER_CACHE_URL` to a real API HTTP
+server and `LIBRARY_READER_CACHE_FIRST` / `LIBRARY_READER_CACHE_SECOND` to distinct
+`/artifacts/<id>/index.html` paths. It uses a fresh Chromium context without request
+interception and records CDP transfer/cache evidence for all six bundled font
+variants across readers, reloads and preference changes. A static file server
+does not exercise the API's shared font redirects and is not sufficient here.
+
 ## Historical and independently authored artifacts
 
 Each variable below enables its corresponding offline browser checks. Values

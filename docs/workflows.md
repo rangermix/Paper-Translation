@@ -124,9 +124,13 @@ The separate code-font selector also offers Fira Code, Cascadia Code, Source Cod
 Pro, IBM Plex Mono, Consolas, Menlo and the system monospace font. MiSans and
 JetBrains Mono are bundled as pinned, unmodified WOFF2 resources with their
 licenses and attribution. Other font choices use installed fonts with fallbacks.
-Published pages load the bundled fonts from this application; both offline formats
-embed them in CSS data URLs without third-party requests. The bundled font files
-add about 10.3 MB (13.8 MB after base64 encoding in single HTML exports).
+Published pages reuse shared content-hashed font URLs from this application,
+cached for one year. Existing artifact font URLs redirect to the matching shared
+font without rewriting published files. Refreshing or opening another reader can
+reuse the browser cache; clearing that cache or forcing a reload can download the
+fonts again. Both offline formats embed fonts in CSS data URLs without third-party
+requests. The bundled font files add about 10.3 MB (13.8 MB after base64 encoding
+in single HTML exports).
 The line-height selector offers 1.4, 1.72 (default), 2 and 2.4 times the text size.
 Body font, code font and line height are saved independently in the browser.
 Existing publications can use the new theme selector by rebuilding with
@@ -172,13 +176,12 @@ treated as model sizes. Numeric equivalence never exempts missing citations or
 formulas from quality checks.
 
 Reader blocks use tighter padding and gaps, smaller corners, softer borders and backgrounds,
-and no card shadows. Body font sizes and line spacing remain unchanged.
+and no card shadows.
 
-New publications and draft exports use `reader-v9`: a font selector beside the size buttons offers
-default, serif, sans-serif, monospace, 方正宋体, 方正黑体, 思源宋体, 思源黑体,
-MiSans, 鸿蒙黑体 and Noto Sans Simplified Chinese. The choice is saved in browser
-storage. Named fonts use installed local copies, with local fallbacks when missing;
-the selector tooltip explains this, and exports work offline without downloading fonts.
+The body-font selector beside the size buttons offers default MiSans, serif,
+sans-serif, monospace, 方正宋体, 方正黑体, 思源宋体, 思源黑体, MiSans, 鸿蒙黑体
+and Noto Sans Simplified Chinese. Choices other than the bundled MiSans use
+installed local copies with fallbacks; the selector tooltip explains this.
 The Noto choice uses the [Noto Sans SC family](https://github.com/google/fonts/blob/main/ofl/notosanssc/METADATA.pb).
 The TOC uses the original section labels,
 author/affiliation lines share the title area, and adjacent list items share a

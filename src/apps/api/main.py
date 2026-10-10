@@ -117,7 +117,7 @@ def create_app(config=None, database=None):
 
     app.include_router(library_router)
     # Missing domain modules are a deployment failure, never silently hidden.
-    for module in ('workflow', 'editorial', 'artifacts', 'catalog', 'sources', 'candidates', 'knowledge', 'provider_settings', 'continuation'):
+    for module in ('workflow', 'editorial', 'artifacts', 'reader_assets', 'catalog', 'sources', 'candidates', 'knowledge', 'provider_settings', 'continuation'):
         imported = __import__('apps.api.' + module, fromlist=['router'])
         app.include_router(imported.router)
 
@@ -125,7 +125,7 @@ def create_app(config=None, database=None):
 
     @app.api_route('/{path:path}', methods=['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], include_in_schema=False)
     def frontend(path: str):
-        if path.startswith(('api/', 'artifacts/', 'exports/', 'read/')):
+        if path == 'reader-assets' or path.startswith(('api/', 'artifacts/', 'exports/', 'read/', 'reader-assets/')):
             return JSONResponse({'error': {'code': 'NOT_FOUND'}}, status_code=404)
         if path:
             candidate = safe_path(web_root, path)

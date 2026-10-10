@@ -68,23 +68,30 @@ def test_memory_wait_consumes_no_attempt_and_recovers_when_capacity_returns(data
         assert session.get(Task, lease.task_id).attempts == 1
 
 
-def test_explicit_preparation_waits_for_budget_then_calls_exact_backend(client, database, monkeypatch):
+@pytest.mark.parametrize('kind,identifier,backend', [
+    ('local', 'hy-mt2-7b-q4-k-m-gguf', 'llama.cpp'),
+    ('parser', 'infinity-parser2-flash-v1', 'vllm'),
+])
+def test_explicit_preparation_waits_for_budget_then_calls_exact_backend(client, database, monkeypatch, kind, identifier, backend):
     db, _ = database
     calls = []
     def wire(request):
         calls.append(request)
-        assert request.url.params['backend'] == 'llama.cpp'
+        assert request.url.params['backend'] == backend
+        assert request.url.host == ('local-translator' if kind == 'local' else 'parser-models')
         return httpx.Response(202 if request.method == 'POST' else 200, json={'status': 'ready'})
     original = httpx.Client
     monkeypatch.setattr(httpx, 'Client', lambda **kwargs: original(transport=httpx.MockTransport(wire), **kwargs))
-    response = client.post('/api/v1/settings/local-models/hy-mt2-7b-q4-k-m-gguf/prepare?backend=llama.cpp',
+    path = (f'/api/v1/settings/local-models/{identifier}/prepare?backend={backend}' if kind == 'local'
+            else '/api/v1/settings/parser-models/prepare')
+    response = client.post(path, json={} if kind == 'local' else {'parser_profile_revision': identifier},
         headers={'Idempotency-Key': 'queued-prepare'})
     assert response.status_code == 202 and response.json()['status'] == 'queued'
     assert not calls
     assert claim(db, capacity=CAPACITY | {'vram_used_bytes': 20 * GIB}) is None
     lease = claim(db, capacity=CAPACITY)
     execute(db, lease)
-    assert [(call.method, call.url.path) for call in calls] == [('POST', '/models/hy-mt2-7b-q4-k-m-gguf/prepare'), ('GET', '/models/hy-mt2-7b-q4-k-m-gguf')]
+    assert [(call.method, call.url.path) for call in calls] == [('POST', f'/models/{identifier}/prepare'), ('GET', f'/models/{identifier}')]
     with db.transaction() as session:
         assert session.get(Job, lease.job_id).status == 'succeeded'
 

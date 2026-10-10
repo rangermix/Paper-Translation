@@ -79,6 +79,7 @@ def test_one_portable_application_image_with_separate_service_boundaries():
     assert parser['environment']['PARSER_ACCELERATOR'] == 'dmr'
     assert parser['networks'] == manager['networks'] == ['parser_model_control', 'model_inference']
     assert doc['networks']['parser_model_control']['internal'] is True
+    assert 'parser_model_control' in services['worker']['networks']
     assert parser['volumes'] == ['parser_inputs:/inputs:ro', 'parser_outputs:/outputs', 'parser_models:/model_cache:ro']
     assert manager['volumes'] == ['parser_models:/model_cache']
     assert not any(parser.get(k) or manager.get(k) for k in ('ports', 'secrets', 'models'))

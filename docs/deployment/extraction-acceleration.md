@@ -89,6 +89,9 @@ does not consume an attempt. Existing requests finish when a limit is lowered.
 The parser remains serial; llama.cpp can serve concurrent units using its shared
 context/cache. Model loading waits for active local requests to finish. The
 worker's global ceiling is 16; backend slot limits may be lower.
+Explicit model preparation uses this queue too. Existing local Compose files
+must include `parser_model_control` in the worker's networks, as in the template,
+so an admitted preparation can reach `parser-models`.
 
 The managed CUDA Runner exposes private read-only telemetry on port 12435 inside
 `model_inference`, with no host port or Docker socket. Rebuild both the application

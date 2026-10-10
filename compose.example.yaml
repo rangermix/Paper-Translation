@@ -147,7 +147,7 @@ services:
       - parser_inputs:/parser_inputs
       - parser_outputs:/parser_outputs
       - provider_config:/provider_config:ro
-    networks: [backend, provider_egress, local_model_control]
+    networks: [backend, provider_egress, local_model_control, parser_model_control]
     depends_on:
       migrate: {condition: service_completed_successfully}
       parser: {condition: service_healthy}

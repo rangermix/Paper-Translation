@@ -77,6 +77,7 @@ def check_compose():
             and not services['parser'].get('secrets'), 'Default parser isolation')
     require(services['parser-models']['volumes'] == ['parser_models:/model_cache'], 'Model preparation storage boundary')
     require(not {'backend', 'provider_egress'} & set(services['parser-models']['networks']), 'Model preparation network boundary')
+    require('parser_model_control' in services['worker']['networks'], 'Queued preparation must reach parser-models')
     require(not production.get('secrets') and not any(s.get('secrets') for s in services.values()), 'Unexpected external secret mount')
     require(not any({'PROVIDER_PROFILE_FILE', 'PROVIDER_KEY_FILE'} & s.get('environment', {}).keys()
                     for s in services.values()), 'Provider settings must come from the application')

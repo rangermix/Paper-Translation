@@ -87,3 +87,22 @@ def test_explicit_preparation_waits_for_budget_then_calls_exact_backend(client, 
     assert [(call.method, call.url.path) for call in calls] == [('POST', '/models/hy-mt2-7b-q4-k-m-gguf/prepare'), ('GET', '/models/hy-mt2-7b-q4-k-m-gguf')]
     with db.transaction() as session:
         assert session.get(Job, lease.job_id).status == 'succeeded'
+
+
+@pytest.mark.parametrize('available', [True, False])
+def test_resource_status_reports_capacity_counts_references_and_outage(client, database, monkeypatch, available):
+    db, _ = database
+    jobs(db)
+    claim(db, capacity=CAPACITY)
+    original = httpx.Client
+    def wire(request):
+        assert request.url.path == '/resources' and request.method == 'GET'
+        return httpx.Response(200, json=CAPACITY) if available else httpx.Response(503)
+    monkeypatch.setattr(httpx, 'Client', lambda **kwargs: original(transport=httpx.MockTransport(wire), **kwargs))
+    response = client.get('/api/v1/settings/resources')
+    assert response.status_code == 200
+    result = response.json()
+    assert result['active_master_jobs'] == result['active_subjobs'] == 1
+    assert result['vram_total_bytes'] == (24 * GIB if available else None)
+    assert len(result['model_references']) == 16
+    assert all(row['memory_reference']['weights_bytes'] > 0 for row in result['model_references'])

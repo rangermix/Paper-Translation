@@ -80,7 +80,7 @@ def resource_status(session=Session):
     from packages.parsers.model_service import CONTROL_URL
     from packages.resources.policy import policy, WORKER_LIMIT
     from packages.resources.scheduler import limits, owner
-    from packages.domain.models import Task
+    from packages.domain.models import Job, Task
     capacity = {'ram_total_bytes': None, 'ram_used_bytes': None, 'vram_total_bytes': None,
                 'vram_used_bytes': None, 'ram_scope': 'unavailable', 'resident_models': []}
     try:

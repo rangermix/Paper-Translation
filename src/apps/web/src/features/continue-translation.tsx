@@ -20,7 +20,7 @@ const reasons: Record<string, string> = {
 
 export function ContinueTranslation({ draftId, close }: { draftId: string; close: () => void }) {
   const result = useResource<Preflight>(`/drafts/${resourceId(draftId)}/translation-preflight`);
-  const { preferences, ready, policy, setPolicy } = useWorkflowPreferences();
+  const { preferences, ready, policy } = useWorkflowPreferences();
   const action = useAction();
   const [consent, setConsent] = useState(false);
   const [preparation, setPreparation] = useState<PreparationMode>('extractive');
@@ -42,7 +42,6 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
       {p.blocked_reason && <p className="notice">{reasons[p.blocked_reason] ?? '当前无法继续，请刷新页面查看最新状态。'}</p>}
       {controlled && <label className="field">本次任务预算（{p.profile.currency || 'USD'}）<input className="input" type="number"
         min="0.000001" step="0.000001" required value={budget} onChange={e => setBudget(e.target.value)}/></label>}
-      <label className="field">发布方式<select value={policy} onChange={e => setPolicy(e.target.value as typeof policy)}><option value="manual_approval">由我选择发布时间</option><option value="auto_publish">完成后自动发布</option></select></label>
       <label className="check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>
         同意向上述服务发送必要源文、上下文和术语，{controlled ? '并在本次预算内翻译。' : '我了解未设置金额上限，服务仍可能收费。'}</label>
       <div className="dialog-actions"><a className="btn" href="#/settings" onClick={close}>AI 服务设置</a>

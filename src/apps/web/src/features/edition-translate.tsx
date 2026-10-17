@@ -16,7 +16,7 @@ export function EditionTranslate({ editionId, close }: {editionId: string; close
   const [budget, setBudget] = useState('');
   const [consent, setConsent] = useState(false);
   const [preparation, setPreparation] = useState<PreparationMode>('extractive');
-  const { preferences, ready, policy, setPolicy } = useWorkflowPreferences();
+  const { preferences, ready, policy } = useWorkflowPreferences();
   const action = useAction();
   const p = result.data; const costControlled = costControlEnabled(p?.profile);
   useEffect(() => {setConsent(false);}, [p?.source_hash, p?.profile_hash, JSON.stringify(p?.profile), p?.locale]);
@@ -30,7 +30,6 @@ export function EditionTranslate({ editionId, close }: {editionId: string; close
       }); }}>
         {p.blocked_reason && <p className="notice error-notice">暂不能翻译：{p.blocked_reason}</p>}
         <PreparationControls value={preparation} onChange={mode => { setPreparation(mode); setConsent(false); }} profile={p.profile} estimates={p.preparation_estimates} disabled={action.pending}/>{costControlled && <label className="field">此语言版任务预算（{p.profile.currency ?? 'USD'}）<input className="input" type="number" required min="0.000001" step="0.000001" value={budget} onChange={e => setBudget(e.target.value)}/></label>}
-        <label className="field">发布方式<select value={policy} onChange={e => setPolicy(e.target.value as typeof policy)}><option value="manual_approval">手动发布</option><option value="auto_publish">完成后自动发布</option></select></label>
         <label className="check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>同意向上述服务地址发送必要源文、上下文和术语，{costControlled ? '并在确认的预算内翻译。' : '我了解未设置任务金额上限，服务仍可能收费。'}</label>
         <button className="btn primary" disabled={!ready || !preparationAllowed(preparation, p.profile) || action.pending || !p.profile_hash || p.profile.dispatch_configuration_ready === false || !p.can_translate || !consent || costControlled && !budgetValid(budget)}>{costControlled ? '确认外发与预算，翻译此语言版' : '确认外发，翻译此语言版'}</button>
       </form>}

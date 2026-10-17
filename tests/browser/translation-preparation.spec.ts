@@ -77,7 +77,7 @@ async function setup(page: Page, localTranslator = false, summary = true,
 }
 
 for (const flow of ['upload', 'preflight', 'edition', 'continue', 'candidate'] as const) {
-  test(`${flow} sends the chosen preparation and resets consent when it changes`, async ({ page }) => {
+  test(`${flow} sends the chosen preparation${flow === 'upload' ? ' with submission authorization' : ' and resets consent when it changes'}`, async ({ page }) => {
     const { writes, reads, errors } = await setup(page);
     const routes = { upload: '/#/upload', preflight: '/#/preflight/parsed', edition: '/#/documents/doc',
       continue: '/#/preflight/saved', candidate: '/#/drafts/draft' };
@@ -93,15 +93,16 @@ for (const flow of ['upload', 'preflight', 'edition', 'continue', 'candidate'] a
     const preparation = container.getByLabel('翻译前准备', { exact: true });
     await expect(preparation).toHaveValue('extractive');
     const consent = container.getByRole('checkbox', { name: /同意.*(?:必要|所选|上述)/ });
-    await consent.check();
+    if (flow === 'upload') await expect(consent).toHaveCount(0);
+    else await consent.check();
     await preparation.selectOption('local');
-    await expect(consent).not.toBeChecked();
+    if (flow !== 'upload') await expect(consent).not.toBeChecked();
     const local = container.getByRole('region', { name: '本地分析模型', exact: true });
     await expect(local.getByText('MiniCPM5-1B Q4', { exact: true })).toBeVisible();
     await expect(local).toContainText('590 MiB');
     await expect.poll(() => reads.includes('/settings/local-models?purpose=analysis')).toBe(true);
     expect(writes).toEqual([]);
-    await consent.check();
+    if (flow !== 'upload') await consent.check();
     const names = { upload: '上传并开始处理', preflight: '确认外发，开始翻译', edition: '确认外发，翻译此语言版',
       continue: '开始翻译未完成内容', candidate: '创建局部候选任务' };
     await container.getByRole('button', { name: names[flow], exact: true }).click();

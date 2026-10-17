@@ -26,7 +26,7 @@ test('all languages show native names and allow normal auto-publication after or
  }
  await page.getByLabel('来源语言（可选指定）',{exact:true}).selectOption('ko');
  await target.selectOption('ar');
- await page.getByLabel('发布方式').selectOption('auto_publish');
+ await expect(page.getByLabel('发布方式')).toHaveCount(0);
  await page.getByLabel(/本任务费用上限/).fill('0.01');
  const submit=page.getByRole('button',{name:'确认外发与预算，开始翻译'});
  await expect(submit).toBeDisabled();await page.getByLabel(/同意将必要的源文/).check();await expect(submit).toBeEnabled();
@@ -54,7 +54,7 @@ test('new language edition uses native names and independent ordinary translatio
  const dialog=page.getByRole('dialog');await expectDestination(page);await expect(dialog).toContainText('English → 繁體中文');
  await dialog.getByLabel(/此语言版任务预算/).fill('0.01');
  const submit=dialog.getByRole('button',{name:'确认外发与预算，翻译此语言版'});await expect(submit).toBeDisabled();
- await dialog.getByLabel(/同意向上述服务地址/).check();await dialog.getByLabel('发布方式').selectOption('auto_publish');
+ await dialog.getByLabel(/同意向上述服务地址/).check();await expect(dialog.getByLabel('发布方式')).toHaveCount(0);
  const sent=page.waitForRequest(r=>r.url().endsWith('/editions/e/translate'));await submit.click();
  const body=(await sent).postDataJSON();expect(body).toMatchObject({profile_hash:profile.profile_hash,publish_policy:'auto_publish'});expect(body).not.toHaveProperty('experimental_confirmed');
 });

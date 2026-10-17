@@ -42,66 +42,65 @@ async function mock(page: Page, waitForPreferences?: Promise<void>) {
   return writes;
 }
 
-test('upload uses saved language and manual publication defaults in its import request', async ({ page }) => {
+test('upload uses the saved language and automatically publishes despite a legacy manual preference', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/upload');
   await expect(page.getByLabel('默认目标语言', { exact: true })).toHaveValue('ja');
-  await expect(page.getByLabel('阅读结果', { exact: true })).toHaveValue('manual_approval');
+  await expect(page.getByLabel('阅读结果', { exact: true })).toHaveCount(0);
   await page.locator('#pdf-files').setInputFiles({ name: 'test.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 test') });
   await page.getByRole('button', { name: '上传并开始处理' }).click();
   await expect.poll(() => writes.find(row => row.path === '/imports')?.body).toMatchObject({
-    target_language: 'ja', workflow: { target_locale: 'ja', publish_policy: 'manual_approval' },
+    target_language: 'ja', workflow: { target_locale: 'ja', publish_policy: 'auto_publish' },
   });
 });
 
-test('late preferences keep explicit upload draft choices and cannot be bypassed by submission', async ({ page }) => {
+test('late preferences keep the chosen upload language and cannot be bypassed by submission', async ({ page }) => {
   let release!: () => void;
   const waiting = new Promise<void>(resolve => { release = resolve; });
   await mock(page, waiting);
   await page.goto('/#/upload');
   await page.getByLabel('默认目标语言', { exact: true }).selectOption('fr');
-  await page.getByLabel('阅读结果', { exact: true }).selectOption('auto_publish');
   await page.locator('#pdf-files').setInputFiles({ name: 'test.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 test') });
   await expect(page.getByRole('button', { name: '上传并开始处理' })).toBeDisabled();
   release();
   await expect(page.getByRole('button', { name: '上传并开始处理' })).toBeEnabled();
   await expect(page.getByLabel('默认目标语言', { exact: true })).toHaveValue('fr');
-  await expect(page.getByLabel('阅读结果', { exact: true })).toHaveValue('auto_publish');
+  await expect(page.getByLabel('阅读结果', { exact: true })).toHaveCount(0);
 });
 
-test('parse confirmation applies saved defaults', async ({ page }) => {
+test('parse confirmation uses the saved language and automatically publishes', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/preflight/parsed');
   await expect(page.getByLabel('目标语言', { exact: true })).toHaveValue('ja');
-  await expect(page.getByRole('combobox', { name: '发布方式', exact: true })).toHaveValue('manual_approval');
+  await expect(page.getByRole('combobox', { name: '发布方式', exact: true })).toHaveCount(0);
   await page.getByLabel(/同意将必要的源文/).check();
   await page.getByRole('button', { name: '确认外发，开始翻译' }).click();
-  expect(writes.find(row => row.path === '/imports/parsed/confirm')?.body).toMatchObject({ locale: 'ja', publish_policy: 'manual_approval' });
+  expect(writes.find(row => row.path === '/imports/parsed/confirm')?.body).toMatchObject({ locale: 'ja', publish_policy: 'auto_publish' });
 });
 
-test('new edition uses saved locale and its translation uses the saved publication default', async ({ page }) => {
+test('new edition uses the saved locale and its translation automatically publishes', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/documents/doc');
   await expect(page.getByLabel('新增语言版', { exact: true })).toHaveValue('ja');
   await page.getByRole('button', { name: '新增', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('combobox', { name: '发布方式', exact: true })).toHaveValue('manual_approval');
+  await expect(dialog.getByRole('combobox', { name: '发布方式', exact: true })).toHaveCount(0);
   await dialog.getByLabel(/同意向上述服务地址/).check();
   await dialog.getByRole('button', { name: '确认外发，翻译此语言版' }).click();
   expect(writes.find(row => row.path === '/documents/doc/editions')?.body.target_locale).toBe('ja');
-  expect(writes.find(row => row.path === '/editions/edition/translate')?.body.publish_policy).toBe('manual_approval');
+  expect(writes.find(row => row.path === '/editions/edition/translate')?.body.publish_policy).toBe('auto_publish');
 });
 
-test('document parsing honors the saved publication default', async ({ page }) => {
+test('document parsing automatically publishes despite a legacy manual preference', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/documents/doc');
   await page.getByRole('button', { name: '解析并生成阅读版' }).click();
   expect(writes.find(row => row.path === '/documents/doc/parse')?.body.workflow).toMatchObject({
-    target_locale: 'ja', publish_policy: 'manual_approval',
+    target_locale: 'ja', publish_policy: 'auto_publish',
   });
 });
 
-test('continuing translation honors saved publication settings and permits an explicit override', async ({ page }) => {
+test('continuing translation automatically publishes despite a legacy manual preference', async ({ page }) => {
   const writes = await mock(page);
   await page.route('**/api/v1/imports/parsed/preflight', route => route.fulfill({ json: {
     ...preflight, status: 'sealed', translation_targets: [{ draft_id: 'draft', target_locale: 'ja' }],
@@ -109,8 +108,7 @@ test('continuing translation honors saved publication settings and permits an ex
   await page.goto('/#/preflight/parsed');
   await page.getByRole('button', { name: /开始翻译/ }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('combobox', { name: '发布方式', exact: true })).toHaveValue('manual_approval');
-  await dialog.getByRole('combobox', { name: '发布方式', exact: true }).selectOption('auto_publish');
+  await expect(dialog.getByRole('combobox', { name: '发布方式', exact: true })).toHaveCount(0);
   await dialog.getByRole('checkbox').check();
   await dialog.getByRole('button', { name: '开始翻译未完成内容' }).click();
   expect(writes.find(row => row.path === '/drafts/draft/translate')?.body.publish_policy).toBe('auto_publish');

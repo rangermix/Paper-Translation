@@ -1,6 +1,5 @@
 import { PreparationControls, preparationAllowed } from './translation-preparation';
 import { useWorkflowPreferences } from './workflow-preferences';
-import { UploadTranslationDefault, uploadTranslationAllowed } from './upload-translation-default';
 import { ParserSelect } from './parser-select';
 import { UploadMetadata } from './upload-metadata';
 import { ProviderDestination } from './provider-destination';
@@ -16,30 +15,27 @@ type Row = { id: string; file: File; error?: string; retryImport?: boolean; prog
 export function UploadPage({ capability }: { capability?: Capability }) {
   const [rows, setRows] = useState<Row[]>([]); const [error, setError] = useState<Error>(); const [busy, setBusy] = useState(false); const input = useRef<HTMLInputElement>(null);
   const provider = useResource<Provider>('/settings/provider');
-  const { preferences, ready, locale: language, setLocale: setLanguage, policy, setPolicy } = useWorkflowPreferences();
+  const { preferences, ready, locale: language, setLocale: setLanguage, policy } = useWorkflowPreferences();
   const [parser, setParser] = useState<ParserProfileRevision>();
   const [translate, setTranslate] = useState(true);
-  const [consentHash, setConsentHash] = useState<string>();
-  const [savingDefault, setSavingDefault] = useState(false);
   const [preparation, setPreparation] = useState<PreparationMode>('extractive');
   const [budget, setBudget] = useState('');
   const profile = provider.data;
   const costControlled = costControlEnabled(profile);
-  const defaultConsent = preparation === 'extractive' && uploadTranslationAllowed(preferences.data, profile);
-  const consent = consentHash === undefined ? defaultConsent : Boolean(profile?.profile_hash && consentHash === profile.profile_hash);
-  const canSubmit = ready && !savingDefault && (!translate || !preferences.data?.upload_translation_profile_hash || Boolean(profile && !provider.error));
+  const translationConfigured = Boolean(profile?.configured && profile.dispatch_configuration_ready && profile.profile_hash);
+  const canSubmit = ready && (!translate || Boolean(profile && !provider.error));
   const selectedParser = parser ?? preferences.data?.parser_profile_revision ?? 'surya-ocr-2-v1';
   const maxBytes = capability?.limits?.max_pdf_bytes ?? 50 * 1024 * 1024; const maxBatch = capability?.limits?.max_batch_files ?? 10;
   const update = (id: string, changes: Partial<Row>) => setRows(old => old.map(row => row.id === id ? { ...row, ...changes } : row));
-  function select(files: File[]) { try { setRows(validatePdfSelection(files, maxBytes, maxBatch).map(x => ({ ...x, id: crypto.randomUUID() }))); setConsentHash(undefined); setError(undefined); } catch (reason) { setError(reason as Error); } }
+  function select(files: File[]) { try { setRows(validatePdfSelection(files, maxBytes, maxBatch).map(x => ({ ...x, id: crypto.randomUUID() }))); setError(undefined); } catch (reason) { setError(reason as Error); } }
   async function importRow(row: Row, upload: Upload) {
     if (!canSubmit) return;
     update(row.id, { busy: true, error: undefined, retryImport: false });
-    try { const doc = await api<Document>('/imports', { method: 'POST', body: { source: { kind: 'pdf_upload', upload_id: upload.upload_id }, source_language: 'auto', target_language: language, parser_profile_revision: selectedParser, workflow: { translate, preparation: { mode: preparation }, target_locale: language, publish_policy: policy, external_processing_confirmed: translate && consent, use_saved_upload_permission: translate && consent && consentHash === undefined, profile_hash: profile?.profile_hash, ...(costControlled && budgetValid(budget) ? { budget_micro: Math.round(Number(budget) * 1_000_000) } : {}) } } }); update(row.id, { document: doc, busy: false }); }
+    try { const doc = await api<Document>('/imports', { method: 'POST', body: { source: { kind: 'pdf_upload', upload_id: upload.upload_id }, source_language: 'auto', target_language: language, parser_profile_revision: selectedParser, workflow: { translate, preparation: { mode: preparation }, target_locale: language, publish_policy: policy, external_processing_confirmed: translate && translationConfigured, use_saved_upload_permission: false, profile_hash: profile?.profile_hash || undefined, ...(costControlled && budgetValid(budget) ? { budget_micro: Math.round(Number(budget) * 1_000_000) } : {}) } } }); update(row.id, { document: doc, busy: false }); }
     catch (reason) {
-      const retryImport = reason instanceof ApiError && ['UPLOAD_TRANSLATION_DEFAULT_STALE', 'PROFILE_STALE'].includes(reason.code);
+      const retryImport = reason instanceof ApiError && reason.code === 'PROFILE_STALE';
       update(row.id, { busy: false, error: (reason as Error).message, retryImport });
-      if (retryImport) { preferences.reload(); provider.reload(); setConsentHash(undefined); }
+      if (retryImport) { provider.setData(undefined); preferences.reload(); provider.reload(); }
     }
   }
   async function uploadAll() {
@@ -59,18 +55,11 @@ export function UploadPage({ capability }: { capability?: Capability }) {
       <div className="field"><label htmlFor="upload-mode">生成内容</label><select id="upload-mode" value={translate ? 'translate' : 'source'} disabled={busy} onChange={e => setTranslate(e.target.value === 'translate')}>
         <option value="translate">解析并翻译</option><option value="source">仅解析阅读</option>
       </select></div>
-      <div className="field"><label htmlFor="upload-publish">阅读结果</label><select id="upload-publish" value={policy} disabled={busy} onChange={e => setPolicy(e.target.value as typeof policy)}>
-        <option value="auto_publish">完成后自动发布</option><option value="manual_approval">由我选择发布时间</option>
-      </select></div>
       {translate && <><ErrorNotice error={provider.error} retry={provider.reload}/><ProviderDestination profile={profile}/>
-        <PreparationControls value={preparation} onChange={mode => { setPreparation(mode); setConsentHash(''); }} profile={profile} disabled={busy}/>
+        <PreparationControls value={preparation} onChange={setPreparation} profile={profile} disabled={busy}/>
         {costControlled && <div className="field"><label htmlFor="upload-budget">每份文档费用上限（USD）</label><input className="input" id="upload-budget" type="number" min="0.000001" step="0.000001" value={budget} disabled={busy} onChange={e => setBudget(e.target.value)}/></div>}
-        {profile?.configured && <label className="check"><input type="checkbox" checked={consent} disabled={busy || !profile.profile_hash} onChange={e => setConsentHash(e.target.checked ? profile.profile_hash ?? '' : '')}/>
-          同意将所选 PDF 的必要文本、上下文和术语发送到上述服务地址进行翻译，服务可能收费。
-        </label>}
-        <UploadTranslationDefault preferences={preferences.data} provider={profile} disabled={busy || !ready || Boolean(provider.error)}
-          onSaved={saved => { preferences.setData(saved); setConsentHash(undefined); }} reload={preferences.reload} onSavingChange={setSavingDefault}/>
-        {(!profile?.configured || !consent || costControlled && !budgetValid(budget)) && <p className="field-note">先完成本地解析和原文阅读；翻译将在配置、外发授权和所需预算齐备后开始。</p>}
+        {translationConfigured && <p className="field-note">点击“上传并开始处理”即同意将本批 PDF 的必要文本、上下文和术语发送到上述服务进行翻译，服务可能收费。</p>}
+        {(!translationConfigured || costControlled && !budgetValid(budget)) && <p className="field-note">先完成本地解析和原文阅读；翻译将在服务配置和所需预算齐备后开始。</p>}
       </>}
 
       </aside></div></>;

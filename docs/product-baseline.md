@@ -28,10 +28,11 @@ the instance; the default published address is loopback.
   Each translation task freezes its public service settings and credential revision
   when created. Later settings changes apply to new tasks; queued units and model
   preparation continue with the original revision.
-  An opt-in upload default remembers permission for the current saved service, so
-  later uploads can proceed from parsing to translation without checking consent
-  again. Each upload can still opt out; changed service configurations require
-  renewed permission and enabled cost controls still require a document budget.
+  Choosing parsing and translation and submitting an upload batch authorizes its
+  content processing with the displayed saved service, bound to the current public
+  profile hash. Source-only uploads do not authorize translation. Separate upload
+  consent and remembered-permission switches are absent from upload and Settings;
+  enabled cost controls still require a document budget.
 - Prepare a source-grounded paper context and scoped terminology before translation.
   New requests default to deterministic extraction with no extra model call. Optional
   API analysis or a separate pinned MiniCPM5-1B local analyst adds a bounded analysis
@@ -46,6 +47,9 @@ the instance; the default published address is loopback.
 - Seal immutable revisions, publish static bilingual readers, switch historical
   publications, and export self-contained HTML or a resource bundle. Draft exports
   clearly preserve missing translations as original content.
+  New UI operations automatically publish completed reading results, without a
+  delayed-publication option. Existing API policies, saved preferences and queued
+  task snapshots remain compatible and are not rewritten.
   New publications and draft exports use `reader-v13`, with system/light/dark
   themes; old source contracts and readers remain valid.
 - Keep task stages, actual model identities, timings, redacted logs, attempts and

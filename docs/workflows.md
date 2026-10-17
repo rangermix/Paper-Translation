@@ -61,17 +61,18 @@ requires a new confirmation. Global dispatch controls and budget checks still ap
 Waiting for model/configuration startup is represented separately from an unknown
 provider outcome.
 
-The upload page and Settings offer **以后上传默认允许翻译**, initially off.
-Enabling it explicitly authorizes necessary text, context and terminology from
-future PDF uploads to the displayed saved service, including possible charges.
-The instance preference persists a public profile hash, never credentials. The
-upload form uses it only for the matching ready configuration and default
-extractive preparation; changing the preparation mode still clears confirmation.
-Selecting another batch preserves this default, while each batch can uncheck
-consent or choose source-only processing. Saving the preference sends no model
-request and does not resume existing jobs. Provider changes invalidate the match;
-dispatch controls and per-document budgets continue to apply. Imports recheck
-saved permission on the server, including changes made in another browser tab.
+On the upload page, choosing **解析并翻译** and clicking **上传并开始处理**
+authorizes necessary text, context and terminology from that batch to be sent to
+the displayed saved service, including possible charges. The request binds this
+authorization to the current public profile hash; a changed profile requires a
+new submission. Choosing **仅解析阅读** does not authorize translation. There are
+no separate upload consent or remembered-permission switches, including in
+Settings. Dispatch controls and per-document budgets continue to apply.
+
+New operations started through the UI publish their reading result automatically
+when processing completes. The UI no longer offers delayed publication. Existing
+API values, saved preferences and queued tasks remain compatible; historical
+`manual_approval` choices and queued task snapshots are not rewritten.
 
 All translation entry points offer **翻译前准备**. The default collects exact source
 excerpts, headings, definitions and term candidates without another model call.
@@ -87,8 +88,8 @@ freezes the selected analyst, so subsequent settings changes do not alter it.
 **不做论文级准备** retains the legacy flow.
 
 Explicit glossary entries take precedence over generated preferred wording.
-Changing the preparation mode resets the form's content confirmation. Local analysis
-followed by API translation still sends the selected context with translation requests
+Outside upload, changing the preparation mode resets the form's content confirmation.
+Local analysis followed by API translation still sends the selected context with translation requests
 to the confirmed API destination. Preflight shows the extra analysis request separately;
 repeating context in translation requests also consumes input and time.
 

@@ -42,9 +42,18 @@ docker compose -p paper-tests -f compose.example.yaml --profile tests down --vol
 | `src/tools/` | 仓库检查与部署工具 |
 | [res/](res/README.md) | 运行时 Schema、冻结阅读样式和受控种子资料 |
 | [tests/](tests/README.md) | 自动化测试、合成测试资料、测试镜像构建输入 |
+| `benchmarks/` | 独立 Git 子模块，存放基准测试；`parser/` 用于 PDF 解析基准 |
 | [deployment/](docs/deployment/README.md) | 产品镜像、硬件运行环境和模型构建输入 |
 | [docs/](docs/README.md) | 当前产品、架构、API 与操作说明 |
 
 Python 模块入口仍为 `apps`、`packages`、`workers`、`tools`。宿主直接调用时设置 `PYTHONPATH=src`；pytest 和容器已配置搜索路径。前端命令使用 `npm --prefix src/apps/web ...`。
+
+基准测试位于私有仓库 [Paper-Translation-Benchmarks](https://github.com/rangermix/Paper-Translation-Benchmarks)，需要该仓库的读取权限。已有 checkout 可从根目录初始化固定版本：
+
+```sh
+git submodule update --init --recursive benchmarks
+```
+
+基准测试独立维护，不进入 Docker 构建上下文或应用仓库检查。
 
 [AGENTS.md](AGENTS.md)说明编码约束；[`.agent/`](.agent/README.md)存放开发工具和运行证据。历史计划与报告保留在 Git 历史或明确标注的 agent 记录中，不作为当前实施指令。

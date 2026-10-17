@@ -1,6 +1,7 @@
 .git
 .agent
 archive
+benchmarks
 .local-data
 .vscode
 compose.yaml

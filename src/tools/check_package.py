@@ -23,7 +23,7 @@ from packages.templates import list_templates
 
 def package_files(suffix=None):
     """Skip local configuration, credentials, dependencies and archived agent runs."""
-    excluded = {'.git', '.agent', '.local-data', '.vscode', '.venv', 'venv',
+    excluded = {'.git', '.agent', '.local-data', '.vscode', '.venv', 'venv', 'benchmarks',
                 'node_modules', '__pycache__', '.pytest_cache', '.mypy_cache',
                 '.ruff_cache', 'dist', 'test-results', 'playwright-report',
                 'secrets', 'provider_config'}

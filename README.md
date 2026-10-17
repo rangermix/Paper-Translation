@@ -56,4 +56,6 @@ git submodule update --init --recursive benchmarks
 
 基准测试独立维护，不进入 Docker 构建上下文或应用仓库检查。
 
+评测 GUI 的配置、启动和断点恢复见 [基准测试 GUI](benchmarks/parser/GUI.md)。已准备本地 WSL 运行时后，可从仓库根目录执行 `pwsh -File benchmarks/parser/scripts/start_gui.ps1`；界面提供模型和基准选择、进度、统计、结果及已完成页面复用。
+
 [AGENTS.md](AGENTS.md)说明编码约束；[`.agent/`](.agent/README.md)存放开发工具和运行证据。历史计划与报告保留在 Git 历史或明确标注的 agent 记录中，不作为当前实施指令。

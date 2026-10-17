@@ -28,7 +28,7 @@ export function ModelMemory({ reference, unified }: { reference?: MemoryReferenc
     <p>运行参考（估算）：{shared ? `统一内存 ${gib(Math.max(reference.ram_bytes, reference.vram_bytes))}` :
       `RAM ${gib(reference.ram_bytes)} · VRAM ${gib(reference.vram_bytes)}`}</p>
     <p>权重 {gib(reference.weights_bytes)} · KV 缓存约 {gib(reference.kv_cache_bytes)} · 工作空间约 {gib(reference.workspace_bytes)}<br/>
-      上下文 {reference.context_tokens.toLocaleString()} tokens；同一模型的权重共享。实际峰值随输入和后端变化。</p>
+      上下文 {reference.context_tokens.toLocaleString()} tokens</p>
   </div>;
 }
 
@@ -55,7 +55,6 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
   const saved = preferences?.resources ?? defaults;
   const capacity = status.error ? undefined : status.data;
   return <section className="panel resource-panel" aria-labelledby="resources-title"><h2 id="resources-title">资源与并发</h2>
-    <p className="settings-hint">所有任务共享内存预算，默认保留 20% 余量。资源不足的任务排队等待，已运行的任务继续完成。</p>
     {!preferences ? <Loading/> : <form onSubmit={event => { event.preventDefault(); if (!valid || action.pending || action.error) return;
       void action.run(async () => {
         const result = await api<Preferences>('/settings/preferences', { method: 'PATCH', etag: etagFor(preferences), body: { resources: values } });
@@ -68,21 +67,18 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
       </label>)}</div>
       <label className="check"><input type="checkbox" checked={values.auto_concurrency} disabled={action.pending}
         onChange={event => setDraft(previous => ({ ...previous, auto_concurrency: event.target.checked }))}/>根据 RAM / VRAM 余量自动调整并发</label>
-      <p className="field-note">主任务是一次解析、翻译或导出；子任务是其中的处理单元。自动模式在上述上限内调整，关闭后仍执行内存预算检查。全实例最多 16 个子任务，解析器和模型后端可能进一步限制并发。</p>
       <div className="resource-meters">
         <MemoryMeter label="RAM（Docker 可见内存）" total={capacity?.ram_total_bytes ?? null} used={capacity?.ram_used_bytes ?? null} percent={saved.max_ram_percent}/>
         <MemoryMeter label="VRAM（GPU 0）" total={capacity?.vram_total_bytes ?? null} used={capacity?.vram_used_bytes ?? null} percent={saved.max_vram_percent}/>
       </div>
       {capacity && <p className="settings-hint">运行中：{capacity.active_master_jobs} 个主任务 / {capacity.active_subjobs} 个子任务；当前并发上限：{capacity.effective_master_concurrency} / 每个主任务 {capacity.effective_subjob_concurrency}。</p>}
       {capacity?.waiting_jobs?.length ? <p role="status">{capacity.waiting_jobs.length} 个任务等待：{[...new Set(capacity.waiting_jobs.map(job => resourceReasons[job.reason] ?? job.reason))].join('、')}。</p> : null}
-      <p className="field-note">这是启动任务前的预算检查，不能限制其他程序或保证瞬时峰值。缺少 GPU 容量监测时，本地 GPU 任务等待；保存设置不会加载模型。</p>
       <ErrorNotice error={status.error} retry={status.reload}/>
       <ActionFeedback notice={action.notice}/>
       <ErrorNotice error={action.error} retry={() => { action.clear(); reload(); }}/>
       <div className="settings-actions"><button className="btn primary" disabled={!valid || action.pending || Boolean(action.error)}>保存资源设置</button></div>
     </form>}
-    {!!capacity?.model_references?.length && <details className="settings-details"><summary>全部模型的内存参考</summary>
-      <p>估算以锁定权重、配置的完整上下文和工作空间余量计算，不是下载大小或实测峰值。MLX 使用统一内存，不将 RAM 与 VRAM 相加。</p>
+    {!!capacity?.model_references?.length && <details className="settings-details"><summary>全部模型的内存参考（估算）</summary>
       <div className="resource-table-scroll"><table><thead><tr><th>模型</th><th>RAM</th><th>VRAM / 统一内存</th><th>上下文</th></tr></thead>
         <tbody>{capacity.model_references.map(({ id, label, memory_reference: ref }) => <tr key={id}><td>{label}</td><td>{gib(ref.ram_bytes)}</td><td>{gib(ref.vram_bytes)}{ref.unified_memory ? '（统一）' : ''}</td><td>{ref.context_tokens.toLocaleString()}</td></tr>)}</tbody></table></div>
     </details>}

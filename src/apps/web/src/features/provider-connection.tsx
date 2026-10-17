@@ -107,11 +107,9 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
       <a className="small" href={`#/jobs/${encodeURIComponent(result.id)}`}>查看测试任务</a>
     </div>}
     {confirm && <Modal title={local ? '测试本地翻译模型' : '测试 API 连接 / 密钥'} onClose={() => setConfirm(false)}>
-      {local ? <p>按需下载已选模型并在本机翻译固定测试文本 <code>Hello.</code>，不发送论文内容。</p> : <p>向以下已保存的服务发送一次固定测试文本 <code>Hello.</code> 和结构化输出要求，检查连接、鉴权及模型响应。使用后端保存的密钥，不发送论文内容。</p>}
+      {local ? <p>将在本机翻译固定测试文本 <code>Hello.</code>。</p> : <p>将向以下服务发送固定测试文本 <code>Hello.</code>，服务可能收费。</p>}
       <dl className="kv"><dt>接口</dt><dd>{providerProtocols[provider.api_protocol ?? 'responses'].label}</dd><dt>服务地址</dt><dd>{provider.endpoint}</dd><dt>模型</dt><dd>{provider.model_id}</dd></dl>
-      <p className="field-note">本次输入上限 {Math.min(provider.max_input_tokens ?? 32768, 8192)} token，输出上限 {Math.min(provider.max_output_tokens ?? 8192, 256)} token。{local ? '测试在本机运行。' : '服务可能收费；'}测试通过仅代表本次连接和响应有效。</p>
-      {controlled ? <label className="field">本次测试预算（USD）<input className="input" inputMode="decimal" value={budget} onChange={event => setBudget(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} placeholder="例如 0.10"/></label>
-        : <p className="field-note">成本控制未启用，本次不设金额预算；未知费用显示为未计算。</p>}
+      {controlled && <label className="field">本次测试预算（USD）<input className="input" inputMode="decimal" value={budget} onChange={event => setBudget(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} placeholder="例如 0.10"/></label>}
       {riskRequired && <label className="check"><input type="checkbox" checked={risk} onChange={event => setRisk(event.target.checked)}/>我接受再次测试可能重复计费的风险</label>}
       <div className="stack"><button className="btn primary" type="button" disabled={!canTest || (riskRequired && !risk) || (controlled && (!Number.isSafeInteger(budgetMicro) || budgetMicro <= 0))} onClick={() => void send()}>确认并发送一次测试</button><button className="btn" type="button" onClick={() => setConfirm(false)}>取消</button></div>
     </Modal>}

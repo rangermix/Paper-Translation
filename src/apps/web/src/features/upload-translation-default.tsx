@@ -35,8 +35,6 @@ export function UploadTranslationDefault({ preferences, provider, disabled, onSa
       onChange={e => save(e.target.checked)}/>
       以后上传默认允许翻译
     </label>
-    <p className="field-note">开启即同意将以后上传的 PDF 必要文本、上下文和术语发送到当前服务进行翻译，服务可能收费。立即保存，适用于此实例；每次上传仍可取消授权或选择仅解析。</p>
-    <p className="muted small">仅适用于当前已保存的服务配置和默认翻译前准备。配置变更后需重新开启；启用金额控制时仍须填写每份文档的预算。</p>
     {!canEnable && <p className="field-note">先在设置中保存完整的 AI 服务配置。</p>}
     {preferences?.upload_translation_profile_hash && !enabled && canEnable && <p className="field-note warn">翻译配置已变更，原默认授权已失效。请核对当前服务后重新开启。</p>}
     {preferences?.upload_translation_profile_hash && !enabled && <button className="btn sm" type="button"

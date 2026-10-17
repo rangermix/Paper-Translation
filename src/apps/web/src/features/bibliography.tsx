@@ -41,7 +41,7 @@ export function BibliographyDetails({ doc, refresh }: { doc: Document; refresh: 
       {data?.service && <><dt>信息来源</dt><dd>{data.service === 'doi' ? 'DOI Citation Formatter' : 'Crossref'}</dd></>}
     </dl>
     <button className="btn sm" disabled={action.pending} onClick={() => retry()}>刷新文献信息</button>
-    <details><summary>手动补充 DOI（可选）</summary><p className="field-note">只向公开文献服务发送 DOI，不上传 PDF 或正文。</p>
+    <details><summary>手动补充 DOI（可选）</summary>
       <form className="stack" onSubmit={e => { e.preventDefault(); retry(doi.trim()); }}><input className="input" aria-label="本篇 DOI" value={doi} onChange={e => setDoi(e.target.value)} placeholder="10.…" maxLength={2048}/>
         <button className="btn sm" disabled={action.pending || !doi.trim()}>按此 DOI 查询</button>
       </form></details><ActionFeedback {...action}/>

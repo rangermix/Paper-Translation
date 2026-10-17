@@ -51,7 +51,7 @@ for (const viewport of [{ width: 1440, height: 1060 }, { width: 390, height: 844
     await page.getByText('一般提示 · 1', { exact: true }).click();
     await expect(page.locator('.issue')).toContainText('SEMANTIC_RISK');
     await page.getByText('人工核对（可选）', { exact: true }).click();
-    await expect(page.getByText(/无需人工确认即可封存和发布/)).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '核对说明', exact: true })).toBeVisible();
     await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(outputDirectory('optional-review'), `review-${viewport.width}.png`), fullPage: true });

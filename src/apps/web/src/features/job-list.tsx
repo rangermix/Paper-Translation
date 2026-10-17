@@ -96,7 +96,7 @@ export function JobList({ selectedId }: { selectedId?: string }) {
   const filtered = !!browse.q || browse.group !== 'all' || !!stage || !!model;
   const reset = () => { setSearch(''); setStage(''); setModel(''); setBrowse({ q: '', group: 'all', cursors: [] }); };
   return <section className="job-browser" aria-label="后台任务列表">
-    <div className="job-toolbar"><label className="searchbox"><Icon name="search"/><input aria-label="搜索任务" type="search" placeholder="搜索 PDF 名称或任务编号" maxLength={255} value={search} onChange={e => setSearch(e.target.value)}/></label><span className="small muted">最新创建在前</span></div>
+    <div className="job-toolbar"><label className="searchbox"><Icon name="search"/><input aria-label="搜索任务" type="search" placeholder="搜索 PDF 名称或任务编号" maxLength={255} value={search} onChange={e => setSearch(e.target.value)}/></label></div>
     <div className="stack between job-history-controls">
       <label className="check"><input type="checkbox" checked={showCleared} onChange={e => {
         setShowCleared(e.target.checked); setBrowse(old => ({ ...old, cursors: [] }));
@@ -115,7 +115,7 @@ export function JobList({ selectedId }: { selectedId?: string }) {
         <div className="jobs-column-head" aria-hidden="true"><span>文档 / 任务</span><span>状态 / 进度</span><span>创建时间</span><span/></div>
         <ul className="job-entries">{list.data.items.map(job => <JobRow key={job.id} job={job} selected={selectedId === job.id}/>)}</ul>
       </div> : <Empty title={filtered ? '没有匹配的任务' : browse.cursors.length ? '这一页已没有任务' : '还没有后台任务'}>
-        {filtered ? <><p>试试其他 PDF 名称，或切换任务状态。</p><button className="btn" onClick={reset}>清除筛选</button></> : browse.cursors.length ? <button className="btn" onClick={reset}>返回最新任务</button> : <><p>上传 PDF 或从文档详情开始解析，进度会显示在这里。</p><a className="btn" href="#/library">打开文档库</a></>}
+        {filtered ? <button className="btn" onClick={reset}>清除筛选</button> : browse.cursors.length ? <button className="btn" onClick={reset}>返回最新任务</button> : <a className="btn" href="#/library">打开文档库</a>}
       </Empty>}
       <div className="job-pagination"><span className="small muted" role="status">第 {browse.cursors.length + 1} 页 · {list.data.items.length} 项{filtered ? '匹配任务' : '任务'}</span>
         {(browse.cursors.length > 0 || list.data.next_cursor) && <div className="stack"><button className="btn sm" disabled={!browse.cursors.length} onClick={() => setBrowse(previous => ({ ...previous, cursors: previous.cursors.slice(0, -1) }))}>上一页</button><button className="btn sm" disabled={!list.data.next_cursor} onClick={() => { const next = list.data?.next_cursor; if (next) setBrowse(previous => ({ ...previous, cursors: [...previous.cursors, next] })); }}>下一页</button></div>}

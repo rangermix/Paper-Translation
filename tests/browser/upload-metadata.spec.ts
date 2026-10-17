@@ -29,8 +29,6 @@ async function upload(page: Page, finalStatus: string) {
   });
   await page.goto('/#/upload');
   await expect(page.getByRole('heading', { name: '上传 PDF', exact: true })).toBeVisible();
-  await expect(page.getByText(/上传后自动从 Crossref/)).toBeVisible();
-  await expect(page.getByText(/查询仅发送 DOI，或提取的标题与作者/)).toBeVisible();
   await page.getByLabel('生成内容', { exact: true }).selectOption('source');
   await page.locator('#pdf-files').setInputFiles({ name: 'uploaded.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 fixture') });
   await page.getByRole('button', { name: '上传并开始处理' }).click();

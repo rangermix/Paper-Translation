@@ -12,7 +12,7 @@ export function QualityResolution({ draft, issue, close, refresh }: {draft: Draf
   const action = useAction();
   const segment = draft.segments.find(s => s.block_id === blockId);
   return <Modal title="核对质量提示" onClose={close}>
-    <p>{issue.message}</p><p className="field-note">只处理当前提示及其指纹；修改段落或来源后需要重新检查。此记录是可选操作，不影响阅读和发布。</p>
+    <p>{issue.message}</p>
     <form onSubmit={e => { e.preventDefault(); void action.run(async () => {
       await api(`/drafts/${resourceId(draft.id)}/issues/${resourceId(issue.fingerprint!)}/resolve`, { method: 'POST', etag: etagFor(draft), body: {reason, evidence: {page: segment!.locators![0].page, bbox: segment!.locators![0].bbox, quote: segment!.source_text}} });
       refresh(); close();

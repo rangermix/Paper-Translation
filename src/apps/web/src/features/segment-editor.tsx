@@ -54,7 +54,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, dirty
     </header>
     {!expanded && <p className="segment-preview">{segment.source_text.slice(0, 160)}{segment.source_text.length > 160 ? '…' : ''}</p>}
     <div className="segment-content" id={contentId} hidden={!expanded}>
-      {blocked && <p className="field-note warn">{stale ? '上次检查有重要提示，可重新检查当前内容。' : '本段有重要提示，可按需对照原文或修改。'}已有内容仍可阅读、发布和导出。</p>}
+
       <div className="review-grid"><div>
         <p className="subhead">原文 · 只读</p><div className="source-block">{segment.source_text}</div>
         <button className="btn sm source-button" onClick={() => setShowSource(s => !s)}>{showSource ? '收起来源' : '对照原 PDF'}</button>
@@ -70,7 +70,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, dirty
             setBaseline(updated.target_inline); setNodes(updated.target_inline); setBaseVersion(updated.version); dirtyChanged(false); refresh();
           }, '新段落版本已保存；请重新运行质量检查。')}>保存译文</button>
           {!blocked && <details className="review-confirm"><summary>人工核对（可选）</summary>
-            <p className="small muted">无需人工确认即可封存和发布。如需记录核对结果，可对照原件检查后在此标记。</p>
+
             <label className="field">核对说明<input className="input" value={reviewReason} onChange={e => setReviewReason(e.target.value)}/></label>
             <button className="btn" disabled={dirty || action.pending || !reviewReason.trim() || segment.review_status === 'human_reviewed'} onClick={() => void action.run(async () => {
               await api(`/drafts/${resourceId(draft.id)}/segments/${resourceId(segment.block_id)}/confirm-review`, { method: 'POST', etag: etagFor(draft), body: { source_hash: segment.source_hash, base_segment_version: segment.version, context_hash: segment.context_hash, glossary_revision: segment.glossary_revision ?? draft.glossary_revision ?? null, reason: reviewReason } }); refresh();
@@ -79,7 +79,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, dirty
           {segment.review_status === 'human_reviewed' && <button className="btn sm" disabled={action.pending} onClick={() => void action.run(async () => {
             await api('/translation-memory', { method: 'POST', body: { draft_id: draft.id, block_id: segment.block_id, segment_version: segment.version, independent: false } });
           }, '已显式保存为个人翻译记忆，默认随来源删除。')}>另存到个人翻译记忆</button>}
-        </> : <p className="muted">本段保留原文，无需编辑译文。</p>}
+        </> : <p className="muted">保留原文</p>}
         <ActionFeedback {...action}/>
         {dirty && segment.version !== baseVersion && <p className="notice error-notice">服务端已有新版本，本地未保存文字仍在。请比较后手动合并，保存将使用原基准版本进行冲突检查。</p>}
       </div></div>

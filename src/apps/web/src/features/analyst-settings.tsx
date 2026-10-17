@@ -17,7 +17,6 @@ export function AnalystSettings({ preferences, loading, onSaved }: {
   const canSave = available && Boolean(model && backend && etagFor(preferences)) && !action.pending && !action.error;
   return <section className="panel analyst-panel" aria-labelledby="analyst-title">
     <h2 id="analyst-title">翻译前总结模型</h2>
-    <p className="settings-hint">用于“独立本地小模型”的论文概述与术语建议，单独保存模型和推理后端。</p>
     {loading && <Loading/>}
     {preferences && <form onSubmit={event => {
       event.preventDefault();
@@ -33,7 +32,6 @@ export function AnalystSettings({ preferences, loading, onSaved }: {
         <LocalModels purpose="analysis" active value={model} backend={backend}
           onChange={(model, backend) => { setChoice({ model, backend }); if (!action.error) action.clear(); }} onAvailabilityChange={setAvailable}/>
       </fieldset>
-      <p className="settings-hint">保存不会下载或调用模型。选择“独立本地小模型”创建任务时，使用这里已保存的配置；已有任务保留原模型。</p>
       <ActionFeedback notice={action.notice}/>
       <ErrorNotice error={action.error} retry={() => void action.run(async () => {
         onSaved(await api<Preferences>('/settings/preferences'));

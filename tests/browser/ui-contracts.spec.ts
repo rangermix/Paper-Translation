@@ -20,7 +20,6 @@ for (const state of ['current-legacy', 'source-only', 'historical-legacy'] as co
     await expect(page.getByRole('link', { name: '打开原 PDF', exact: true })).toHaveAttribute('href', '/api/v1/documents/doc_contract/original');
     if (state === 'current-legacy') {
       await expect(page.getByRole('region', { name: '旧版来源定位说明' })).toContainText('无精确定位');
-      await expect(page.getByRole('region', { name: '旧版来源定位说明' })).toContainText('没有可靠的逐块坐标');
     } else {
       await expect(page.getByRole('region', { name: '旧版来源定位说明' })).toHaveCount(0);
     }
@@ -252,8 +251,7 @@ test('unfinished draft export directly preserves labelled missing translations',
   await mock(page, {'/drafts/draft_export': draft, '/drafts/draft_export/exports': {export_id: 'export_draft'}, '/exports/export_draft': {status: 'succeeded', download_url: '/api/v1/exports/export_draft/download'}});
   await page.goto('/#/drafts/draft_export');
   await page.getByRole('button', {name: '导出已有内容', exact: true}).click();
-  await expect(page.getByText('当前内容快照', {exact: true})).toBeVisible();
-  await expect(page.getByText(/当前可见缺译 1 段/)).toBeVisible();
+  await expect(page.getByText('草稿 · 版本 3 · 缺译 1 段', {exact: true})).toBeVisible();
   const submit = page.getByRole('button', {name: '生成导出文件'});
   await expect(submit).toBeEnabled();
   await expect(page.getByLabel(/我明确导出未完成草稿/)).toHaveCount(0);
@@ -306,7 +304,7 @@ test('semantic review reports the latest selected scope without claiming whole-d
  const draft={id:'semantic',document_id:doc.id,edition_id:'edition',source_revision_id:'source',source_hash:'a'.repeat(64),generation:2,target_locale:'zh-Hans',segments:[{block_id:'p1',source_text:'One source.',target_inline:[{type:'text',text:'一段原文。'}],version:1,review_status:'not_reviewed'}],semantic_review_status:'not_requested',semantic_reviews:[] as {job_id:string;status:string;completed:boolean;block_ids:string[]}[]};
  await mock(page,{'/drafts/semantic':draft});await page.goto('/#/drafts/semantic');await expect(page.getByText('辅助语义评审：尚未请求。',{exact:true})).toBeVisible();
  for(const [state,status,completed,label] of [['incomplete','waiting_config',false,'未完成'],['incomplete','waiting_budget',false,'未完成'],['completed','succeeded',true,'最近所选范围已完成'],['stale','stale',false,'最近所选范围已过期']] as const){
-  draft.semantic_review_status=state;draft.semantic_reviews=[{job_id:'semantic-job',status,completed,block_ids:['p1']}];await page.getByRole('button',{name:'读取最新版本',exact:true}).click();await expect(page.getByText(`辅助语义评审：${label}。`,{exact:true})).toBeVisible();const summary=page.getByRole('region',{name:'辅助语义评审范围'});await expect(summary).toContainText('最近请求：1 段 · p1');await expect(summary).toContainText('仅适用于该次明确所选段落，不代表全文完成、语义准确率或人工确认。');await expect(summary.getByRole('link',{name:'查看评审任务'})).toHaveAttribute('href','#/jobs/semantic-job');if(status==='waiting_config')await expect(summary).toContainText('等待翻译条件齐备');if(status==='waiting_budget')await expect(summary).toContainText('等待预算');
+  draft.semantic_review_status=state;draft.semantic_reviews=[{job_id:'semantic-job',status,completed,block_ids:['p1']}];await page.getByRole('button',{name:'读取最新版本',exact:true}).click();await expect(page.getByText(`辅助语义评审：${label}。`,{exact:true})).toBeVisible();const summary=page.getByRole('region',{name:'辅助语义评审范围'});await expect(summary).toContainText('最近请求：1 段 · p1');await expect(summary.getByRole('link',{name:'查看评审任务'})).toHaveAttribute('href','#/jobs/semantic-job');if(status==='waiting_config')await expect(summary).toContainText('等待翻译条件齐备');if(status==='waiting_budget')await expect(summary).toContainText('等待预算');
  }
  await page.screenshot({path:resolve(evidence,'semantic-stale-scope-contract.png'),fullPage:true});
 });
@@ -314,7 +312,7 @@ test('semantic review reports the latest selected scope without claiming whole-d
 test('permanent deletion opens the real cleanup job and displays only its safe file lifecycle summary',async({page})=>{
  const job={id:'cleanup-job',stage:'cleanup',status:'pending',generation:1,control_epoch:0,document_id:doc.id,cleanup:{online_content:'unavailable',files:'pending',shared_assets:'retained_while_referenced',backups:'retained_until_expiry',downloaded_copies:'outside_instance'}};
  await mock(page,{'/jobs/cleanup-job':job,'/jobs':{items:[job]}});await page.route('**/api/v1/documents/doc_contract',route=>route.fulfill({status:route.request().method()==='DELETE'?202:200,contentType:'application/json',headers:{ETag:'"1"'},body:JSON.stringify(route.request().method()==='DELETE'?{id:doc.id,status:'deleted',job_id:job.id}:doc)}));await page.goto('/#/documents/doc_contract');await page.getByRole('button',{name:'永久删除',exact:true}).click();await page.getByLabel('输入「删除」确认').fill('删除');const sent=page.waitForRequest(r=>r.method()==='DELETE');await page.getByRole('button',{name:'确认永久删除'}).click();expect((await sent).postDataJSON()).toEqual({confirm:true});await expect(page).toHaveURL(/#\/jobs\/cleanup-job/);
- const summary=page.getByRole('region',{name:'文档删除与文件清理'});await expect(summary).toContainText('等待文件清理');await expect(summary).toContainText('在线内容已不可访问');await expect(summary).toContainText('仍被其他文档引用的文件继续保留。');await expect(summary).toContainText('备份按保留期限淘汰；已下载的离线副本不能撤回。');
+ const summary=page.getByRole('region',{name:'文档删除与文件清理'});await expect(summary).toContainText('等待文件清理');await expect(summary).toContainText('在线内容已不可访问');
  for(const [state,status,label] of [['running','running','文件正在清理'],['completed','succeeded','可清理文件已完成清理'],['failed','failed','文件清理失败']] as const){job.cleanup.files=state;job.status=status;await page.reload();await expect(summary).toContainText(label);}
  await expect(page.getByRole('button',{name:'取消后续工作'})).toHaveCount(0);await expect(page.getByRole('button',{name:'暂停新派发'})).toHaveCount(0);await expect(page.getByRole('button',{name:'恢复安全缺失单元'})).toHaveCount(0);await expect(page.getByRole('link',{name:'文档详情',exact:true})).toHaveCount(0);await expect(page.locator('dt').filter({hasText:'实际费用'})).toHaveCount(0);await page.screenshot({path:resolve(evidence,'cleanup-status-contract.png'),fullPage:true});
 });

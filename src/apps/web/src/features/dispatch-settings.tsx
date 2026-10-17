@@ -52,9 +52,8 @@ export function DispatchRecovery({ onSaved }: { onSaved?: () => void }) {
   if (!needsAttention && !error && !notice) return null;
   return <section className="provider-dispatch" aria-labelledby="dispatch-title" id="model-request-status">
     <div className="stack between"><h3 id="dispatch-title">模型请求状态</h3>{state?.dispatch_disabled && <span className="pill warn">已暂停</span>}</div>
-    {state?.dispatch_disabled && <p className="muted small">模型请求已暂停。恢复后，已确认的排队任务可继续；暂停和结果未知的任务仍需单独处理。</p>}
     {state?.maintenance && <p className="field-note">实例正在维护，暂不能恢复模型请求。维护结束后，请刷新状态并恢复。</p>}
-    {state && state.unknown_attempts > 0 && <p className="field-note">仍有 {state.unknown_attempts} 个请求结果未知，可能已计费。保留的未知费用：{money(state.unknown_micro)}。恢复不会清除费用或自动重试这些请求。</p>}
+    {state && state.unknown_attempts > 0 && <p className="field-note">仍有 {state.unknown_attempts} 个请求结果未知，可能已计费。保留的未知费用：{money(state.unknown_micro)}。</p>}
     {riskRequired && <><label className="check"><input type="checkbox" checked={risk} disabled={saving || loading || state?.maintenance} onChange={event => setRisk(event.target.checked)}/>我已核对未知请求，并接受保留其潜在费用后继续外发</label><label className="field">风险确认说明<textarea className="input" rows={2} maxLength={2000} value={reason} disabled={saving || loading || state?.maintenance} onChange={event => setReason(event.target.value)}/></label></>}
     {loading && <p className="muted small">正在读取模型请求状态…</p>}
     {error && <p role="alert" className="notice error-notice">{error}</p>}

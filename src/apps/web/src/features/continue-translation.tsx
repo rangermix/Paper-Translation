@@ -7,7 +7,7 @@ import { resourceId } from '../domain';
 import { useAction, useResource } from '../hooks';
 import { languageName } from '../languages';
 import type { PreparationEstimates, PreparationMode, Provider } from '../types';
-import { CostControlNotice, budgetValid, costControlEnabled } from './cost-control';
+import { budgetValid, costControlEnabled } from './cost-control';
 import { ProviderDestination } from './provider-destination';
 
 type Preflight = { preparation_estimates?: PreparationEstimates; generation: number; source_revision_id: string; source_hash: string; source_language: string;
@@ -28,7 +28,6 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
   const p = result.data, controlled = costControlEnabled(p?.profile);
   useEffect(() => setConsent(false), [p?.profile_hash, p?.source_hash, p?.generation]);
   return <Modal title="翻译未完成内容" onClose={close}>
-    <p>保留已有译文，为缺少译文的内容创建新任务。完成后生成阅读版，并按所选方式发布；仍未完成的部分会标明并保留原文。</p>
     <ErrorNotice error={result.error} retry={result.reload}/><ErrorNotice error={preferences.error} retry={preferences.reload}/><ActionFeedback {...action}/>{result.loading && <Loading/>}
     {p && <form onSubmit={event => { event.preventDefault(); void action.run(async () => {
       const job = await api<{ job_id: string }>(`/drafts/${resourceId(draftId)}/translate`, { method: 'POST',
@@ -39,7 +38,7 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
       close(); location.hash = `/jobs/${job.job_id}`;
     }); }}>
       <p>{languageName(p.source_language)} → {languageName(p.locale)}</p>
-      <ProviderDestination profile={p.profile}/><PreparationControls value={preparation} onChange={mode => { setPreparation(mode); setConsent(false); }} profile={p.profile} estimates={p.preparation_estimates} disabled={action.pending}/><CostControlNotice enabled={controlled}/>
+      <ProviderDestination profile={p.profile}/><PreparationControls value={preparation} onChange={mode => { setPreparation(mode); setConsent(false); }} profile={p.profile} estimates={p.preparation_estimates} disabled={action.pending}/>
       {p.blocked_reason && <p className="notice">{reasons[p.blocked_reason] ?? '当前无法继续，请刷新页面查看最新状态。'}</p>}
       {controlled && <label className="field">本次任务预算（{p.profile.currency || 'USD'}）<input className="input" type="number"
         min="0.000001" step="0.000001" required value={budget} onChange={e => setBudget(e.target.value)}/></label>}

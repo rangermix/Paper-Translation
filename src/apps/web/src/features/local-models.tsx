@@ -130,23 +130,16 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
       {selected && selectedBackend && !compatible && <option value={selectedBackend}>已保存后端（当前模型或部署不支持）</option>}
     </select></label>
     {selected && !compatible && <p className="field-note error-text">所选后端与当前模型或部署不兼容，请选择支持的推理后端。</p>}
-    {selected?.format === 'gguf' && !backendOptions.includes('vllm') && <p className="field-note">此模型当前通过 llama.cpp 接入。vLLM 的 GGUF 加载适配尚未接入。</p>}
     {value && !selected && <p className="field-note error-text">已保存的模型在当前部署中不可用。请选择当前后端提供的模型。</p>}
     {catalogCode === 'LOCAL_MODEL_SERVICE_UNAVAILABLE' && <p className="field-note">本地翻译服务未启动或无法连接，仍可选择和保存模型。准备模型和{role}前，请在部署中启用本地翻译服务。</p>}
-    {!models.length && <p className="field-note">当前部署没有可选的本地{role}模型，请检查部署支持的格式与后端。MLX 仅适用于 Apple Silicon macOS；CUDA vLLM 需要受支持的 NVIDIA GPU 和 Linux／WSL2 部署。</p>}
+    {!models.length && <p className="field-note">当前部署没有可选的本地{role}模型，请检查部署支持的格式与后端。</p>}
     {selected && <><p className="local-model-status" role="status">{!compatible ? backendLabels.LOCAL_MODEL_BACKEND_UNSUPPORTED : backendLabels[state?.code ?? ''] ?? modelStatusLabels[state?.status ?? 'unavailable'] ?? '状态待刷新'} · {selected.format.toUpperCase()} {selected.quantization} · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
       {state?.code === 'LOCAL_CUDA_PROBE_MISSING' && <p className="field-note">Docker Model Runner 已启用，但缺少 GPU 检测组件。请修复 Docker Desktop 的推理组件后刷新状态。</p>}
-      {state?.code === 'LOCAL_VLLM_DEPLOYMENT_UNSUPPORTED' && <p className="field-note">这台设备可通过 Linux／WSL2 的 CUDA vLLM 部署运行 Safetensors；当前连接的 Runner 没有提供该后端。启用 Runner 开关不会自动接入另一种部署。</p>}
       <p className="local-model-id mono">{selected.model_id}</p>
       <ModelMemory reference={selected.memory_reference} unified={backend === 'mlx'}/>
       {state?.status === 'downloading' && state.total_bytes ? <progress aria-label="模型下载进度" value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
       <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={!compatible || pending || ['queued', 'downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>
       </>}
-    <details className="settings-details"><summary>本地模型说明</summary>
-      <p>通过 Docker Model Runner 在本机{role}，无需密钥。首次使用或明确准备时下载所选模型；切换格式不会自动下载。</p>
-      <p>推理后端按具体模型的兼容性及部署的平台与硬件能力提供，安装和模型准备状态另行显示。切换模型会恢复该模型的后端选择，保存配置不会自动下载或测试。资源不足时不会自动换后端、模型或转用云端。本地模型不执行语义评审。</p>
-      {selected && <p className="mono">{selected.repo}<br/>{selected.revision}</p>}
-    </details>
     <ErrorNotice error={error}/>
   </section>;
 }

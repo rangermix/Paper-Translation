@@ -11,6 +11,5 @@ export function SemanticSummary({ draft }: { draft: Draft }) {
       <p className="small">最近请求：{latest.block_ids.length} 段 · {latest.block_ids.join('、')} · {latest.status === 'stale' ? '所选译文或术语已改变' : statusLabel(latest.status)}</p>
       <a href={`#/jobs/${resourceId(latest.job_id)}`}>查看评审任务</a>
     </>}
-    <p className="small muted">仅适用于该次明确所选段落，不代表全文完成、语义准确率或人工确认。</p>
   </section>;
 }

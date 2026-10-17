@@ -10,7 +10,7 @@ export function NumberEvidence({ evidence }: { evidence: unknown }) {
   if (!differences(missing) || !differences(extra)) return null;
   const describe = (values: Difference[]) => values.map(v => `${v.value}${v.unit}（${v.count} 次）`).join('、') || '无';
   return <div className="field-note numeric-difference">
-    <strong>数字差异（已统一小数、千分位和中英文数量单位）</strong>
+    <strong>数字差异</strong>
     <p>译文缺少：{describe(missing)}</p><p>译文多出：{describe(extra)}</p>
   </div>;
 }

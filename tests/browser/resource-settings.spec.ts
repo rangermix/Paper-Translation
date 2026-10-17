@@ -59,7 +59,7 @@ for (const width of [1440, 390]) test(`resource limits save and persist without 
     max_ram_percent: 70, max_vram_percent: 65, master_concurrency: 3, subjob_concurrency: 4, auto_concurrency: false } } }]);
   await page.reload();
   await expect(panel.getByLabel('VRAM 使用上限（%）')).toHaveValue('65');
-  await panel.getByText('全部模型的内存参考', { exact: true }).click();
+  await panel.getByText('全部模型的内存参考（估算）', { exact: true }).click();
   await expect(panel.getByRole('cell', { name: 'Hy-MT2 7B Q4' })).toBeVisible();
   await expect(page.getByLabel('模型内存参考').first()).toContainText('KV 缓存约 1.0 GiB');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();

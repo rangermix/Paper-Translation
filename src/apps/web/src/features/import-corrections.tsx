@@ -71,7 +71,6 @@ export function ImportCorrections({ preflight, onClose }: { preflight: Preflight
   const continuationReady = Boolean(continuation && page?.page_image_sha256?.match(/^[a-f0-9]{64}$/i) && (joiner === ' ' || joinedWord));
   const insertion = after || roots[0]?.id;
   return <Modal title="对照原生 PDF 修正提取" onClose={onClose}>
-    <p>对照已保存的原始字符与页图修正来源。每次产生新来源草稿并重新计算覆盖；公式可依据原页精确裁图，前后正文继续保留和翻译。</p>
     <ErrorNotice error={native.error} retry={native.reload}/>{native.loading && <Loading/>}<ActionFeedback {...action}/>
     <label className="check"><input type="checkbox" checked={allRegions} onChange={event => {setAllRegions(event.target.checked); setSelected(0); setBlockId(''); resetSplit();}}/>查看全部原生区域（含已覆盖）</label>
     {regions.length > 0 && region ? <form onSubmit={e => { e.preventDefault(); void action.run(async () => {
@@ -90,33 +89,29 @@ export function ImportCorrections({ preflight, onClose }: { preflight: Preflight
       {mapped.length ? <><label className="field">恢复对应来源块<select value={block?.block_id} onChange={e => {setBlockId(e.target.value); resetSplit();}}>{mapped.map(b => <option key={b.block_id}>{b.block_id}</option>)}</select></label><div className="review-grid"><div><h3>当前解析结果</h3><pre>{sourceText}</pre></div><div><h3>该块所有原生区域全文</h3><pre>{block?.native_text}</pre></div></div><label className="field">修正方式<select aria-label="修正方式" value={mode} onChange={e => {setMode(e.target.value); setChecked(false); setReason(''); setMechanicalOperation(undefined);}}><option value="native">按原生字符恢复全文</option><option value="native_span" disabled={!source || !['paragraph', 'list_item', 'caption', 'reference', 'heading', 'footnote'].includes(source.kind)}>按原生证据清理指定机械片段</option><option value="native_merge" disabled={!source || !['paragraph', 'list_item'].includes(source.kind)}>连接图表前后的原生续接段落</option><option value="continuation" disabled={!continuation || !page?.page_image_sha256}>连接同页跨栏续接段落</option><option value="footnote" disabled={!page?.page_image_sha256 || !footnotes.length}>关联同页原文脚注标记</option><option value="math_annotation" disabled={!annotationKind || !page?.page_image_sha256}>将原数学片段关联到独立原页裁图（保留图注或表格归属）</option><option value="math_crop" disabled={source?.kind !== 'paragraph' || !page?.page_image_sha256}>将行内公式保留为原页裁图</option></select></label></> : <label className="field">将确实遗漏的原生段落放在此根块之后<select value={insertion} onChange={e => {setAfter(e.target.value); setChecked(false);}}>{roots.map(b => <option key={b.id} value={b.id}>{b.id} · {(b.normalized_text ?? b.source_text ?? '').slice(0, 35)}</option>)}</select></label>}
       {mechanicalMode && source && native.data && <NativeMechanical key={`${mode}:${source.id}:${region.page}:${region.bbox.join(',')}`} mode={mode} source={source} region={region} native={native.data} preflight={preflight} change={mechanicalChanged}/>}
       {mathMode && <>
-        {mode === 'math_annotation' && <p className="notice">保留当前块的原文及图注、表格归属，仅为所选数学片段添加可点击引用。原页公式图会作为独立块显示，不表示原文具有行内公式排版。</p>}
-        <p className="field-note">从当前解析内容精确复制公式前后的正文。中间内容仅用原 PDF 图像替代，不推测公式文本；裁图必须包含所选证据区域，且不能覆盖整段正文。</p>
         <label className="field">公式前的原文（精确前缀）<textarea value={prefix} onChange={e => {setPrefix(e.target.value); setChecked(false);}}/></label>
         <label className="field">公式后的原文（精确后缀）<textarea value={suffix} onChange={e => {setSuffix(e.target.value); setChecked(false);}}/></label>
-        <p className="field-note">{exactSplit ? '以下当前解析片段将由原公式图替代：' : '前后缀必须与当前原文逐字匹配，且保留非空的公式片段。'}</p>{exactSplit && <pre className="source-block">{middle}</pre>}
+        <p className="field-note">{exactSplit ? '待替换片段：' : '前后缀必须与当前原文逐字匹配，且保留非空的公式片段。'}</p>{exactSplit && <pre className="source-block">{middle}</pre>}
         <div className="two-cols">{['x0', 'y0', 'x1', 'y1'].map((label, index) => <label className="field" key={label}>公式裁图 {label}<input className="input" type="number" step="any" value={values[index]} onChange={e => {setCropValues(values.map((v, i) => i === index ? e.target.value : v)); setChecked(false);}}/></label>)}</div>
         {validCrop && <PdfLocator originalUrl={preflight.original_url} documentId={preflight.document_id} locators={[{page_image_url: pageImageUrl, page: region.page, bbox: crop, page_size: region.page_size}]}/>}
         {(!validCrop || !boundedCrop) && <p className="error">裁图须在对应段落和页面范围内，包含所选原生证据，并留出前后正文。</p>}
         <p className="field-note mono">原页 SHA-256：{page?.page_image_sha256 ?? '尚不可用'}</p>
       </>}
       {mode === 'continuation' && <>
-        <p className="field-note">仅连接同页阅读顺序相邻的来源块，保留第一块的段落或项目符号属性。选中的原生证据必须来自第一块末行；跨栏断词须有原件行末连字符证明。</p>
         <label className="field">继续本段的相邻来源块<select value={continuation?.id ?? ''} disabled><option value={continuation?.id ?? ''}>{continuation ? `${continuation.id} · ${continuation.normalized_text ?? continuation.source_text}` : '没有可续接的相邻段落'}</option></select></label>
         <label className="field">连接方式<select aria-label="连接方式" value={joiner} onChange={event => {setJoiner(event.target.value);setChecked(false);}}><option value=" ">段落之间保留一个空格</option><option value="" disabled={!joinedWord}>恢复有原件证明的跨栏断词</option></select></label>
         <p className="field-note mono">原页 SHA-256：{page?.page_image_sha256 ?? '尚不可用'}</p>
       </>}
       {mode === 'footnote' && <>
-        <p className="field-note">只把原文中的既有标记关联到同页脚注，原始文字不改写。起止位置按 Unicode 字符计数，补充平面字符也算一个字符。</p>
         <label className="field">标记起点（Unicode 字符）<input className="input" type="number" min="0" step="1" value={markerStart} onChange={e => {setMarkerStart(e.target.value); setChecked(false);}}/></label>
         <label className="field">标记终点（不含此字符）<input className="input" type="number" min="1" step="1" value={markerEnd} onChange={e => {setMarkerEnd(e.target.value); setChecked(false);}}/></label>
         <label className="field">同页目标脚注<select value={footnoteTarget} onChange={e => {setFootnoteTarget(e.target.value); setChecked(false);}}><option value="">请选择确切脚注</option>{footnotes.map(footnote => <option key={footnote.id} value={footnote.id}>{footnote.id} · {footnote.normalized_text ?? footnote.source_text}</option>)}</select></label>
-        <p className="field-note">当前选中的原标记：<code>{marker || '尚未选择'}</code>；必须与当前原生证据逐字匹配。</p>
+        <p className="field-note">当前原标记：<code>{marker || '尚未选择'}</code></p>
         <p className="field-note mono">原页 SHA-256：{page?.page_image_sha256 ?? '尚不可用'}</p>
       </>}
       <label className="field">原件核对记录与理由<textarea required value={reason} onChange={e => setReason(e.target.value)}/></label>
       <label className="check"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}/>{mechanicalMode ? '我已核对选中片段与原生字形证据，确认所选机械规则和续接位置；不新增或润色原文。' : mode === 'continuation' ? '我已对照原页，确认这两个相邻块是同一段落或同一项目，连接方式有原文证明。' : mode === 'footnote' ? '我已对照原页，确认所选标记指向同页这条脚注，原文不会改写。' : mathMode ? '我已逐字核对公式前后正文，并确认裁图完整包含原公式，没有裁入无关正文。' : '我已对照高亮的原 PDF，确认恢复内容与阅读位置。'}</label>
       <button className="btn primary section-title" disabled={action.pending || !checked || !reason.trim() || (mechanicalMode ? !mechanicalOperation : mode === 'continuation' ? !continuationReady : mode === 'footnote' ? !footnoteReady : mathMode ? !mathReady : !block && !insertion)}>创建新来源草稿并重检覆盖</button>
-    </form> : !native.loading && <p className="notice">没有可按原生文字证据直接恢复的区域。无法可靠识别的内容保留原页图像，内容提示不阻止翻译、阅读或导出。</p>}
+    </form> : !native.loading && <p className="notice">没有可直接恢复的原生文字区域。</p>}
   </Modal>;
 }

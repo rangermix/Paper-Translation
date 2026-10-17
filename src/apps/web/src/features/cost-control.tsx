@@ -7,6 +7,3 @@ export const budgetValid = (value: string) => {
   const micro = Math.round(Number(value) * 1_000_000);
   return Number.isSafeInteger(micro) && micro > 0;
 };
-export function CostControlNotice({ enabled }: { enabled: boolean }) {
-  return enabled ? null : <p className="notice">未启用预算与成本控制：本任务不设金额上限，服务仍可能收费。无法计算的费用显示为“未计算”，不是 0。</p>;
-}

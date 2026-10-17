@@ -294,7 +294,6 @@ for (const width of [1440, 390]) test(`segment and candidate inspectors use thei
   await page.getByText('草稿基准准备与依据', { exact: true }).click();
   const baseline = page.getByRole('region', { name: '草稿基准准备与依据', exact: true });
   await expect(baseline).toContainText(pack.revision);
-  await expect(baseline).toContainText('已有段落和候选可能使用其他准备');
   await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
   await page.getByText('本段翻译准备与依据', { exact: true }).click();
   const segment = page.getByRole('region', { name: '段落 b1 的翻译准备与依据', exact: true });

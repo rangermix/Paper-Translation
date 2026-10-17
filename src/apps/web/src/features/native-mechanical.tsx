@@ -38,7 +38,6 @@ export function NativeMechanical({ mode, source, region, native, preflight, chan
   useEffect(() => { change(serialized ? JSON.parse(serialized) : undefined); }, [serialized, change]);
   const continuationUrl = preflight.pages?.find(p => p.page === continuation?.page)?.page_image_url;
   return <>
-    <p className="field-note">仅按已保存的原生字形、位置和页图恢复机械提取。不会提交任意替换文字；服务端还会验证确切出现位置、行序及保护内容。</p>
     <label className="field">机械清理规则<select value={rule} onChange={e => { setRule(e.target.value); setProof(''); }}>
       {!merge && <option value="restore_native_spacing">恢复原生空白（仅空白差异）</option>}
       <option value="remove_line_wrap">去掉换行断词连字符（拼回同一个词）</option>
@@ -47,11 +46,11 @@ export function NativeMechanical({ mode, source, region, native, preflight, chan
     {merge ? <>
       <label className="field">续接来源块<select disabled value={next?.id ?? ''}><option value={next?.id ?? ''}>{next ? `${next.id} · ${next.normalized_text ?? next.source_text}` : '没有符合顺序的续接段落'}</option></select></label>
       <p>保留中间图表与公式：{floats.map(b => b.id).join('、') || '无'}</p>
-      <p className="small muted">第一块末行与第二块首行须在同页或相邻页；中间不能夹有其他正文。保留原块、位置及图表审计记录。</p>
+
     </> : <>
       <label className="field">机械片段起点（Unicode 字符）<input className="input" type="number" min="0" step="1" value={startValue} onChange={e => setStart(e.target.value)}/></label>
       <label className="field">机械片段终点（不含此字符）<input className="input" type="number" min="1" step="1" value={endValue} onChange={e => setEnd(e.target.value)}/></label>
-      <p className="small">只选择当前提取文字的目标片段；补充平面字符按一个字符计数，不得切断数字、公式或引用。</p>
+
       <pre className="source-block">{spanReady ? selected : '请选择有效的原文片段'}</pre>
     </>}
     {needsContinuation && <>

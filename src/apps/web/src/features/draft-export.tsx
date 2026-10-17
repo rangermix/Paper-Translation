@@ -13,7 +13,7 @@ export function DraftExport({ draft, close }: {draft: Draft; close: () => void})
   const result = useResource<{status: string; download_url?: string; error?: {message?: string; code?: string}}>(exportId ? `/exports/${resourceId(exportId)}` : null, 2000);
   const missing = draft.segments.filter(s => s.translatable !== false && !s.target_inline.length).length;
   return <Modal title="导出当前内容" onClose={close}>
-    <p className="notice"><strong>当前内容快照</strong><br/>导出保存当前版本 {draft.generation}，带明显草稿标记及缺失译文提示。当前可见缺译 {missing} 段；文件会保留内容提示和原文占位。</p>
+    <p className="notice">草稿 · 版本 {draft.generation} · 缺译 {missing} 段</p>
     <form onSubmit={e => {e.preventDefault(); void action.run(async () => {
       const created = await api<{export_id: string}>(`/drafts/${resourceId(draft.id)}/exports`, {method: 'POST', etag: etagFor(draft), body: {format, include_source: includeSource, confirm_draft: true}});
       setExportId(created.export_id);

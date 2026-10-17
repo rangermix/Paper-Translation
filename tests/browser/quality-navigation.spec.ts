@@ -71,7 +71,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator('.issue:visible')).toHaveCount(3);
     await page.getByRole('button', { name: '跳转段落 figure' }).click();
     await expect(page.locator('#segment-figure')).toBeFocused();
-    await expect(page.locator('#segment-figure')).toContainText('本段保留原文');
+    await expect(page.locator('#segment-figure')).toContainText('保留原文');
     await page.getByRole('button', { name: '展开全部段落', exact: true }).click();
     await expect(risk.getByRole('button', { name: '折叠段落 b118' })).toBeVisible();
     await page.getByRole('button', { name: '折叠无重要提示的段落', exact: true }).click();

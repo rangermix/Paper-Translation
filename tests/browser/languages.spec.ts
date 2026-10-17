@@ -13,7 +13,7 @@ async function expectDestination(page:Page){
  const destination=page.getByRole('region',{name:'本次请求目的地'});
  await expect(destination).toContainText(profile.endpoint);
  await expect(destination).toContainText('Chat Completions');
- await expect(destination).toContainText('无鉴权，不发送 Authorization');
+ await expect(destination).toContainText('无鉴权');
  await expect(destination).toContainText(profile.model_id);
 }
 

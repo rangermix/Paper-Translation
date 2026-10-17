@@ -106,7 +106,7 @@ for (const enabled of [false, true]) for (const flow of ['preflight', 'edition',
   const budget = page.locator('#translation-budget, #candidate-budget, input[type=number]');
   await expect(submit).toBeDisabled();
   if (enabled) { await expect(budget).toHaveCount(1); await budget.fill('0.01'); }
-  else { await expect(budget).toHaveCount(0); await expect(page.getByText(/未启用预算与成本控制/).last()).toBeVisible(); }
+  else await expect(budget).toHaveCount(0);
   
   
   await expect(submit).toBeDisabled();

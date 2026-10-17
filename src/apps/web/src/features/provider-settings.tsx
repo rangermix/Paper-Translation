@@ -202,19 +202,12 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
       <label className="field">模型 ID<input className="input" value={fields.model} onChange={event => update('model', event.target.value)} maxLength={160} placeholder="服务实际提供的模型 ID" autoCapitalize="none" spellCheck={false}/></label>
       <label className="field">API 密钥<input className="input" type="password" value={apiKey} onChange={event => { setApiKey(event.target.value); setNotice(''); }} disabled={clearKey || fields.auth === 'none'} autoComplete="new-password" autoCapitalize="none" spellCheck={false} maxLength={8192} placeholder="留空保留现有密钥"/></label>
       <div className="provider-key-state"><span className="small muted">{credentialLabel}</span><label className="check"><input type="checkbox" checked={clearKey} onChange={event => { setClearKey(event.target.checked); setApiKey(''); setNotice(''); }}/>清除已保存的密钥</label></div>
-      {fields.auth === 'none' && <p className="settings-hint">无鉴权：请求不发送密钥。</p>}
       {rebind && <p className="notice">服务地址或接口类型已变化，或已切换鉴权方式。请重新输入用于新配置的密钥，或明确清除已保存的密钥；旧密钥不会自动绑定到新配置。</p>}
-      <details className="settings-details provider-help"><summary>连接帮助</summary>
-        <p>URL 需包含完整接口路径，不自动追加路由。地址从后端容器访问，localhost 指容器自身。</p>
-        <p>密钥只保存在后端，留空保留，勾选清除后删除。更换地址或鉴权方式需重新确认密钥。</p>
-        <p>保存不调用模型。测试连接和翻译分别确认后发送。</p>
-      </details>
-      <div className="provider-cost"><label className="check"><input type="checkbox" checked={fields.costControl} onChange={event => update('costControl', event.target.checked)}/>启用预算与成本控制</label>
-      <p className="settings-hint">{fields.costControl ? '在高级选项填写费率，翻译前设置预算。' : '未设金额上限，API 服务仍可能收费。'}</p></div>
+      <div className="provider-cost"><label className="check"><input type="checkbox" checked={fields.costControl} onChange={event => update('costControl', event.target.checked)}/>启用预算与成本控制</label></div>
       </>}
       <details className="provider-advanced"><summary>高级选项：价格与请求限制</summary>
-        {fields.protocol === 'claude_messages' && <><label className="field">Anthropic API 版本<input className="input" value={fields.version} onChange={event => update('version', event.target.value)} placeholder="2023-06-01" maxLength={10}/></label><p className="settings-hint">留空使用 2023-06-01，格式 YYYY-MM-DD。</p>{invalidVersion && <p className="field-note error-text">API 版本须为 YYYY-MM-DD 格式。</p>}</>}
-        {!local && <><p className="settings-hint">按实际费率填写。未知留空，免费填 0；启用成本控制时必填。</p>
+        {fields.protocol === 'claude_messages' && <><label className="field">Anthropic API 版本<input className="input" value={fields.version} onChange={event => update('version', event.target.value)} placeholder="2023-06-01" maxLength={10}/></label>{invalidVersion && <p className="field-note error-text">API 版本须为 YYYY-MM-DD 格式。</p>}</>}
+        {!local && <>
         <div className="two-cols">
           <label className="field">输入价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.inputPrice} onChange={event => update('inputPrice', event.target.value)}/></label>
           <label className="field">缓存输入价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.cachedPrice} onChange={event => update('cachedPrice', event.target.value)}/></label>
@@ -226,9 +219,7 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
           <label className="field">单次输出 token 上限<input className="input" inputMode="numeric" value={fields.outputTokens} onChange={event => update('outputTokens', event.target.value)}/></label>
           <label className="field">单个翻译单元字符上限<input className="input" inputMode="numeric" value={fields.unitCharacters} onChange={event => update('unitCharacters', event.target.value)}/></label>
         </div>
-        <p className="settings-hint">Token：1–1,000,000；单元字符：1–10,000。</p>
         <div className="stack"><button className="btn" type="button" onClick={() => { const limits = base.token_limits_defaults ?? defaultTokenLimits; setFields(old => ({ ...old, inputTokens: String(limits.max_input_tokens), outputTokens: String(limits.max_output_tokens), unitCharacters: String(limits.max_unit_characters) })); setNotice(''); }}>重置请求限制</button><button className="btn" type="button" onClick={() => { const saved = fromProvider(base); setFields(old => ({ ...old, inputTokens: saved.inputTokens, outputTokens: saved.outputTokens, unitCharacters: saved.unitCharacters })); setNotice(''); }}>撤销限额修改</button></div>
-        <p className="settings-hint">仅修改以上三项限制，保存后生效。</p>
         {(invalidPrice || invalidTokens) && <p className="field-note error-text">价格须为非负数（最多六位小数）；请求限制须为范围内的整数。</p>}
       </details>
     </fieldset>

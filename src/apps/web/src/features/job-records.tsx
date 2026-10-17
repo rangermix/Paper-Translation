@@ -82,11 +82,10 @@ export function JobRecords({ job }: { job: Job }) {
   return <section className="job-records" aria-label="执行记录"><h3>执行记录</h3>
     {job.workflow && job.workflow.job_count > 1 && <div className="notice" aria-label="整体任务状态">
       <div className="stack between"><strong>整体任务</strong><Status value={job.workflow.status}/></div>
-      <p>共 {job.workflow.job_count} 个处理阶段。下方显示当前步骤的记录，可分别查看各处理步骤。后续任务独立记录状态。</p>
+      <p>共 {job.workflow.job_count} 个处理阶段</p>
     </div>}
     <ModelView model={job.actual_model} historical={!job.actual_model && (!job.config_snapshot || String(job.config_snapshot.evidence_source || '').startsWith('historical'))}/>
     <ExecutionTimesView value={job} status={job.status}/>
-    <p className="field-note">时间按 {Intl.DateTimeFormat().resolvedOptions().timeZone} 显示。执行耗时包含期间的暂停和重试，可在日志中查看。</p>
     {job.title_snapshot && <p className="small muted">运行时文档名：{job.title_snapshot}</p>}
     {job.config_snapshot && <details><summary>创建时的配置</summary><pre className="job-config">{JSON.stringify(job.config_snapshot, null, 2)}</pre></details>}
     {job.parent_job_id && <a className="btn sm" href={`#/jobs/${resourceId(job.parent_job_id)}`}>{job.task_role === 'main' ? '查看来源任务' : '查看所属任务'}</a>}
@@ -100,7 +99,6 @@ export function JobRecords({ job }: { job: Job }) {
       <label>阶段 <select value={filter.stage} onChange={e => setFilter(old => ({ ...old, stage: e.target.value, cursors: [] }))}>
         <option value="">全部</option>{[...new Set([job.stage, filter.stage, ...(logs.data?.items.map(item => item.stage) ?? [])])].filter(Boolean).map(stage => <option key={stage} value={stage}>{jobOperation(stage)}</option>)}
       </select></label>
-      <span className="small muted">点击日志展开详情</span>
     </div><ErrorNotice error={logs.error} retry={logs.reload}/>
     {logs.loading && <p className="small muted" role="status">正在加载日志…</p>}
     {logs.data?.items.length === 0 && <p className="muted">{job.config_snapshot ? '此筛选下暂无日志。' : '历史记录未保存日志。'}</p>}

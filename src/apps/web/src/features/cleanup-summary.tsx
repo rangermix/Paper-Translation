@@ -12,8 +12,7 @@ export function CleanupSummary({ job, connection }: { job: Job; connection: stri
     <p>在线内容已不可访问。</p>
     <p role="status"><strong>{job.cleanup ? labels[job.cleanup.files] ?? '文件清理状态暂不可用' : '等待服务端返回文件清理状态'}</strong></p>
     {job.cleanup?.files === 'failed' && <p className="field-note warn">在线内容继续保持不可访问。请检查实例运行记录，处理文件清理故障。</p>}
-    <p>仍被其他文档引用的文件继续保留。</p>
-    <p className="field-note">备份按保留期限淘汰；已下载的离线副本不能撤回。</p>
+
     <a className="btn" href="#/library">返回文档库</a>
   </section>;
 }

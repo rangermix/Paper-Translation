@@ -27,7 +27,7 @@ export function EditorQuality({ issues, navigate, resolve, resolveDisabled }: {
     </div>
     {filter !== 'risks' && <section aria-label="重要提示" className="quality-group">
       <h4>重要提示 · {blockers.length}</h4>
-      <p className="small muted">可按需对照原文；不影响阅读、发布或导出。</p>
+
       {blockers.length ? <Issues issues={blockers} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/> : <p className="muted">没有重要提示。</p>}
     </section>}
     {filter !== 'blockers' && <details className="quality-group quality-risks" key={filter} open={filter === 'risks'}>

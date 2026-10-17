@@ -60,11 +60,11 @@ export function Modal({ title, children, onClose, busy = false }: { title: strin
 export function PdfLocator({ documentId, originalUrl, locators = [] }: { documentId: string; originalUrl?: string; locators?: Locator[] }) {
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const original = localUrl(originalUrl, `/api/v1/documents/${resourceId(documentId)}/original`);
-  if (!locators.length) return <div className="field-note"><strong>无精确定位</strong><p>这份来源没有可靠的逐块坐标。</p><a className="btn" href={original} target="_blank" rel="noreferrer">打开原 PDF</a></div>;
+  if (!locators.length) return <div className="field-note"><strong>无精确定位</strong><a className="btn" href={original} target="_blank" rel="noreferrer">打开原 PDF</a></div>;
   return <div className="pdf-locators">{locators.map((loc, i) => {
     let bounds; try { bounds = locatorStyle(loc); } catch { return <p className="error" key={i}>来源坐标无效，无法高亮。请核对原 PDF。</p>; }
     const imageUrl = localUrl(loc.page_image_url, `/api/v1/documents/${resourceId(documentId)}/pages/${loc.page}.png`);
     const key = `${imageUrl}-${i}`;
-    return <figure key={key} className="pdf-page"><div className="stack between"><figcaption>原 PDF · 第 {loc.page} 页</figcaption><a href={`${original.split('#')[0]}#page=${loc.page}`} target="_blank" rel="noreferrer">打开原页</a></div>{failed[key] ? <p className="field-note warn">页图读取失败。可通过上方原 PDF 链接继续核对。</p> : <div className="page-canvas" style={{ aspectRatio: `${loc.page_size[0]} / ${loc.page_size[1]}` }}><img src={imageUrl} alt={`原 PDF 第 ${loc.page} 页`} onError={() => setFailed(previous => ({ ...previous, [key]: true }))}/><span className="bbox" data-page={loc.page} style={bounds} aria-label={`来源高亮 ${loc.bbox.join(', ')}`}/></div>}<small className="muted">左上角 point 坐标：{loc.bbox.join(', ')} · 页面 {loc.page_size.join(' × ')} pt{loc.rotation ? ` · 原页旋转 ${loc.rotation}°` : ''}</small></figure>;
+    return <figure key={key} className="pdf-page"><div className="stack between"><figcaption>原 PDF · 第 {loc.page} 页</figcaption><a href={`${original.split('#')[0]}#page=${loc.page}`} target="_blank" rel="noreferrer">打开原页</a></div>{failed[key] ? <p className="field-note warn">页图读取失败。可通过上方原 PDF 链接继续核对。</p> : <div className="page-canvas" style={{ aspectRatio: `${loc.page_size[0]} / ${loc.page_size[1]}` }}><img src={imageUrl} alt={`原 PDF 第 ${loc.page} 页`} onError={() => setFailed(previous => ({ ...previous, [key]: true }))}/><span className="bbox" data-page={loc.page} style={bounds} aria-label={`来源高亮 ${loc.bbox.join(', ')}`}/></div>}</figure>;
   })}</div>;
 }

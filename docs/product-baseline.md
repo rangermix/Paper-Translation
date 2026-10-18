@@ -76,6 +76,13 @@ though nothing was sent. See [workflows](workflows.md).
 
 ## Configuration
 
+The management UI supports Simplified Chinese, Traditional Chinese and English.
+The navigation language selector applies immediately and stores only a browser
+preference, shared across same-origin tabs. It starts from the browser languages
+and falls back to English for unsupported languages. UI language is independent
+of translation locale; changing it preserves unsaved input, document content,
+task snapshots and existing immutable readers. See [UI behavior](ui-ux.md).
+
 The settings page supports Responses, Chat Completions, Gemini Interactions and
 Claude Messages. Endpoints and model IDs are user-configurable; saving does not
 send a request. Keys live in backend files and are never returned. Protocol,

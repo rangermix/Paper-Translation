@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { resourceId } from '../domain';
 import { languageName } from '../languages';
@@ -7,12 +8,11 @@ import { ContinueTranslation } from './continue-translation';
 export function SavedParseTranslation({ preflight }: { preflight: Preflight }) {
   const [draft, setDraft] = useState('');
   const targets = preflight.translation_targets ?? [];
-  if (preflight.status === 'superseded') return <p className="notice">此解析结果已有更新。
-    <a href={`#/documents/${resourceId(preflight.document_id)}`}>查看文档的最新解析结果</a></p>;
+  if (preflight.status === 'superseded') return <p className="notice">{t("此解析结果已有更新。")}<a href={`#/documents/${resourceId(preflight.document_id)}`}>{t("查看文档的最新解析结果")}</a></p>;
   return <>
     <div className="stack">{targets.map(target => <button key={target.draft_id} className="btn primary"
-      onClick={() => setDraft(target.draft_id)}>开始翻译 · {languageName(target.target_locale)}</button>)}</div>
-    {!targets.length && <a className="btn" href={`#/documents/${resourceId(preflight.document_id)}`}>选择语言并开始翻译</a>}
+      onClick={() => setDraft(target.draft_id)}>{t("开始翻译 · {value0}", { value0: languageName(target.target_locale) })}</button>)}</div>
+    {!targets.length && <a className="btn" href={`#/documents/${resourceId(preflight.document_id)}`}>{t("选择语言并开始翻译")}</a>}
     {draft && <ContinueTranslation draftId={draft} close={() => setDraft('')}/>}
   </>;
 }

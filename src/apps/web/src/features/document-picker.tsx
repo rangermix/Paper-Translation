@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { ErrorNotice, Loading } from '../components';
 import { useResource } from '../hooks';
@@ -22,18 +23,18 @@ export function DocumentPicker({ label, value, onChange, selectedDocument, allow
   if (cursor) params.set('cursor', cursor);
   const result = useResource<Page<Document>>(`/documents?${params}`);
   const documents = result.data?.items ?? [];
-  return <div className="field document-picker" role="group" aria-label={`${label}选择器`}>
+  return <div className="field document-picker" role="group" aria-label={t("{value0}选择器", { value0: label })}>
     <label>{label}<select aria-label={label} value={value} disabled={disabled} onChange={event => onChange(event.target.value)}>
-      <option value="">{allowAll ? '全库文档' : '请选择文档'}</option>
-      {value && !documents.some(document => document.id === value) && <option value={value}>{selectedDocument ? documentChoiceLabel(selectedDocument) : '所选文档暂不可用'}</option>}
+      <option value="">{allowAll ? t("全库文档") : t("请选择文档")}</option>
+      {value && !documents.some(document => document.id === value) && <option value={value}>{selectedDocument ? documentChoiceLabel(selectedDocument) : t("所选文档暂不可用")}</option>}
       {documents.map(document => <option key={document.id} value={document.id}>{documentChoiceLabel(document)}</option>)}
     </select></label>
-    <div className="stack"><input className="input" aria-label={`${label}：搜索标题`} placeholder="输入标题查找文档" value={query} disabled={disabled} onChange={event => setQuery(event.target.value)}
+    <div className="stack"><input className="input" aria-label={t("{value0}：搜索标题", { value0: label })} placeholder={t("输入标题查找文档")} value={query} disabled={disabled} onChange={event => setQuery(event.target.value)}
       onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); setSubmitted(query.trim()); setCursor(''); } }}/>
-      <button type="button" className="btn sm" disabled={disabled} onClick={() => { setSubmitted(query.trim()); setCursor(''); }}>查找文档</button></div>
+      <button type="button" className="btn sm" disabled={disabled} onClick={() => { setSubmitted(query.trim()); setCursor(''); }}>{t("查找文档")}</button></div>
     <ErrorNotice error={result.error} retry={result.reload}/>{result.loading && <Loading/>}
-    {result.data && !documents.length && <p role="status" className="small muted">{submitted ? '没有找到匹配的文档，请换一个标题。' : '文库暂无可选文档。'}</p>}
-    <div className="stack">{cursor && <button type="button" className="btn sm" disabled={disabled} onClick={() => setCursor('')}>返回首批文档</button>}
-      {result.data?.next_cursor && <button type="button" className="btn sm" disabled={disabled} onClick={() => setCursor(result.data!.next_cursor!)}>更多文档</button>}</div>
+    {result.data && !documents.length && <p role="status" className="small muted">{submitted ? t("没有找到匹配的文档，请换一个标题。") : t("文库暂无可选文档。")}</p>}
+    <div className="stack">{cursor && <button type="button" className="btn sm" disabled={disabled} onClick={() => setCursor('')}>{t("返回首批文档")}</button>}
+      {result.data?.next_cursor && <button type="button" className="btn sm" disabled={disabled} onClick={() => setCursor(result.data!.next_cursor!)}>{t("更多文档")}</button>}</div>
   </div>;
 }

@@ -1,3 +1,4 @@
+import { messages, t } from './i18n';
 const errors: Record<string, string> = {
   PROVIDER_CONFIG: 'AI 服务配置尚未完成，已有内容仍可查看。请在设置中完成配置。',
   EXTERNAL_PROCESSING_UNCONFIRMED: '尚未授权向 AI 服务发送内容，请在开始翻译时确认外发范围。',
@@ -36,5 +37,5 @@ const errors: Record<string, string> = {
   CLEANUP_FAILED: '文件清理未完成，在线内容仍不可访问。请查看任务记录。',
 };
 export function errorMessage(code: string, message?: string) {
-  return errors[code] ?? (message && /[\u3400-\u9fff]/.test(message) ? message : '本次操作未完成，请查看技术详情或稍后重试。');
+  return t(errors[code] ?? (message && (messages[message] || /[\u3400-\u9fff]/.test(message)) ? message : '本次操作未完成，请查看技术详情或稍后重试。'));
 }

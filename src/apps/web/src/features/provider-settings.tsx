@@ -1,3 +1,4 @@
+import { t, getUiLocale } from '../i18n';
 import { useRef, useState } from 'react';
 import { api, ApiError, etagFor } from '../api';
 import { ErrorNotice, Loading } from '../components';
@@ -77,7 +78,7 @@ export function ProviderSettings({ provider, loading, error, reload, onSaved, on
   provider?: Provider; loading: boolean; error?: Error; reload: () => void; onSaved: (value: Provider) => void; onDispatchSaved?: () => void;
 }) {
   return <section className="panel provider-panel" aria-labelledby="provider-title">
-    <h2 id="provider-title">AI 服务</h2>
+    <h2 id="provider-title">{t("AI 服务")}</h2>
     <DispatchRecovery onSaved={onDispatchSaved}/>
     <ErrorNotice error={error} retry={reload}/>
     {loading && <Loading/>}
@@ -199,52 +200,52 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     discard: () => { applyLatest(base, false); setNotice(''); } });
   const refresh = useSettingsRefresh(unsaved, readLatest, true);
   return <form className="provider-form" onSubmit={event => { event.preventDefault(); void save(); }} autoComplete="off">
-    <div className="provider-state stack"><span className={ready ? 'provider-ready' : 'muted'}>{ready ? (base.connection_test ? '已配置 · 测试结果见下方' : '已配置 · 未测试') : '等待配置'}</span>{unsaved && <span className="settings-unsaved">未保存</span>}</div>
-    {otherDrafts && <p className="settings-hint">其他接口还有未保存的输入。请切换到对应接口处理；保存当前接口不会自动保存或启用其他服务。</p>}
-    {base.missing_fields?.length ? <p className="field-note">待补全：{[...new Set(base.missing_fields.map(field => missingLabels[field] ?? '其他服务配置（请检查高级选项）'))].join('、')}</p> : null}
+    <div className="provider-state stack"><span className={ready ? 'provider-ready' : 'muted'}>{ready ? (base.connection_test ? t("已配置 · 测试结果见下方") : t("已配置 · 未测试")) : t("等待配置")}</span>{unsaved && <span className="settings-unsaved">{t("未保存")}</span>}</div>
+    {otherDrafts && <p className="settings-hint">{t("其他接口还有未保存的输入。请切换到对应接口处理；保存当前接口不会自动保存或启用其他服务。")}</p>}
+    {base.missing_fields?.length ? <p className="field-note">{t("待补全：")}{[...new Set(base.missing_fields.map(field => t(missingLabels[field] ?? '其他服务配置（请检查高级选项）')))].join(getUiLocale() === 'en' ? ', ' : '、')}</p> : null}
     <fieldset disabled={pending} className="provider-fields">
       <div className={local ? 'provider-interface' : 'two-cols'}>
-        <label className="field">接口类型<select aria-label="接口类型" value={fields.protocol} onChange={event => changeProtocol(event.target.value as Fields['protocol'])}>{Object.entries(providerProtocols).map(([value, entry]) => <option key={value} value={value}>{entry.label}</option>)}</select></label>
-        {!local && <label className="field">鉴权方式<select aria-label="鉴权方式" value={fields.auth} onChange={event => { update('auth', event.target.value as Fields['auth']); setApiKey(''); }}><option value={protocol.auth}>API 密钥（{protocol.keyLabel}）</option><option value="none">无鉴权（本地或无需密钥的服务）</option></select></label>}
+        <label className="field">{t("接口类型")}<select aria-label={t("接口类型")} value={fields.protocol} onChange={event => changeProtocol(event.target.value as Fields['protocol'])}>{Object.entries(providerProtocols).map(([value, entry]) => <option key={value} value={value}>{t(entry.label)}</option>)}</select></label>
+        {!local && <label className="field">{t("鉴权方式")}<select aria-label={t("鉴权方式")} value={fields.auth} onChange={event => { update('auth', event.target.value as Fields['auth']); setApiKey(''); }}><option value={protocol.auth}>{t("API 密钥（{kind}）", { kind: t(protocol.keyLabel) })}</option><option value="none">{t("无鉴权（本地或无需密钥的服务）")}</option></select></label>}
       </div>
       <LocalModels value={local ? fields.model : drafts.local_translation?.fields.model ?? storedFor('local_translation')?.model_id ?? ''}
         backend={local ? fields.backend : drafts.local_translation?.fields.backend ?? storedFor('local_translation')?.local_backend ?? ''}
         onChange={(model, backend) => { setFields(old => ({ ...old, model, backend })); setNotice(''); }} active={local} onAvailabilityChange={setLocalModelAvailable}/>
       {!local && <>
-      <label className="field">完整请求 URL<input className="input" type="url" value={fields.endpoint} onChange={event => { update('endpoint', event.target.value); setApiKey(''); }} maxLength={2048} placeholder={protocol.defaultEndpoint} autoCapitalize="none" spellCheck={false}/></label>
-      {invalidUrl && <p className="field-note error-text">请输入包含接口路径的 HTTP(S) 地址，不含鉴权信息、查询参数或片段。</p>}
-      <label className="field">模型 ID<input className="input" value={fields.model} onChange={event => update('model', event.target.value)} maxLength={160} placeholder="服务实际提供的模型 ID" autoCapitalize="none" spellCheck={false}/></label>
-      <label className="field">API 密钥<input className="input" type="password" value={apiKey} onChange={event => { setApiKey(event.target.value); setNotice(''); }} disabled={clearKey || fields.auth === 'none'} autoComplete="new-password" autoCapitalize="none" spellCheck={false} maxLength={8192} placeholder="留空保留现有密钥"/></label>
-      <div className="provider-key-state"><span className="small muted">{credentialLabel}</span><label className="check"><input type="checkbox" checked={clearKey} onChange={event => { setClearKey(event.target.checked); setApiKey(''); setNotice(''); }}/>清除已保存的密钥</label></div>
-      {rebind && <p className="notice">服务地址或接口类型已变化，或已切换鉴权方式。请重新输入用于新配置的密钥，或明确清除已保存的密钥；旧密钥不会自动绑定到新配置。</p>}
-      <div className="provider-cost"><label className="check"><input type="checkbox" checked={fields.costControl} onChange={event => update('costControl', event.target.checked)}/>启用预算与成本控制</label></div>
+      <label className="field">{t("完整请求 URL")}<input className="input" type="url" value={fields.endpoint} onChange={event => { update('endpoint', event.target.value); setApiKey(''); }} maxLength={2048} placeholder={protocol.defaultEndpoint} autoCapitalize="none" spellCheck={false}/></label>
+      {invalidUrl && <p className="field-note error-text">{t("请输入包含接口路径的 HTTP(S) 地址，不含鉴权信息、查询参数或片段。")}</p>}
+      <label className="field">{t("模型 ID")}<input className="input" value={fields.model} onChange={event => update('model', event.target.value)} maxLength={160} placeholder={t("服务实际提供的模型 ID")} autoCapitalize="none" spellCheck={false}/></label>
+      <label className="field">{t("API 密钥")}<input className="input" type="password" value={apiKey} onChange={event => { setApiKey(event.target.value); setNotice(''); }} disabled={clearKey || fields.auth === 'none'} autoComplete="new-password" autoCapitalize="none" spellCheck={false} maxLength={8192} placeholder={t("留空保留现有密钥")}/></label>
+      <div className="provider-key-state"><span className="small muted">{t(credentialLabel)}</span><label className="check"><input type="checkbox" checked={clearKey} onChange={event => { setClearKey(event.target.checked); setApiKey(''); setNotice(''); }}/>{t("清除已保存的密钥")}</label></div>
+      {rebind && <p className="notice">{t("服务地址或接口类型已变化，或已切换鉴权方式。请重新输入用于新配置的密钥，或明确清除已保存的密钥；旧密钥不会自动绑定到新配置。")}</p>}
+      <div className="provider-cost"><label className="check"><input type="checkbox" checked={fields.costControl} onChange={event => update('costControl', event.target.checked)}/>{t("启用预算与成本控制")}</label></div>
       </>}
-      <details className="provider-advanced"><summary>高级选项：价格与请求限制</summary>
-        {fields.protocol === 'claude_messages' && <><label className="field">Anthropic API 版本<input className="input" value={fields.version} onChange={event => update('version', event.target.value)} placeholder="2023-06-01" maxLength={10}/></label>{invalidVersion && <p className="field-note error-text">API 版本须为 YYYY-MM-DD 格式。</p>}</>}
+      <details className="provider-advanced"><summary>{t("高级选项：价格与请求限制")}</summary>
+        {fields.protocol === 'claude_messages' && <><label className="field">{t("Anthropic API 版本")}<input className="input" value={fields.version} onChange={event => update('version', event.target.value)} placeholder="2023-06-01" maxLength={10}/></label>{invalidVersion && <p className="field-note error-text">{t("API 版本须为 YYYY-MM-DD 格式。")}</p>}</>}
         {!local && <>
         <div className="two-cols">
-          <label className="field">输入价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.inputPrice} onChange={event => update('inputPrice', event.target.value)}/></label>
-          <label className="field">缓存输入价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.cachedPrice} onChange={event => update('cachedPrice', event.target.value)}/></label>
-          <label className="field">输出价格（USD / 百万 token）<input className="input" inputMode="decimal" value={fields.outputPrice} onChange={event => update('outputPrice', event.target.value)}/></label>
+          <label className="field">{t("输入价格（USD / 百万 token）")}<input className="input" inputMode="decimal" value={fields.inputPrice} onChange={event => update('inputPrice', event.target.value)}/></label>
+          <label className="field">{t("缓存输入价格（USD / 百万 token）")}<input className="input" inputMode="decimal" value={fields.cachedPrice} onChange={event => update('cachedPrice', event.target.value)}/></label>
+          <label className="field">{t("输出价格（USD / 百万 token）")}<input className="input" inputMode="decimal" value={fields.outputPrice} onChange={event => update('outputPrice', event.target.value)}/></label>
         </div>
-        <label className="check"><input type="checkbox" checked={fields.includesReasoning} onChange={event => update('includesReasoning', event.target.checked)}/>我已核对输出费率适用于推理 token（如有）；费用按合并后的输出用量计算。</label></>}
+        <label className="check"><input type="checkbox" checked={fields.includesReasoning} onChange={event => update('includesReasoning', event.target.checked)}/>{t("我已核对输出费率适用于推理 token（如有）；费用按合并后的输出用量计算。")}</label></>}
         <div className="two-cols">
-          <label className="field">单次输入 token 上限<input className="input" inputMode="numeric" value={fields.inputTokens} onChange={event => update('inputTokens', event.target.value)}/></label>
-          <label className="field">单次输出 token 上限<input className="input" inputMode="numeric" value={fields.outputTokens} onChange={event => update('outputTokens', event.target.value)}/></label>
-          <label className="field">单个翻译单元字符上限<input className="input" inputMode="numeric" value={fields.unitCharacters} onChange={event => update('unitCharacters', event.target.value)}/></label>
+          <label className="field">{t("单次输入 token 上限")}<input className="input" inputMode="numeric" value={fields.inputTokens} onChange={event => update('inputTokens', event.target.value)}/></label>
+          <label className="field">{t("单次输出 token 上限")}<input className="input" inputMode="numeric" value={fields.outputTokens} onChange={event => update('outputTokens', event.target.value)}/></label>
+          <label className="field">{t("单个翻译单元字符上限")}<input className="input" inputMode="numeric" value={fields.unitCharacters} onChange={event => update('unitCharacters', event.target.value)}/></label>
         </div>
-        <div className="stack"><button className="btn" type="button" onClick={() => { const limits = base.token_limits_defaults ?? defaultTokenLimits; setFields(old => ({ ...old, inputTokens: String(limits.max_input_tokens), outputTokens: String(limits.max_output_tokens), unitCharacters: String(limits.max_unit_characters) })); setNotice(''); }}>重置请求限制</button><button className="btn" type="button" onClick={() => { const saved = fromProvider(base); setFields(old => ({ ...old, inputTokens: saved.inputTokens, outputTokens: saved.outputTokens, unitCharacters: saved.unitCharacters })); setNotice(''); }}>撤销限额修改</button></div>
-        {(invalidPrice || invalidTokens) && <p className="field-note error-text">价格须为非负数（最多六位小数）；请求限制须为范围内的整数。</p>}
+        <div className="stack"><button className="btn" type="button" onClick={() => { const limits = base.token_limits_defaults ?? defaultTokenLimits; setFields(old => ({ ...old, inputTokens: String(limits.max_input_tokens), outputTokens: String(limits.max_output_tokens), unitCharacters: String(limits.max_unit_characters) })); setNotice(''); }}>{t("重置请求限制")}</button><button className="btn" type="button" onClick={() => { const saved = fromProvider(base); setFields(old => ({ ...old, inputTokens: saved.inputTokens, outputTokens: saved.outputTokens, unitCharacters: saved.unitCharacters })); setNotice(''); }}>{t("撤销限额修改")}</button></div>
+        {(invalidPrice || invalidTokens) && <p className="field-note error-text">{t("价格须为非负数（最多六位小数）；请求限制须为范围内的整数。")}</p>}
       </details>
     </fieldset>
     <ErrorNotice error={error}/>
-    {notice && <p role="status" className="notice success-notice">{notice}</p>}
-    {latest && latestFields && <section className="notice" aria-label="配置版本比较"><h3>读取到的最新配置</h3><dl className="kv"><dt>服务地址</dt><dd>{latest.endpoint || '未填写'}</dd><dt>模型 ID</dt><dd>{latest.model_id || '未填写'}</dd><dt>接口 / 鉴权</dt><dd>{latest.api_protocol} / {latest.auth_mode}</dd>{latest.api_protocol === 'claude_messages' && <><dt>Anthropic API 版本</dt><dd>{latest.api_version || '2023-06-01（服务端默认）'}</dd></>}<dt>预算与成本控制</dt><dd>{latestFields.costControl ? '已启用' : '未启用'}</dd><dt>输入 / 缓存 / 输出价格</dt><dd>{latestFields.inputPrice || '未填写'} / {latestFields.cachedPrice || '未填写'} / {latestFields.outputPrice || '未填写'} USD / 百万 token</dd><dt>输入 / 输出上限</dt><dd>{latestFields.inputTokens || '未填写'} / {latestFields.outputTokens || '未填写'} token</dd><dt>单元字符上限</dt><dd>{latestFields.unitCharacters || '服务端默认'}</dd><dt>推理用量计费</dt><dd>{latestFields.includesReasoning ? '已确认包含' : '未确认'}</dd><dt>已启用语言对</dt><dd>{latest.enabled_pairs?.map(pair => pair.join(' → ')).join('；') || '无'}</dd></dl><p>比较后选择重新加载全部字段，或保留当前非密钥输入并采用最新版本。密钥需要时请重新输入。</p><div className="stack"><button className="btn" type="button" onClick={() => applyLatest(latest, false)}>使用最新配置</button><button className="btn" type="button" onClick={() => applyLatest(latest, true)}>保留输入并采用最新版本</button></div></section>}
-    <div className="stack provider-actions"><button className="btn primary" type="submit" disabled={!canSave}>{pending ? '正在处理配置…' : '保存 AI 服务配置'}</button>
+    {notice && <p role="status" className="notice success-notice">{t(notice)}</p>}
+    {latest && latestFields && <section className="notice" aria-label={t("配置版本比较")}><h3>{t("读取到的最新配置")}</h3><dl className="kv"><dt>{t("服务地址")}</dt><dd>{latest.endpoint || t("未填写")}</dd><dt>{t("模型 ID")}</dt><dd>{latest.model_id || t("未填写")}</dd><dt>{t("接口 / 鉴权")}</dt><dd>{latest.api_protocol} / {latest.auth_mode}</dd>{latest.api_protocol === 'claude_messages' && <><dt>{t("Anthropic API 版本")}</dt><dd>{latest.api_version || t("2023-06-01（服务端默认）")}</dd></>}<dt>{t("预算与成本控制")}</dt><dd>{latestFields.costControl ? t("已启用") : t("未启用")}</dd><dt>{t("输入 / 缓存 / 输出价格")}</dt><dd>{latestFields.inputPrice || t("未填写")} / {latestFields.cachedPrice || t("未填写")} / {latestFields.outputPrice || t("未填写")}{t("USD / 百万 token")}</dd><dt>{t("输入 / 输出上限")}</dt><dd>{latestFields.inputTokens || t("未填写")} / {latestFields.outputTokens || t("未填写")} token</dd><dt>{t("单元字符上限")}</dt><dd>{latestFields.unitCharacters || t("服务端默认")}</dd><dt>{t("推理用量计费")}</dt><dd>{latestFields.includesReasoning ? t("已确认包含") : t("未确认")}</dd><dt>{t("已启用语言对")}</dt><dd>{latest.enabled_pairs?.map(pair => pair.join(' → ')).join('；') || t("无")}</dd></dl><p>{t("比较后选择重新加载全部字段，或保留当前非密钥输入并采用最新版本。密钥需要时请重新输入。")}</p><div className="stack"><button className="btn" type="button" onClick={() => applyLatest(latest, false)}>{t("使用最新配置")}</button><button className="btn" type="button" onClick={() => applyLatest(latest, true)}>{t("保留输入并采用最新版本")}</button></div></section>}
+    <div className="stack provider-actions"><button className="btn primary" type="submit" disabled={!canSave}>{pending ? t("正在处理配置…") : t("保存 AI 服务配置")}</button>
       <ProviderConnection key={`${base.profile_hash}-${loadedVersion}`} provider={base} disabled={pending || refreshRequired || !!latest} dirty={dirty} onResult={value => setBase(old => ({ ...old, connection_test: value, connection_test_has_unknown: old.connection_test_has_unknown || value.status === 'outcome_unknown' }))}/>
-      <button className="btn ghost provider-reload" type="button" disabled={pending} onClick={refresh.request}>刷新配置</button>
+      <button className="btn ghost provider-reload" type="button" disabled={pending} onClick={refresh.request}>{t("刷新配置")}</button>
     </div>
-    {!etagFor(base) && <p className="field-note">服务端未提供配置版本，暂不能保存。请重新读取配置。</p>}
+    {!etagFor(base) && <p className="field-note">{t("服务端未提供配置版本，暂不能保存。请重新读取配置。")}</p>}
     {refresh.confirmation}
   </form>;
 }

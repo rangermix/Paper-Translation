@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { resourceId } from '../domain';
@@ -28,7 +29,7 @@ export function UploadMetadata({ upload }: { upload: Upload }) {
   }, [upload.upload_id, upload.metadata_status]);
   if (!current.metadata_status) return null;
   return <div aria-live="polite">
-    <p className="small muted">{unavailable ? '文献信息稍后可在文档详情查看。' :
+    <p className="small muted">{unavailable ? t("文献信息稍后可在文档详情查看。") :
       `${current.bibliography?.service === 'crossref' ? 'Crossref · ' : ''}${metadataStatusLabel(current.metadata_status)}`}</p>
     {current.bibliography && <><strong>{current.bibliography.title}</strong><BibliographyLine doc={current}/></>}
   </div>;

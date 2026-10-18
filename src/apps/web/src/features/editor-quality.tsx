@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { Issues } from '../components';
 import type { Issue } from '../types';
@@ -15,26 +16,26 @@ export function EditorQuality({ issues, navigate, resolve, resolveDisabled, chec
   const [category, setCategory] = useState('');
   const selected = issues.filter(issue => (!page || String(issue.page) === page) && (!category || issue.category === category));
   const blockers = selected.filter(isImportant), risks = selected.filter(i => !isImportant(i));
-  return <section className="editor-quality" aria-label="质量问题">
-    <p className="small muted">内容提示供对照，不阻止继续翻译、保存或发布。</p>
-    <div className="stack between"><h3>质量问题</h3>
-      <label>问题筛选 <select value={filter} onChange={e => setFilter(e.target.value)}>
-        <option value="all">全部（{issues.length}）</option>
-        <option value="blockers">重要提示（{blockers.length}）</option>
-        <option value="risks">一般提示（{risks.length}）</option>
+  return <section className="editor-quality" aria-label={t("质量问题")}>
+    <p className="small muted">{t("内容提示供对照，不阻止继续翻译、保存或发布。")}</p>
+    <div className="stack between"><h3>{t("质量问题")}</h3>
+      <label>{t("问题筛选 ")}<select value={filter} onChange={e => setFilter(e.target.value)}>
+        <option value="all">{t("全部（{value1}）", { value1: String((issues.length) ?? '') })}</option>
+        <option value="blockers">{t("重要提示（{value1}）", { value1: String((blockers.length) ?? '') })}</option>
+        <option value="risks">{t("一般提示（{value1}）", { value1: String((risks.length) ?? '') })}</option>
       </select></label>
-      <label>页码 <select value={page} onChange={e => setPage(e.target.value)}><option value="">全部页</option>{[...new Set(issues.map(i => i.page).filter((p): p is number => p != null))].sort((a, b) => a - b).map(p => <option key={p} value={p}>第 {p} 页</option>)}</select></label>
-      <label>类型 <select value={category} onChange={e => setCategory(e.target.value)}><option value="">全部类型</option>{[...new Set(issues.map(i => i.category).filter(Boolean))].map(c => <option key={c} value={c}>{{numeric: '数字', coverage: '内容覆盖', terminology: '术语', semantic: '语义'}[c!] ?? c}</option>)}</select></label>
+      <label>{t("页码 ")}<select value={page} onChange={e => setPage(e.target.value)}><option value="">{t("全部页")}</option>{[...new Set(issues.map(i => i.page).filter((p): p is number => p != null))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{t("第 {value1} 页", { value1: String((p) ?? '') })}</option>)}</select></label>
+      <label>{t("类型 ")}<select value={category} onChange={e => setCategory(e.target.value)}><option value="">{t("全部类型")}</option>{[...new Set(issues.map(i => i.category).filter(Boolean))].map(c => <option key={c} value={c}>{{numeric: t("数字"), coverage: t("内容覆盖"), terminology: t("术语"), semantic: t("语义")}[c!] ?? c}</option>)}</select></label>
     </div>
-    {filter !== 'risks' && <section aria-label="重要提示" className="quality-group">
-      <h4>重要提示 · {blockers.length}</h4>
+    {filter !== 'risks' && <section aria-label={t("重要提示")} className="quality-group">
+      <h4>{t("重要提示 · {value1}", { value1: String((blockers.length) ?? '') })}</h4>
 
-      {blockers.length ? <Issues issues={blockers} checkState={checkState} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/> : <p className="muted">没有重要提示。</p>}
+      {blockers.length ? <Issues issues={blockers} checkState={checkState} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/> : <p className="muted">{t("没有重要提示。")}</p>}
     </section>}
     {filter !== 'blockers' && <details className="quality-group quality-risks" key={filter} open={filter === 'risks'}>
-      <summary>一般提示 · {risks.length}</summary>
+      <summary>{t("一般提示 · {value1}", { value1: String((risks.length) ?? '') })}</summary>
       {risks.length ? <Issues issues={risks} checkState={checkState} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/>
-        : <p className="muted">没有风险提示。</p>}
+        : <p className="muted">{t("没有风险提示。")}</p>}
     </details>}
   </section>;
 }

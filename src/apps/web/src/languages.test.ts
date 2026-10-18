@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isLanguageTag, languageCodes, languageName, localizedLanguageName, matchesLanguage, parseRecentLanguages, rememberLanguage } from './languages';
+import { setUiLocale } from './i18n';
+
+beforeEach(() => setUiLocale('zh-Hans'));
+afterEach(() => setUiLocale('zh-Hans'));
 
 describe('native language names', () => {
   it('uses each language for its own label and preserves script distinctions', () => {
@@ -16,6 +20,23 @@ describe('native language names', () => {
 });
 
 describe('searchable language choices', () => {
+  it('updates localized names and search indexes without changing native names or locale codes', () => {
+    expect(localizedLanguageName('ja')).toBe('日语');
+    expect(matchesLanguage('ja', '日语')).toBe(true);
+    setUiLocale('en');
+    expect(localizedLanguageName('ja')).toBe('Japanese');
+    expect(matchesLanguage('ja', 'Japanese')).toBe(true);
+    expect(matchesLanguage('ja', '日语')).toBe(false);
+    setUiLocale('zh-Hant');
+    expect(localizedLanguageName('ja')).toBe('日文');
+    expect(matchesLanguage('ja', '日文')).toBe(true);
+    expect(languageName('ja')).toBe('日本語');
+    expect(languageName('zh-Hant')).toBe('繁體中文');
+    expect(isLanguageTag('sr-Latn-RS')).toBe(true);
+    setUiLocale('zh-Hans');
+    expect(localizedLanguageName('ja')).toBe('日语');
+    expect(matchesLanguage('ja', '日语')).toBe(true);
+  });
   it('finds localized, native, accented and locale names without merging scripts or regions', () => {
     expect(matchesLanguage('ja', '日语')).toBe(true);
     expect(matchesLanguage('de', 'Deutsch')).toBe(true);

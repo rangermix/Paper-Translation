@@ -1,3 +1,4 @@
+import { t, useUiLocale } from '../i18n';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Inline } from '../types';
 import { editInline, inlineValue, reconcileInline } from './inline-editing';
@@ -25,10 +26,11 @@ function restoreSelection(root: HTMLElement, offsets: [number, number]) {
 }
 
 /** The editable DOM is only a view; saved values always come from the typed AST. */
-export function ContinuousInlineEditor({ nodes, atoms = {}, change, label = '译文段落', disabled = false, onCompositionChange }: {
+export function ContinuousInlineEditor({ nodes, atoms = {}, change, label = t("译文段落"), disabled = false, onCompositionChange }: {
   nodes: Inline[]; atoms?: Record<string, string>; change: (nodes: Inline[]) => void; label?: string; disabled?: boolean; onCompositionChange?: (active: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null), current = useRef(nodes), composing = useRef(false);
+  const locale = useUiLocale();
   const history = useRef<{ past: Inline[][]; future: Inline[][] }>({ past: [], future: [] });
   const [notice, setNotice] = useState('');
   const draw = (value: Inline[], selection: [number, number] | null = null) => {
@@ -40,7 +42,7 @@ export function ContinuousInlineEditor({ nodes, atoms = {}, change, label = '译
       span.className = (node.marks ?? []).map(mark => `inline-${mark}`).join(' ');
       if (node.type === 'protected_ref') {
         span.contentEditable = 'false'; span.classList.add('inline-protected');
-        span.title = `保护内容：${span.textContent}`; span.setAttribute('aria-label', span.title);
+        span.title = t("保护内容：{value1}", { value1: span.textContent }); span.setAttribute('aria-label', span.title);
       } else if (node.type === 'link' || node.type === 'xref') span.classList.add('inline-reference');
       fragment.append(span);
     }
@@ -53,6 +55,13 @@ export function ContinuousInlineEditor({ nodes, atoms = {}, change, label = '译
     current.current = nodes;
     draw(nodes, ref.current ? selectionOffsets(ref.current) : null);
   }, [nodes, atoms]);
+  // Language changes update annotations without replacing editable DOM or IME input.
+  useLayoutEffect(() => {
+    ref.current?.querySelectorAll<HTMLElement>('.inline-protected').forEach(span => {
+      span.title = t("保护内容：{value1}", { value1: span.textContent ?? '' });
+      span.setAttribute('aria-label', span.title);
+    });
+  }, [locale]);
   const apply = (next: Inline[], selection: [number, number] | null, remember = true) => {
     if (remember && JSON.stringify(next) !== JSON.stringify(current.current)) {
       history.current.past.push(current.current); history.current.past = history.current.past.slice(-100); history.current.future = [];
@@ -93,8 +102,8 @@ export function ContinuousInlineEditor({ nodes, atoms = {}, change, label = '译
         } else if (event.key === 'Enter') { event.preventDefault(); insert('\n'); }
       }}
       onPaste={event => { event.preventDefault(); insert(event.clipboardData.getData('text/plain')); }}
-      onDrop={event => { event.preventDefault(); setNotice('请使用粘贴插入文字；拖放不会修改段落。'); }}/>
-    {nodes.some(node => node.type === 'protected_ref') && <small className="muted">带底色的公式或引用受保护，可在两侧连续编辑普通文字。</small>}
-    {notice && <p role="status" className="field-note warn">{notice}</p>}
+      onDrop={event => { event.preventDefault(); setNotice("请使用粘贴插入文字；拖放不会修改段落。"); }}/>
+    {nodes.some(node => node.type === 'protected_ref') && <small className="muted">{t("带底色的公式或引用受保护，可在两侧连续编辑普通文字。")}</small>}
+    {notice && <p role="status" className="field-note warn">{t(notice)}</p>}
   </div>;
 }

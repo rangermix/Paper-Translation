@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, etagFor } from '../api';
 import { money } from '../domain';
@@ -51,13 +52,13 @@ export function DispatchRecovery({ onSaved }: { onSaved?: () => void }) {
   const needsAttention = state && (state.dispatch_disabled || state.maintenance || state.unknown_attempts > 0);
   if (!needsAttention && !error && !notice) return null;
   return <section className="provider-dispatch" aria-labelledby="dispatch-title" id="model-request-status">
-    <div className="stack between"><h3 id="dispatch-title">模型请求状态</h3>{state?.dispatch_disabled && <span className="pill warn">已暂停</span>}</div>
-    {state?.maintenance && <p className="field-note">实例正在维护，暂不能恢复模型请求。维护结束后，请刷新状态并恢复。</p>}
-    {state && state.unknown_attempts > 0 && <p className="field-note">仍有 {state.unknown_attempts} 个请求结果未知，可能已计费。保留的未知费用：{money(state.unknown_micro)}。</p>}
-    {riskRequired && <><label className="check"><input type="checkbox" checked={risk} disabled={saving || loading || state?.maintenance} onChange={event => setRisk(event.target.checked)}/>我已核对未知请求，并接受保留其潜在费用后继续外发</label><label className="field">风险确认说明<textarea className="input" rows={2} maxLength={2000} value={reason} disabled={saving || loading || state?.maintenance} onChange={event => setReason(event.target.value)}/></label></>}
-    {loading && <p className="muted small">正在读取模型请求状态…</p>}
-    {error && <p role="alert" className="notice error-notice">{error}</p>}
-    {notice && <p role="status" className="notice success-notice">{notice}</p>}
-    <div className="stack">{state?.dispatch_disabled && <button type="button" className="btn" disabled={!canResume} onClick={() => void resume()}>{saving ? '正在恢复…' : '恢复模型请求'}</button>}<button type="button" className="btn" disabled={saving || loading} onClick={() => { setNotice(''); setReadVersion(value => value + 1); }}>刷新请求状态</button></div>
+    <div className="stack between"><h3 id="dispatch-title">{t("模型请求状态")}</h3>{state?.dispatch_disabled && <span className="pill warn">{t("已暂停")}</span>}</div>
+    {state?.maintenance && <p className="field-note">{t("实例正在维护，暂不能恢复模型请求。维护结束后，请刷新状态并恢复。")}</p>}
+    {state && state.unknown_attempts > 0 && <p className="field-note">{t("仍有 {count} 个请求结果未知，可能已计费。保留的未知费用：{cost}。", { count: state.unknown_attempts, cost: money(state.unknown_micro) })}</p>}
+    {riskRequired && <><label className="check"><input type="checkbox" checked={risk} disabled={saving || loading || state?.maintenance} onChange={event => setRisk(event.target.checked)}/>{t("我已核对未知请求，并接受保留其潜在费用后继续外发")}</label><label className="field">{t("风险确认说明")}<textarea className="input" rows={2} maxLength={2000} value={reason} disabled={saving || loading || state?.maintenance} onChange={event => setReason(event.target.value)}/></label></>}
+    {loading && <p className="muted small">{t("正在读取模型请求状态…")}</p>}
+    {error && <p role="alert" className="notice error-notice">{t(error)}</p>}
+    {notice && <p role="status" className="notice success-notice">{t(notice)}</p>}
+    <div className="stack">{state?.dispatch_disabled && <button type="button" className="btn" disabled={!canResume} onClick={() => void resume()}>{saving ? t("正在恢复…") : t("恢复模型请求")}</button>}<button type="button" className="btn" disabled={saving || loading} onClick={() => { setNotice(''); setReadVersion(value => value + 1); }}>{t("刷新请求状态")}</button></div>
   </section>;
 }

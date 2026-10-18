@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../components';
 import './source-workspace.css';
@@ -39,21 +40,21 @@ export function SourceWorkspace({ title, evidence, children, onClose, busy = fal
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
     <header className="source-workspace-header"><div><h2>{title}</h2>{location && <p className="small muted">{location}</p>}</div>
-      <button type="button" className="icon-btn" aria-label="关闭校对工作区" disabled={busy} onClick={onClose}><Icon name="close"/></button>
+      <button type="button" className="icon-btn" aria-label={t("关闭校对工作区")} disabled={busy} onClick={onClose}><Icon name="close"/></button>
     </header>
-    <p className="small muted source-workspace-note">依据原文 PDF 修正识别结果；保存后创建新来源，已有版本保留。</p>
-    {mobile && <div className="source-workspace-tabs" role="group" aria-label="校对视图">
-      <button className="btn" type="button" aria-pressed={view === 'form'} aria-controls={`${viewId}-form`} onClick={() => setView('form')}>修改内容</button>
-      <button className="btn" type="button" aria-pressed={view === 'pdf'} aria-controls={`${viewId}-pdf`} onClick={() => setView('pdf')}>原文 PDF</button>
+    <p className="small muted source-workspace-note">{t("依据原文 PDF 修正识别结果；保存后创建新来源，已有版本保留。")}</p>
+    {mobile && <div className="source-workspace-tabs" role="group" aria-label={t("校对视图")}>
+      <button className="btn" type="button" aria-pressed={view === 'form'} aria-controls={`${viewId}-form`} onClick={() => setView('form')}>{t("修改内容")}</button>
+      <button className="btn" type="button" aria-pressed={view === 'pdf'} aria-controls={`${viewId}-pdf`} onClick={() => setView('pdf')}>{t("原文 PDF")}</button>
     </div>}
     <div className="source-workspace-grid">
-      <section className="source-workspace-evidence" id={`${viewId}-pdf`} aria-label="原文 PDF 对照" hidden={mobile && view !== 'pdf'}>
-        <div className="source-zoom"><label>页面缩放 <select aria-label="页面缩放" value={zoom} onChange={event => setZoom(Number(event.target.value))}>
-          <option value={100}>适合宽度</option><option value={150}>150%</option><option value={200}>200%</option>
-        </select></label>{zoom !== 100 && <span className="small muted">可横向移动查看放大后的页面。</span>}</div>
+      <section className="source-workspace-evidence" id={`${viewId}-pdf`} aria-label={t("原文 PDF 对照")} hidden={mobile && view !== 'pdf'}>
+        <div className="source-zoom"><label>{t("页面缩放 ")}<select aria-label={t("页面缩放")} value={zoom} onChange={event => setZoom(Number(event.target.value))}>
+          <option value={100}>{t("适合宽度")}</option><option value={150}>150%</option><option value={200}>200%</option>
+        </select></label>{zoom !== 100 && <span className="small muted">{t("可横向移动查看放大后的页面。")}</span>}</div>
         <div className="source-evidence-scroll"><div style={{ width: `${zoom}%` }}>{evidence}</div></div>
       </section>
-      <section className="source-workspace-form" id={`${viewId}-form`} aria-label="原文修改" hidden={mobile && view !== 'form'}>{children}</section>
+      <section className="source-workspace-form" id={`${viewId}-form`} aria-label={t("原文修改")} hidden={mobile && view !== 'form'}>{children}</section>
     </div>
   </dialog>;
 }

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import { PdfLocator } from '../components';
 import type { Preflight, SourceBlock } from '../types';
@@ -38,26 +39,26 @@ export function NativeMechanical({ mode, source, region, native, preflight, chan
   useEffect(() => { change(serialized ? JSON.parse(serialized) : undefined); }, [serialized, change]);
   const continuationUrl = preflight.pages?.find(p => p.page === continuation?.page)?.page_image_url;
   return <>
-    <label className="field">机械清理规则<select value={rule} onChange={e => { setRule(e.target.value); setProof(''); }}>
-      {!merge && <option value="restore_native_spacing">恢复原生空白（仅空白差异）</option>}
-      <option value="remove_line_wrap">去掉换行断词连字符（拼回同一个词）</option>
-      <option value="retain_line_hyphen">保留原词连字符（如 all-to-all）</option>
+    <label className="field">{t("机械清理规则")}<select value={rule} onChange={e => { setRule(e.target.value); setProof(''); }}>
+      {!merge && <option value="restore_native_spacing">{t("恢复原生空白（仅空白差异）")}</option>}
+      <option value="remove_line_wrap">{t("去掉换行断词连字符（拼回同一个词）")}</option>
+      <option value="retain_line_hyphen">{t("保留原词连字符（如 all-to-all）")}</option>
     </select></label>
     {merge ? <>
-      <label className="field">续接来源块<select disabled value={next?.id ?? ''}><option value={next?.id ?? ''}>{next ? `${next.id} · ${next.normalized_text ?? next.source_text}` : '没有符合顺序的续接段落'}</option></select></label>
-      <p>保留中间图表与公式：{floats.map(b => b.id).join('、') || '无'}</p>
+      <label className="field">{t("续接来源块")}<select disabled value={next?.id ?? ''}><option value={next?.id ?? ''}>{next ? `${next.id} · ${next.normalized_text ?? next.source_text}` : t("没有符合顺序的续接段落")}</option></select></label>
+      <p>{t("保留中间图表与公式：{value1}", { value1: String((floats.map(b => b.id).join('、') || t("无")) ?? '') })}</p>
 
     </> : <>
-      <label className="field">机械片段起点（Unicode 字符）<input className="input" type="number" min="0" step="1" value={startValue} onChange={e => setStart(e.target.value)}/></label>
-      <label className="field">机械片段终点（不含此字符）<input className="input" type="number" min="1" step="1" value={endValue} onChange={e => setEnd(e.target.value)}/></label>
+      <label className="field">{t("机械片段起点（Unicode 字符）")}<input className="input" type="number" min="0" step="1" value={startValue} onChange={e => setStart(e.target.value)}/></label>
+      <label className="field">{t("机械片段终点（不含此字符）")}<input className="input" type="number" min="1" step="1" value={endValue} onChange={e => setEnd(e.target.value)}/></label>
 
-      <pre className="source-block">{spanReady ? selected : '请选择有效的原文片段'}</pre>
+      <pre className="source-block">{spanReady ? selected : t("请选择有效的原文片段")}</pre>
     </>}
     {needsContinuation && <>
-      <label className="field">续接原生行证据<select value={proofIndex} onChange={e => setProof(e.target.value)}><option value="">请选择原件确切下一行</option>{proofs.map((proof, index) => <option key={index} value={index}>页 {proof.page} · {proof.text.slice(0, 100)}</option>)}</select></label>
+      <label className="field">{t("续接原生行证据")}<select value={proofIndex} onChange={e => setProof(e.target.value)}><option value="">{t("请选择原件确切下一行")}</option>{proofs.map((proof, index) => <option key={index} value={index}>{t("页 {value1} · {value2}", { value1: String((proof.page) ?? ''), value2: String((proof.text.slice(0, 100)) ?? '') })}</option>)}</select></label>
       {continuation && <><pre className="source-block">{continuation.text}</pre><PdfLocator originalUrl={preflight.original_url} documentId={preflight.document_id} locators={[{page: continuation.page, page_size: continuation.page_size, bbox: continuation.bbox, page_image_url: continuationUrl}]}/></>}
     </>}
-    <p className="field-note mono">原页 SHA-256：{Object.entries(hashes).map(([number, hash]) => `页 ${number} ${hash ?? '缺失'}`).join('；')}</p>
-    {!ready && <p className="field-note warn">需要完整原生字形证据、所有证据页 SHA、当前版本及有效选择，才能提交。</p>}
+    <p className="field-note mono">{t("原页 SHA-256：{value1}", { value1: String((Object.entries(hashes).map(([number, hash]) => t("页 {value1} {value2}", { value1: number, value2: hash ?? t("缺失") })).join('；')) ?? '') })}</p>
+    {!ready && <p className="field-note warn">{t("需要完整原生字形证据、所有证据页 SHA、当前版本及有效选择，才能提交。")}</p>}
   </>;
 }

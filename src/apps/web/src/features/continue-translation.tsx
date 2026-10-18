@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { PreparationControls, preparationAllowed } from './translation-preparation';
 import { useWorkflowPreferences } from './workflow-preferences';
 import { useEffect, useState } from 'react';
@@ -27,7 +28,7 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
   const [budget, setBudget] = useState('');
   const p = result.data, controlled = costControlEnabled(p?.profile);
   useEffect(() => setConsent(false), [p?.profile_hash, p?.source_hash, p?.generation]);
-  return <Modal title="翻译未完成内容" onClose={close}>
+  return <Modal title={t("翻译未完成内容")} onClose={close}>
     <ErrorNotice error={result.error} retry={result.reload}/><ErrorNotice error={preferences.error} retry={preferences.reload}/><ActionFeedback {...action}/>{result.loading && <Loading/>}
     {p && <form onSubmit={event => { event.preventDefault(); void action.run(async () => {
       const job = await api<{ job_id: string }>(`/drafts/${resourceId(draftId)}/translate`, { method: 'POST',
@@ -39,14 +40,13 @@ export function ContinueTranslation({ draftId, close }: { draftId: string; close
     }); }}>
       <p>{languageName(p.source_language)} → {languageName(p.locale)}</p>
       <ProviderDestination profile={p.profile}/><PreparationControls value={preparation} onChange={mode => { setPreparation(mode); setConsent(false); }} profile={p.profile} estimates={p.preparation_estimates} disabled={action.pending}/>
-      {p.blocked_reason && <p className="notice">{reasons[p.blocked_reason] ?? '当前无法继续，请刷新页面查看最新状态。'}</p>}
-      {controlled && <label className="field">本次任务预算（{p.profile.currency || 'USD'}）<input className="input" type="number"
+      {p.blocked_reason && <p className="notice">{t(reasons[p.blocked_reason] ?? "当前无法继续，请刷新页面查看最新状态。")}</p>}
+      {controlled && <label className="field">{t("本次任务预算（{currency}）", { currency: p.profile.currency || 'USD' })}<input className="input" type="number"
         min="0.000001" step="0.000001" required value={budget} onChange={e => setBudget(e.target.value)}/></label>}
-      <label className="check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>
-        同意向上述服务发送必要源文、上下文和术语，{controlled ? '并在本次预算内翻译。' : '我了解未设置金额上限，服务仍可能收费。'}</label>
-      <div className="dialog-actions"><a className="btn" href="#/settings" onClick={close}>AI 服务设置</a>
-        <button className="btn" type="button" disabled={result.loading || action.pending} onClick={result.reload}>刷新状态</button>
-        <button className="btn primary" disabled={!ready || !preparationAllowed(preparation, p.profile) || action.pending || !p.can_translate || !consent || controlled && !budgetValid(budget)}>开始翻译未完成内容</button></div>
+      <label className="check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>{t("同意向上述服务发送必要源文、上下文和术语，{value0}", { value0: controlled ? t("并在本次预算内翻译。") : t("我了解未设置金额上限，服务仍可能收费。") })}</label>
+      <div className="dialog-actions"><a className="btn" href="#/settings" onClick={close}>{t("AI 服务设置")}</a>
+        <button className="btn" type="button" disabled={result.loading || action.pending} onClick={result.reload}>{t("刷新状态")}</button>
+        <button className="btn primary" disabled={!ready || !preparationAllowed(preparation, p.profile) || action.pending || !p.can_translate || !consent || controlled && !budgetValid(budget)}>{t("开始翻译未完成内容")}</button></div>
     </form>}
   </Modal>;
 }

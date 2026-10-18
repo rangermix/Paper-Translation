@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useRef, useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, ErrorNotice, Modal } from '../components';
@@ -19,10 +20,10 @@ export function DraftExport({ draft, close, title }: { draft: Draft; close: () =
   const missing = snapshot.segments.filter(segment => segment.translatable !== false && !segment.target_inline.length).length;
   const failed = ['failed', 'cancelled'].includes(result.data?.status ?? '');
   const locked = action.pending || Boolean(exportId);
-  return <Modal title="导出当前草稿" onClose={close}>
-    <p><strong>{title ?? document.data?.title ?? '当前文档'}</strong></p>
-    <p className="notice">{languageName(snapshot.target_locale)} · 草稿 · 缺译 {missing} 段</p>
-    <p className="field-note">导出当前已保存内容。缺失译文的段落将保留原文，并标注为未完成草稿。</p>
+  return <Modal title={t("导出当前草稿")} onClose={close}>
+    <p><strong>{title ?? document.data?.title ?? t("当前文档")}</strong></p>
+    <p className="notice">{t("{value0} · 草稿 · 缺译 {value1} 段", { value0: languageName(snapshot.target_locale), value1: missing })}</p>
+    <p className="field-note">{t("导出当前已保存内容。缺失译文的段落将保留原文，并标注为未完成草稿。")}</p>
     <form onSubmit={event => { event.preventDefault(); if (locked || submitting.current) return; submitting.current = true; void action.run(async () => {
       try {
         const created = await api<{ export_id: string }>(`/drafts/${resourceId(snapshot.id)}/exports`, { method: 'POST', etag: etagFor(snapshot), body: { format, include_source: includeSource, confirm_draft: true } });
@@ -30,19 +31,19 @@ export function DraftExport({ draft, close, title }: { draft: Draft; close: () =
       } finally { submitting.current = false; }
     }); }}>
       <ExportFormat format={format} setFormat={setFormat} includeSource={includeSource} setIncludeSource={setIncludeSource} disabled={locked}/>
-      <details className="technical-details"><summary>技术详情</summary><dl className="kv"><dt>草稿 ID</dt><dd className="mono">{snapshot.id}</dd><dt>并发校验版本</dt><dd>{snapshot.generation}</dd></dl></details>
+      <details className="technical-details"><summary>{t("技术详情")}</summary><dl className="kv"><dt>{t("草稿 ID")}</dt><dd className="mono">{snapshot.id}</dd><dt>{t("并发校验版本")}</dt><dd>{snapshot.generation}</dd></dl></details>
       <ActionFeedback {...action}/><ErrorNotice error={result.error} retry={result.reload}/>
       {result.data?.error && <p role="alert" className="error">{result.data.error.message ?? result.data.error.code}</p>}
-      {failed && <p role="alert">下载文件未能生成，可重新选择导出选项。</p>}
-      <div className="dialog-actions">{['succeeded', 'ready', 'completed'].includes(result.data?.status ?? '') ? <a className="btn primary" href={localUrl(result.data?.download_url, `/api/v1/exports/${resourceId(exportId)}/download`)}>下载文件</a>
-        : failed ? <button className="btn" type="button" onClick={() => { setExportId(''); action.clear(); }}>重新选择导出选项</button>
-          : <button className="btn primary" disabled={locked}>{exportId ? '正在生成下载文件…' : '生成下载文件'}</button>}</div>
+      {failed && <p role="alert">{t("下载文件未能生成，可重新选择导出选项。")}</p>}
+      <div className="dialog-actions">{['succeeded', 'ready', 'completed'].includes(result.data?.status ?? '') ? <a className="btn primary" href={localUrl(result.data?.download_url, `/api/v1/exports/${resourceId(exportId)}/download`)}>{t("下载文件")}</a>
+        : failed ? <button className="btn" type="button" onClick={() => { setExportId(''); action.clear(); }}>{t("重新选择导出选项")}</button>
+          : <button className="btn primary" disabled={locked}>{exportId ? t("正在生成下载文件…") : t("生成下载文件")}</button>}</div>
     </form>
   </Modal>;
 }
 
 export function DraftExportLoader({ id, title, close }: { id: string; title: string; close: () => void }) {
   const result = useResource<Draft>(`/drafts/${resourceId(id)}`);
-  if (!result.data) return <Modal title="导出当前草稿" onClose={close}><p>{title}</p><ErrorNotice error={result.error} retry={result.reload}/>{result.loading && <p role="status">正在读取草稿…</p>}</Modal>;
+  if (!result.data) return <Modal title={t("导出当前草稿")} onClose={close}><p>{title}</p><ErrorNotice error={result.error} retry={result.reload}/>{result.loading && <p role="status">{t("正在读取草稿…")}</p>}</Modal>;
   return <DraftExport draft={result.data} title={title} close={close}/>;
 }

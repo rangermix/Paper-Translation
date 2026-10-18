@@ -1,3 +1,5 @@
+import { getUiLocale, t } from './i18n';
+
 // A broad picker, not an allowlist. Other language/script/region tags can be entered too.
 export const languageCodes = `zh-Hans zh-Hant en ja de fr es pt pt-BR it ko ar ru
 aa ab ae af ak am an as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy
@@ -158,8 +160,8 @@ const nameCache = new Map<string, string>();
 
 export function languageName(locale?: string | null): string {
   if (!locale) return '';
-  if (locale === 'und') return '尚未识别';
-  if (locale === 'auto') return '自动识别';
+  if (locale === 'und') return t('尚未识别');
+  if (locale === 'auto') return t('自动识别');
   if (nativeNames[locale]) return nativeNames[locale];
   const cached = nameCache.get(locale);
   if (cached) return cached;
@@ -185,24 +187,27 @@ const searchNames = new Map<string, string>();
 const normalizeSearch = (value: string) => value.normalize('NFKD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase().trim();
 
 export function localizedLanguageName(locale: string): string {
-  const cached = localizedNames.get(locale);
+  const uiLocale = getUiLocale();
+  const key = `${uiLocale}:${locale}`;
+  const cached = localizedNames.get(key);
   if (cached) return cached;
   let name = locale;
-  try { name = new Intl.DisplayNames(['zh-Hans'], { type: 'language', languageDisplay: 'standard', fallback: 'code' }).of(locale) || locale; }
+  try { name = new Intl.DisplayNames([uiLocale], { type: 'language', languageDisplay: 'standard', fallback: 'code' }).of(locale) || locale; }
   catch { /* Unknown historical tags remain visible as their exact identifier. */ }
-  localizedNames.set(locale, name);
+  localizedNames.set(key, name);
   return name;
 }
 
 export function matchesLanguage(locale: string, query: string): boolean {
   const terms = normalizeSearch(query).split(/\s+/).filter(Boolean);
   if (!terms.length) return true;
-  let searchable = searchNames.get(locale);
+  const key = `${getUiLocale()}:${locale}`;
+  let searchable = searchNames.get(key);
   if (!searchable) {
     let english = '';
     try { english = new Intl.DisplayNames(['en'], { type: 'language', languageDisplay: 'standard' }).of(locale) || ''; } catch { /* Preserve the native label and code. */ }
     searchable = normalizeSearch(`${locale} ${languageName(locale)} ${localizedLanguageName(locale)} ${english}`);
-    searchNames.set(locale, searchable);
+    searchNames.set(key, searchable);
   }
   return terms.every(term => searchable.includes(term));
 }

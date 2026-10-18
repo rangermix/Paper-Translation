@@ -1,10 +1,11 @@
+import { t, getUiLocale } from '../i18n';
 import type { Document, History } from '../types';
 
 export type ReadingVersion = History['artifacts'][number];
 export function versionTime(value?: string) {
-  if (!value) return '时间未记录';
+  if (!value) return t("时间未记录");
   const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? '时间未记录' : date.toLocaleString();
+  return Number.isNaN(date.valueOf()) ? t("时间未记录") : date.toLocaleString(getUiLocale());
 }
 
 export function readingVersions(history?: History, document?: Document): ReadingVersion[] {
@@ -18,8 +19,8 @@ export function readingVersions(history?: History, document?: Document): Reading
 }
 
 export function readingVersionStatus(version: ReadingVersion, history?: History, document?: Document) {
-  if (document?.editions.some(edition => edition.current_artifact_id === version.id)) return '当前阅读版';
-  if (version.state && version.state !== 'verified') return version.state === 'failed' ? '生成失败' : '正在准备';
+  if (document?.editions.some(edition => edition.current_artifact_id === version.id)) return t("当前阅读版");
+  if (version.state && version.state !== 'verified') return version.state === 'failed' ? t("生成失败") : t("正在准备");
   const published = [...(history?.publications ?? []), ...(history?.publication_events ?? [])].some(event => event.artifact_id === version.id);
-  return published ? '历史阅读版' : '未发布 · 可预览';
+  return published ? t("历史阅读版") : t("未发布 · 可预览");
 }

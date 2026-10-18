@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
@@ -33,17 +34,17 @@ export function AnalystSettings({ preferences, loading, onSaved }: {
     return success;
   }
   return <section className="panel analyst-panel" aria-labelledby="analyst-title">
-    <h2 id="analyst-title">翻译前总结模型</h2>
+    <h2 id="analyst-title">{t("翻译前总结模型")}</h2>
     {loading && <Loading/>}
     {preferences && <form onSubmit={event => { event.preventDefault(); void save(); }}>
-      {dirty && <p className="settings-unsaved small">未保存</p>}
+      {dirty && <p className="settings-unsaved small">{t("未保存")}</p>}
       <fieldset className="provider-fields" disabled={action.pending}>
         <LocalModels purpose="analysis" active value={model} backend={backend}
           onChange={(model, backend) => { setChoice({ model, backend }); if (!action.error) action.clear(); }} onAvailabilityChange={setAvailable}/>
       </fieldset>
       <ActionFeedback notice={action.notice}/>
       <ErrorNotice error={action.error} retry={refresh.request}/>
-      <div className="settings-actions"><button className="btn primary" disabled={!canSave}>保存总结模型设置</button></div>
+      <div className="settings-actions"><button className="btn primary" disabled={!canSave}>{t("保存总结模型设置")}</button></div>
     </form>}
     {refresh.confirmation}
   </section>;

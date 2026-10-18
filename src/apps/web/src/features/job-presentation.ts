@@ -1,3 +1,4 @@
+import { t, getUiLocale } from '../i18n';
 import { languageName } from '../languages';
 import type { Job } from '../types';
 
@@ -14,12 +15,12 @@ const operations: Record<string, string> = {
   export: '导出阅读版本', publish: '构建并发布', rebuild: '重建阅读版式', cleanup: '文档删除与文件清理',
   index: '更新检索索引', checking: '质量检查', building: '构建阅读版本', preflight: '结构预检', published: '发布阅读版本',
 };
-export function jobOperation(stage: string) { return operations[stage] ?? '后台任务'; }
+export function jobOperation(stage: string) { return t(operations[stage] ?? "后台任务"); }
 export function jobName(job: Job) {
   if (job.stage === 'prepare_parser_model' || job.stage === 'prepare_local_model') return jobOperation(job.stage);
-  if (job.stage === 'cleanup' || job.content_deleted) return `已删除文档 · ${job.id.replace(/^job_/, '').slice(-8)}`;
-  if (['maintenance', 'backup', 'restore'].includes(job.stage)) return '文库实例';
-  return job.stage === 'provider_test' ? 'AI 服务连接测试' : job.title?.trim() || job.filename?.trim() || '未命名 PDF';
+  if (job.stage === 'cleanup' || job.content_deleted) return t("已删除文档 · {value0}", { value0: job.id.replace(/^job_/, '').slice(-8) });
+  if (['maintenance', 'backup', 'restore'].includes(job.stage)) return t("文库实例");
+  return job.stage === 'provider_test' ? t("AI 服务连接测试") : job.title?.trim() || job.filename?.trim() || t("未命名 PDF");
 }
 export function jobLocale(locale?: string | null) { return languageName(locale); }
 export function jobTone(status: string) {
@@ -34,11 +35,11 @@ export function jobProgress(job: Job) {
   const value = pages ? job.checked_pages : job.verified_blocks;
   const total = pages ? job.total_pages : job.total_blocks;
   if (value == null || total == null || !Number.isSafeInteger(value) || !Number.isSafeInteger(total) || total <= 0 || value < 0 || value > total) return null;
-  return { value, total, label: pages ? `已检查 ${value} / ${total} 页` : `已完成 ${value} / ${total} 段` };
+  return { value, total, label: pages ? t("已检查 {value0} / {value1} 页", { value0: value, value1: total }) : t("已完成 {value0} / {value1} 段", { value0: value, value1: total }) };
 }
 
 export function JobDateParts(value?: string) {
   const date = value ? new Date(value) : null;
   if (!date || !Number.isFinite(date.getTime())) return null;
-  return { date: date.toLocaleDateString('zh-CN'), time: date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), full: date.toLocaleString('zh-CN') };
+  return { date: date.toLocaleDateString(getUiLocale()), time: date.toLocaleTimeString(getUiLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), full: date.toLocaleString(getUiLocale()) };
 }

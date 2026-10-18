@@ -1,3 +1,4 @@
+import { t, getUiLocale } from '../i18n';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
@@ -25,19 +26,17 @@ export const resourceReasons: Record<string, string> = {
 export function ModelMemory({ reference, unified }: { reference?: MemoryReference; unified?: boolean }) {
   if (!reference) return null;
   const shared = unified ?? reference.unified_memory;
-  return <div className="model-memory" aria-label="模型内存参考">
-    <p>运行参考（估算）：{shared ? `统一内存 ${gib(Math.max(reference.ram_bytes, reference.vram_bytes))}` :
-      `RAM ${gib(reference.ram_bytes)} · VRAM ${gib(reference.vram_bytes)}`}</p>
-    <p>权重 {gib(reference.weights_bytes)} · KV 缓存约 {gib(reference.kv_cache_bytes)} · 工作空间约 {gib(reference.workspace_bytes)}<br/>
-      上下文 {reference.context_tokens.toLocaleString()} tokens</p>
+  return <div className="model-memory" aria-label={t("模型内存参考")}>
+    <p>{t("运行参考（估算）：{memory}", { memory: shared ? t("统一内存 {size}", { size: gib(Math.max(reference.ram_bytes, reference.vram_bytes)) }) : `RAM ${gib(reference.ram_bytes)} · VRAM ${gib(reference.vram_bytes)}` })}</p>
+    <p>{t("权重 {weights} · KV 缓存约 {cache} · 工作空间约 {workspace}", { weights: gib(reference.weights_bytes), cache: gib(reference.kv_cache_bytes), workspace: gib(reference.workspace_bytes) })}<br/>{t("上下文 {tokens} tokens", { tokens: reference.context_tokens.toLocaleString(getUiLocale()) })}</p>
   </div>;
 }
 
 function MemoryMeter({ label, total, used, percent }: { label: string; total: number | null; used: number | null; percent: number }) {
   const available = total != null && total > 0 && used != null;
   return <div className="resource-meter"><strong>{label}</strong>
-    {available ? <><span>{gib(used)} / {gib(total)} · 预算 {gib(total * percent / 100)}</span>
-      <meter aria-label={label} min={0} max={total} value={used} high={total * percent / 100}/></> : <span>容量暂不可用</span>}
+    {available ? <><span>{t("{used} / {total} · 预算 {budget}", { used: gib(used), total: gib(total), budget: gib(total * percent / 100) })}</span>
+      <meter aria-label={label} min={0} max={total} value={used} high={total * percent / 100}/></> : <span>{t("容量暂不可用")}</span>}
   </div>;
 }
 
@@ -70,29 +69,29 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
     }, '资源设置已保存，将用于后续任务调度。');
     return success;
   }
-  return <section className="panel resource-panel" aria-labelledby="resources-title"><h2 id="resources-title">资源与并发</h2>
+  return <section className="panel resource-panel" aria-labelledby="resources-title"><h2 id="resources-title">{t("资源与并发")}</h2>
     {!preferences ? <Loading/> : <form onSubmit={event => { event.preventDefault(); void save(); }}>
-      {dirty && <p className="settings-unsaved small">未保存</p>}
-      <div className="resource-fields">{fields.map(([key, label, min, max]) => <label className="field" key={key}>{label}
+      {dirty && <p className="settings-unsaved small">{t("未保存")}</p>}
+      <div className="resource-fields">{fields.map(([key, label, min, max]) => <label className="field" key={key}>{t(label)}
         <input className="input" type="number" min={min} max={max} step={1} required value={Number.isNaN(values[key]) ? '' : values[key]}
           disabled={action.pending} onChange={event => { setDraft(previous => ({ ...previous, [key]: event.target.value === '' ? NaN : Number(event.target.value) })); if (!action.error) action.clear(); }}/>
       </label>)}</div>
       <label className="check"><input type="checkbox" checked={values.auto_concurrency} disabled={action.pending}
-        onChange={event => { setDraft(previous => ({ ...previous, auto_concurrency: event.target.checked })); if (!action.error) action.clear(); }}/>根据 RAM / VRAM 余量自动调整并发</label>
+        onChange={event => { setDraft(previous => ({ ...previous, auto_concurrency: event.target.checked })); if (!action.error) action.clear(); }}/>{t("根据 RAM / VRAM 余量自动调整并发")}</label>
       <div className="resource-meters">
-        <MemoryMeter label="RAM（Docker 可见内存）" total={capacity?.ram_total_bytes ?? null} used={capacity?.ram_used_bytes ?? null} percent={saved.max_ram_percent}/>
-        <MemoryMeter label="VRAM（GPU 0）" total={capacity?.vram_total_bytes ?? null} used={capacity?.vram_used_bytes ?? null} percent={saved.max_vram_percent}/>
+        <MemoryMeter label={t("RAM（Docker 可见内存）")} total={capacity?.ram_total_bytes ?? null} used={capacity?.ram_used_bytes ?? null} percent={saved.max_ram_percent}/>
+        <MemoryMeter label={t("VRAM（GPU 0）")} total={capacity?.vram_total_bytes ?? null} used={capacity?.vram_used_bytes ?? null} percent={saved.max_vram_percent}/>
       </div>
-      {capacity && <p className="settings-hint">运行中：{capacity.active_master_jobs} 个主任务 / {capacity.active_subjobs} 个子任务；当前并发上限：{capacity.effective_master_concurrency} / 每个主任务 {capacity.effective_subjob_concurrency}。</p>}
-      {capacity?.waiting_jobs?.length ? <p role="status">{capacity.waiting_jobs.length} 个任务等待：{[...new Set(capacity.waiting_jobs.map(job => resourceReasons[job.reason] ?? job.reason))].join('、')}。</p> : null}
+      {capacity && <p className="settings-hint">{t("运行中：{masters} 个主任务 / {subjobs} 个子任务；当前并发上限：{masterLimit} / 每个主任务 {subjobLimit}。", { masters: capacity.active_master_jobs, subjobs: capacity.active_subjobs, masterLimit: capacity.effective_master_concurrency, subjobLimit: capacity.effective_subjob_concurrency })}</p>}
+      {capacity?.waiting_jobs?.length ? <p role="status">{t("{count} 个任务等待：{reasons}。", { count: capacity.waiting_jobs.length, reasons: [...new Set(capacity.waiting_jobs.map(job => t(resourceReasons[job.reason] ?? job.reason)))].join(getUiLocale() === 'en' ? ', ' : '、') })}</p> : null}
       <ErrorNotice error={status.error} retry={status.reload}/>
       <ActionFeedback notice={action.notice}/>
       <ErrorNotice error={action.error} retry={refresh.request}/>
-      <div className="settings-actions"><button className="btn primary" disabled={!canSave}>保存资源设置</button></div>
+      <div className="settings-actions"><button className="btn primary" disabled={!canSave}>{t("保存资源设置")}</button></div>
     </form>}
-    {!!capacity?.model_references?.length && <details className="settings-details"><summary>全部模型的内存参考（估算）</summary>
-      <div className="resource-table-scroll"><table><thead><tr><th>模型</th><th>RAM</th><th>VRAM / 统一内存</th><th>上下文</th></tr></thead>
-        <tbody>{capacity.model_references.map(({ id, label, memory_reference: ref }) => <tr key={id}><td>{label}</td><td>{gib(ref.ram_bytes)}</td><td>{gib(ref.vram_bytes)}{ref.unified_memory ? '（统一）' : ''}</td><td>{ref.context_tokens.toLocaleString()}</td></tr>)}</tbody></table></div>
+    {!!capacity?.model_references?.length && <details className="settings-details"><summary>{t("全部模型的内存参考（估算）")}</summary>
+      <div className="resource-table-scroll"><table><thead><tr><th>{t("模型")}</th><th>RAM</th><th>{t("VRAM / 统一内存")}</th><th>{t("上下文")}</th></tr></thead>
+        <tbody>{capacity.model_references.map(({ id, label, memory_reference: ref }) => <tr key={id}><td>{label}</td><td>{gib(ref.ram_bytes)}</td><td>{gib(ref.vram_bytes)}{ref.unified_memory ? t("（统一）") : ''}</td><td>{ref.context_tokens.toLocaleString(getUiLocale())}</td></tr>)}</tbody></table></div>
     </details>}
     {refresh.confirmation}
   </section>;

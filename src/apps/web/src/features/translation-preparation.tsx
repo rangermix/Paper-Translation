@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useId, useState } from 'react';
 import { api } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
@@ -17,18 +18,18 @@ export function PreparationControls({ value, onChange, profile, estimates, disab
 }) {
   const id = useId();
   const estimate = estimates?.[value];
-  return <section className="translation-preparation-controls" aria-label="翻译准备选项">
-    <div className="field"><label htmlFor={id}>翻译前准备</label>
+  return <section className="translation-preparation-controls" aria-label={t("翻译准备选项")}>
+    <div className="field"><label htmlFor={id}>{t("翻译前准备")}</label>
       <select id={id} value={value} disabled={disabled} onChange={event => onChange(event.target.value as PreparationMode)}>
-        <option value="extractive">提取参考内容和术语</option>
-        <option value="local">独立本地小模型：概述与术语建议</option>
-        <option value="provider" disabled={!preparationAllowed('provider', profile)}>当前 API 模型：概述与术语建议</option>
-        <option value="off">不做论文级准备</option>
+        <option value="extractive">{t("提取参考内容和术语")}</option>
+        <option value="local">{t("独立本地小模型：概述与术语建议")}</option>
+        <option value="provider" disabled={!preparationAllowed('provider', profile)}>{t("当前 API 模型：概述与术语建议")}</option>
+        <option value="off">{t("不做论文级准备")}</option>
       </select>
     </div>
     {value === 'local' && <LocalAnalyst disabled={disabled}/>}
-    {estimate && <p className="field-note preparation-estimate">额外分析请求：{estimate.additional_requests} 次 · 额外分析费用估算：{money(estimate.additional_cost_micro, profile?.currency)}{value === 'local' ? '（本地运行，无托管 API 费用）' : ''}</p>}
-    {!preparationAllowed(value, profile) && <p className="notice">当前翻译服务不提供 API 分析，请选择“提取参考内容和术语”或独立本地模型。</p>}
+    {estimate && <p className="field-note preparation-estimate">{t("额外分析请求：{value1} 次 · 额外分析费用估算：{value2}{value3}", { value1: String((estimate.additional_requests) ?? ''), value2: String((money(estimate.additional_cost_micro, profile?.currency)) ?? ''), value3: String((value === 'local' ? t("（本地运行，无托管 API 费用）") : '') ?? '') })}</p>}
+    {!preparationAllowed(value, profile) && <p className="notice">{t("当前翻译服务不提供 API 分析，请选择“提取参考内容和术语”或独立本地模型。")}</p>}
   </section>;
 }
 
@@ -40,17 +41,17 @@ function LocalAnalyst({ disabled }: { disabled: boolean }) {
   const backend = preferences.data?.local_analyst_backend ?? model?.default_backend ?? model?.runtime ?? '';
   const compatible = Boolean(model && (model.inference_backends ?? [model.runtime]).includes(backend));
   const state = model?.backend_states?.[backend] ?? model;
-  return <section className="notice local-analyst" aria-label="本地分析模型">
-    <strong>本地分析模型</strong>
+  return <section className="notice local-analyst" aria-label={t("本地分析模型")}>
+    <strong>{t("本地分析模型")}</strong>
     {model ? <>
-      <p><strong>{model.label}</strong> · {model.format?.toUpperCase()} {model.quantization ?? `${model.bits} bit`} · {inferenceLabels[backend] ?? backend}</p>
-      <p role="status">{result.error || preferences.error ? '状态更新失败，请刷新后核对' : compatible ? modelStatusLabels[state?.status ?? ''] ?? '状态未提供' : '已保存的推理后端在当前部署中不可用'} · 下载约 {Math.round(model.download_bytes / 1024 / 1024)} MiB</p>
-      <details className="model-choice-details"><summary>模型 ID 与性能说明</summary><p>用途：翻译前的背景与术语准备，不生成正文译文。当前设备的速度与质量对比：未提供。</p><dl className="kv"><dt>模型 ID</dt><dd className="mono">{model.model_id}</dd></dl><p>选择和保存不会下载或加载模型。</p></details>
-      {state?.status === 'downloading' && state.total_bytes ? <progress aria-label="分析模型下载进度" value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
+      <p><strong>{model.label}</strong> · {model.format?.toUpperCase()} {model.quantization ?? `${model.bits} bit`} · {inferenceLabels[backend] ? t(inferenceLabels[backend]) : backend}</p>
+      <p role="status">{t("{value1} · 下载约 {value2} MiB", { value1: String((result.error || preferences.error ? t("状态更新失败，请刷新后核对") : compatible ? t(modelStatusLabels[state?.status ?? ''] ?? "状态未提供") : t("已保存的推理后端在当前部署中不可用")) ?? ''), value2: String((Math.round(model.download_bytes / 1024 / 1024)) ?? '') })}</p>
+      <details className="model-choice-details"><summary>{t("模型 ID 与性能说明")}</summary><p>{t("用途：翻译前的背景与术语准备，不生成正文译文。当前设备的速度与质量对比：未提供。")}</p><dl className="kv"><dt>{t("模型 ID")}</dt><dd className="mono">{model.model_id}</dd></dl><p>{t("选择和保存不会下载或加载模型。")}</p></details>
+      {state?.status === 'downloading' && state.total_bytes ? <progress aria-label={t("分析模型下载进度")} value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
       <button className="btn" type="button" disabled={disabled || action.pending || !compatible || Boolean(preferences.error || result.error) || ['downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}
-        onClick={() => void action.run(async () => { await api(`/settings/local-models/${resourceId(model.id)}/prepare?backend=${encodeURIComponent(backend)}`, { method: 'POST', body: {} }); result.reload(); })}>准备本地分析模型</button>
-    </> : result.loading || preferences.loading ? <Loading/> : result.error || preferences.error ? <p>模型信息读取失败，请刷新后核对。</p> : <p>已保存的分析模型在当前部署中不可用，请到设置选择支持的模型和推理后端。</p>}
-    <a href="#/settings">设置分析模型</a>
+        onClick={() => void action.run(async () => { await api(`/settings/local-models/${resourceId(model.id)}/prepare?backend=${encodeURIComponent(backend)}`, { method: 'POST', body: {} }); result.reload(); })}>{t("准备本地分析模型")}</button>
+    </> : result.loading || preferences.loading ? <Loading/> : result.error || preferences.error ? <p>{t("模型信息读取失败，请刷新后核对。")}</p> : <p>{t("已保存的分析模型在当前部署中不可用，请到设置选择支持的模型和推理后端。")}</p>}
+    <a href="#/settings">{t("设置分析模型")}</a>
     <ErrorNotice error={result.error} retry={result.reload}/><ErrorNotice error={preferences.error} retry={preferences.reload}/><ActionFeedback {...action}/>
   </section>;
 }
@@ -60,7 +61,7 @@ export function PreparationView({ draftId, revision, navigate, scope }: {
   draftId: string; revision?: string; navigate: (blockId: string) => void; scope?: PreparationScope;
 }) {
   const [open, setOpen] = useState(false);
-  const label = scope?.kind === 'segment' ? '本段翻译准备与依据' : scope?.kind === 'candidate' ? '此候选的翻译准备与依据' : '翻译依据';
+  const label = scope?.kind === 'segment' ? t("本段翻译准备与依据") : scope?.kind === 'candidate' ? t("此候选的翻译准备与依据") : t("翻译依据");
   return <details className="preparation-view section-title" onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>{label}</summary>
     {open && <PreparationContents key={`${draftId}:${scope?.kind ?? 'draft'}:${scope?.id ?? ''}:${revision ?? ''}`} draftId={draftId} navigate={navigate} scope={scope}/>}
@@ -71,39 +72,39 @@ function PreparationContents({ draftId, navigate, scope }: { draftId: string; na
   const query = scope ? `?${scope.kind === 'segment' ? 'block_id' : 'candidate_id'}=${resourceId(scope.id)}` : '';
   const result = useResource<{ available: boolean; preparation: PreparationPack | null; scope: 'draft' | 'segment' | 'candidate' }>(`/drafts/${resourceId(draftId)}/preparation${query}`);
   const pack = result.data?.preparation;
-  const label = scope?.kind === 'segment' ? `段落 ${scope.id} 的翻译准备与依据` : scope?.kind === 'candidate' ? `候选 ${scope.id} 的翻译准备与依据` : '翻译依据';
-  const emptyNote = scope?.kind === 'segment' ? '本段没有已保存的准备记录。'
-    : scope?.kind === 'candidate' ? '此候选没有已保存的准备记录。'
-    : '此草稿尚无基准准备记录。';
+  const label = scope?.kind === 'segment' ? t("段落 {value1} 的翻译准备与依据", { value1: scope.id }) : scope?.kind === 'candidate' ? t("候选 {value1} 的翻译准备与依据", { value1: scope.id }) : t("翻译依据");
+  const emptyNote = scope?.kind === 'segment' ? t("本段没有已保存的准备记录。")
+    : scope?.kind === 'candidate' ? t("此候选没有已保存的准备记录。")
+    : t("此草稿尚无基准准备记录。");
   const headings = new Map(pack?.headings.map(heading => [heading.block_id, heading.text]) ?? []);
   const evidence = new Map(pack?.evidence.map(item => [item.id, item]) ?? []);
-  const scopeName = (scope: string | null) => scope ? headings.get(scope) ?? scope : '全文';
+  const scopeName = (scope: string | null) => scope ? headings.get(scope) ?? scope : t("全文");
   const references = (ids: string[]) => <span className="preparation-references">{ids.map(id => {
     const item = evidence.get(id);
-    return item ? <button className="btn sm" type="button" key={id} onClick={() => navigate(item.block_id)}>查看来源段落 {item.block_id}</button> : null;
+    return item ? <button className="btn sm" type="button" key={id} onClick={() => navigate(item.block_id)}>{t("查看来源段落 {value1}", { value1: String((item.block_id) ?? '') })}</button> : null;
   })}</span>;
   return <section className="preparation-content" aria-label={label}>
     <ErrorNotice error={result.error} retry={result.reload}/>{result.loading && <Loading/>}
     {result.data && !pack && <p className="field-note">{emptyNote}</p>}
     {pack && <>
       <ContextModeNotice mode={pack.translation_context_mode}/>
-      <dl className="kv"><dt>准备修订</dt><dd className="mono">{pack.revision}</dd><dt>来源修订</dt><dd className="mono">{pack.source_revision_id}</dd>
-        <dt>收集范围</dt><dd>扫描 {pack.coverage.scanned_blocks} 个来源块；受限而未收录的摘录 {pack.coverage.omitted_evidence} 项、术语 {pack.coverage.omitted_concepts ?? 0} 项，其中过长段落 {pack.coverage.oversized_passages} 项。</dd>
-        <dt>模型阅读范围</dt><dd>{pack.analysis ? '仅分析有限来源摘录，未阅读全文。' : '使用来源摘录，未调用分析模型。'}</dd>
+      <dl className="kv"><dt>{t("准备修订")}</dt><dd className="mono">{pack.revision}</dd><dt>{t("来源修订")}</dt><dd className="mono">{pack.source_revision_id}</dd>
+        <dt>{t("收集范围")}</dt><dd>{t("扫描 {value1} 个来源块；受限而未收录的摘录 {value2} 项、术语 {value3} 项，其中过长段落 {value4} 项。", { value1: String((pack.coverage.scanned_blocks) ?? ''), value2: String((pack.coverage.omitted_evidence) ?? ''), value3: String((pack.coverage.omitted_concepts ?? 0) ?? ''), value4: String((pack.coverage.oversized_passages) ?? '') })}</dd>
+        <dt>{t("模型阅读范围")}</dt><dd>{pack.analysis ? t("仅分析有限来源摘录，未阅读全文。") : t("使用来源摘录，未调用分析模型。")}</dd>
       </dl>
-      {pack.summary.length ? <><h3>模型概述建议</h3><ul className="preparation-summary">{pack.summary.map((item, index) => <li key={index}><p>{item.text}</p>{references(item.evidence_ids)}</li>)}</ul></> : <h3>来源摘录概览</h3>}
+      {pack.summary.length ? <><h3>{t("模型概述建议")}</h3><ul className="preparation-summary">{pack.summary.map((item, index) => <li key={index}><p>{item.text}</p>{references(item.evidence_ids)}</li>)}</ul></> : <h3>{t("来源摘录概览")}</h3>}
       <div className="preparation-evidence">{pack.evidence.map(item => <article key={item.id}>
-        <p className="small muted">{evidenceRole[item.role] ?? item.role} · {scopeName(item.scope)}</p>
+        <p className="small muted">{evidenceRole[item.role] ? t(evidenceRole[item.role]) : item.role} · {scopeName(item.scope)}</p>
         <blockquote>{item.quote}</blockquote>{references([item.id])}
       </article>)}</div>
-      {!pack.evidence.length && <p className="field-note">未收集到可展示的来源摘录。</p>}
-      <h3>术语与适用范围</h3>
-      {pack.concepts.length ? <div className="table-shell"><table><thead><tr><th>来源术语</th><th>译名建议</th><th>范围与依据</th></tr></thead>
-        <tbody>{pack.concepts.map(concept => <tr key={concept.id}><td data-label="来源术语"><strong>{concept.source}</strong>{concept.aliases.length ? <p className="small muted">别名：{concept.aliases.join('、')}</p> : null}</td>
-          <td data-label="译名建议">{concept.target ?? '尚无译名建议'}<p className="small muted">{concept.origin === 'model' ? '模型建议' : '来源提取'} · 未经人工核对</p></td>
-          <td data-label="范围与依据">{scopeName(concept.scope)}{references(concept.evidence_ids)}</td></tr>)}</tbody></table></div> : <p className="field-note">未提取到术语。</p>}
-      {pack.warnings.length ? <details><summary>准备提示（{pack.warnings.length}）</summary><ul>{pack.warnings.map((warning, index) => <li key={index}>{preparationWarnings[warning] ?? '部分分析结果未能采用，请对照来源摘录。'}</li>)}</ul></details> : null}
-      <a className="btn section-title" href="#/glossary">管理术语表</a>
+      {!pack.evidence.length && <p className="field-note">{t("未收集到可展示的来源摘录。")}</p>}
+      <h3>{t("术语与适用范围")}</h3>
+      {pack.concepts.length ? <div className="table-shell"><table><thead><tr><th>{t("来源术语")}</th><th>{t("译名建议")}</th><th>{t("范围与依据")}</th></tr></thead>
+        <tbody>{pack.concepts.map(concept => <tr key={concept.id}><td data-label={t("来源术语")}><strong>{concept.source}</strong>{concept.aliases.length ? <p className="small muted">{t("别名：{value1}", { value1: String((concept.aliases.join('、')) ?? '') })}</p> : null}</td>
+          <td data-label={t("译名建议")}>{concept.target ?? t("尚无译名建议")}<p className="small muted">{t("{value1} · 未经人工核对", { value1: String((concept.origin === 'model' ? t("模型建议") : t("来源提取")) ?? '') })}</p></td>
+          <td data-label={t("范围与依据")}>{scopeName(concept.scope)}{references(concept.evidence_ids)}</td></tr>)}</tbody></table></div> : <p className="field-note">{t("未提取到术语。")}</p>}
+      {pack.warnings.length ? <details><summary>{t("准备提示（{value1}）", { value1: String((pack.warnings.length) ?? '') })}</summary><ul>{pack.warnings.map((warning, index) => <li key={index}>{t(preparationWarnings[warning] ?? "部分分析结果未能采用，请对照来源摘录。")}</li>)}</ul></details> : null}
+      <a className="btn section-title" href="#/glossary">{t("管理术语表")}</a>
     </>}
   </section>;
 }
@@ -120,15 +121,15 @@ const preparationWarnings: Record<string, string> = {
 };
 const progressStatus: Record<string, string> = { pending: '准备等待中', running: '正在收集和分析', completed: '准备已完成' };
 function ContextModeNotice({ mode }: { mode?: TranslationContextMode }) {
-  return mode === 'terms_only' ? <p className="field-note warn">当前翻译模型仅使用准备的术语；论文概述和来源摘录不随翻译请求发送。</p> : null;
+  return mode === 'terms_only' ? <p className="field-note warn">{t("当前翻译模型仅使用准备的术语；论文概述和来源摘录不随翻译请求发送。")}</p> : null;
 }
 export function PreparationJobProgress({ progress }: { progress?: PreparationProgress }) {
   if (!progress?.preparation_status) return null;
   const warnings = Array.isArray(progress.preparation_warnings) ? progress.preparation_warnings.length : progress.preparation_warnings ?? 0;
-  return <section className="notice preparation-job-progress" aria-label="翻译准备进度">
-    <strong>{progressStatus[progress.preparation_status] ?? '翻译准备'}</strong>
-    <p>译名建议：{progress.preparation_terms ?? '—'} · 分析请求：{progress.preparation_requests ?? 0} · 提示：{warnings}</p>
+  return <section className="notice preparation-job-progress" aria-label={t("翻译准备进度")}>
+    <strong>{t(progressStatus[progress.preparation_status] ?? "翻译准备")}</strong>
+    <p>{t("译名建议：{value1} · 分析请求：{value2} · 提示：{value3}", { value1: String((progress.preparation_terms ?? '—') ?? ''), value2: String((progress.preparation_requests ?? 0) ?? ''), value3: String((warnings) ?? '') })}</p>
     <ContextModeNotice mode={progress.preparation_context_mode}/>
-    {(progress.preparation_omitted_units ?? 0) > 0 && <p className="field-note warn">因请求限额，{progress.preparation_omitted_units} 个翻译单元未携带论文级上下文。</p>}
+    {(progress.preparation_omitted_units ?? 0) > 0 && <p className="field-note warn">{t("因请求限额，{value1} 个翻译单元未携带论文级上下文。", { value1: String((progress.preparation_omitted_units) ?? '') })}</p>}
   </section>;
 }

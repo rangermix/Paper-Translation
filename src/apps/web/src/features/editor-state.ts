@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useRef, useState } from 'react';
 import { api, etagFor } from '../api';
 import { inlineText, resourceId } from '../domain';
@@ -57,9 +58,9 @@ export function useEditorState(draft: Draft | undefined, onSaved: (draft: Draft)
     const invalid = pending.filter(([, edit]) => !edit.reason.trim() || !inlineText(edit.nodes).trim());
     if (invalid.length) {
       const next = { ...editsRef.current };
-      for (const [id, edit] of invalid) next[id] = { ...edit, error: !edit.reason.trim() ? '请填写修改理由，再保存这一段。' : '请填写译文，再保存这一段。' };
+      for (const [id, edit] of invalid) next[id] = { ...edit, error: !edit.reason.trim() ? "请填写修改理由，再保存这一段。" : "请填写译文，再保存这一段。" };
       update(next);
-      setError(new Error(`尚有 ${invalid.length} 段未填写译文或修改理由，请继续编辑。`));
+      setError(new Error(t("尚有 {value1} 段未填写译文或修改理由，请继续编辑。", { value1: invalid.length })));
       return false;
     }
     savingRef.current = true; setSaving(true);
@@ -68,7 +69,7 @@ export function useEditorState(draft: Draft | undefined, onSaved: (draft: Draft)
     try {
       for (const [blockId, edit] of pending) {
         try {
-          if (latest.source_revision_id !== edit.sourceRevision || latest.segments.find(segment => segment.block_id === blockId)?.source_hash !== edit.sourceHash) throw new Error('原文版本已改变，本地输入仍保留。请先对照新原文，再处理这段修改。');
+          if (latest.source_revision_id !== edit.sourceRevision || latest.segments.find(segment => segment.block_id === blockId)?.source_hash !== edit.sourceHash) throw new Error("原文版本已改变，本地输入仍保留。请先对照新原文，再处理这段修改。");
           const saved = await api<Draft>(`/drafts/${resourceId(latest.id)}/segments/${resourceId(blockId)}`, {
             method: 'PATCH', etag: etagFor(latest), body: { target_inline: edit.nodes, reason: edit.reason, base_segment_version: edit.baseVersion },
           });
@@ -79,13 +80,13 @@ export function useEditorState(draft: Draft | undefined, onSaved: (draft: Draft)
           const failure = cause instanceof Error ? cause : new Error(String(cause));
           update({ ...editsRef.current, [blockId]: { ...edit, error: failure.message } });
           setError(failure);
-          setNotice(completed ? `已保存 ${completed} 段；其余 ${pending.length - completed} 段仍未保存。` : '保存未完成，输入和修改理由仍保留。');
+          setNotice(completed ? t("已保存 {value1} 段；其余 {value2} 段仍未保存。", { value1: completed, value2: pending.length - completed }) : "保存未完成，输入和修改理由仍保留。");
           // Refresh for comparison without replacing any local baseline or input.
           try { const current = await api<Draft>(`/drafts/${resourceId(latest.id)}`); draftRef.current = current; onSaved(current); } catch { /* Keep the known server snapshot when offline. */ }
           return false;
         }
       }
-      setNotice(`已保存 ${completed} 段；请重新运行质量检查。`);
+      setNotice(t("已保存 {value1} 段；请重新运行质量检查。", { value1: completed }));
       return true;
     } finally { savingRef.current = false; setSaving(false); }
   };

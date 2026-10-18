@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useId, useRef, useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, PdfLocator } from '../components';
@@ -30,8 +31,8 @@ export function DraftSourceCorrection({ draft, documentSnapshot, onClose, onSave
   const protection = useSourceLeaveProtection(dirty, action.pending);
   const close = () => { void protection.request(onClose); };
   return <>
-    <SourceWorkspace title="修正原文识别" onClose={close} busy={action.pending}
-      location={segment ? `段落 ${segment.block_id}${segment.locators?.[0] ? ` · 第 ${segment.locators[0].page} 页` : ' · 无精确页码'}` : undefined}
+    <SourceWorkspace title={t("修正原文识别")} onClose={close} busy={action.pending}
+      location={segment ? t("段落 {value1}{value2}", { value1: segment.block_id, value2: segment.locators?.[0] ? t(" · 第 {value1} 页", { value1: segment.locators[0].page }) : t(" · 无精确页码") }) : undefined}
       evidence={<PdfLocator originalUrl={source.original_url} documentId={source.document_id} locators={segment?.locators}/>}>
       <form onSubmit={event => {
         event.preventDefault();
@@ -46,36 +47,36 @@ export function DraftSourceCorrection({ draft, documentSnapshot, onClose, onSave
             },
           });
           setCreated(next); onSaved();
-        }, '已创建来源草稿；请核对所提交内容，再确认新来源。');
+        }, "已创建来源草稿；请核对所提交内容，再确认新来源。");
       }}>
         <fieldset disabled={action.pending || Boolean(created)} className="source-correction-fields">
-          <label className="field">来源段落<select value={blockId} onChange={event => {
+          <label className="field">{t("来源段落")}<select value={blockId} onChange={event => {
             const nextId = event.target.value;
             void protection.request(() => {
               setBlockId(nextId); setText(source.segments.find(item => item.block_id === nextId)?.source_text ?? '');
               setReason(''); setKind('replace_text'); setOffset('0'); setOrder(initialOrder);
             });
           }}>{source.segments.map(item => <option key={item.block_id}>{item.block_id}</option>)}</select></label>
-          <label className="field">机械修正操作<select value={kind} onChange={event => setKind(event.target.value)}>
-            <option value="replace_text">修正机械提取字符</option><option value="reorder">调整根块阅读顺序</option>
-            <option value="split">拆分正文段落</option><option value="merge">合并相邻正文段落</option>
+          <label className="field">{t("机械修正操作")}<select value={kind} onChange={event => setKind(event.target.value)}>
+            <option value="replace_text">{t("修正机械提取字符")}</option><option value="reorder">{t("调整根块阅读顺序")}</option>
+            <option value="split">{t("拆分正文段落")}</option><option value="merge">{t("合并相邻正文段落")}</option>
           </select></label>
-          <details><summary>当前识别原文</summary><pre>{segment?.source_text}</pre></details>
-          {kind === 'replace_text' ? <div className="field"><label htmlFor={`${inputId}-text`}>核对后的原文</label><textarea id={`${inputId}-text`} required value={text} onChange={event => setText(event.target.value)}/></div>
-            : kind === 'split' ? <label className="field">Unicode 字符拆分位置<input className="input" type="number" min="1" step="1" value={offset} onChange={event => setOffset(event.target.value)}/></label>
-              : <label className="field">{kind === 'reorder' ? '完整根块顺序（每行一个 ID，不得增删）' : '要合并的相邻正文 ID（按原顺序，每行一个）'}<textarea required value={order} onChange={event => setOrder(event.target.value)}/></label>}
-          <div className="field"><label htmlFor={`${inputId}-reason`}>原件证据与机械修正理由</label><textarea id={`${inputId}-reason`} required value={reason} onChange={event => setReason(event.target.value)}/></div>
+          <details><summary>{t("当前识别原文")}</summary><pre>{segment?.source_text}</pre></details>
+          {kind === 'replace_text' ? <div className="field"><label htmlFor={`${inputId}-text`}>{t("核对后的原文")}</label><textarea id={`${inputId}-text`} required value={text} onChange={event => setText(event.target.value)}/></div>
+            : kind === 'split' ? <label className="field">{t("Unicode 字符拆分位置")}<input className="input" type="number" min="1" step="1" value={offset} onChange={event => setOffset(event.target.value)}/></label>
+              : <label className="field">{kind === 'reorder' ? t("完整根块顺序（每行一个 ID，不得增删）") : t("要合并的相邻正文 ID（按原顺序，每行一个）")}<textarea required value={order} onChange={event => setOrder(event.target.value)}/></label>}
+          <div className="field"><label htmlFor={`${inputId}-reason`}>{t("原件证据与机械修正理由")}</label><textarea id={`${inputId}-reason`} required value={reason} onChange={event => setReason(event.target.value)}/></div>
         </fieldset>
         <ActionFeedback {...action}/>
-        {created && <p className="notice">来源草稿已创建，尚未确认新来源。所提交内容已锁定，可对照原文 PDF 核查。</p>}
+        {created && <p className="notice">{t("来源草稿已创建，尚未确认新来源。所提交内容已锁定，可对照原文 PDF 核查。")}</p>}
         <div className="source-workspace-actions">
-          {!created ? <button className="btn primary" disabled={action.pending || !reason.trim() || !segment?.locators?.length}>创建来源修正</button>
+          {!created ? <button className="btn primary" disabled={action.pending || !reason.trim() || !segment?.locators?.length}>{t("创建来源修正")}</button>
             : <button type="button" className="btn primary" disabled={action.pending} onClick={() => void action.run(async () => {
               await api(`/sources/drafts/${resourceId(created.id)}/confirm`, { method: 'POST', etag: etagFor(created), body: { source_hash: created.source_hash } });
               onSaved(); onClose();
-            })}>保存新来源修订</button>}
-          <button className="btn" type="button" disabled={action.pending} onClick={close}>{created ? '关闭' : '取消校对'}</button>
-          {dirty && <span className="small muted">有未保存的校对输入</span>}
+            })}>{t("保存新来源修订")}</button>}
+          <button className="btn" type="button" disabled={action.pending} onClick={close}>{created ? t("关闭") : t("取消校对")}</button>
+          {dirty && <span className="small muted">{t("有未保存的校对输入")}</span>}
         </div>
       </form>
     </SourceWorkspace>

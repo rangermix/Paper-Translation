@@ -9,5 +9,5 @@ export default defineConfig({
   reporter: [['list'], ['json', { outputFile: outputDirectory('browser-results.json') }]],
   outputDir: outputDirectory('test-results'),
   use: { baseURL: process.env.LIBRARY_BROWSER_URL ?? 'http://127.0.0.1:5173', channel: process.env.LIBRARY_BROWSER_CHANNEL,
-    viewport: { width: 1440, height: 1060 }, screenshot: 'only-on-failure', trace: 'retain-on-failure' },
+    locale: 'zh-CN', viewport: { width: 1440, height: 1060 }, screenshot: 'only-on-failure', trace: 'retain-on-failure' },
 });

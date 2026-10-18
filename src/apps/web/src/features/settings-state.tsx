@@ -1,3 +1,4 @@
+import { t, getUiLocale } from '../i18n';
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Modal } from '../components';
 import { useNavigationGuard } from '../navigation-guard';
@@ -34,11 +35,11 @@ export function useSettingsRefresh(dirty: boolean, refresh: () => void | Promise
   const [confirm, setConfirm] = useState(false);
   return {
     request: () => { if (dirty) setConfirm(true); else void refresh(); },
-    confirmation: confirm && <Modal title="刷新设置并保留输入" onClose={() => setConfirm(false)}>
-      <p>刷新会读取最新的已保存设置，保留当前非密钥输入供核对，不会替你保存或测试服务。</p>
-      {clearsKey && <p>未保存的密钥会从表单清空，需要时请重新输入。</p>}
-      <div className="stack"><button type="button" className="btn primary" onClick={() => setConfirm(false)}>继续编辑</button>
-        <button type="button" className="btn" onClick={() => { setConfirm(false); void refresh(); }}>刷新并保留输入</button></div>
+    confirmation: confirm && <Modal title={t("刷新设置并保留输入")} onClose={() => setConfirm(false)}>
+      <p>{t("刷新会读取最新的已保存设置，保留当前非密钥输入供核对，不会替你保存或测试服务。")}</p>
+      {clearsKey && <p>{t("未保存的密钥会从表单清空，需要时请重新输入。")}</p>}
+      <div className="stack"><button type="button" className="btn primary" onClick={() => setConfirm(false)}>{t("继续编辑")}</button>
+        <button type="button" className="btn" onClick={() => { setConfirm(false); void refresh(); }}>{t("刷新并保留输入")}</button></div>
     </Modal>,
   };
 }
@@ -49,6 +50,7 @@ export function SettingsDraftBoundary({ preferences, children }: { preferences?:
   const [, setRevision] = useState(0);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [failedForm, setFailedForm] = useState('');
   if (preferences && (!latestPreferences.current || (preferences.generation ?? -1) >= (latestPreferences.current.generation ?? -1))) latestPreferences.current = preferences;
   const session = useMemo<SettingsSession>(() => ({
     register(id, read) {
@@ -72,7 +74,7 @@ export function SettingsDraftBoundary({ preferences, children }: { preferences?:
         const form = read();
         if (!form.dirty) continue;
         if (!form.canSave || !await form.save()) {
-          setNotice(`${form.label}尚未保存。请继续编辑，处理该分区中的提示后再离开。`);
+          setFailedForm(form.label); setNotice('{label}尚未保存。请继续编辑，处理该分区中的提示后再离开。');
           return;
         }
       }
@@ -82,20 +84,20 @@ export function SettingsDraftBoundary({ preferences, children }: { preferences?:
     } finally { setSaving(false); }
   }
   return <SettingsContext.Provider value={session}>
-    {dirty.length > 0 && <p className="settings-draft-summary" role="status">未保存：{dirty.map(form => form.label).join('、')}。切换分区会保留输入。</p>}
+    {dirty.length > 0 && <p className="settings-draft-summary" role="status">{t("未保存：{sections}。切换分区会保留输入。", { sections: dirty.map(form => t(form.label)).join(getUiLocale() === 'en' ? ', ' : '、') })}</p>}
     {children}
-    {guard.requested && <Modal title="有未保存的设置" busy={pending} onClose={() => { setNotice(''); guard.resolve(false); }}>
-      <p>{dirty.length ? `${dirty.map(form => form.label).join('、')}尚未保存。` : '设置仍在保存，请等待结果。'}</p>
-      <p>保存仅更新对应配置；不会自动测试服务、准备模型或修改已有任务的配置快照。</p>
-      {notice && <p role="alert" className="notice">{notice}</p>}
-      {dirty.some(form => !form.canSave) && <p>部分分区尚不能保存。请继续编辑，处理字段校验、版本冲突或其他接口的未保存输入。</p>}
+    {guard.requested && <Modal title={t("有未保存的设置")} busy={pending} onClose={() => { setNotice(''); guard.resolve(false); }}>
+      <p>{dirty.length ? t('{sections}尚未保存。', { sections: dirty.map(form => t(form.label)).join(getUiLocale() === 'en' ? ', ' : '、') }) : t("设置仍在保存，请等待结果。")}</p>
+      <p>{t("保存仅更新对应配置；不会自动测试服务、准备模型或修改已有任务的配置快照。")}</p>
+      {notice && <p role="alert" className="notice">{t(notice, { label: t(failedForm) })}</p>}
+      {dirty.some(form => !form.canSave) && <p>{t("部分分区尚不能保存。请继续编辑，处理字段校验、版本冲突或其他接口的未保存输入。")}</p>}
       <div className="stack">
-        <button type="button" className="btn primary" disabled={pending} onClick={() => { setNotice(''); guard.resolve(false); }}>继续编辑</button>
+        <button type="button" className="btn primary" disabled={pending} onClick={() => { setNotice(''); guard.resolve(false); }}>{t("继续编辑")}</button>
         <button type="button" className="btn" disabled={pending} onClick={() => {
           for (const read of entries.current.values()) if (read().dirty) read().discard();
           setNotice(''); guard.resolve(true);
-        }}>放弃修改</button>
-        <button type="button" className="btn" disabled={pending || dirty.some(form => !form.canSave)} onClick={() => void saveAll()}>保存后离开</button>
+        }}>{t("放弃修改")}</button>
+        <button type="button" className="btn" disabled={pending || dirty.some(form => !form.canSave)} onClick={() => void saveAll()}>{t("保存后离开")}</button>
       </div>
     </Modal>}
   </SettingsContext.Provider>;

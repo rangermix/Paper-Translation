@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { Upload, Versioned } from './types';
 const etags = new WeakMap<object, string>();
 export class ApiError extends Error {
@@ -9,7 +10,7 @@ export function etagFor(value: unknown): string | undefined {
   return etags.get(value) ?? ((value as Versioned).generation !== undefined ? `"${(value as Versioned).generation}"` : undefined);
 }
 export async function api<T = Record<string, unknown>>(path: string, options: Options = {}): Promise<T> {
-  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) throw new ApiError(0, 'INVALID_PATH', '请求路径无效');
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) throw new ApiError(0, 'INVALID_PATH', "请求路径无效");
   const method = options.method ?? 'GET';
   const headers = new Headers(options.headers);
   const mutation = !['GET', 'HEAD'].includes(method);
@@ -22,27 +23,27 @@ export async function api<T = Record<string, unknown>>(path: string, options: Op
   }
   let response: Response;
   try { response = await fetch(`/api/v1${path}`, { method, headers, body, signal: options.signal, credentials: 'same-origin', cache: 'no-store' }); }
-  catch (error) { if (error instanceof DOMException && error.name === 'AbortError') throw error; throw new ApiError(0, 'NETWORK_UNAVAILABLE', mutation ? '请求连接中断，操作结果尚不确定。请刷新服务端状态后再决定是否重试。' : '无法连接服务，请检查服务状态后重试。'); }
+  catch (error) { if (error instanceof DOMException && error.name === 'AbortError') throw error; throw new ApiError(0, 'NETWORK_UNAVAILABLE', mutation ? "请求连接中断，操作结果尚不确定。请刷新服务端状态后再决定是否重试。" : "无法连接服务，请检查服务状态后重试。"); }
   const text = await response.text();
   let data: unknown;
-  try { data = text ? JSON.parse(text) : {}; } catch { throw new ApiError(response.status, 'INVALID_RESPONSE', '服务返回了无法读取的响应'); }
+  try { data = text ? JSON.parse(text) : {}; } catch { throw new ApiError(response.status, 'INVALID_RESPONSE', "服务返回了无法读取的响应"); }
   if (!response.ok) {
     const payload = data as { error?: { code?: string; message?: string; details?: unknown }; request_id?: string };
-    throw new ApiError(response.status, payload.error?.code ?? `HTTP_${response.status}`, payload.error?.message ?? '操作失败', payload.error?.details, payload.request_id);
+    throw new ApiError(response.status, payload.error?.code ?? `HTTP_${response.status}`, payload.error?.message ?? "操作失败", payload.error?.details, payload.request_id);
   }
   if (data && typeof data === 'object' && response.headers.has('ETag')) etags.set(data, response.headers.get('ETag')!);
   return data as T;
 }
 export function validatePdfSelection(files: File[], maxBytes: number, maxBatch: number) {
-  if (files.length > maxBatch) throw new Error(`一次最多选择 ${maxBatch} 份 PDF，请减少文件数量。`);
-  return files.map(file => ({ file, error: !/\.pdf$/i.test(file.name) || (file.type && file.type !== 'application/pdf') ? '只接受 PDF 文件。' : file.size === 0 ? '文件为空。' : file.size > maxBytes ? `文件超过 ${Math.floor(maxBytes / 1024 / 1024)} MiB 限制。` : undefined }));
+  if (files.length > maxBatch) throw new Error(t("一次最多选择 {v0} 份 PDF，请减少文件数量。", { v0: maxBatch }));
+  return files.map(file => ({ file, error: !/\.pdf$/i.test(file.name) || (file.type && file.type !== 'application/pdf') ? "只接受 PDF 文件。" : file.size === 0 ? "文件为空。" : file.size > maxBytes ? t("文件超过 {v0} MiB 限制。", { v0: Math.floor(maxBytes / 1024 / 1024) }) : undefined }));
 }
 async function sha256(bytes: ArrayBuffer) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), x => x.toString(16).padStart(2, '0')).join(''); }
 export type UploadProgress = { receivedBytes: number; totalBytes: number; status: string; uploadId?: string };
 export async function uploadPdf(file: File, onProgress: (progress: UploadProgress) => void, signal?: AbortSignal): Promise<Upload> {
   const upload = await api<Upload>('/uploads', { method: 'POST', body: { filename: file.name, media_type: 'application/pdf', byte_size: file.size }, signal });
   const chunkLimit = Math.min(upload.chunk_limit ?? 4 * 1024 * 1024, 4 * 1024 * 1024);
-  if (chunkLimit <= 0) throw new ApiError(0, 'INVALID_UPLOAD_CONFIG', '服务返回了无效分块限制');
+  if (chunkLimit <= 0) throw new ApiError(0, 'INVALID_UPLOAD_CONFIG', "服务返回了无效分块限制");
   const wholeBytes = await file.arrayBuffer();
   const hash = await sha256(wholeBytes);
   let current: Upload = upload;
@@ -57,8 +58,8 @@ export async function uploadPdf(file: File, onProgress: (progress: UploadProgres
   onProgress({ receivedBytes: file.size, totalBytes: file.size, status: 'inspecting', uploadId: upload.upload_id });
   const started = Date.now();
   while (current.status !== 'verified') {
-    if (['failed', 'rejected', 'expired', 'cancelled'].includes(current.status)) throw new ApiError(422, current.error?.code ?? 'PDF_INVALID', current.error?.message ?? 'PDF 检查失败，原件尚未入库。');
-    if (Date.now() - started > 20 * 60 * 1000) throw new ApiError(0, 'INSPECTION_PENDING', `原件检查仍在后台处理，可在任务中心查看上传 ${upload.upload_id}。`);
+    if (['failed', 'rejected', 'expired', 'cancelled'].includes(current.status)) throw new ApiError(422, current.error?.code ?? 'PDF_INVALID', current.error?.message ?? "PDF 检查失败，原件尚未入库。");
+    if (Date.now() - started > 20 * 60 * 1000) throw new ApiError(0, 'INSPECTION_PENDING', t("原件检查仍在后台处理，可在任务中心查看上传 {v0}。", { v0: upload.upload_id }));
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     current = await api<Upload>(`/uploads/${upload.upload_id}`, { signal });
     if (current.status !== 'verified') await new Promise(resolve => setTimeout(resolve, 1500));

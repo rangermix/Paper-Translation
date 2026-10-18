@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, Modal, PdfLocator } from '../components';
@@ -11,17 +12,17 @@ export function QualityResolution({ draft, issue, close, refresh }: {draft: Draf
   const [checked, setChecked] = useState(false);
   const action = useAction();
   const segment = draft.segments.find(s => s.block_id === blockId);
-  return <Modal title="核对质量提示" onClose={close}>
+  return <Modal title={t("核对质量提示")} onClose={close}>
     <p>{issue.message}</p>
     <form onSubmit={e => { e.preventDefault(); void action.run(async () => {
       await api(`/drafts/${resourceId(draft.id)}/issues/${resourceId(issue.fingerprint!)}/resolve`, { method: 'POST', etag: etagFor(draft), body: {reason, evidence: {page: segment!.locators![0].page, bbox: segment!.locators![0].bbox, quote: segment!.source_text}} });
       refresh(); close();
     }); }}>
-      <label className="field">来源段落<select value={blockId} onChange={e => {setBlockId(e.target.value); setChecked(false);}}>{draft.segments.map(s => <option key={s.block_id}>{s.block_id}</option>)}</select></label>
+      <label className="field">{t("来源段落")}<select value={blockId} onChange={e => {setBlockId(e.target.value); setChecked(false);}}>{draft.segments.map(s => <option key={s.block_id}>{s.block_id}</option>)}</select></label>
       <PdfLocator documentId={draft.document_id} locators={segment?.locators}/><div className="source-block">{segment?.source_text}</div>
-      <label className="field">核对结果与原件证据<textarea required value={reason} onChange={e => setReason(e.target.value)}/></label>
-      <label className="check"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}/>已对照原件确认这项提示不构成内容遗漏或错误。</label>
-      <ActionFeedback {...action}/><button className="btn primary section-title" disabled={action.pending || !checked || !reason.trim() || !segment?.locators?.length}>记录该提示的核对证据</button>
+      <label className="field">{t("核对结果与原件证据")}<textarea required value={reason} onChange={e => setReason(e.target.value)}/></label>
+      <label className="check"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}/>{t("已对照原件确认这项提示不构成内容遗漏或错误。")}</label>
+      <ActionFeedback {...action}/><button className="btn primary section-title" disabled={action.pending || !checked || !reason.trim() || !segment?.locators?.length}>{t("记录该提示的核对证据")}</button>
     </form>
   </Modal>;
 }

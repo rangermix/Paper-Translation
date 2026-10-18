@@ -78,6 +78,13 @@ npm --prefix src/apps/web test
 npm --prefix src/apps/web run build
 ```
 
+Interface localization is checked by `src/apps/web/src/i18n.test.ts` (locale
+resolution, complete catalogs, interpolation and display-time status/error maps)
+and `tests/browser/i18n.spec.ts` (three UI languages, browser persistence and
+blocked storage, cross-tab updates, unchanged document content, unsaved settings,
+and desktop/mobile navigation). Existing browser cases use a fixed `zh-CN`
+browser locale; localization cases explicitly exercise other browser locales.
+
 See [browser tests](browser/README.md) for the local preview, evidence-dependent
 tests and explicit opt-in for tests that mutate an actual disposable application.
 

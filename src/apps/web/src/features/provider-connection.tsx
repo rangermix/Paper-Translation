@@ -1,3 +1,4 @@
+import { t, getUiLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, etagFor } from '../api';
 import { Modal } from '../components';
@@ -92,26 +93,26 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
 
   return <div className="provider-connection">
     <button className="btn" type="button" disabled={!canTest} onClick={() => { setRisk(false); setConfirm(true); }}>
-      {sending ? '正在提交测试…' : active ? '正在测试连接…' : local ? '测试本地翻译模型' : '测试 API 连接 / 密钥'}
+      {sending ? t("正在提交测试…") : active ? t("正在测试连接…") : local ? t("测试本地翻译模型") : t("测试 API 连接 / 密钥")}
     </button>
-    {dirty && <p className="field-note">请先保存当前修改，再测试连接。</p>}
-    {message && <p role="alert" className="notice error-notice">{message}{active && <button className="btn sm" type="button" onClick={() => setReadVersion(value => value + 1)}>读取测试状态</button>}</p>}
+    {dirty && <p className="field-note">{t("请先保存当前修改，再测试连接。")}</p>}
+    {message && <p role="alert" className="notice error-notice">{t(message)}{active && <button className="btn sm" type="button" onClick={() => setReadVersion(value => value + 1)}>{t("读取测试状态")}</button>}</p>}
     {result && <div role={['failed', 'outcome_unknown'].includes(result.status) ? 'alert' : 'status'} className={`notice ${result.status === 'succeeded' ? 'success-notice' : ''}`}>
-      <strong>{result.status === 'succeeded' ? '连接测试通过：服务已接受请求并返回有效结果。'
-        : active ? '正在测试已保存的配置，请稍候…'
-        : unknown ? '测试结果未知，可能已计费；不会自动重试。'
-        : result.status === 'cancelled' ? '测试已取消。已发送的请求仍可能计费。' : description(result.code)}</strong>
-      {unknown && result.code && result.code !== 'OUTCOME_UNKNOWN' && <p>{description(result.code)}</p>}
-      {result.completed_at && <p className="small muted">上次测试：{new Date(result.completed_at).toLocaleString()}{result.elapsed_ms != null ? ` · ${(result.elapsed_ms / 1000).toFixed(2)} 秒` : ''}</p>}
-      {!active && <p className="small muted">费用：{result.actual_micro == null || unknown ? '未计算' : `USD ${(result.actual_micro / 1_000_000).toFixed(6)}`}</p>}
-      <a className="small" href={`#/jobs/${encodeURIComponent(result.id)}`}>查看测试任务</a>
+      <strong>{result.status === 'succeeded' ? t("连接测试通过：服务已接受请求并返回有效结果。")
+        : active ? t("正在测试已保存的配置，请稍候…")
+        : unknown ? t("测试结果未知，可能已计费；不会自动重试。")
+        : result.status === 'cancelled' ? t("测试已取消。已发送的请求仍可能计费。") : t(description(result.code))}</strong>
+      {unknown && result.code && result.code !== 'OUTCOME_UNKNOWN' && <p>{t(description(result.code))}</p>}
+      {result.completed_at && <p className="small muted">{t("上次测试：{time}", { time: new Date(result.completed_at).toLocaleString(getUiLocale()) })}{result.elapsed_ms != null ? t(" · {seconds} 秒", { seconds: (result.elapsed_ms / 1000).toFixed(2) }) : ''}</p>}
+      {!active && <p className="small muted">{t("费用：")}{result.actual_micro == null || unknown ? t("未计算") : `USD ${(result.actual_micro / 1_000_000).toFixed(6)}`}</p>}
+      <a className="small" href={`#/jobs/${encodeURIComponent(result.id)}`}>{t("查看测试任务")}</a>
     </div>}
-    {confirm && <Modal title={local ? '测试本地翻译模型' : '测试 API 连接 / 密钥'} onClose={() => setConfirm(false)}>
-      {local ? <p>将在本机翻译固定测试文本 <code>Hello.</code>。</p> : <p>将向以下服务发送固定测试文本 <code>Hello.</code>，服务可能收费。</p>}
-      <dl className="kv"><dt>接口</dt><dd>{providerProtocols[provider.api_protocol ?? 'responses'].label}</dd><dt>服务地址</dt><dd>{provider.endpoint}</dd><dt>模型</dt><dd>{provider.model_id}</dd></dl>
-      {controlled && <label className="field">本次测试预算（USD）<input className="input" inputMode="decimal" value={budget} onChange={event => setBudget(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} placeholder="例如 0.10"/></label>}
-      {riskRequired && <label className="check"><input type="checkbox" checked={risk} onChange={event => setRisk(event.target.checked)}/>我接受再次测试可能重复计费的风险</label>}
-      <div className="stack"><button className="btn primary" type="button" disabled={!canTest || (riskRequired && !risk) || (controlled && (!Number.isSafeInteger(budgetMicro) || budgetMicro <= 0))} onClick={() => void send()}>确认并发送一次测试</button><button className="btn" type="button" onClick={() => setConfirm(false)}>取消</button></div>
+    {confirm && <Modal title={local ? t("测试本地翻译模型") : t("测试 API 连接 / 密钥")} onClose={() => setConfirm(false)}>
+      {local ? <p>{t("将在本机翻译固定测试文本 {text}。", { text: 'Hello.' })}</p> : <p>{t("将向以下服务发送固定测试文本 {text}，服务可能收费。", { text: 'Hello.' })}</p>}
+      <dl className="kv"><dt>{t("接口")}</dt><dd>{t(providerProtocols[provider.api_protocol ?? 'responses'].label)}</dd><dt>{t("服务地址")}</dt><dd>{provider.endpoint}</dd><dt>{t("模型")}</dt><dd>{provider.model_id}</dd></dl>
+      {controlled && <label className="field">{t("本次测试预算（USD）")}<input className="input" inputMode="decimal" value={budget} onChange={event => setBudget(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} placeholder={t("例如 0.10")}/></label>}
+      {riskRequired && <label className="check"><input type="checkbox" checked={risk} onChange={event => setRisk(event.target.checked)}/>{t("我接受再次测试可能重复计费的风险")}</label>}
+      <div className="stack"><button className="btn primary" type="button" disabled={!canTest || (riskRequired && !risk) || (controlled && (!Number.isSafeInteger(budgetMicro) || budgetMicro <= 0))} onClick={() => void send()}>{t("确认并发送一次测试")}</button><button className="btn" type="button" onClick={() => setConfirm(false)}>{t("取消")}</button></div>
     </Modal>}
   </div>;
 }

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ErrorNotice } from '../components';
 import { resourceId } from '../domain';
 import { useResource } from '../hooks';
@@ -24,11 +25,11 @@ export function PositionNotice({ position }: { position: ReadingPosition }) {
   if (!position.migration_required) return null;
   const previous = position.previous_position ?? (!position.current_artifact && position.block_id ? position : null);
   return <div className="field-note warn" role="status">
-    <strong>阅读位置属于另一个版本</strong>
-    <p>请在当前版本中手动选择段落以保存新位置。系统没有把旧位置自动迁移到当前版本。</p>
+    <strong>{t("阅读位置属于另一个版本")}</strong>
+    <p>{t("请在当前版本中手动选择段落以保存新位置。系统没有把旧位置自动迁移到当前版本。")}</p>
     <div className="stack">
-      {previous && <a href={`/artifacts/${resourceId(previous.artifact_id)}/index.html#b-${resourceId(previous.block_id!)}`} target="_blank" rel="noreferrer">查看旧版阅读位置</a>}
-      {position.current_artifact_id && !position.current_artifact && <a href={`/artifacts/${resourceId(position.current_artifact_id)}/index.html`} target="_blank" rel="noreferrer">打开当前阅读版本</a>}
+      {previous && <a href={`/artifacts/${resourceId(previous.artifact_id)}/index.html#b-${resourceId(previous.block_id!)}`} target="_blank" rel="noreferrer">{t("查看旧版阅读位置")}</a>}
+      {position.current_artifact_id && !position.current_artifact && <a href={`/artifacts/${resourceId(position.current_artifact_id)}/index.html`} target="_blank" rel="noreferrer">{t("打开当前阅读版本")}</a>}
     </div>
   </div>;
 }
@@ -39,6 +40,6 @@ export function EditionReadingPosition({ documentId, locale, artifactId }: { doc
   return <>
     <ErrorNotice error={result.error} retry={result.reload}/>
     {position && <PositionNotice position={position}/>}
-    {position?.current_artifact && !position.migration_required && position.block_id && <a className="btn sm" href={`/artifacts/${resourceId(artifactId)}/index.html#b-${resourceId(position.block_id)}`} target="_blank" rel="noreferrer">继续阅读已保存段落</a>}
+    {position?.current_artifact && !position.migration_required && position.block_id && <a className="btn sm" href={`/artifacts/${resourceId(artifactId)}/index.html#b-${resourceId(position.block_id)}`} target="_blank" rel="noreferrer">{t("继续阅读已保存段落")}</a>}
   </>;
 }

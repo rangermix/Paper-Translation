@@ -122,6 +122,8 @@ test('explicit historical export keeps that version and failures offer safe opti
   state.exportStatus = 'failed';
   await dialog.getByRole('button', { name: '生成下载文件', exact: true }).click();
   await expect.poll(() => writes[0]?.path).toBe('/artifacts/old/exports');
+  await expect(dialog.getByRole('alert').filter({ hasText: '本次操作未完成，请查看技术详情或稍后重试。' })).toBeVisible();
+  await dialog.getByText('错误技术详情', { exact: true }).click();
   await expect(dialog.getByText('Synthetic export failed', { exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: '重新选择导出选项', exact: true }).click();
   await expect(dialog.getByLabel('阅读版本', { exact: true })).toHaveValue('old');

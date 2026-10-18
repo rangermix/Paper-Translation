@@ -134,6 +134,9 @@ test('provider read errors block translation upload until the current configurat
   state.providerStatus = 503;
   await page.goto('/#/upload');
   await page.locator('#pdf-files').setInputFiles(file('provider-error.pdf'));
+  const failure = page.getByRole('alert').filter({ hasText: '暂时无法读取翻译服务配置。' }).first();
+  await expect(failure.locator('strong')).toHaveText('本次操作未完成，请查看技术详情或稍后重试。');
+  await failure.getByText('技术详情', { exact: true }).click();
   await expect(page.getByRole('alert').getByText('暂时无法读取翻译服务配置。', { exact: true }).first()).toBeVisible();
   await expect(uploadButton(page)).toBeDisabled();
   expect(writes).toEqual([]);

@@ -109,7 +109,7 @@ for (const format of ['single.html', 'bundle/index.html']) {
   });
 }
 
-test('footnotes and bibliography remain readable with JavaScript disabled', async ({ browser }) => {
+test('footnotes and bibliography remain readable with JavaScript disabled', async ({ browser }, testInfo) => {
   const context = await browser.newContext({ javaScriptEnabled: false, offline: true, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(pathToFileURL(resolve(folder, 'single.html')).href);
@@ -119,6 +119,7 @@ test('footnotes and bibliography remain readable with JavaScript disabled', asyn
   await expect(page).toHaveURL(/#b-ref1$/);
   await expect(page.locator('#b-ref1')).toBeInViewport();
   await expect(page.locator('#b-ref1')).toContainText('A useful result');
+  await page.screenshot({ path: testInfo.outputPath('sidenotes-no-javascript.png') });
   await context.close();
 });
 

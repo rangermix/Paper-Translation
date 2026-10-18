@@ -3,7 +3,7 @@ import { inputPath } from './paths';
 import {pathToFileURL} from 'node:url';
 import {writeFile} from 'node:fs/promises';
 
-test('actual worker unfinished-draft export remains labelled and usable under file offline', async ({page, context}, testInfo) => {
+test('actual worker unfinished-draft export remains labelled and usable under file offline', async ({page, context, browser}, testInfo) => {
   const supplied = process.env.LIBRARY_DRAFT_HTML;
   test.skip(!supplied, 'Requires an independently generated actual API -> worker draft HTML.');
   const file = inputPath(supplied!);
@@ -14,7 +14,8 @@ test('actual worker unfinished-draft export remains labelled and usable under fi
   await context.setOffline(true);
   await page.goto(pathToFileURL(file).href);
   await expect(page.getByText('DRAFT — 未完成草稿，缺失 1 块译文', {exact: true})).toBeVisible();
-  await expect(page.getByText('DRAFT — 此块译文未完成', {exact: true})).toBeVisible();
+  await expect(page.locator('#b-item [data-language=target]')).toContainText('此段尚无译文，以下保留原文');
+  await expect(page.locator('#b-item [data-language=target]')).toContainText('Keep the original.');
   await expect(page.locator('#b-item [data-language=source]')).toBeVisible();
   await expect(page.locator('#b-item [data-language=source]')).toContainText('Keep the original.');
   await expect(page.getByText('Later target sentinel')).toHaveCount(0);
@@ -22,19 +23,58 @@ test('actual worker unfinished-draft export remains labelled and usable under fi
   await expect(page.locator('img').first()).toHaveJSProperty('naturalWidth', 360);
   await page.screenshot({path: testInfo.outputPath('draft-offline-desktop.png'), fullPage: true});
   await page.getByRole('button', {name: '译文', exact: true}).click();
-  await expect(page.getByText('DRAFT — 此块译文未完成', {exact: true})).toBeVisible();
+  await expect(page.locator('#b-item [data-language=target]')).toBeVisible();
+  await expect(page.locator('#b-item [data-language=target]')).toContainText('此段尚无译文，以下保留原文');
   await expect(page.locator('#b-item [data-language=source]')).not.toBeVisible();
   await page.getByRole('button', {name: '双语', exact: true}).click();
-  await page.getByRole('link', {name: '注释', exact: true}).click();
+  const marker = page.getByRole('link', {name: '注释', exact: true});
+  await expect(marker).toHaveAttribute('href', '#b-fn1');
+  await marker.focus();
+  await page.keyboard.press('Enter');
+  const footnote = page.locator('#b-fn1-at-p2');
+  await expect(footnote).toBeInViewport();
+  await expect(footnote).toBeFocused();
+  await expect(footnote).toContainText('这是人工编写的契约样例。');
+  await footnote.getByRole('link', {name: '在脚注列表中查看', exact: true}).click();
   await expect(page).toHaveURL(/#b-fn1$/);
-  await page.getByRole('link', {name: '返回引用位置', exact: true}).click();
+  await expect(page.locator('.footnotes #b-fn1')).toBeInViewport();
+  await page.locator('.footnotes #b-fn1').getByRole('link', {name: '返回引用位置', exact: true}).click();
   await expect(page).toHaveURL(/#b-p2$/);
+  await expect(page.locator('#b-p2')).toBeInViewport();
+  // The return anchor resumes native sequential focus at the citing paragraph.
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#b-p2 [data-language=source] .footnote-link')).toBeFocused();
   await page.setViewportSize({width: 390, height: 844});
   await page.evaluate(() => scrollTo(0, 0));
   const width = await page.evaluate(() => ({scroll: document.documentElement.scrollWidth, viewport: innerWidth}));
   expect(width.scroll).toBeLessThanOrEqual(width.viewport);
   await page.screenshot({path: testInfo.outputPath('draft-offline-mobile.png'), fullPage: true});
+  const noScript = await browser.newContext({javaScriptEnabled: false, offline: true, viewport: {width: 390, height: 844}});
+  try {
+    const fallback = await noScript.newPage();
+    await fallback.bringToFront();
+    fallback.on('request', request => {if (/^https?:/.test(request.url())) requests.push(request.url());});
+    fallback.on('pageerror', error => errors.push(error.message));
+    await fallback.goto(pathToFileURL(file).href);
+    await expect(fallback.getByText('DRAFT — 未完成草稿，缺失 1 块译文', {exact: true})).toBeVisible();
+    await expect(fallback.getByText('Later target sentinel')).toHaveCount(0);
+    const fallbackMarker = fallback.getByRole('link', {name: '注释', exact: true});
+    await expect(fallbackMarker).toHaveAttribute('href', '#b-fn1');
+    await fallbackMarker.focus();
+    await fallback.keyboard.press('Enter');
+    await expect(fallback).toHaveURL(/#b-fn1$/);
+    const endnote = fallback.locator('.footnotes #b-fn1');
+    await expect(endnote).toBeInViewport();
+    await expect(endnote).toContainText('这是人工编写的契约样例。');
+    await endnote.getByRole('link', {name: '返回引用位置', exact: true}).focus();
+    await fallback.keyboard.press('Enter');
+    await expect(fallback).toHaveURL(/#b-p2$/);
+    await expect(fallback.locator('#b-p2')).toBeInViewport();
+    await fallback.keyboard.press('Tab');
+    await expect(fallback.locator('#b-p2 [data-language=source] .footnote-link')).toBeFocused();
+    await fallback.screenshot({path: testInfo.outputPath('draft-offline-no-javascript.png'), fullPage: true});
+  } finally { await noScript.close(); }
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
-  await writeFile(testInfo.outputPath('browser-review.json'), JSON.stringify({file, scheme: 'file', offline: true, draft_banner: true, missing_blocks: 1, source_preserved: true, later_edit_absent: true, footnote_roundtrip: true, desktop_width: 1440, mobile_width: 390, horizontal_overflow: false, network_requests: requests, page_errors: errors}, null, 2));
+  await writeFile(testInfo.outputPath('browser-review.json'), JSON.stringify({file, scheme: 'file', offline: true, draft_banner: true, missing_blocks: 1, source_preserved: true, later_edit_absent: true, footnote_roundtrip: true, footnote_context_focus: true, no_javascript_roundtrip: true, desktop_width: 1440, mobile_width: 390, horizontal_overflow: false, network_requests: requests, page_errors: errors}, null, 2));
 });

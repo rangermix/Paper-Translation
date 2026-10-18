@@ -75,7 +75,7 @@ for (const format of ['single.html', 'bundle/index.html']) {
   });
 }
 
-test('rich references and footnotes remain navigable without JavaScript', async ({ browser }) => {
+test('rich references and footnotes remain navigable without JavaScript', async ({ browser }, testInfo) => {
   const context = await browser.newContext({ javaScriptEnabled: false, offline: true, reducedMotion: 'reduce', viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(pathToFileURL(resolve(folder, 'single.html')).href);
@@ -88,5 +88,6 @@ test('rich references and footnotes remain navigable without JavaScript', async 
   await reference.click();
   await expect(page.locator(`#b-${referenceId}`)).toBeInViewport();
   await expect(page.locator('.footnotes .footnote-entry')).toHaveCount(4);
+  await page.screenshot({ path: testInfo.outputPath('rich-reader-no-javascript.png') });
   await context.close();
 });

@@ -68,6 +68,15 @@ def generate(root, *, long_only=False):
 
 
 class ArtifactRoutes(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # Chrome may request an implicit site icon. The fixture host has no app
+        # shell; report that absence without a spurious console resource error.
+        if self.path.split('?', 1)[0] == '/favicon.ico':
+            self.send_response(204)
+            self.end_headers()
+            return
+        super().do_GET()
+
     def translate_path(self, path):
         for version in ['3.0', '4.0', 'long']:
             path = path.replace(f'/artifacts/{version}/', f'/{version}/published/', 1)

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 const supplied = process.env.LIBRARY_READER_THEME_EVIDENCE;
 const folder = supplied ? inputPath(supplied) : '';
 const server = process.env.LIBRARY_READER_THEME_URL;
-test.beforeEach(() => test.skip(!supplied, 'Set LIBRARY_READER_THEME_EVIDENCE to generated reader-v13 fixtures.'));
+test.beforeEach(() => test.skip(!supplied, 'Set LIBRARY_READER_THEME_EVIDENCE to generated current reader fixtures.'));
 
 for (const version of ['3.0', '4.0']) {
   for (const format of ['published/index.html', 'single.html', 'bundle/index.html']) {
@@ -114,7 +114,7 @@ for (const version of ['3.0', '4.0']) {
       }
     });
 
-    test(`${version} ${format} follows the system without JavaScript`, async ({ browser }) => {
+    test(`${version} ${format} follows the system without JavaScript`, async ({ browser }, testInfo) => {
       const context = await browser.newContext({ javaScriptEnabled: false, colorScheme: 'dark', offline: !published });
       try {
         const page = await context.newPage();
@@ -123,6 +123,7 @@ for (const version of ['3.0', '4.0']) {
         await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(17, 23, 27)');
         await page.emulateMedia({ colorScheme: 'light' });
         await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(245, 242, 236)');
+        await page.screenshot({ path: testInfo.outputPath('theme-no-javascript.png') });
       } finally { await context.close(); }
     });
 

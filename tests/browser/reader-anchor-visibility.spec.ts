@@ -26,5 +26,5 @@ for(const template of ['reader-v1','reader-v2'])for(const format of ['single.htm
  await page.mouse.wheel(0,700);await expect.poll(async()=> (await page.locator(`[data-block-id="${refs[1].target_block_id}"] img`).boundingBox())!.y).toBeLessThan(-100);
  await page.setViewportSize({width:390,height:900});await expect.poll(async()=> (await page.locator(`[data-block-id="${refs[1].target_block_id}"] img`).boundingBox())!.y).toBeLessThan(0);
  await page.locator(`[data-block-id="${refs[1].owner}"] a[href="#b-${refs[1].target_block_id}"]`).click();await verify(refs[1],'same_hash_click_after_user_scroll');
- expect(errors).toEqual([]);expect(outbound).toEqual([]);await writeFile(testInfo.outputPath(`independent-anchor-${name}.json`),JSON.stringify({reviewer:'/root/web_ui',source_hash:response.source_hash,format,template,snapshots,storage_denial_readable:true,user_scroll_not_overridden_on_resize:true,errors,outbound},null,2));
+ expect(errors).toEqual([]);expect(outbound).toEqual([]);await writeFile(testInfo.outputPath(`independent-anchor-${name}.json`),JSON.stringify({runner:'playwright',source_hash:response.source_hash,format,template,snapshots,storage_denial_readable:true,user_scroll_not_overridden_on_resize:true,errors,outbound},null,2));
 });

@@ -45,7 +45,7 @@ test('existing runtime jobs resolve names and remain searchable without mutation
   await chosen.click();
   await page.getByText('任务技术信息', { exact: true }).click();
   await expect(page.locator('.job-technical')).toContainText(items[0].id);
-  await expect(page.locator('.task-layout > .panel h2').first()).toContainText(items[0].title);
+  await expect(page.locator('.job-detail h2').first()).toContainText(items[0].title);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: outputDirectory('jobs-live-detail-mobile.png'), fullPage: true });
   expect(writes).toEqual([]);

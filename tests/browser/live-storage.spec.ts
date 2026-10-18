@@ -17,8 +17,10 @@ test('real database document title tags and star survive cleared browser storage
   await page.getByLabel('搜索标题').fill(previous.title);
   await page.getByRole('button',{name:'搜索',exact:true}).click();
   const star=page.getByRole('button',{name:`收藏 ${previous.title}`,exact:true});
+  const unstar=page.getByRole('button',{name:`取消收藏 ${previous.title}`,exact:true});
+  await expect(star.or(unstar)).toBeVisible();
   if(await star.isVisible()) await star.click();
-  await expect(page.getByRole('button',{name:`取消收藏 ${previous.title}`,exact:true})).toBeVisible();
+  await expect(unstar).toBeVisible();
   await page.goto(`/${previous.href}`);
   const before=await page.request.get(`/api/v1/documents/${documentId}`).then(r=>r.json());
   expect(before.starred).toBe(true);expect(before.tags).toEqual(expect.arrayContaining(['agent-acceptance','upload-isolation']));

@@ -27,5 +27,5 @@ for(const format of ['single.html','bundle/index.html'])test(`independent offlin
  });
  expect(textOverflow[0].scrollWidth,'Literal long tokens must not be clipped within the text container').toBeLessThanOrEqual(textOverflow[0].clientWidth);
  await page.screenshot({path:testInfo.outputPath(`independent-${name}-320.png`),fullPage:true});
- await writeFile(testInfo.outputPath(`independent-${name}-facts.json`),JSON.stringify({reviewer:'/root/web_ui',format,sha256:createHash('sha256').update(await readFile(resolve(dir,format))).digest('hex'),literal_payload_exact:true,attack_ran:false,outbound:requests,errors,viewport320_no_overflow:true,textOverflow},null,2));
+ await writeFile(testInfo.outputPath(`independent-${name}-facts.json`),JSON.stringify({runner:'playwright',format,sha256:createHash('sha256').update(await readFile(resolve(dir,format))).digest('hex'),literal_payload_exact:true,attack_ran:false,outbound:requests,errors,viewport320_no_overflow:true,textOverflow},null,2));
 });

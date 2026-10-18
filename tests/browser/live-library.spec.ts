@@ -20,10 +20,10 @@ test('real Compose PDF upload persists across browser reload and metadata change
   await expect(duplicate.or(saved)).toBeVisible({ timeout: 60000 });
   if (await duplicate.isVisible()) await duplicate.click();
   await saved.click();
-  await expect(page.getByRole('heading', { name: '原件', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '编辑题名与标签' }).click();
+  await expect(page.getByRole('heading', { name: '文档信息', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '编辑标题与标签' }).click();
   const uniqueTitle = `Agent acceptance ${Date.now()}`;
-  await page.getByLabel('题名', { exact: true }).fill(uniqueTitle);
+  await page.getByLabel('标题', { exact: true }).fill(uniqueTitle);
   await page.getByLabel('标签（逗号分隔）').fill('agent-acceptance, PDF');
   await page.getByRole('button', { name: '保存目录信息', exact: true }).click();
   await expect(page.getByRole('heading', { name: uniqueTitle, exact: true })).toBeVisible();

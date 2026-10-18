@@ -27,7 +27,11 @@ for (const template of ['reader-v1', 'reader-v2']) for (const format of ['single
       await expect(element).toHaveCount(1);
       if (block.source_text) {
         const source = element.locator('[data-language="source"]');
-        const text = await (await source.count() ? source : element.locator('code')).first().evaluate(node => {
+        const retained = element.locator('[data-original-only]');
+        // Original-only references deliberately have no translated language side.
+        const original = await source.count() ? source : await retained.count() ? retained : element.locator('code');
+        await expect(original).toHaveCount(1);
+        const text = await original.evaluate(node => {
           const copy = node.cloneNode(true) as HTMLElement;
           copy.querySelectorAll('.label').forEach(label => label.remove());
           return copy.textContent ?? '';
@@ -73,6 +77,6 @@ for (const template of ['reader-v1', 'reader-v2']) for (const format of ['single
     await page.screenshot({ path: `${prefix}-desktop.png`, fullPage: true });
     expect(errors).toEqual([]);
     expect(network).toEqual([]);
-    await writeFile(`${prefix}-facts.json`, JSON.stringify({ reviewer: '/root/web_ui', scope: 'authored M0 fixture only', file, blocks: Object.keys(manifest.blocks).length, exact_source_target_text: true, table_grids_and_spans: true, nested_toc: true, exact_code_and_local_scroll: code, footnote_roundtrip: true, viewport320: dimensions, errors, network }, null, 2));
+    await writeFile(`${prefix}-facts.json`, JSON.stringify({ runner: 'playwright', scope: 'authored M0 fixture only', file, blocks: Object.keys(manifest.blocks).length, exact_source_target_text: true, table_grids_and_spans: true, nested_toc: true, exact_code_and_local_scroll: code, footnote_roundtrip: true, viewport320: dimensions, errors, network }, null, 2));
   });
 }

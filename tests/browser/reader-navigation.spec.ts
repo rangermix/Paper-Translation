@@ -89,7 +89,7 @@ for (const version of ['3.0', '4.0']) {
     }
   });
 
-  test(`${version} no-script online return works while exports are independent`, async ({ browser }) => {
+  test(`${version} no-script online return works while exports are independent`, async ({ browser }, testInfo) => {
     const context = await browser.newContext({ javaScriptEnabled:false });
     try {
       const page = await context.newPage();
@@ -101,6 +101,7 @@ for (const version of ['3.0', '4.0']) {
         await expect(page.locator('[data-online-reader]')).toHaveCount(0);
         await expect(page.locator('article')).toBeVisible();
       }
+      await page.screenshot({ path: testInfo.outputPath('navigation-no-javascript.png') });
     } finally { await context.close(); }
   });
 }

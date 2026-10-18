@@ -14,7 +14,8 @@ for (const file of ['reading.html', 'artifact/index.html']) {
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     await context.setOffline(true);
     await page.goto(pathToFileURL(inputPath(`${supplied}/${file}`)).href);
-    await expect(page).toHaveTitle('Publication fixture');
+    await expect(page).toHaveTitle('译文 title');
+    await expect(page.locator('.original-title')).toHaveText('Publication fixture');
     await expect(page.locator('article')).toContainText('We evaluate the method');
     for (const width of [1440, 390]) {
       await page.setViewportSize({width, height: width === 1440 ? 1060 : 844});
@@ -22,7 +23,9 @@ for (const file of ['reading.html', 'artifact/index.html']) {
         await page.getByRole('button', {name: view, exact: true}).click();
         for (const id of retained) {
           const block = page.locator(`[data-block-id="${id}"]`);
-          await expect(block.locator('[data-original-only]')).toBeVisible();
+          const original = page.locator(`[data-block-id="${id}"][data-original-only], [data-block-id="${id}"] [data-original-only]`);
+          await expect(original).toHaveCount(1);
+          await expect(original).toBeVisible();
           await expect(block.locator('[data-language="target"]')).toHaveCount(0);
           await expect(block).not.toContainText('暂无译文');
         }
@@ -42,13 +45,19 @@ for (const file of ['reading.html', 'artifact/index.html']) {
   });
 }
 
-test('original-only content is readable with JavaScript disabled', async ({browser}) => {
+test('original-only content is readable with JavaScript disabled', async ({browser}, testInfo) => {
   test.skip(!supplied, 'Requires the isolated original-only workflow artifact.');
   const context = await browser.newContext({javaScriptEnabled: false, offline: true});
   try {
     const page = await context.newPage();
     await page.goto(pathToFileURL(inputPath(`${supplied}/reading.html`)).href);
-    for (const id of retained) await expect(page.locator(`#b-${id} [data-original-only]`)).toBeVisible();
+    for (const id of retained) {
+      const original = page.locator(`#b-${id}[data-original-only], #b-${id} [data-original-only]`);
+      await expect(original).toHaveCount(1);
+      await expect(original).toBeVisible();
+      await expect(page.locator(`#b-${id} [data-language="target"]`)).toHaveCount(0);
+    }
     await expect(page.locator('#b-body')).toContainText('We evaluate the method');
+    await page.screenshot({path: testInfo.outputPath('original-only-no-javascript.png'), fullPage: true});
   } finally { await context.close(); }
 });

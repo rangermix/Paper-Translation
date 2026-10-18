@@ -30,9 +30,9 @@ test('real inspector rejects one selected PDF while the following PDF is saved i
   const href=await saved.getAttribute('href');
   await page.screenshot({path:resolve(outputDirectory('live'), 'live-multiple-independent.png'),fullPage:true});
   await saved.click();
-  await page.getByRole('button',{name:'编辑题名与标签'}).click();
+  await page.getByRole('button',{name:'编辑标题与标签'}).click();
   const title=`Agent multi-file isolation ${Date.now()}`;
-  await page.getByLabel('题名',{exact:true}).fill(title);
+  await page.getByLabel('标题',{exact:true}).fill(title);
   await page.getByLabel('标签（逗号分隔）').fill('agent-acceptance, upload-isolation');
   await page.getByRole('button',{name:'保存目录信息',exact:true}).click();
   await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();
@@ -47,13 +47,15 @@ test('real EventSource reconnect carries its server cursor and reloads authorita
   test.setTimeout(60000);
   const jobs=await page.request.get('/api/v1/jobs?limit=100').then(r=>r.json());
   let chosen:any;let cursor='';
-  for(const j of jobs.items){const body=await page.request.get(`/api/v1/jobs/${j.id}/events`).then(r=>r.text()); const ids=[...body.matchAll(/^id: (.+)$/gm)];if(ids.length){chosen=j;cursor=ids.at(-1)![1];break;}}
-  expect(chosen,'An existing durable job event is required').toBeTruthy();
+  // Active jobs can append events between this read and the browser subscription.
+  // A terminal job gives this reconnect test a stable, real durable cursor.
+  for(const j of jobs.items.filter((job:any)=>['succeeded','completed_with_warnings','failed','cancelled'].includes(job.status))){const body=await page.request.get(`/api/v1/jobs/${j.id}/events`).then(r=>r.text()); const ids=[...body.matchAll(/^id: (.+)$/gm)];if(ids.length){chosen=j;cursor=ids.at(-1)![1];break;}}
+  expect(chosen,'An existing terminal job with a durable event is required').toBeTruthy();
   const cursors:string[]=[];const generations:number[]=[];let expiredCursorSent=false;let snapshotRequired=false;
   page.on('request',async r=>{if(r.url().includes(`/jobs/${chosen.id}/events`))cursors.push((await r.allHeaders())['last-event-id']??'');});
   page.on('response',async r=>{if(new URL(r.url()).pathname===`/api/v1/jobs/${chosen.id}` && r.status()===200){try{generations.push((await r.json()).generation);}catch{}}});
   await page.goto(`/#/jobs/${chosen.id}`);
-  await expect(page.locator('.task-layout > .panel h2').first()).toBeVisible();
+  await expect(page.locator('.job-detail h2').first()).toBeVisible();
   await page.getByText('任务技术信息',{exact:true}).click();
   await expect(page.locator('.job-technical')).toContainText(chosen.id);
   await expect.poll(()=>cursors.includes(cursor),{timeout:15000}).toBe(true);

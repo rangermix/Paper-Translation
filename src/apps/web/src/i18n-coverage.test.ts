@@ -162,7 +162,9 @@ describe('UI localization coverage contract', () => {
   });
   it('has no unlocalized authored text in application UI, accessibility attributes or CSS content', () => {
     const files = import.meta.glob(['./**/*.ts', './**/*.tsx', './**/*.css', '../index.html', '../../../packages/templates/reader-v15.js', '!./**/*.test.ts', '!./locales/**'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-    expect(Object.keys(files)).toContain('../../../packages/templates/reader-v15.js');
+    // Vite normalizes excess parent segments at the filesystem root in Docker.
+    // Both the checkout and /web build must still include the actual reader file.
+    expect(Object.keys(files).some(path => path.endsWith('/packages/templates/reader-v15.js'))).toBe(true);
     expect(auditUi(files)).toEqual([]);
   });
   it('has translations for source-key maps as well as direct calls', () => {

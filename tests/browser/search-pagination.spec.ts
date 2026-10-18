@@ -10,9 +10,9 @@ for (const filter of ['side', 'locale']) test(`changing search ${filter} restart
     }
     return route.fulfill({ json: url.pathname.endsWith('/settings/preferences') ? { theme: 'light' } : {} });
   });
-  await page.goto('/#/search');
-  await page.getByLabel('正文搜索').fill('translation');
-  await page.getByRole('button', { name: '搜索正文' }).click();
+  await page.goto('/#/search?scope=body');
+  await page.getByRole('textbox', { name: '搜索文档', exact: true }).fill('translation');
+  await page.getByRole('button', { name: '搜索', exact: true }).click();
   await page.getByRole('button', { name: '下一页结果' }).click();
   await expect.poll(() => queries.at(-1)?.get('cursor')).toBe('entry-30');
   if (filter === 'side') await page.getByLabel('搜索范围').selectOption('target');

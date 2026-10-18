@@ -16,6 +16,12 @@ import { DraftExportLoader } from './draft-export';
 import type { Capability, Document, History, Page, Provider } from '../types';
 import './library.css';
 
+function processingLink(status?: string | null) {
+  if (['succeeded', 'completed', 'completed_with_warnings', 'partially_completed', 'failed', 'cancelled'].includes(status ?? '')) return '最近处理记录';
+  if (['pending', 'queued', 'running', 'paused', 'cancel_requested', 'waiting_config', 'waiting_configuration', 'waiting_budget', 'outcome_unknown', 'needs_review'].includes(status ?? '')) return '查看处理进度';
+  return '查看处理记录';
+}
+
 function CurrentArtifactLinks({ doc }: { doc: Document }) {
   const editions = doc.editions.filter(edition => edition.current_artifact_id);
   return <>{editions.map(edition => <a className="btn primary" key={edition.id} href={`/read/${resourceId(doc.id)}/${resourceId(edition.target_locale)}`} target="_blank" rel="noreferrer" title={`阅读当前已发布版本 · ${languageName(edition.target_locale)}`}><Icon name="book"/>阅读{editions.length > 1 ? ` ${languageName(edition.target_locale)}` : ''}</a>)}</>;
@@ -52,7 +58,7 @@ export function Library() {
           {doc.title.length > 65 && <details className="doc-full-title"><summary>完整标题</summary><p>{doc.title}</p></details>}
           <BibliographyLine doc={doc}/>
           <div className="doc-meta"><span>{doc.editions.filter(edition => edition.current_artifact_id).map(edition => languageName(edition.target_locale)).join(' · ') || '原文 PDF 已保存'}</span><span>{doc.source_asset?.page_count ?? doc.page_count ?? '—'} 页</span>{doc.tags.map(value => <span key={value}>{value}</span>)}</div>
-          {doc.current_job_id && <a className="current-job" href={`#/jobs/${doc.current_job_id}`}>查看处理记录</a>}
+          {doc.current_job_id && <a className="current-job" href={`#/jobs/${doc.current_job_id}`}>{processingLink(doc.current_job_status)}</a>}
         </div>
         <div className="doc-footer"><CurrentArtifactLinks doc={doc}/><a className="btn" href={`/api/v1/documents/${resourceId(doc.id)}/original`} target="_blank" rel="noreferrer"><Icon name="pdf"/>原文 PDF</a><a className="btn ghost" href={`#/documents/${doc.id}`}>管理 <Icon name="arrow"/></a></div>
       </article>)}</div> : <Empty title={submitted || tag || starred ? '没有匹配的文档' : '从一份 PDF 开始'}><a className="btn primary" href="#/upload">上传 PDF</a></Empty>}
@@ -93,8 +99,9 @@ export function DocumentDetail({ id, capability }: { id: string; capability?: Ca
         <p className="document-tags">{doc.tags.join(' · ') || '尚无标签'}</p>{doc.note && <p className="field-note">{doc.note}</p>}
         <div className="stack"><a className="btn" href={`/api/v1/documents/${resourceId(id)}/original`} target="_blank" rel="noreferrer"><Icon name="pdf"/>查看原文 PDF</a>
           <button className="btn" onClick={() => { setTitle(doc.title); setTags(doc.tags.join(', ')); setEditing(true); }}>编辑标题与标签</button>
+          <a className="btn" href={`#/glossary?document=${encodeURIComponent(doc.id)}`}>管理本篇术语</a>
           <button className="btn" disabled={action.pending} onClick={() => void action.run(async () => { await api(`/documents/${resourceId(id)}`, { method: 'PATCH', etag: etagFor(doc), body: { starred: !doc.starred } }); result.reload(); })}>{doc.starred ? '取消收藏' : '收藏'}</button>
-          {doc.import_id && <a className="btn" href={`#/preflight/${doc.import_id}`}>查看解析结果</a>}{doc.current_job_id && <a className="btn" href={`#/jobs/${doc.current_job_id}`}>查看处理记录</a>}
+          {doc.import_id && <a className="btn" href={`#/preflight/${doc.import_id}`}>查看解析结果</a>}{doc.current_job_id && <a className="btn" href={`#/jobs/${doc.current_job_id}`}>{processingLink(doc.current_job_status)}</a>}
         </div>
         <LegacySourceNotice key={doc.id} documentId={doc.id} artifactIds={doc.editions.flatMap(edition => edition.current_artifact_id ? [edition.current_artifact_id] : [])}/>
         <details className="document-disclosure"><summary>文献信息与查询</summary><BibliographyDetails doc={doc} refresh={result.reload}/></details>

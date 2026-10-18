@@ -1,5 +1,6 @@
 """Real PostgreSQL + worker publication, with network construction forbidden."""
 import copy
+from datetime import timedelta
 import json
 from pathlib import Path
 import shutil
@@ -8,7 +9,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import event, func, select
 
-from packages.domain.models import (Artifact, Document, Edition, Job, Permit, SourceAsset,
+from packages.domain.models import (Artifact, Document, Edition, Job, Permit, SourceAsset, now,
     SourceRevision, Task, TranslationCache, TranslationRevision)
 from packages.editorial.drafts import render_input
 from packages.ir import digest
@@ -21,7 +22,7 @@ pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.parametrize('template_id', ['reader-v2', 'reader-v13'])
+@pytest.mark.parametrize('template_id', ['reader-v2', 'reader-v13', 'reader-v14'])
 def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(database, template_id):
     db, cfg = database
     fixture = json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))
@@ -63,7 +64,11 @@ def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(databa
                 'edition_id': edition_id, 'expected_generation': 1}
             session.add(Job(id=f'rebuild_{i}', document_id=doc_id, stage='rebuild', payload=payload))
             session.flush()
-            session.add(Task(id=f'task_{i}', job_id=f'rebuild_{i}', kind='rebuild', payload=payload))
+            # These are immediately runnable fixture jobs; publication behavior,
+            # not wall-clock scheduling, is under test. Leave room for a host/VM
+            # clock correction while building the twenty immutable inputs.
+            session.add(Task(id=f'task_{i}', job_id=f'rebuild_{i}', kind='rebuild', payload=payload,
+                available_at=now() - timedelta(minutes=5)))
 
     cache_writes = []
     def observe(_conn, _cursor, statement, _parameters, _context, _many):
@@ -83,7 +88,16 @@ def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(databa
     with db.transaction() as session:
         assert session.scalar(select(func.count()).select_from(TranslationCache)) == 0
         assert session.scalar(select(func.count()).select_from(Permit)) == 0
-        assert session.scalar(select(func.count()).select_from(Artifact)) == 40
+        artifact_count = session.scalar(select(func.count()).select_from(Artifact))
+        unfinished = [
+            {'job': job.id, 'job_status': job.status, 'error': job.error, 'progress': job.progress,
+             'task': task.id, 'task_status': task.status, 'attempts': task.attempts, 'result': task.result,
+             'created_at': task.created_at.isoformat(), 'available_at': task.available_at.isoformat(),
+             'lease_expires': task.lease_expires.isoformat() if task.lease_expires else None}
+            for job, task in session.execute(select(Job, Task).join(Task, Task.job_id == Job.id))
+            if job.status != 'succeeded'
+        ]
+        assert artifact_count == 40, json.dumps({'artifact_count': artifact_count, 'now': now().isoformat(), 'unfinished': unfinished}, ensure_ascii=False, indent=2)
         for i in range(20):
             assert session.get(Job, f'rebuild_{i}').status == 'succeeded'
             edition = session.get(Edition, f'edition_{i}')

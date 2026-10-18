@@ -26,6 +26,7 @@ def test_all_requested_parsers_have_pinned_manifests_and_public_choices():
         assert len(model['revision']) == 40
         assert model['files'] and all(len(f['sha256']) == 64 and f['size'] > 0 for f in model['files'])
         assert rows[model['id']]['download_bytes'] == sum(f['size'] for f in model['files'])
+        assert rows[model['id']]['model_id'] == model['repo']
         assert model['id'] in download_spec(model['id'])[0]['path'] or model['revision'] in download_spec(model['id'])[0]['path']
     assert rows[INFINITY_PRO_PROFILE]['devices'] == ['dmr']
     assert set(DMR_PROFILES) == set(PROFILE_IDS)

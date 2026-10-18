@@ -34,8 +34,10 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
   const [catalogCode, setCatalogCode] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [pending, setPending] = useState(false);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!active) return;
+    setLoading(true);
     let alive = true;
     let timer: number;
     const controller = new AbortController();
@@ -43,7 +45,7 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
       try { const result = await api<{ models: LocalModel[]; code?: string }>(`/settings/local-models${analysis ? '?purpose=analysis' : ''}`, { signal: controller.signal });
         if (alive) { setModels(result.models ?? []); setCatalogCode(result.code ?? ''); setError(undefined); }
       } catch (reason) { if (alive) setError(reason as Error); }
-      finally { if (alive) timer = window.setTimeout(() => void read(), 5000); }
+      finally { if (alive) { setLoading(false); timer = window.setTimeout(() => void read(), 5000); } }
     };
     void read();
     return () => { alive = false; controller.abort(); window.clearTimeout(timer); };
@@ -108,6 +110,7 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
     finally { setPending(false); }
   }
   return <section className="local-model-settings" aria-label={`本地${role}模型`} hidden={!active}>
+    <p className="settings-hint">{analysis ? '用途：翻译前的背景与术语准备。正文翻译仍使用翻译服务中的模型。' : '用途：在当前实例中生成译文。'}选择和保存不会下载或加载模型。</p>
     <label className="field">模型系列<select aria-label="模型系列" value={choice.family} onChange={event => changeFamily(event.target.value)}>
       <option value="">请选择模型系列</option>
       {families.map(([family, label]) => <option key={family} value={family}>{label}</option>)}
@@ -122,7 +125,7 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
     </select></label>
     <label className="field">具体模型 ID<select aria-label="具体模型 ID" value={selected?.model_id ?? ''} onChange={event => changeModel(event.target.value)} disabled={!choice.format}>
       <option value="">请选择模型 ID</option>
-      {finalModels.map(model => <option key={model.id} value={model.model_id}>{model.repo} · {model.id}</option>)}
+      {finalModels.map(model => <option key={model.id} value={model.model_id}>{model.label || model.repo} · {model.id}</option>)}
     </select></label>
     <label className="field">推理后端<select aria-label="推理后端" value={selected ? selectedBackend : ''} onChange={event => changeBackend(event.target.value)} disabled={!selected}>
       <option value="">请选择推理后端</option>
@@ -130,12 +133,13 @@ export function LocalModels({ value, backend, onChange, active, onAvailabilityCh
       {selected && selectedBackend && !compatible && <option value={selectedBackend}>已保存后端（当前模型或部署不支持）</option>}
     </select></label>
     {selected && !compatible && <p className="field-note error-text">所选后端与当前模型或部署不兼容，请选择支持的推理后端。</p>}
-    {value && !selected && <p className="field-note error-text">已保存的模型在当前部署中不可用。请选择当前后端提供的模型。</p>}
+    {!loading && !error && value && !selected && <p className="field-note error-text">已保存的模型在当前部署中不可用，当前值仍保留：<code>{value}</code>。请选择当前后端提供的模型。</p>}
     {catalogCode === 'LOCAL_MODEL_SERVICE_UNAVAILABLE' && <p className="field-note">本地翻译服务未启动或无法连接，仍可选择和保存模型。准备模型和{role}前，请在部署中启用本地翻译服务。</p>}
-    {!models.length && <p className="field-note">当前部署没有可选的本地{role}模型，请检查部署支持的格式与后端。</p>}
-    {selected && <><p className="local-model-status" role="status">{!compatible ? backendLabels.LOCAL_MODEL_BACKEND_UNSUPPORTED : backendLabels[state?.code ?? ''] ?? modelStatusLabels[state?.status ?? 'unavailable'] ?? '状态待刷新'} · {selected.format.toUpperCase()} {selected.quantization} · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
+    {loading && !models.length && <p className="settings-hint" role="status">正在读取模型目录…</p>}
+    {!loading && !error && !models.length && <p className="field-note">当前部署没有可选的本地{role}模型，请检查部署支持的格式与后端。</p>}
+    {selected && <><strong className="model-choice-name">{selected.label || selected.repo}</strong><p className="local-model-status" role="status">{error ? '状态更新失败，请刷新后核对' : !compatible ? backendLabels.LOCAL_MODEL_BACKEND_UNSUPPORTED : backendLabels[state?.code ?? ''] ?? modelStatusLabels[state?.status ?? ''] ?? '状态未提供'} · {selected.format.toUpperCase()} {selected.quantization} · 下载约 {(selected.download_bytes / 1e9).toFixed(1)} GB</p>
       {state?.code === 'LOCAL_CUDA_PROBE_MISSING' && <p className="field-note">Docker Model Runner 已启用，但缺少 GPU 检测组件。请修复 Docker Desktop 的推理组件后刷新状态。</p>}
-      <p className="local-model-id mono">{selected.model_id}</p>
+      <details className="model-choice-details"><summary>模型 ID 与性能说明</summary><dl className="kv"><dt>模型 ID</dt><dd className="mono">{selected.model_id}</dd><dt>来源</dt><dd>{selected.repo}</dd></dl><p>当前设备的速度与质量对比：未提供。参数规模、量化与下载大小不代表实测效果。</p></details>
       <ModelMemory reference={selected.memory_reference} unified={backend === 'mlx'}/>
       {state?.status === 'downloading' && state.total_bytes ? <progress aria-label="模型下载进度" value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
       <div className="stack"><button type="button" className="btn" onClick={() => void prepare()} disabled={!compatible || pending || ['queued', 'downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}>{pending ? '正在请求…' : '立即准备模型'}</button><button type="button" className="btn" onClick={() => setRefresh(n => n + 1)}>刷新模型状态</button></div>

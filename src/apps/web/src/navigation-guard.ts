@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
 type Guard = { ask: () => Promise<boolean>; active: () => boolean };
-let currentGuard: Guard | undefined;
+const guards = new Set<Guard>();
+const hasActiveGuard = () => [...guards].some(guard => guard.active());
 
 /** Ask the mounted form before an action that replaces its current inputs. */
-export function requestNavigation(): Promise<boolean> {
-  return currentGuard ? currentGuard.ask() : Promise.resolve(true);
+export async function requestNavigation(): Promise<boolean> {
+  for (const guard of [...guards].reverse()) {
+    if (guards.has(guard) && guard.active() && !await guard.ask()) return false;
+  }
+  return true;
 }
 
 export function useNavigationGuard(active: boolean) {
@@ -13,21 +17,21 @@ export function useNavigationGuard(active: boolean) {
   activeRef.current = active;
   const pending = useRef<{ promise: Promise<boolean>; resolve: (proceed: boolean) => void } | undefined>(undefined);
   const [requested, setRequested] = useState(false);
+  const request = () => {
+    if (!activeRef.current) return Promise.resolve(true);
+    if (!pending.current) {
+      let resolve!: (proceed: boolean) => void;
+      const promise = new Promise<boolean>(done => { resolve = done; });
+      pending.current = { promise, resolve };
+      setRequested(true);
+    }
+    return pending.current.promise;
+  };
   useEffect(() => {
-    const ask = () => {
-      if (!activeRef.current) return Promise.resolve(true);
-      if (!pending.current) {
-        let resolve!: (proceed: boolean) => void;
-        const promise = new Promise<boolean>(done => { resolve = done; });
-        pending.current = { promise, resolve };
-        setRequested(true);
-      }
-      return pending.current.promise;
-    };
-    const guard: Guard = { ask, active: () => activeRef.current };
-    currentGuard = guard;
+    const guard: Guard = { ask: request, active: () => activeRef.current };
+    guards.add(guard);
     return () => {
-      if (currentGuard === guard) currentGuard = undefined;
+      guards.delete(guard);
       pending.current?.resolve(false);
       pending.current = undefined;
     };
@@ -48,7 +52,7 @@ export function useNavigationGuard(active: boolean) {
     if (proceed) activeRef.current = false;
     request?.resolve(proceed);
   };
-  return { requested, resolve };
+  return { requested, resolve, request };
 }
 
 const positionKey = '__libraryRoutePosition';
@@ -70,7 +74,7 @@ export function watchGuardedHash(commit: (hash: string) => void) {
     const state = history.state?.[positionKey] as RoutePosition | undefined;
     const target = state?.hash === location.hash ? state : { index: accepted.index + 1, hash: location.hash };
     stamp(target);
-    if (!currentGuard?.active()) { accepted = target; commit(target.hash); return; }
+    if (!hasActiveGuard()) { accepted = target; commit(target.hash); return; }
     pending = true;
     const delta = target.index - accepted.index;
     // Restore the actual history entry, rather than replacing the destination URL.
@@ -89,7 +93,7 @@ export function watchGuardedHash(commit: (hash: string) => void) {
     const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[href]');
     if (!link || link.target && link.target !== '_self' || link.hasAttribute('download')) return;
     const destination = new URL(link.href, location.href);
-    if (destination.origin !== location.origin || destination.pathname !== location.pathname || destination.search !== location.search || !destination.hash.startsWith('#/') || destination.hash === accepted.hash || !currentGuard?.active()) return;
+    if (destination.origin !== location.origin || destination.pathname !== location.pathname || destination.search !== location.search || !destination.hash.startsWith('#/') || destination.hash === accepted.hash || !hasActiveGuard()) return;
     event.preventDefault();
     if (pending) return;
     pending = true;

@@ -63,6 +63,7 @@ def test_import_starts_frozen_pipeline_and_replay_does_not_duplicate(client, dat
     result = client.post('/api/v1/imports', json=body, headers=headers)
     assert result.status_code == 201, result.text
     assert result.json()['status'] == 'parsing'
+    assert result.json()['current_job_status'] == 'pending'
     assert client.post('/api/v1/imports', json=body, headers=headers).json() == result.json()
     with db.transaction() as session:
         jobs = session.scalars(select(Job).where(Job.document_id == result.json()['id'])).all()
@@ -98,6 +99,8 @@ def test_upload_includes_inspection_and_links_to_separate_parse_task(client, dat
         assert parse.payload['upload_id'] == 'uploaded_pdf'
         parse.status = 'succeeded'
         session.scalar(select(Task).where(Task.job_id == parse.id)).status = 'succeeded'
+    finished = client.get(f'/api/v1/documents/{document_id}').json()
+    assert finished['current_job_status'] == 'succeeded'
     # An explicitly requested reparse is a new user action on the same paper.
     reparse = client.post(f'/api/v1/documents/{document_id}/parse',
         json={'source_asset_id': 'source_pdf'},

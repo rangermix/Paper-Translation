@@ -3,6 +3,7 @@ import { api, etagFor } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
 import { useAction, useResource } from '../hooks';
 import type { Preferences } from '../types';
+import { useSettingsForm, useSettingsRefresh } from './settings-state';
 
 export type ResourcePolicy = { max_ram_percent: number; max_vram_percent: number; master_concurrency: number;
   subjob_concurrency: number; auto_concurrency: boolean };
@@ -54,13 +55,24 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
   const valid = fields.every(([key, , min, max]) => Number.isInteger(values[key]) && values[key] >= min && values[key] <= max);
   const saved = preferences?.resources ?? defaults;
   const capacity = status.error ? undefined : status.data;
+  const dirty = Boolean(preferences && JSON.stringify(values) !== JSON.stringify({ ...defaults, ...preferences.resources }));
+  const canSave = Boolean(preferences && valid && !action.pending && !action.error);
+  const session = useSettingsForm('resources', { label: '资源与并发', dirty, pending: action.pending, canSave, save,
+    discard: () => { setDraft({}); action.clear(); } });
+  const refresh = useSettingsRefresh(dirty, () => { action.clear(); reload(); });
+  async function save() {
+    if (!canSave) return false;
+    let success = false;
+    await action.run(async () => {
+      const current = session?.preferences() ?? preferences;
+      const result = await api<Preferences>('/settings/preferences', { method: 'PATCH', etag: etagFor(current), body: { resources: values } });
+      session?.remember(result); onSaved(result); setDraft({}); status.reload(); success = true;
+    }, '资源设置已保存，将用于后续任务调度。');
+    return success;
+  }
   return <section className="panel resource-panel" aria-labelledby="resources-title"><h2 id="resources-title">资源与并发</h2>
-    {!preferences ? <Loading/> : <form onSubmit={event => { event.preventDefault(); if (!valid || action.pending || action.error) return;
-      void action.run(async () => {
-        const result = await api<Preferences>('/settings/preferences', { method: 'PATCH', etag: etagFor(preferences), body: { resources: values } });
-        onSaved(result); setDraft({}); status.reload();
-      }, '资源设置已保存，将用于后续任务调度。');
-    }}>
+    {!preferences ? <Loading/> : <form onSubmit={event => { event.preventDefault(); void save(); }}>
+      {dirty && <p className="settings-unsaved small">未保存</p>}
       <div className="resource-fields">{fields.map(([key, label, min, max]) => <label className="field" key={key}>{label}
         <input className="input" type="number" min={min} max={max} step={1} required value={Number.isNaN(values[key]) ? '' : values[key]}
           disabled={action.pending} onChange={event => setDraft(previous => ({ ...previous, [key]: event.target.value === '' ? NaN : Number(event.target.value) }))}/>
@@ -75,12 +87,13 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
       {capacity?.waiting_jobs?.length ? <p role="status">{capacity.waiting_jobs.length} 个任务等待：{[...new Set(capacity.waiting_jobs.map(job => resourceReasons[job.reason] ?? job.reason))].join('、')}。</p> : null}
       <ErrorNotice error={status.error} retry={status.reload}/>
       <ActionFeedback notice={action.notice}/>
-      <ErrorNotice error={action.error} retry={() => { action.clear(); reload(); }}/>
-      <div className="settings-actions"><button className="btn primary" disabled={!valid || action.pending || Boolean(action.error)}>保存资源设置</button></div>
+      <ErrorNotice error={action.error} retry={refresh.request}/>
+      <div className="settings-actions"><button className="btn primary" disabled={!canSave}>保存资源设置</button></div>
     </form>}
     {!!capacity?.model_references?.length && <details className="settings-details"><summary>全部模型的内存参考（估算）</summary>
       <div className="resource-table-scroll"><table><thead><tr><th>模型</th><th>RAM</th><th>VRAM / 统一内存</th><th>上下文</th></tr></thead>
         <tbody>{capacity.model_references.map(({ id, label, memory_reference: ref }) => <tr key={id}><td>{label}</td><td>{gib(ref.ram_bytes)}</td><td>{gib(ref.vram_bytes)}{ref.unified_memory ? '（统一）' : ''}</td><td>{ref.context_tokens.toLocaleString()}</td></tr>)}</tbody></table></div>
     </details>}
+    {refresh.confirmation}
   </section>;
 }

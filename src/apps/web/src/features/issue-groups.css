@@ -1,0 +1,4 @@
+.issue-groups { margin: 12px 0; }
+.issue-group { border: 1px solid var(--line); border-radius: 6px; margin: 8px 0; padding: 12px; }
+.issue-group > summary { cursor: pointer; font-weight: 600; }
+.issue-group .issues { margin-bottom: 0; }

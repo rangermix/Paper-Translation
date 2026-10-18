@@ -50,8 +50,9 @@ the instance; the default published address is loopback.
   New UI operations automatically publish completed reading results, without a
   delayed-publication option. Existing API policies, saved preferences and queued
   task snapshots remain compatible and are not rewritten.
-  New publications and draft exports use `reader-v13`, with system/light/dark
-  themes; old source contracts and readers remain valid.
+  New publications and draft exports use `reader-v14`, with bilingual section
+  labels, online document/search return links and system/light/dark themes.
+  Offline exports omit instance navigation; old source contracts and readers remain valid.
 - Keep task stages, actual model identities, timings, redacted logs, attempts and
   uncertain outcomes. Clearing finished task history changes list visibility only.
   The [task model](task-model.md) defines which operations appear as main tasks

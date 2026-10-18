@@ -68,7 +68,7 @@ test('submitting a translation batch authorizes the displayed service and automa
 test('settings no longer offers saved upload permission or delayed publication', async ({ page }) => {
   const { writes, errors } = await setup(page, { savedHash: profile.profile_hash });
   await page.goto('/#/settings');
-  await expect(page.getByLabel('默认目标语言', { exact: true })).toHaveValue('ja');
+  await expect(page.getByLabel('默认翻译语言', { exact: true })).toHaveValue('ja');
   await expect(page.getByRole('checkbox', { name: '以后上传默认允许翻译', exact: true })).toHaveCount(0);
   await expect(page.getByRole('combobox', { name: /发布/ })).toHaveCount(0);
   expect(writes).toEqual([]);

@@ -84,10 +84,15 @@ def list_templates():
             {'source':'res/vendor/reader-fonts/MiSans-Regular.woff2', 'path':'fonts/MiSans-Regular.woff2',
              'media_type':'font/woff2', 'sha256':'d704c1a932c0bd7e8a071d276cd81c0ed0c9fecfa26ac234f4bed0559fe1cb2d'}
         ]}
-    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13):
+    v14 = {**v13, 'id':'reader-v14', 'version':'14', 'name':'双语目录与文库导航',
+        'css_path':'src/packages/templates/reader-v14.css', 'js_path':'src/packages/templates/reader-v14.js',
+        'css_sha256':'33040019fbdea0846e2527bbd266fd4c1b387d9539e041d954b2a4c46bff6f69', 'js_sha256':'6700da2b1467302652e935eb7327a7693aec8382ea5cdd0201b3384022f7550e',
+        'renderer_version':'reader-python-14.0.0',
+        'renderer_sha256':digest((root/'src/packages/publisher/reader_v14.py').read_bytes())}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13]
+    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14]
 
 
 def get_template(template_id):

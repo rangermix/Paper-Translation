@@ -6,9 +6,9 @@ export function isImportant(issue: Issue) {
   return ['important', 'hard', 'error', 'blocking'].includes(issue.severity);
 }
 
-export function EditorQuality({ issues, navigate, resolve, resolveDisabled }: {
+export function EditorQuality({ issues, navigate, resolve, resolveDisabled, checkState }: {
   issues: Issue[]; navigate: (id: string) => void;
-  resolve?: (issue: Issue) => void; resolveDisabled: boolean;
+  resolve?: (issue: Issue) => void; resolveDisabled: boolean; checkState?: string;
 }) {
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState('');
@@ -16,6 +16,7 @@ export function EditorQuality({ issues, navigate, resolve, resolveDisabled }: {
   const selected = issues.filter(issue => (!page || String(issue.page) === page) && (!category || issue.category === category));
   const blockers = selected.filter(isImportant), risks = selected.filter(i => !isImportant(i));
   return <section className="editor-quality" aria-label="质量问题">
+    <p className="small muted">内容提示供对照，不阻止继续翻译、保存或发布。</p>
     <div className="stack between"><h3>质量问题</h3>
       <label>问题筛选 <select value={filter} onChange={e => setFilter(e.target.value)}>
         <option value="all">全部（{issues.length}）</option>
@@ -28,11 +29,11 @@ export function EditorQuality({ issues, navigate, resolve, resolveDisabled }: {
     {filter !== 'risks' && <section aria-label="重要提示" className="quality-group">
       <h4>重要提示 · {blockers.length}</h4>
 
-      {blockers.length ? <Issues issues={blockers} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/> : <p className="muted">没有重要提示。</p>}
+      {blockers.length ? <Issues issues={blockers} checkState={checkState} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/> : <p className="muted">没有重要提示。</p>}
     </section>}
     {filter !== 'blockers' && <details className="quality-group quality-risks" key={filter} open={filter === 'risks'}>
       <summary>一般提示 · {risks.length}</summary>
-      {risks.length ? <Issues issues={risks} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/>
+      {risks.length ? <Issues issues={risks} checkState={checkState} onNavigate={navigate} onResolve={resolve} resolveDisabled={resolveDisabled}/>
         : <p className="muted">没有风险提示。</p>}
     </details>}
   </section>;

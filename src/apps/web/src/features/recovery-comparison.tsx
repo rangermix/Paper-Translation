@@ -17,7 +17,7 @@ export function RecoveryComparison({ jobId }: { jobId: string }) {
     {p && !p.available && <p className="muted">此历史任务未保存可用的恢复前后内容。</p>}
     {p?.available && <>
       <p className="field-note">第 {p.page} 页</p>
-      {p.original_url && <a className="btn sm" href={p.original_url} target="_blank" rel="noreferrer">查看原 PDF 页面</a>}
+      {p.original_url && <a className="btn sm" href={p.original_url} target="_blank" rel="noreferrer">查看原文 PDF 页面</a>}
       <div className="recovery-columns">{(['before', 'after'] as const).map(side => <div key={side}>
         <h5>{side === 'before' ? '恢复前' : '恢复后'} · {p[`${side}_count`]} 段</h5>
         {p[side]?.length ? <ol start={offset + 1}>{p[side]?.map((text, i) => <li key={offset + i}><p>{text || '（空白内容）'}</p></li>)}</ol>

@@ -14,7 +14,7 @@ test('real database document title tags and star survive cleared browser storage
   const documentId=previous.href.split('/').at(-1);
   await page.goto('/#/library');
   await page.getByLabel('文档范围').selectOption('archived');
-  await page.getByLabel('搜索题名').fill(previous.title);
+  await page.getByLabel('搜索标题').fill(previous.title);
   await page.getByRole('button',{name:'搜索',exact:true}).click();
   const star=page.getByRole('button',{name:`收藏 ${previous.title}`,exact:true});
   if(await star.isVisible()) await star.click();
@@ -42,7 +42,7 @@ test('real database document title tags and star survive cleared browser storage
     const independent=await next.request.get(`/api/v1/documents/${documentId}`).then(r=>r.json());
     expect(independent).toMatchObject({id:before.id,title:before.title,starred:true,tags:before.tags,generation:before.generation});
     await next.goto('/#/library');await next.getByLabel('文档范围').selectOption('archived');
-    await next.getByLabel('搜索题名').fill(previous.title);await next.getByRole('button',{name:'搜索',exact:true}).click();
+    await next.getByLabel('搜索标题').fill(previous.title);await next.getByRole('button',{name:'搜索',exact:true}).click();
     await expect(next.getByRole('button',{name:`取消收藏 ${previous.title}`,exact:true})).toBeVisible();
     expect(responses.some(r=>r.status===401||r.status===403||/\/users|\/workspaces|\/login/.test(r.url))).toBe(false);
     await next.screenshot({path:resolve(outputDirectory('live'), 'live-storage-fresh-context.png'),fullPage:true});

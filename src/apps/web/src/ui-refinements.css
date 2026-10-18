@@ -1,0 +1,32 @@
+/* Shared management controls; immutable publication reader styles are separate. */
+:root { --muted: #5f6b74; --control-line: #7e8a84; }
+:root[data-theme=dark] { --muted: #a8b4bb; --control-line: #62747d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]), :root[data-theme=system] { --muted: #a8b4bb; --control-line: #62747d; }
+}
+.error { color: var(--zh); }
+.input, select, textarea, .searchbox, .btn:not(.primary):not(.ghost), .icon-btn { border-color: var(--control-line); }
+.btn:not(.primary):not(.ghost):hover, .btn.selected, .icon-btn.active { border-color: var(--accent); }
+.searchbox:focus-within, summary:focus-visible, [contenteditable=true]:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 3px;
+}
+.settings-categories .panel h2 { font-family: var(--ui); font-size: 21px; font-weight: 650; }
+.settings-categories .settings-scope { max-width: 74ch; }
+.model-choice-details { margin: 12px 0; border-top: 1px solid var(--line); }
+.model-choice-details > summary { padding: 10px 0; }
+.model-choice-details p { margin: 10px 0; font-size: 13px; }
+.model-choice-details .kv { grid-template-columns: 80px minmax(0, 1fr); }
+.model-choice-name { display: block; margin-top: 20px; }
+.dialog-actions { flex-wrap: wrap; }
+.dialog-actions .btn { white-space: normal; }
+.topbar-action, .check { min-height: 24px; }
+@media (max-width: 760px) {
+  .btn, .btn.sm, .doc-footer .btn, .icon-btn, .topbar-action, .settings-page .btn, .settings-page .btn.sm { min-height: 44px; }
+  .icon-btn { min-width: 44px; }
+  .btn { white-space: normal; }
+  .input, select, textarea, .settings-page .input, .settings-page .field select { min-height: 44px; }
+  details > summary { min-height: 44px; }
+  .check { min-height: 32px; align-items: flex-start; }
+  .check input { margin-top: 4px; }
+  .topbar { flex-wrap: wrap; }
+}

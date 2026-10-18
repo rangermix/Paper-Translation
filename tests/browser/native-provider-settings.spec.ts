@@ -199,7 +199,8 @@ test('configuration comparison exposes the newest Claude version before retainin
   await page.goto('/#/settings');
   await page.getByText('高级选项：价格与请求限制', { exact: true }).click();
   await page.getByLabel('Anthropic API 版本', { exact: true }).fill('2023-06-01');
-  await page.getByRole('button', { name: '读取最新配置', exact: true }).click();
+  await page.getByRole('button', { name: '刷新配置', exact: true }).click();
+  await page.getByRole('dialog', { name: '刷新设置并保留输入' }).getByRole('button', { name: '刷新并保留输入' }).click();
   await expect(page.getByRole('region', { name: '配置版本比较' })).toContainText('2024-01-01');
   await expect(save(page)).toBeDisabled();
   await page.getByRole('button', { name: '保留输入并采用最新版本', exact: true }).click();

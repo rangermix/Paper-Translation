@@ -46,7 +46,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, edit,
 
       <div className="review-grid"><div>
         <p className="subhead">原文 · 只读</p><div className="source-block">{segment.source_text}</div>
-        <button className="btn sm source-button" onClick={() => setShowSource(s => !s)}>{showSource ? '收起来源' : '对照原 PDF'}</button>
+        <button className="btn sm source-button" onClick={() => setShowSource(s => !s)}>{showSource ? '收起来源' : '对照原文 PDF'}</button>
         {showSource && <><PdfLocator originalUrl={draft.original_url} documentId={draft.document_id} locators={segment.locators}/>
           {segment.raw_text && <details><summary>原始提取与机械清理</summary><pre>{segment.raw_text}</pre><pre>{JSON.stringify(segment.normalization_edits ?? segment.edits ?? [], null, 2)}</pre></details>}</>}
       </div><div>

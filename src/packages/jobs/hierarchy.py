@@ -3,6 +3,7 @@ from sqlalchemy import and_, case, func, or_, select
 
 from packages.domain.models import Job, Permit, Task
 from .visibility import finished_history, visible_history
+from .model_names import model_identity_filter
 
 
 MAIN_STAGES = {'parse', 'translate', 'candidate', 'semantic_review', 'publish',
@@ -60,8 +61,7 @@ def family_summary(root_ids=None, *, stage=None, model=None, tree=None):
     if stage:
         columns.append(func.bool_or(or_(Job.stage == stage, operation() == stage)).label('matches_stage'))
     if model:
-        from sqlalchemy import cast, Text
-        columns.append(func.bool_or(cast(Job.actual_model, Text).icontains(model, autoescape=True)).label('matches_model'))
+        columns.append(func.bool_or(model_identity_filter(Job.actual_model, model)).label('matches_model'))
     totals = select(*columns).join(tree, tree.c.job_id == Job.id).group_by(tree.c.root_id).subquery('job_family_totals')
     return select(*(column for column in totals.c if column.name != 'priority'),
         case(*[(totals.c.priority == rank, value) for rank, value in enumerate(STATUSES)], else_='needs_review').label('status')

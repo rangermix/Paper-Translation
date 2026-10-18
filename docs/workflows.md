@@ -108,14 +108,14 @@ version or secret boundaries. Successfully sealed revisions are immutable.
 
 Source 4.0 translation splits at formatting/link boundaries and restores those
 associations deterministically after the bounded text response. Editing visible
-labels preserves marks, destinations and protected references. The new `reader-v13`
+labels preserves marks, destinations and protected references. The new `reader-v14`
 renders nested structures, table headers and bare math literals. Author and
 affiliation lines stay in their original form beside the titles. References and
 footnotes appear in the margin, with clickable destinations and a collected
 footnote section at the bottom;
 publication and both offline exports retain these semantics. Old snapshots and
 reader resources are not rewritten. New publications and draft exports use
-`reader-v13` for both 3.0 and 4.0 sources. Its theme selector offers system (the
+`reader-v14` for both 3.0 and 4.0 sources. Its theme selector offers system (the
 default), light and dark modes. System mode responds immediately to the browser's
 system color preference, including in offline exports and without JavaScript.
 Explicit light/dark preferences already saved in the browser remain selected;
@@ -134,8 +134,14 @@ requests. The bundled font files add about 10.3 MB (13.8 MB after base64 encodin
 in single HTML exports).
 The line-height selector offers 1.4, 1.72 (default), 2 and 2.4 times the text size.
 Body font, code font and line height are saved independently in the browser.
-Existing publications can use the new theme selector by rebuilding with
-`reader-v13` from their saved translation, without translating again.
+Online readers link back to their document and, when opened from search, to the
+same query and result page. Section labels combine existing translated headings
+with the original, falling back to the original when no translation exists.
+No model is called to build the directory. HTML and ZIP exports remove instance
+return links and remain usable offline and without JavaScript.
+Existing publications can preview these changes by rebuilding with `reader-v14`
+from their saved translation, without translating again. Creating a preview does
+not switch the current reading version; switching remains an explicit CAS operation.
 Offline tests establish preservation contracts,
 not trained-model OCR or translation quality.
 

@@ -17,12 +17,12 @@ const explanations: Record<string, string> = {
   PROVIDER_TRUNCATED: '服务已响应，但测试输出未完整结束。模型可能需要更多输出或推理 token。',
   PROVIDER_REFUSAL: '服务已响应，但拒绝了固定测试请求。',
   PROVIDER_CONFIG: '服务配置不可用。请核对模型、接口和已保存的密钥。',
-  PROVIDER_PROFILE_STALE: '配置已变化。请读取最新配置后重新确认测试。',
-  PRECONDITION_FAILED: '配置版本已变化。请读取最新配置后重新确认测试。',
+  PROVIDER_PROFILE_STALE: '配置已变化。请刷新配置后重新确认测试。',
+  PRECONDITION_FAILED: '配置版本已变化。请刷新配置后重新确认测试。',
   PROVIDER_TEST_LIMITS: '当前请求限制不足以容纳测试。请检查高级选项中的 token 上限。',
-  PROVIDER_TEST_IN_PROGRESS: '已有连接测试尚未结束。请读取最新配置查看状态。',
+  PROVIDER_TEST_IN_PROGRESS: '已有连接测试尚未结束。请刷新配置查看状态。',
   PROVIDER_TEST_INTERRUPTED: '测试被中断，未自动重新发送。请检查任务状态后再手动测试。',
-  DUPLICATE_CHARGE_CONFIRMATION_REQUIRED: '上次测试结果未知。请读取最新配置并确认重复计费风险。',
+  DUPLICATE_CHARGE_CONFIRMATION_REQUIRED: '上次测试结果未知。请刷新配置并确认重复计费风险。',
   BUDGET_PAUSED: '测试预算或实例剩余额度不足。请核对预算与费率。',
   DISPATCH_DISABLED: '模型请求已暂停，请刷新本页，在暂停提示中恢复模型请求后再测试连接。',
   MAINTENANCE: '实例正在维护，暂不能发送测试。',
@@ -63,7 +63,7 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
       try {
         const value = await api<ProviderConnectionTest>(`/settings/provider/test/${encodeURIComponent(result!.id)}`, { signal: controller.signal });
         if (controller.signal.aborted) return;
-        if (value.profile_hash !== provider.profile_hash) { setMessage('配置已变化，请读取最新配置。'); return; }
+        if (value.profile_hash !== provider.profile_hash) { setMessage('配置已变化，请刷新配置。'); return; }
         setResult(value); onResultRef.current(value); setMessage('');
         if (activeStates.includes(value.status)) timer = setTimeout(() => void poll(), 1000);
       } catch {
@@ -85,7 +85,7 @@ export function ProviderConnection({ provider, disabled, dirty, onResult }: {
     } catch (reason) {
       const error = reason instanceof ApiError ? reason : undefined;
       if (!error || error.status === 0 || error.status >= 500 || error.code === 'INVALID_RESPONSE') {
-        setUncertain(true); setMessage('测试提交结果尚不确定，可能已发送。请读取最新配置查看后台测试，勿立即重复发送。');
+        setUncertain(true); setMessage('测试提交结果尚不确定，可能已发送。请刷新配置查看后台测试，勿立即重复发送。');
       } else setMessage(description(error.code));
     } finally { running.current = false; setSending(false); }
   }

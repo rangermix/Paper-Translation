@@ -4,6 +4,7 @@ import { ActionFeedback, ErrorNotice, Loading } from '../components';
 import { useAction, useResource } from '../hooks';
 import { ModelMemory, type MemoryReference } from './resource-settings';
 import type { ParserAccelerator, ParserEnvironment, ParserProfileRevision, Preferences } from '../types';
+import { useSettingsForm, useSettingsRefresh } from './settings-state';
 
 const runtimeLabels: Record<ParserAccelerator, string> = { cpu: 'CPU（已停用）', cuda: 'CUDA（已停用）', mlx: '原生 MLX（已停用）', dmr: 'Docker Model Runner' };
 
@@ -22,19 +23,34 @@ export function isActiveParserProfile(value: string): boolean {
   return profiles.some(profile => profile.id === value);
 }
 
-type ParserModel = { id: ParserProfileRevision; download_bytes: number; status?: string; downloaded_bytes?: number;
+type ParserModel = { id: ParserProfileRevision; label?: string; description?: string; model_id?: string; revision?: string;
+  download_bytes: number; status?: string; downloaded_bytes?: number;
   total_bytes?: number; code?: string; license?: string | null; memory_reference?: MemoryReference };
 const modelStatus: Record<string, string> = { ready: '已准备', not_downloaded: '首次使用时下载',
   queued: '已排队，等待资源', downloading: '正在下载', loading: '正在准备推理后端', failed: '准备失败，可重试', unavailable: '模型准备服务不可用' };
 
-export function ParserSelect({ id, label, value, onChange, disabled = false }: {
-  id: string; label: string; value: ParserProfileRevision; onChange: (value: ParserProfileRevision) => void; disabled?: boolean;
+export function ParserSelect({ id, label, value, onChange, disabled = false, catalog, catalogError }: {
+  id: string; label: string; value: ParserProfileRevision; onChange: (value: ParserProfileRevision) => void; disabled?: boolean; catalog?: ParserModel[]; catalogError?: Error;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const remote = useResource<{ models: ParserModel[] }>(detailsOpen && !catalog ? '/settings/parser-models' : null);
+  const model = (catalog ?? remote.data?.models)?.find(model => model.id === value);
+  const active = isActiveParserProfile(value);
   return <div className="field"><label htmlFor={id}>{label}</label>
     <select id={id} value={value} onChange={e => onChange(e.target.value as ParserProfileRevision)} disabled={disabled}>
       {!isActiveParserProfile(value) && <option value={value} disabled>{retiredLabels[value] ?? value}（已停用，请重新选择）</option>}
       {profiles.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
     </select>
+    <details className="model-choice-details" onToggle={event => setDetailsOpen(event.currentTarget.open)}>
+      <summary>模型说明与准备状态</summary>
+      <p>{active ? '用途：识别 PDF 页面的原文、阅读顺序、表格与公式。' : '此历史解析方案已停用；原选择和历史记录会保留，请明确选择可用方案。'}</p>
+      {remote.loading && <Loading/>}<ErrorNotice error={remote.error} retry={remote.reload}/>
+      {active && <><strong>{model?.label ?? profiles.find(profile => profile.id === value)?.label}</strong>
+        {model?.description && <p>{model.description}</p>}
+        <p>准备状态：{catalogError || remote.error ? '状态读取失败' : modelStatus[model?.status ?? ''] ?? '状态未提供'}。选择或保存不会下载模型。</p>
+        <p>当前设备的速度与质量对比：未提供，不能仅凭模型名称判断。</p></>}
+      <dl className="kv"><dt>方案 ID</dt><dd className="mono">{value}</dd><dt>模型 ID</dt><dd className="mono">{model?.model_id ?? '目录未提供'}</dd></dl>
+    </details>
   </div>;
 }
 
@@ -57,17 +73,30 @@ export function ParserSettings({ preferences, loading, onSaved, reload }: {
   const runtimeAvailable = isActiveParserProfile(selected) && (!detected?.online || Boolean(device?.profiles.includes(selected)));
   const model = models.data?.models?.find(row => row.id === selected);
   const preparing = ['queued', 'downloading', 'loading'].includes(model?.status ?? '');
+  const dirty = Boolean(preferences && (selected !== (preferences.parser_profile_revision ?? 'surya-ocr-2-v1') || timeoutValue !== String((preferences.parser_timeout_seconds ?? 7200) / 60)));
+  const canSave = Boolean(preferences && validTimeout && runtimeAvailable && !action.pending && !action.error);
+  const session = useSettingsForm('parser', { label: 'PDF 解析', dirty, pending: action.pending, canSave, save,
+    discard: () => { setChoice(undefined); setTimeoutDraft(undefined); action.clear(); } });
+  const refresh = useSettingsRefresh(dirty, () => { action.clear(); reload(); });
+  async function save() {
+    if (!canSave) return false;
+    let success = false;
+    await action.run(async () => {
+      const current = session?.preferences() ?? preferences;
+      const saved = await api<Preferences>('/settings/preferences', { method: 'PATCH', etag: etagFor(current), body: { parser_profile_revision: selected, parser_timeout_seconds: timeoutMinutes * 60 } });
+      session?.remember(saved); onSaved(saved); setChoice(undefined); setTimeoutDraft(undefined); success = true;
+    }, '解析设置已保存。');
+    return success;
+  }
   return <section className="panel parser-panel" aria-label="PDF 解析"><h2>PDF 解析</h2>
     {detected?.online && effectiveDefault && <p className="settings-hint parser-device">运行设备：{runtimeLabels[effectiveDefault]} · Compose</p>}
     {!environment.loading && !detected?.online && <p className="settings-hint" role="status">解析环境暂不可用，请检查解析服务。</p>}
     {loading && <Loading/>}
-    {preferences && <form onSubmit={e => { e.preventDefault(); if (!validTimeout || !runtimeAvailable || action.pending || action.error) return; void action.run(async () => {
-      const saved = await api<Preferences>('/settings/preferences', { method: 'PATCH', etag: etagFor(preferences), body: { parser_profile_revision: selected, parser_timeout_seconds: timeoutMinutes * 60 } });
-      onSaved(saved); setChoice(undefined); setTimeoutDraft(undefined);
-    }, '解析设置已保存。'); }}>
-      <ParserSelect id="default-parser" label="默认 PDF 解析方案" value={selected} onChange={setChoice} disabled={action.pending}/>
+    {preferences && <form onSubmit={e => { e.preventDefault(); void save(); }}>
+      {dirty && <p className="settings-unsaved small">未保存</p>}
+      <ParserSelect id="default-parser" label="默认 PDF 解析方案" value={selected} onChange={setChoice} disabled={action.pending} catalog={models.data?.models} catalogError={models.error}/>
       <div className="field" aria-label="解析模型准备">
-        {model && <p role="status">{modelStatus[model.status ?? 'not_downloaded']} · 下载约 {(model.download_bytes / 10 ** 9).toFixed(2)} GB
+        {model && <p role="status">{models.error ? '准备状态更新失败' : modelStatus[model.status ?? ''] ?? '状态未提供'} · 下载约 {(model.download_bytes / 10 ** 9).toFixed(2)} GB
           {preparing && model.total_bytes ? ` · ${((model.downloaded_bytes ?? 0) / model.total_bytes * 100).toFixed(1)}%` : ''}</p>}
         {model?.status === 'failed' && <p className="field-note" role="alert">准备失败（{model.code}），请检查磁盘空间、网络与推理后端后重试。</p>}
         <ModelMemory reference={model?.memory_reference}/>
@@ -94,8 +123,9 @@ export function ParserSettings({ preferences, loading, onSaved, reload }: {
         </div>
       </details>
       <ActionFeedback notice={action.notice}/>
-      <ErrorNotice error={action.error} retry={() => { action.clear(); reload(); }}/>
-      <div className="settings-actions"><button className="btn primary" disabled={!validTimeout || !runtimeAvailable || action.pending || Boolean(action.error)}>保存解析设置</button></div>
+      <ErrorNotice error={action.error} retry={refresh.request}/>
+      <div className="settings-actions"><button className="btn primary" disabled={!canSave}>保存解析设置</button></div>
     </form>}
+    {refresh.confirmation}
   </section>;
 }

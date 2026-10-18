@@ -125,7 +125,8 @@ test('latest configuration comparison shows cost mode and effective limits befor
   await page.route('**/api/v1/settings/provider', async route => route.request().method() === 'GET'
     ? route.fulfill({ json: { ...profile, generation: 9, cost_control_enabled: true, ...defaults, token_limits_defaults: defaults }, headers: { ETag: '"9"' } })
     : route.fallback());
-  await page.getByRole('button', { name: '读取最新配置', exact: true }).click();
+  await page.getByRole('button', { name: '刷新配置', exact: true }).click();
+  await page.getByRole('dialog', { name: '刷新设置并保留输入' }).getByRole('button', { name: '刷新并保留输入' }).click();
   const comparison=page.getByRole('region', { name: '配置版本比较' });
   await expect(comparison).toContainText('预算与成本控制'); await expect(comparison).toContainText('已启用');
   await expect(comparison).toContainText('32768 / 8192');

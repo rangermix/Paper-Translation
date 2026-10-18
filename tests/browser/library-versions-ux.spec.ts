@@ -3,7 +3,7 @@ import { outputDirectory } from './paths';
 
 const title = 'A very long research paper title about reliable scientific translation, immutable reading versions and carefully preserved source evidence';
 const document = { id: 'doc', generation: 7, title, tags: ['Systems'], starred: false, lifecycle: 'active', status: 'published',
-  source_asset_id: 'pdf', source_revision_id: 'source', page_count: 12, sha256: 'a'.repeat(64), byte_size: 100000,
+  source_asset_id: 'pdf', source_revision_id: 'source', current_job_id: 'job', current_job_status: 'running' as string | null, page_count: 12, sha256: 'a'.repeat(64), byte_size: 100000,
   bibliography: { title, authors: [{ name: 'Alice Example' }, { name: 'Bob Example' }, { name: 'Chen Example' }, { name: 'Dana Example' }], year: 2026 },
   editions: [{ id: 'edition', target_locale: 'zh-Hans', current_artifact_id: 'current', draft_id: 'draft', generation: 9 }] };
 const version = (id: string, date: string, locale = 'zh-Hans') => ({ id, edition_id: locale === 'ja' ? 'edition-ja' : 'edition', locale,
@@ -30,7 +30,7 @@ async function setup(page: Page) {
       '/documents': { items: [state.doc, { ...state.doc, id: 'no-metadata', title: '没有作者信息的文档', bibliography: undefined, editions: [] }], next_cursor: null },
       '/documents/doc': state.doc, '/documents/doc/history': state.history,
       '/drafts/draft': draft, '/drafts/draft/exports': { export_id: 'export' },
-      '/templates': { items: [{ id: 'reader-v13', name: '双语对照阅读' }] },
+      '/templates': { items: [{ id: 'reader-v14', name: '双语目录与文库导航' }, { id: 'reader-v13', name: '双语对照阅读' }] },
       '/reading-position': { generation: 0, block_id: null },
       '/exports/export': { id: 'export', status: state.exportStatus, download_url: '/api/v1/exports/export/download', ...(state.exportStatus === 'failed' ? { error: { message: 'Synthetic export failed' } } : {}) },
       '/jobs/job': { id: 'job', generation: 1, status: 'pending', stage: 'render', control_epoch: 0 },
@@ -40,6 +40,18 @@ async function setup(page: Page) {
   });
   return { state, writes, errors };
 }
+
+test('document processing link uses the selected job status instead of the publication status', async ({ page }) => {
+  const { state, writes } = await setup(page);
+  for (const [status, label] of [['running', '查看处理进度'], ['failed', '最近处理记录'], ['outcome_unknown', '查看处理进度'], [null, '查看处理记录']] as const) {
+    state.doc.current_job_status = status;
+    await page.goto('/#/library');
+    await expect(page.locator('.doc-card').first().getByRole('link', { name:label, exact:true })).toHaveAttribute('href', '#/jobs/job');
+    await page.goto('/#/documents/doc');
+    await expect(page.getByRole('link', { name:label, exact:true })).toHaveAttribute('href', '#/jobs/job');
+  }
+  expect(writes).toEqual([]);
+});
 
 for (const width of [390, 404]) test(`compact mobile library keeps full titles and original PDF reachable at ${width}px`, async ({ page }) => {
   const { writes, errors } = await setup(page);
@@ -135,6 +147,6 @@ test('style action creates a preview with unchanged CAS semantics', async ({ pag
   const current = page.locator('[data-artifact-id="current"]');
   await current.getByText('阅读样式与发布操作', { exact: true }).click();
   await current.getByRole('button', { name: '用所选样式生成预览', exact: true }).click();
-  await expect.poll(() => writes.find(write => write.path === '/artifacts/current/rebuild')?.body).toEqual({ template_id: 'reader-v13', preview_only: true, expected_generation: 9 });
+  await expect.poll(() => writes.find(write => write.path === '/artifacts/current/rebuild')?.body).toEqual({ template_id: 'reader-v14', preview_only: true, expected_generation: 9 });
   expect(writes.some(write => write.path.endsWith('/rollback') || write.path.endsWith('/unpublish'))).toBe(false);
 });

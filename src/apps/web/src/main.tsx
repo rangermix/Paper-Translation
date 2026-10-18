@@ -11,6 +11,7 @@ import { HistoryPage } from './features/history';
 import type { Capability, Preferences } from './types';
 import './styles.css';
 import './navigation.css';
+import './ui-refinements.css';
 const navigation = [{ page: 'library', label: '文档库', icon: 'book' }, { page: 'upload', label: '上传 PDF', icon: 'upload' }, { page: 'jobs', label: '任务中心', icon: 'tasks' }, { page: 'search', label: '搜索文档', icon: 'search' }, { page: 'glossary', label: '术语表', icon: 'terms' }, { page: 'memory', label: '个人翻译记忆', icon: 'memory' }, { page: 'settings', label: '设置', icon: 'settings' }];
 function App() {
   const route = useRoute(); const capabilities = useResource<Capability>('/capabilities'); const preferences = useResource<Preferences>('/settings/preferences'); const [menu, setMenu] = useState(false);

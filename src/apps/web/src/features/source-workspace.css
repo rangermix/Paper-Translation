@@ -1,0 +1,30 @@
+dialog.source-workspace { width: min(1240px, calc(100vw - 32px)); max-width: none; height: min(900px, calc(100dvh - 32px)); max-height: none; padding: 20px; overflow: hidden; }
+dialog.source-workspace[open] { display: flex; flex-direction: column; }
+.source-workspace-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex: none; }
+.source-workspace-header h2, .source-workspace-header p { margin: 0; }
+.source-workspace-header p { margin-top: 6px; }
+.source-workspace-note { margin: 12px 0; flex: none; }
+.source-workspace-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 24px; min-height: 0; flex: 1; }
+.source-workspace-evidence { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.source-workspace-evidence[hidden], .source-workspace-form[hidden] { display: none; }
+.source-zoom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
+.source-zoom label { display: flex; align-items: center; gap: 8px; }
+.source-evidence-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.source-evidence-scroll .pdf-page { margin: 0 0 16px; }
+.source-evidence-scroll .pdf-locators { max-height: none; overflow: visible; }
+.source-evidence-scroll .page-canvas { max-height: none; }
+.source-workspace-form { overflow: auto; overscroll-behavior: contain; min-width: 0; padding-right: 8px; }
+.source-workspace-form > :first-child { margin-top: 0; }
+.source-correction-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.source-workspace-form pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: none; }
+.source-workspace-actions { position: sticky; bottom: 0; background: var(--paper); border-top: 1px solid var(--line); padding: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; z-index: 1; }
+.source-workspace-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex: none; }
+.source-workspace-tabs [aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 760px) {
+  dialog.source-workspace { width: calc(100vw - 16px); height: calc(100dvh - 16px); padding: 16px; }
+  .source-workspace-grid { display: flex; flex-direction: column; gap: 0; }
+  .source-workspace-grid > section { flex: 1; }
+  .source-workspace-form { padding-right: 0; }
+  .source-workspace-form .review-grid { grid-template-columns: 1fr; }
+  .source-workspace-note { font-size: 12px; }
+}

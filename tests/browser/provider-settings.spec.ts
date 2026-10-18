@@ -196,7 +196,8 @@ test('CAS conflict preserves public edits and requires comparison before using t
     if (route.request().method() !== 'GET') return route.fallback();
     return route.fulfill({ json: { ...profile, generation: 8, model_id: 'another-tab-model' }, headers: { ETag: '"8"' } });
   });
-  await page.getByRole('button', { name: '读取最新配置', exact: true }).click();
+  await page.getByRole('button', { name: '刷新配置', exact: true }).click();
+  await page.getByRole('dialog', { name: '刷新设置并保留输入' }).getByRole('button', { name: '刷新并保留输入' }).click();
   await expect(page.getByRole('region', { name: '配置版本比较' })).toContainText('another-tab-model');
   await page.getByRole('button', { name: '保留输入并采用最新版本', exact: true }).click();
   await expect(modelInput(page)).toHaveValue('my-unsaved-model');

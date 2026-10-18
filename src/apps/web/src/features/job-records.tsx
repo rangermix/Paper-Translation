@@ -47,8 +47,8 @@ export function JobFailure({ job, onReviewUnknown }: { job: Job; onReviewUnknown
 export function modelLabel(model?: ModelIdentity | null, historical = false) {
   if (model?.kind === 'none') return '无需模型';
   if (model?.kind === 'historical_unknown' || historical) return '历史记录未保存';
-  if (!model) return '尚未记录实际模型';
-  return model.model_id || (model.kind === 'api' ? '服务未返回实际 model ID' : '本地模型信息未保存');
+  if (!model) return '尚未记录使用的模型';
+  return model.display_name || model.model_id || (model.kind === 'api' ? '服务未返回实际 model ID' : '本地模型信息未保存');
 }
 export function duration(milliseconds?: number | null) {
   if (milliseconds == null || !Number.isFinite(milliseconds)) return '未记录';
@@ -78,6 +78,7 @@ export function ModelView({ model, historical = false }: { model?: ModelIdentity
   if (model?.kind === 'none') return null;
   return <div className="model-record"><strong>{modelLabel(model, historical)}</strong>
     {model && <details><summary>模型与运行配置</summary><dl className="kv">
+      {model.model_id && <><dt>模型 ID</dt><dd className="mono">{model.model_id}</dd></>}
       {model.api_protocol && <><dt>API 协议</dt><dd>{model.api_protocol}</dd></>}
       {model.endpoint && <><dt>服务地址</dt><dd className="mono">{model.endpoint}</dd></>}
       {model.config_revision && <><dt>配置版本</dt><dd>{model.config_revision}</dd></>}

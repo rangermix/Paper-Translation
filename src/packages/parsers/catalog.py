@@ -38,6 +38,7 @@ def public_models():
         spec = download_spec(row['id'])
         model = vlm_model(row['id'])
         result.append({**row, 'download_bytes': sum(f['size'] for f in spec),
+                       'model_id': model['repo'],
                        'revision': model.get('revision'), 'license': model.get('license'),
                        'manifest_id': digest(spec), 'memory_reference': reference(model)})
     return result

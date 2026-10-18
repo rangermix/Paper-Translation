@@ -95,6 +95,7 @@ test('format switch restores the exact model', async ({ page }) => {
   await format.selectOption('gguf'); await model.selectOption(rows[1].model_id);
   await format.selectOption('mlx');
   await expect(model).toHaveValue(rows[0].model_id);
+  await page.getByText('模型 ID 与性能说明', { exact: true }).click();
   await expect(page.getByText(rows[0].model_id, { exact: true })).toBeVisible();
 });
 

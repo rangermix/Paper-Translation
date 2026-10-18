@@ -47,9 +47,13 @@ for (const width of [390, 1440]) test(`upload decision order is visual and keybo
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('翻译为', { exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '查找语言', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(page.getByLabel('翻译前准备', { exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(page.locator('.upload-parser-options summary')).toBeFocused();
+  await expect(page.locator('.upload-parser-options > summary')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('region', { name: '本次翻译服务', exact: true }).locator('summary')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('每份文档费用上限（USD）', { exact: true })).toBeFocused();
   await page.keyboard.press('Tab');

@@ -77,7 +77,7 @@ def create_draft_export(draft_id: str, body: DraftExportBody, request: Request, 
         match_generation(draft, request.headers.get('If-Match'))
         source = read_snapshot(request.app.state.config.data, get_entity(session, SourceRevision, draft.source_revision_id))
         translation = translation_snapshot(session, request.app.state.config, draft, draft_mode=True)
-        snapshot = render_input(draft.document_id, source, translation, template_id='reader-v13', mode='draft')
+        snapshot = render_input(draft.document_id, source, translation, template_id='reader-v14', mode='draft')
         validate_ir(snapshot, request.app.state.config.data)
         export_id = new_id('export')
         key = f'exports/{export_id}/draft.json'
@@ -141,7 +141,7 @@ def publish(edition_id: str, body: PublishBody, request: Request, session=Sessio
         try:
             source = read_snapshot(request.app.state.config.data, get_entity(session, SourceRevision, revision.source_revision_id))
             translation = read_snapshot(request.app.state.config.data, revision)
-            template_id=body.template_id or 'reader-v13'
+            template_id=body.template_id or 'reader-v14'
             get_template(template_id)
             validate_ir(render_input(edition.document_id, source, translation, template_id), request.app.state.config.data)
         except (ValueError, OSError) as exc:

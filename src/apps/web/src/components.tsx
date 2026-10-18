@@ -1,4 +1,5 @@
 import { NumberEvidence } from './number-evidence';
+import { IssueGroups } from './features/issue-groups';
 import { errorMessage } from './messages';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from './api';
@@ -31,14 +32,16 @@ export function ErrorNotice({ error, retry }: { error?: Error; retry?: () => voi
 export function ActionFeedback({ error, notice }: { error?: Error; notice: string }) { return <><ErrorNotice error={error}/>{notice && <p role="status" className="notice success-notice">{notice}</p>}</>; }
 export function Loading() { return <p role="status" className="loading">正在读取服务端数据…</p>; }
 export function Empty({ title, children }: { title: string; children?: ReactNode }) { return <section className="empty"><Icon name="book" big/><h2>{title}</h2>{children}</section>; }
-export function Issues({ issues, checkState, onNavigate, onResolve, resolveDisabled }: {
+export function Issues({ issues, checkState, onNavigate, onLocate, onResolve, resolveDisabled, grouped = true }: {
   issues?: Issue[]; checkState?: string; onNavigate?: (id: string) => void;
-  onResolve?: (issue: Issue) => void; resolveDisabled?: boolean;
+  onResolve?: (issue: Issue) => void; onLocate?: (issue: Issue) => void; resolveDisabled?: boolean; grouped?: boolean;
 }) {
   const rows = issues ?? [];
   const state = checkState ?? (issues ? 'completed' : 'not_checked');
   if (!rows.length) return <p className="muted">{state === 'completed' ? '本次检查未发现问题。' : state === 'checking' ? '正在检查内容。' : state === 'failed' ? '检查未完成，已有内容仍可继续使用。' : state === 'stale' ? '内容已更新，检查结果待刷新。' : '尚未检查内容。'}</p>;
-  return <ul className="issues">{rows.map((issue, i) => {
+  const status = state === 'checking' ? '正在检查内容，以下为已有记录。' : state === 'failed' ? '检查未完成，以下记录不能代表完整检查结果。' : state === 'stale' ? '内容已更新，以下检查结果待刷新。' : state === 'not_checked' ? '尚未完成本次检查。' : '';
+  if (grouped && rows.length > 8) return <>{status && <p className="field-note warn" role="status">{status}</p>}{checkState && state !== 'failed' && <p className="small muted">内容提示不阻止后续翻译与保存。</p>}<IssueGroups issues={rows} render={items => <Issues issues={items} grouped={false} onNavigate={onNavigate} onLocate={onLocate} onResolve={onResolve} resolveDisabled={resolveDisabled}/>}/></>;
+  return <>{status && <p className="field-note warn" role="status">{status}</p>}<ul className="issues">{rows.map((issue, i) => {
     const important = ['hard', 'error', 'blocking', 'important'].includes(issue.severity);
     const label = important ? '重要提示' : issue.severity === 'info' ? '排版提示' : '一般提示';
     const blockId = issue.block_id ?? issue.block_ids?.[0];
@@ -47,10 +50,10 @@ export function Issues({ issues, checkState, onNavigate, onResolve, resolveDisab
       {issue.source_quote !== undefined && <div className="field-note"><strong>原文摘录</strong><p aria-label="原文摘录">{issue.source_quote}</p></div>}
       {issue.target_quote !== undefined && <div className="field-note"><strong>译文摘录</strong><p aria-label="译文摘录">{issue.target_quote}</p></div>}
       {(issue.code ?? issue.rule) === 'NUMBER_MISMATCH' && <NumberEvidence evidence={issue.evidence}/>}
-      {onNavigate && <div className="stack issue-actions">{blockId ? <button className="btn sm" onClick={() => onNavigate(blockId)}>跳转段落 {blockId}</button> : <span className="small muted">文档级提示</span>}{onResolve && issue.fingerprint && <button className="btn sm" disabled={resolveDisabled} onClick={() => onResolve(issue)}>记录核对结果（可选）</button>}</div>}
+      {(onNavigate || onLocate) && <div className="stack issue-actions">{onNavigate && (blockId ? <button className="btn sm" onClick={() => onNavigate(blockId)}>跳转段落 {blockId}</button> : <span className="small muted">文档级提示</span>)}{onLocate && <button className="btn sm" onClick={() => onLocate(issue)}>{issue.page != null ? `查看第 ${issue.page} 页原文` : '查看原文位置'}</button>}{onResolve && issue.fingerprint && <button className="btn sm" disabled={resolveDisabled} onClick={() => onResolve(issue)}>记录核对结果（可选）</button>}</div>}
       {(issue.evidence !== undefined || issue.evidence_refs?.length || issue.code || issue.rule) ? <details><summary>诊断详情</summary><pre>{JSON.stringify({ code: issue.code ?? issue.rule, evidence: issue.evidence, references: issue.evidence_refs }, null, 2)}</pre></details> : null}</>;
     return <li key={issue.id ?? i} className={`issue ${important ? 'important' : issue.severity}`}>{issue.severity === 'info' ? <details><summary>{issue.message ?? label}</summary>{content}</details> : content}</li>;
-  })}</ul>;
+  })}</ul></>;
 }
 export function Modal({ title, children, onClose, busy = false }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -80,11 +83,11 @@ export function Modal({ title, children, onClose, busy = false }: { title: strin
 export function PdfLocator({ documentId, originalUrl, locators = [] }: { documentId: string; originalUrl?: string; locators?: Locator[] }) {
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const original = localUrl(originalUrl, `/api/v1/documents/${resourceId(documentId)}/original`);
-  if (!locators.length) return <div className="field-note"><strong>无精确定位</strong><a className="btn" href={original} target="_blank" rel="noreferrer">打开原 PDF</a></div>;
+  if (!locators.length) return <div className="field-note"><strong>无精确定位</strong><a className="btn" href={original} target="_blank" rel="noreferrer">查看原文 PDF</a></div>;
   return <div className="pdf-locators">{locators.map((loc, i) => {
-    let bounds; try { bounds = locatorStyle(loc); } catch { return <p className="error" key={i}>来源坐标无效，无法高亮。请核对原 PDF。</p>; }
+    let bounds; try { bounds = locatorStyle(loc); } catch { return <p className="error" key={i}>来源坐标无效，无法高亮。请核对原文 PDF。</p>; }
     const imageUrl = localUrl(loc.page_image_url, `/api/v1/documents/${resourceId(documentId)}/pages/${loc.page}.png`);
     const key = `${imageUrl}-${i}`;
-    return <figure key={key} className="pdf-page"><div className="stack between"><figcaption>原 PDF · 第 {loc.page} 页</figcaption><a href={`${original.split('#')[0]}#page=${loc.page}`} target="_blank" rel="noreferrer">打开原页</a></div>{failed[key] ? <p className="field-note warn">页图读取失败。可通过上方原 PDF 链接继续核对。</p> : <div className="page-canvas" style={{ aspectRatio: `${loc.page_size[0]} / ${loc.page_size[1]}` }}><img src={imageUrl} alt={`原 PDF 第 ${loc.page} 页`} onError={() => setFailed(previous => ({ ...previous, [key]: true }))}/><span className="bbox" data-page={loc.page} style={bounds} aria-label={`来源高亮 ${loc.bbox.join(', ')}`}/></div>}</figure>;
+    return <figure key={key} className="pdf-page"><div className="stack between"><figcaption>原文 PDF · 第 {loc.page} 页</figcaption><a href={`${original.split('#')[0]}#page=${loc.page}`} target="_blank" rel="noreferrer">打开原页</a></div>{failed[key] ? <p className="field-note warn">页图读取失败。可通过上方原文 PDF 链接继续核对。</p> : <div className="page-canvas" style={{ aspectRatio: `${loc.page_size[0]} / ${loc.page_size[1]}` }}><img src={imageUrl} alt={`原文 PDF 第 ${loc.page} 页`} onError={() => setFailed(previous => ({ ...previous, [key]: true }))}/><span className="bbox" data-page={loc.page} style={bounds} aria-label={`来源高亮 ${loc.bbox.join(', ')}`}/></div>}</figure>;
   })}</div>;
 }

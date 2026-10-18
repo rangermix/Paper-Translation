@@ -73,10 +73,11 @@ for(const mode of ['candidate','semantic'])test(`${mode} accepts any language wi
 
 test('settings and upload expose all native names and accept additional language tags',async({page})=>{
  await mock(page);await page.goto('/#/settings');
- const select=page.getByLabel('默认目标语言',{exact:true});await select.selectOption('ja');
+ const select=page.getByLabel('默认翻译语言',{exact:true});await select.selectOption('ja');
  await expect(select.locator('option:checked')).toHaveText('日本語');
  await select.selectOption('__custom');await page.getByLabel('语言代码（如 fil、pt-BR）',{exact:true}).fill('ast');
  const saved=page.waitForRequest(r=>r.url().endsWith('/settings/preferences')&&r.method()==='PATCH');await page.getByRole('button',{name:'保存偏好',exact:true}).click();expect((await saved).postDataJSON().locale).toBe('ast');
+ await expect(page.getByText('偏好已保存。',{exact:true})).toBeVisible();
  await page.goto('/#/upload');await page.getByLabel('翻译为',{exact:true}).selectOption('pt-BR');
  await expect(page.getByLabel('翻译为',{exact:true}).locator('option:checked')).toHaveText('português (Brasil)');
 });

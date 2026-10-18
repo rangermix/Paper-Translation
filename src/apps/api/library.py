@@ -78,7 +78,7 @@ def document_view(session, doc):
         'source_revision_id': doc.current_source_id, 'source_language': doc.source_language,
         'original_url': f'/api/v1/documents/{doc.id}/original', 'sha256': asset.sha256, 'page_count': asset.page_count,
         'byte_size': asset.byte_size, 'import_id': source_draft.id if source_draft else None,
-        'current_job_id': job.id if job else None,
+        'current_job_id': job.id if job else None, 'current_job_status': job.status if job else None,
         'editions': [edition_view(session, e) for e in session.scalars(select(Edition).where(Edition.document_id == doc.id).order_by(Edition.target_locale))]}
 
 

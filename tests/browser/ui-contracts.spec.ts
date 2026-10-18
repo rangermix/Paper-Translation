@@ -74,8 +74,8 @@ test('old draft and new preflight always use their own revision-bound original P
  const draft={id:'old',document_id:doc.id,edition_id:'edition',source_revision_id:'source_old',source_hash:'a'.repeat(64),generation:2,target_locale:'zh-Hans',original_url:originalBase+oldQuery,segments:[{block_id:'p',source_text:'Frozen original old source',target_inline:[{type:'text',text:'旧源译文'}],version:1,review_status:'unreviewed',locators:[loc]}]};
  const preflight={import_id:'import_new',document_id:doc.id,source_revision_id:'source_new',source_hash:'b'.repeat(64),generation:1,status:'ready',source_language:'en',page_count:1,block_count:1,unresolved_blocks:0,original_url:originalBase+newQuery,blocks:[{id:'newp',kind:'paragraph',normalized_text:'New replacement source',locators:[{...loc,page_image_url:pageBase+newQuery}]}]};
  await mock(page,{'/drafts/old':draft,'/imports/import_new/preflight':preflight});await page.route('**/api/v1/documents/doc_contract/pages/**',async route=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2l9sAAAAASUVORK5CYII=','base64')}));
- await page.goto('/#/drafts/old'); await openEditorTools(page);if (await page.getByRole('button',{name:'展开段落 p',exact:true}).count()) await page.getByRole('button',{name:'展开段落 p',exact:true}).click();await page.getByRole('button',{name:'对照原 PDF',exact:true}).click();await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+oldQuery+'#page=1');await expect(page.getByRole('img',{name:'原 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+oldQuery);
- await page.goto('/#/preflight/import_new');await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+newQuery+'#page=1');await expect(page.getByRole('img',{name:'原 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+newQuery);
+ await page.goto('/#/drafts/old'); await openEditorTools(page);if (await page.getByRole('button',{name:'展开段落 p',exact:true}).count()) await page.getByRole('button',{name:'展开段落 p',exact:true}).click();await page.getByRole('button',{name:'对照原文 PDF',exact:true}).click();await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+oldQuery+'#page=1');await expect(page.getByRole('img',{name:'原文 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+oldQuery);
+ await page.goto('/#/preflight/import_new');await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+newQuery+'#page=1');await expect(page.getByRole('img',{name:'原文 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+newQuery);
 });
 
 test('cross-column continuation preserves a list item through a separately reviewed source operation',async({page})=>{
@@ -176,9 +176,9 @@ test('protected atoms, unsaved text and stale QA preserve review boundaries', as
   const textEditor = page.getByRole('textbox', { name: '译文段落', exact: true }); await textEditor.focus(); await textEditor.evaluate(element => { const range = document.createRange(); range.selectNodeContents(element.firstChild!); const selection = getSelection()!; selection.removeAllRanges(); selection.addRange(range); }); await page.keyboard.insertText('修正后的文本 ');
   await expect(page.getByText('有未保存修改')).toBeVisible();
   await expect(page.getByRole('button', { name: '运行质量检查' })).toBeDisabled();
-  await page.getByRole('button', { name: '对照原 PDF', exact: true }).click();
-  await expect(page.getByText('原 PDF · 第 1 页')).toBeVisible();
-  await expect(page.getByText('原 PDF · 第 2 页')).toBeVisible();
+  await page.getByRole('button', { name: '对照原文 PDF', exact: true }).click();
+  await expect(page.getByText('原文 PDF · 第 1 页')).toBeVisible();
+  await expect(page.getByText('原文 PDF · 第 2 页')).toBeVisible();
   await page.screenshot({ path: `${evidence}/editor-desktop.png`, fullPage: true });
 });
 
@@ -238,7 +238,7 @@ test('preflight native correction uses full persisted native text and explicit s
   await page.getByRole('button', {name: '查看原文与调整解析', exact: true}).click();
   await expect(page.getByRole('button', {name: '创建新来源草稿并重检覆盖'})).toBeDisabled();
   await page.getByLabel('原件核对记录与理由').fill('Compared the original double quotation marks');
-  await page.getByLabel(/我已对照高亮的原 PDF/).check();
+  await page.getByLabel(/我已对照高亮的原文 PDF/).check();
   const sent = page.waitForRequest(r => r.url().includes('/imports/native/corrections'));
   await page.getByRole('button', {name: '创建新来源草稿并重检覆盖'}).click();
   const request = await sent;

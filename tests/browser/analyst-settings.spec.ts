@@ -66,6 +66,7 @@ for (const width of [1440, 390]) test(`independent local analyst settings persis
   const { errors, reads, writes } = await setup(page);
   await page.setViewportSize({ width, height: 1000 });
   await page.goto('/#/settings');
+  await page.locator('.settings-model-preparation > summary').click();
   await expect(page).toHaveURL(/#\/settings$/);
   await expect(page).toHaveTitle(/对照文库/);
   const panel = page.getByRole('region', { name: '翻译前总结模型', exact: true });
@@ -89,6 +90,7 @@ for (const width of [1440, 390]) test(`independent local analyst settings persis
     local_analyst_model_id: analysts[1].model_id, local_analyst_backend: 'llama.cpp',
   } });
   await page.reload();
+  await page.locator('.settings-model-preparation > summary').click();
   await expect(model).toHaveValue(analysts[1].model_id);
   await expect(backend).toHaveValue('llama.cpp');
   await expect(translation.getByRole('combobox', { name: '具体模型 ID', exact: true })).toHaveValue(translator.model_id);
@@ -106,6 +108,7 @@ for (const width of [1440, 390]) test(`independent local analyst settings persis
 test('unavailable analyst service preserves the choice and allows saving without a download', async ({ page }) => {
   const { errors, writes } = await setup(page, false, true);
   await page.goto('/#/settings');
+  await page.locator('.settings-model-preparation > summary').click();
   const panel = page.getByRole('region', { name: '翻译前总结模型', exact: true });
   const analysis = panel.getByRole('region', { name: '本地分析模型', exact: true });
   await expect(analysis.getByRole('combobox', { name: '具体模型 ID', exact: true })).toHaveValue(analysts[0].model_id);
@@ -122,6 +125,7 @@ test('unavailable analyst service preserves the choice and allows saving without
 test('conflicting analyst settings require a fresh read and explicit save with the latest generation', async ({ page }) => {
   const { reads, writes } = await setup(page, true);
   await page.goto('/#/settings');
+  await page.locator('.settings-model-preparation > summary').click();
   const panel = page.getByRole('region', { name: '翻译前总结模型', exact: true });
   const analysis = panel.getByRole('region', { name: '本地分析模型', exact: true });
   const model = analysis.getByRole('combobox', { name: '具体模型 ID', exact: true });
@@ -143,6 +147,7 @@ test('conflicting analyst settings require a fresh read and explicit save with t
   expect(writes[0].etag).toBe('"7"');
   const beforeRefresh = reads.filter(path => path === '/settings/preferences').length;
   await panel.getByRole('button', { name: '重新读取', exact: true }).click();
+  await page.getByRole('dialog', { name: '刷新设置并保留输入' }).getByRole('button', { name: '刷新并保留输入' }).click();
   await expect(save).toBeEnabled();
   expect(reads.filter(path => path === '/settings/preferences').length).toBeGreaterThan(beforeRefresh);
   await expect(model).toHaveValue(analysts[1].model_id);
@@ -153,6 +158,7 @@ test('conflicting analyst settings require a fresh read and explicit save with t
     local_analyst_model_id: analysts[1].model_id, local_analyst_backend: 'llama.cpp',
   } });
   await page.reload();
+  await page.locator('.settings-model-preparation > summary').click();
   await expect(model).toHaveValue(analysts[1].model_id);
   await expect(page.getByRole('region', { name: '本地翻译模型', exact: true }).getByRole('combobox', { name: '具体模型 ID', exact: true })).toHaveValue(translator.model_id);
 });

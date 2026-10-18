@@ -7,6 +7,7 @@ import { providerProtocols } from './provider-protocol';
 import { ProviderConnection } from './provider-connection';
 import { DispatchRecovery } from './dispatch-settings';
 import { LocalModels } from './local-models';
+import { useSettingsForm, useSettingsRefresh } from './settings-state';
 
 type Fields = {
   endpoint: string; protocol: NonNullable<Provider['api_protocol']>; auth: NonNullable<Provider['auth_mode']>;
@@ -62,10 +63,10 @@ function tokenInvalid(value: string, max: number) {
 function saveError(reason: unknown) {
   const original = reason instanceof ApiError ? reason : undefined;
   const code = original?.code ?? 'PROVIDER_SAVE_FAILED';
-  const message = original?.status === 412 ? '配置版本已变化。请读取最新配置并比较，当前非密钥输入已保留。'
+  const message = original?.status === 412 ? '配置版本已变化。请刷新配置并比较，当前非密钥输入已保留。'
     : code === 'PROVIDER_KEY_REBIND_REQUIRED' ? '服务地址或接口类型已变化，请重新输入密钥或明确清除已保存的密钥。'
     : code === 'PROVIDER_KEY_REQUIRED' ? '后端无法沿用外部密钥。请重新输入密钥，或明确清除后先保存未完成配置。'
-    : original?.status === 0 ? '连接中断，保存结果尚不确定。请读取最新配置后再决定是否保存。'
+    : original?.status === 0 ? '连接中断，保存结果尚不确定。请刷新配置后再决定是否保存。'
     : original?.status === 409 ? '配置暂不能保存。请读取最新状态并核对配置。'
     : '配置未能保存，请检查服务地址、模型、价格和请求限制。输入的密钥已从表单清空。';
   // Never copy a server validation message/details that could echo a credential.
@@ -142,7 +143,7 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     finally { running.current = false; setPending(false); }
   }
   async function save() {
-    if (!canSave || running.current) return;
+    if (!canSave || running.current) return false;
     running.current = true; setPending(true); setNotice(''); setError(undefined);
     const price: ProviderPrice = { currency: 'USD', input_bound_rule: 'utf8-byte-ceiling-v1' };
     if (fields.inputPrice !== '') price.input_micro_per_million = micro(fields.inputPrice);
@@ -169,9 +170,11 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
       applyLatest(value, false, true);
       setNotice(local ? '本地模型配置已保存。' : value.configured && value.dispatch_configuration_ready !== false ? 'AI 服务配置已保存，可测试连接。'
         : 'AI 服务配置已保存，仍等待配置。请补全缺失字段。');
+      return true;
     } catch (reason) {
       const safe = saveError(reason); setError(safe);
       if ([0, 409, 412].includes(safe.status)) setRefreshRequired(true);
+      return false;
     } finally { running.current = false; setPending(false); }
   }
   const credentialLabel = credentialSource.config_source === 'external' && credentialSource.has_api_key == null ? '外部密钥状态未核验'
@@ -185,8 +188,19 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     return !!draft && (JSON.stringify(draft.fields) !== JSON.stringify(saved ? fromProvider(saved) : defaultsFor(selected, base, draft.fields.auth))
       || !!draft.apiKey || draft.clearKey);
   });
+  const otherDrafts = Object.entries(drafts).some(([name, draft]) => {
+    if (name === fields.protocol || !draft) return false;
+    const selected = name as Fields['protocol'];
+    const saved = storedFor(selected);
+    return JSON.stringify(draft.fields) !== JSON.stringify(saved ? fromProvider(saved) : defaultsFor(selected, base, draft.fields.auth))
+      || !!draft.apiKey || draft.clearKey;
+  });
+  useSettingsForm('provider', { label: '翻译服务', dirty: unsaved, pending, canSave: canSave && !otherDrafts, save,
+    discard: () => { applyLatest(base, false); setNotice(''); } });
+  const refresh = useSettingsRefresh(unsaved, readLatest, true);
   return <form className="provider-form" onSubmit={event => { event.preventDefault(); void save(); }} autoComplete="off">
     <div className="provider-state stack"><span className={ready ? 'provider-ready' : 'muted'}>{ready ? (base.connection_test ? '已配置 · 测试结果见下方' : '已配置 · 未测试') : '等待配置'}</span>{unsaved && <span className="settings-unsaved">未保存</span>}</div>
+    {otherDrafts && <p className="settings-hint">其他接口还有未保存的输入。请切换到对应接口处理；保存当前接口不会自动保存或启用其他服务。</p>}
     {base.missing_fields?.length ? <p className="field-note">待补全：{[...new Set(base.missing_fields.map(field => missingLabels[field] ?? '其他服务配置（请检查高级选项）'))].join('、')}</p> : null}
     <fieldset disabled={pending} className="provider-fields">
       <div className={local ? 'provider-interface' : 'two-cols'}>
@@ -228,8 +242,9 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     {latest && latestFields && <section className="notice" aria-label="配置版本比较"><h3>读取到的最新配置</h3><dl className="kv"><dt>服务地址</dt><dd>{latest.endpoint || '未填写'}</dd><dt>模型 ID</dt><dd>{latest.model_id || '未填写'}</dd><dt>接口 / 鉴权</dt><dd>{latest.api_protocol} / {latest.auth_mode}</dd>{latest.api_protocol === 'claude_messages' && <><dt>Anthropic API 版本</dt><dd>{latest.api_version || '2023-06-01（服务端默认）'}</dd></>}<dt>预算与成本控制</dt><dd>{latestFields.costControl ? '已启用' : '未启用'}</dd><dt>输入 / 缓存 / 输出价格</dt><dd>{latestFields.inputPrice || '未填写'} / {latestFields.cachedPrice || '未填写'} / {latestFields.outputPrice || '未填写'} USD / 百万 token</dd><dt>输入 / 输出上限</dt><dd>{latestFields.inputTokens || '未填写'} / {latestFields.outputTokens || '未填写'} token</dd><dt>单元字符上限</dt><dd>{latestFields.unitCharacters || '服务端默认'}</dd><dt>推理用量计费</dt><dd>{latestFields.includesReasoning ? '已确认包含' : '未确认'}</dd><dt>已启用语言对</dt><dd>{latest.enabled_pairs?.map(pair => pair.join(' → ')).join('；') || '无'}</dd></dl><p>比较后选择重新加载全部字段，或保留当前非密钥输入并采用最新版本。密钥需要时请重新输入。</p><div className="stack"><button className="btn" type="button" onClick={() => applyLatest(latest, false)}>使用最新配置</button><button className="btn" type="button" onClick={() => applyLatest(latest, true)}>保留输入并采用最新版本</button></div></section>}
     <div className="stack provider-actions"><button className="btn primary" type="submit" disabled={!canSave}>{pending ? '正在处理配置…' : '保存 AI 服务配置'}</button>
       <ProviderConnection key={`${base.profile_hash}-${loadedVersion}`} provider={base} disabled={pending || refreshRequired || !!latest} dirty={dirty} onResult={value => setBase(old => ({ ...old, connection_test: value, connection_test_has_unknown: old.connection_test_has_unknown || value.status === 'outcome_unknown' }))}/>
-      <button className="btn ghost provider-reload" type="button" disabled={pending} onClick={() => void readLatest()}>读取最新配置</button>
+      <button className="btn ghost provider-reload" type="button" disabled={pending} onClick={refresh.request}>刷新配置</button>
     </div>
     {!etagFor(base) && <p className="field-note">服务端未提供配置版本，暂不能保存。请重新读取配置。</p>}
+    {refresh.confirmation}
   </form>;
 }

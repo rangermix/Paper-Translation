@@ -28,7 +28,7 @@ export function PreparationControls({ value, onChange, profile, estimates, disab
     </div>
     {value === 'local' && <LocalAnalyst disabled={disabled}/>}
     {estimate && <p className="field-note preparation-estimate">额外分析请求：{estimate.additional_requests} 次 · 额外分析费用估算：{money(estimate.additional_cost_micro, profile?.currency)}{value === 'local' ? '（本地运行，无托管 API 费用）' : ''}</p>}
-    {!preparationAllowed(value, profile) && <p className="notice">当前翻译服务不提供 API 分析，请选择来源摘录或独立本地模型。</p>}
+    {!preparationAllowed(value, profile) && <p className="notice">当前翻译服务不提供 API 分析，请选择“提取参考内容和术语”或独立本地模型。</p>}
   </section>;
 }
 
@@ -44,12 +44,13 @@ function LocalAnalyst({ disabled }: { disabled: boolean }) {
     <strong>本地分析模型</strong>
     {model ? <>
       <p><strong>{model.label}</strong> · {model.format?.toUpperCase()} {model.quantization ?? `${model.bits} bit`} · {inferenceLabels[backend] ?? backend}</p>
-      <p role="status">{compatible ? modelStatusLabels[state?.status ?? 'unavailable'] ?? '状态待刷新' : '已保存的推理后端在当前部署中不可用'} · 下载约 {Math.round(model.download_bytes / 1024 / 1024)} MiB</p>
+      <p role="status">{result.error || preferences.error ? '状态更新失败，请刷新后核对' : compatible ? modelStatusLabels[state?.status ?? ''] ?? '状态未提供' : '已保存的推理后端在当前部署中不可用'} · 下载约 {Math.round(model.download_bytes / 1024 / 1024)} MiB</p>
+      <details className="model-choice-details"><summary>模型 ID 与性能说明</summary><p>用途：翻译前的背景与术语准备，不生成正文译文。当前设备的速度与质量对比：未提供。</p><dl className="kv"><dt>模型 ID</dt><dd className="mono">{model.model_id}</dd></dl><p>选择和保存不会下载或加载模型。</p></details>
       {state?.status === 'downloading' && state.total_bytes ? <progress aria-label="分析模型下载进度" value={state.downloaded_bytes ?? 0} max={state.total_bytes}/> : null}
       <button className="btn" type="button" disabled={disabled || action.pending || !compatible || Boolean(preferences.error || result.error) || ['downloading', 'loading', 'unavailable'].includes(state?.status ?? 'unavailable')}
         onClick={() => void action.run(async () => { await api(`/settings/local-models/${resourceId(model.id)}/prepare?backend=${encodeURIComponent(backend)}`, { method: 'POST', body: {} }); result.reload(); })}>准备本地分析模型</button>
-    </> : result.loading || preferences.loading ? <Loading/> : <p>已保存的分析模型在当前部署中不可用，请到设置选择支持的模型和推理后端。</p>}
-    <a href="#/settings">设置总结模型</a>
+    </> : result.loading || preferences.loading ? <Loading/> : result.error || preferences.error ? <p>模型信息读取失败，请刷新后核对。</p> : <p>已保存的分析模型在当前部署中不可用，请到设置选择支持的模型和推理后端。</p>}
+    <a href="#/settings">设置分析模型</a>
     <ErrorNotice error={result.error} retry={result.reload}/><ErrorNotice error={preferences.error} retry={preferences.reload}/><ActionFeedback {...action}/>
   </section>;
 }

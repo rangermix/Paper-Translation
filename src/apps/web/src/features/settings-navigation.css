@@ -1,0 +1,19 @@
+.settings-category-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.settings-category-nav .btn { font-weight: 600; }
+.settings-categories { max-width: 1080px; }
+.settings-category { margin-bottom: 28px; scroll-margin-top: 20px; }
+.settings-category:focus { outline: none; }
+.settings-category:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 12px; }
+.settings-scope { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.settings-draft-summary { margin: 0 0 16px; padding: 10px 14px; border-left: 3px solid var(--warn); background: var(--paper); color: var(--ink); font-size: 13px; }
+.settings-resource-details, .settings-model-preparation { border: 1px solid var(--line); border-radius: 11px; background: var(--paper); }
+.settings-resource-details > summary, .settings-model-preparation > summary { padding: 15px 20px; font-size: 14px; font-weight: 600; }
+.settings-resource-summary { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.settings-model-preparation { margin-top: 16px; }
+.settings-categories .settings-resource-details > .panel, .settings-categories .settings-model-preparation > .panel { border: 0; margin: 0; }
+.settings-categories .provider-form { max-width: 760px; }
+@media (max-width: 760px) {
+  .settings-category-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .settings-category-nav .btn { min-height: 44px; text-align: center; }
+  .settings-resource-details > summary, .settings-model-preparation > summary { padding: 15px; }
+}

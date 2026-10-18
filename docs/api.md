@@ -23,7 +23,7 @@ are UTC; monetary amounts use integer micro-units or `null` when unknown.
 
 The upload UI submits `workflow.external_processing_confirmed: true` and the
 current `profile_hash` when **解析并翻译** is selected, the saved service is ready
-and the user submits the batch. Choosing **仅解析阅读** does not authorize
+and the user submits the batch. Choosing **仅生成原文阅读版** does not authorize
 translation. Submission binds each queued request to its source and destination, without a separate consent
 or remembered-permission switch. The UI does not use saved upload permission.
 
@@ -38,6 +38,16 @@ this preference in the UI.
 New UI operations submit `publish_policy: "auto_publish"`. APIs continue accepting
 `manual_approval` for compatibility. Existing preferences, queued task policies,
 sealed revisions and published artifacts are not rewritten.
+
+Document responses expose `current_job_status` alongside `current_job_id` from
+the same selected job. The UI uses this state for processing/history links;
+publication status alone does not imply whether a job is still running.
+
+Recorded local model identities may include a response-only `display_name` when
+their exact ID and compatible revision match the locked catalog. The recorded
+identity is unchanged; unknown/API models retain their original ID. The jobs
+`model` filter searches recorded identity text and these recognized names before
+pagination, including internal steps within the existing main-task grouping.
 
 | Route group | Implementation and behavior |
 | --- | --- |

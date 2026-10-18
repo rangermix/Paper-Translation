@@ -21,6 +21,7 @@ from packages.jobs.queue import emit
 from packages.jobs.history import effective_log_level, log_view, time_view
 from packages.jobs.hierarchy import family_summary, family_tree, family_views, job_operation, main_task, operation, task_role
 from packages.jobs.visibility import clearable_history, visible_history
+from packages.jobs.model_names import model_identity_filter, model_identity_view
 from packages.storage import read_snapshot, write_snapshot
 from packages.translation.languages import canonical_locale, translation_profile
 from packages.preparation import PreparationOptions, freeze_options
@@ -56,10 +57,10 @@ def job_view(session, job, *, details=True, workflow=None):
         return {**family, 'id': job.id, 'job_id': job.id, 'stage': job.stage, 'status': job.status,
             'document_id': None, 'title': '已删除文档', 'title_snapshot': None, 'content_deleted': True,
             'parent_job_id': job.parent_job_id, 'created_at': job.created_at, 'generation': job.generation,
-            'control_epoch': job.control_epoch, **time_view(job), 'actual_model': job.actual_model,
+            'control_epoch': job.control_epoch, **time_view(job), 'actual_model': model_identity_view(job.actual_model),
             'config_snapshot': job.config_snapshot, 'progress': {}, 'result': {}, 'issues': [],
             'error': {'code': job.error.get('code')} if job.error else None,
-            'attempts': [{'id': a.id, 'status': a.state, 'state': a.state, **time_view(a), 'actual_model': a.actual_model}
+            'attempts': [{'id': a.id, 'status': a.state, 'state': a.state, **time_view(a), 'actual_model': model_identity_view(a.actual_model)}
                 for a in session.scalars(select(Attempt).where(Attempt.job_id == job.id).order_by(Attempt.created_at, Attempt.id))] if details else []}
     if job.stage == 'cleanup':
         # A tombstone exposes only this receipt, never retained job payloads,
@@ -71,11 +72,11 @@ def job_view(session, job, *, details=True, workflow=None):
             'title': '已删除文档', 'filename': None, 'target_locale': None,
             'status': job.status, 'generation': job.generation, 'control_epoch': job.control_epoch,
             'created_at': job.created_at, 'progress': {},
-            **time_view(job), 'actual_model': job.actual_model, 'config_snapshot': job.config_snapshot,
+            **time_view(job), 'actual_model': model_identity_view(job.actual_model), 'config_snapshot': job.config_snapshot,
             'error': {'code': 'CLEANUP_FAILED', 'message': 'File cleanup failed.'} if files == 'failed' else None,
             'budget_micro': 0, 'cost_control_enabled': None, 'inflight_requests': 0, 'request_count': 0, 'currency': 'USD',
             **costs, 'costs': costs, 'usage': costs,
-            'attempts': [{'id': a.id, 'status': a.state, 'state': a.state, **time_view(a), 'actual_model': a.actual_model}
+            'attempts': [{'id': a.id, 'status': a.state, 'state': a.state, **time_view(a), 'actual_model': model_identity_view(a.actual_model)}
                 for a in session.scalars(select(Attempt).where(Attempt.job_id == job.id).order_by(Attempt.created_at, Attempt.id))], 'issues': [],
             'draft_id': None, 'import_id': None, 'result': {'deleted': True} if files == 'completed' else {},
             'cleanup': {'online_content': 'unavailable', 'files': files,
@@ -91,7 +92,7 @@ def job_view(session, job, *, details=True, workflow=None):
     error = {**job.error, 'message': job.error.get('message', job.error.get('code', 'Job error').replace('_', ' ').capitalize())} if job.error else None
     return {**family, 'id': job.id, 'job_id': job.id, 'document_id': job.document_id, 'stage': job.stage,
         **job_identity(session, job),
-        **time_view(job), 'config_snapshot': job.config_snapshot, 'actual_model': job.actual_model,
+        **time_view(job), 'config_snapshot': job.config_snapshot, 'actual_model': model_identity_view(job.actual_model),
         'title_snapshot': job.title_snapshot, 'parent_job_id': job.parent_job_id, 'quality_summary': job.quality_summary,
         'child_jobs': [{'id': child.id, 'stage': child.stage, 'status': child.status} for child in session.scalars(
             select(Job).where(Job.parent_job_id == job.id, ~main_task()).order_by(Job.created_at, Job.id).limit(100))] if details else [],
@@ -105,7 +106,7 @@ def job_view(session, job, *, details=True, workflow=None):
         'costs': costs, 'usage': costs,
         'draft_id': job.payload.get('draft_id') or progress.get('draft_id'), 'created_at': job.created_at,
         'attempts': [{'id': a.id, 'state': a.state, 'status': a.state, 'request_id': a.request_id, 'usage': a.usage, 'evidence': a.evidence,
-            **time_view(a), 'actual_model': a.actual_model,
+            **time_view(a), 'actual_model': model_identity_view(a.actual_model),
             'actual_micro': permits[a.id].actual_micro if a.id in permits else None,
             'reserved_micro': permits[a.id].reserved_micro if a.id in permits else None,
             'cost_control_enabled': permits[a.id].price_snapshot.get('cost_control_enabled', True) if a.id in permits else None,
@@ -142,8 +143,7 @@ def list_jobs(status: str | None = None, document_id: str | None = None, cursor:
         require(bool(parent_job_id), 'PARENT_REQUIRED', status=422)
         query = query.where(main_task() if relationship == 'related' else ~main_task())
     if model:
-        from sqlalchemy import cast, Text
-        query = query.where(summary.c.matches_model if top_level_only else cast(Job.actual_model, Text).icontains(model, autoescape=True))
+        query = query.where(summary.c.matches_model if top_level_only else model_identity_filter(Job.actual_model, model))
     groups = {
         'active': ['pending', 'queued', 'running', 'translating', 'cancel_requested'],
         'attention': ['failed', 'outcome_unknown', 'paused', 'waiting_config', 'waiting_configuration', 'waiting_budget', 'needs_review'],
@@ -340,7 +340,7 @@ def preflight(import_id: str, session=Session):
         'block_count': len(source.get('blocks', [])),
         'unresolved': unresolved, 'unresolved_blocks': len(diagnostics['issues']), 'can_translate': ready,
         'issues': diagnostics['issues'], 'quality': diagnostics['quality'], 'diagnostic_count': len(unresolved),
-        'actual_model': execution.actual_model if execution else None,
+        'actual_model': model_identity_view(execution.actual_model) if execution else None,
         'status': 'superseded' if superseded else 'sealed' if sealed_id else 'ready' if ready else 'unavailable', 'pages': pages,
         'translation_targets': targets,
         'required_blocks': sum(bool(b.get('translatable')) and b['id'] not in original_only for b in source.get('blocks', [])),

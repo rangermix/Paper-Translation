@@ -179,3 +179,41 @@ const validTag = new RegExp(`^(?:${languageTagPattern})$`);
 export function isLanguageTag(value?: string | null): value is string {
   return !!value && value.length <= 32 && validTag.test(value) && !['und', 'auto', 'mul', 'zxx'].includes(value.split('-')[0].toLowerCase());
 }
+
+const localizedNames = new Map<string, string>();
+const searchNames = new Map<string, string>();
+const normalizeSearch = (value: string) => value.normalize('NFKD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase().trim();
+
+export function localizedLanguageName(locale: string): string {
+  const cached = localizedNames.get(locale);
+  if (cached) return cached;
+  let name = locale;
+  try { name = new Intl.DisplayNames(['zh-Hans'], { type: 'language', languageDisplay: 'standard', fallback: 'code' }).of(locale) || locale; }
+  catch { /* Unknown historical tags remain visible as their exact identifier. */ }
+  localizedNames.set(locale, name);
+  return name;
+}
+
+export function matchesLanguage(locale: string, query: string): boolean {
+  const terms = normalizeSearch(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  let searchable = searchNames.get(locale);
+  if (!searchable) {
+    let english = '';
+    try { english = new Intl.DisplayNames(['en'], { type: 'language', languageDisplay: 'standard' }).of(locale) || ''; } catch { /* Preserve the native label and code. */ }
+    searchable = normalizeSearch(`${locale} ${languageName(locale)} ${localizedLanguageName(locale)} ${english}`);
+    searchNames.set(locale, searchable);
+  }
+  return terms.every(term => searchable.includes(term));
+}
+
+export const recentLanguagesKey = 'paper-translation:recent-languages:v1';
+export function parseRecentLanguages(serialized: string | null): string[] {
+  try {
+    const values: unknown = JSON.parse(serialized ?? '[]');
+    return Array.isArray(values) ? [...new Set(values.filter(value => typeof value === 'string' && isLanguageTag(value)))].slice(0, 6) : [];
+  } catch { return []; }
+}
+export function rememberLanguage(locale: string, previous: string[]): string[] {
+  return isLanguageTag(locale) ? [locale, ...previous.filter(value => value !== locale && isLanguageTag(value))].slice(0, 6) : previous;
+}

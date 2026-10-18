@@ -26,7 +26,10 @@ def test_unique_short_numeric_citations_are_sent_as_original_literals():
     assert text == 'Prior work [14] supports this. Also [28, 9]'
     assert markers == {'[14]': 'cite', '[28, 9]': 'other'}
     prompt = request_body([unit], profile(), [])['messages'][0]['content']
-    instructions, source = prompt.split('[Source Text]\n', 1)
+    # HY's native plain template separates the literal source with a blank line;
+    # it deliberately omits source labels that can be echoed as translated text.
+    instructions, source = prompt.rsplit('\n\n', 1)
+    assert '[Source Text]' not in prompt
     assert 'Copy every numeric citation exactly' in instructions
     assert '{{PT' not in prompt
     assert source == text

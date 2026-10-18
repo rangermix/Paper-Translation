@@ -33,6 +33,7 @@ Full-page DMR parsing: [specification](plans/2026-10-02-dmr-parser-spec.md),
 [independent Astra/max audit](plans/2026-10-02-parser-gap-audit.md), and
 [gap closure and verification](plans/2026-10-02-parser-gap-closure.md).
 
-UI and UX improvements: [specification](plans/2026-10-18-ui-ux-spec.md) and
-[prioritized implementation plan](plans/2026-10-18-ui-ux-plan.md). These capture the
-2026-10-18 deployed-interface audit; implementation has not started.
+UI and UX: [current interaction guide](ui-ux.md) and [complete specification](ui-ux-spec.md).
+The specification retains the 2026-10-18 audit baseline; the completed priority
+plan is preserved in Git history. Source behavior, test evidence and deployment
+status remain separate.

@@ -45,6 +45,7 @@ for (const width of [1440, 390]) test(`resource limits save and persist without 
   const { errors, writes } = await setup(page);
   await page.setViewportSize({ width, height: 1000 });
   await page.goto('/#/settings');
+  await page.locator('.settings-resource-details > summary').click();
   const panel = page.getByRole('region', { name: '资源与并发' });
   await expect(panel.getByLabel('RAM 使用上限（%）', { exact: true })).toHaveValue('80');
   await expect(panel.getByLabel('VRAM 使用上限（%）')).toHaveValue('80');
@@ -58,6 +59,7 @@ for (const width of [1440, 390]) test(`resource limits save and persist without 
   expect(writes).toEqual([{ path: '/settings/preferences', etag: '"7"', body: { resources: {
     max_ram_percent: 70, max_vram_percent: 65, master_concurrency: 3, subjob_concurrency: 4, auto_concurrency: false } } }]);
   await page.reload();
+  await page.locator('.settings-resource-details > summary').click();
   await expect(panel.getByLabel('VRAM 使用上限（%）')).toHaveValue('65');
   await panel.getByText('全部模型的内存参考（估算）', { exact: true }).click();
   await expect(panel.getByRole('cell', { name: 'Hy-MT2 7B Q4' })).toBeVisible();
@@ -72,6 +74,7 @@ for (const width of [1440, 390]) test(`resource limits save and persist without 
 test('invalid numbers prevent save and absent telemetry is explicit', async ({ page }) => {
   const { writes } = await setup(page, { missing: true });
   await page.goto('/#/settings');
+  await page.locator('.settings-resource-details > summary').click();
   const panel = page.getByRole('region', { name: '资源与并发' });
   await expect(panel.getByText('容量暂不可用')).toHaveCount(2);
   await expect(panel.getByText('1 个任务等待：等待可用的内存监测。')).toBeVisible();
@@ -85,6 +88,7 @@ test('invalid numbers prevent save and absent telemetry is explicit', async ({ p
 test('stale save keeps resource draft and requires refresh', async ({ page }) => {
   const { writes } = await setup(page, { conflict: true });
   await page.goto('/#/settings');
+  await page.locator('.settings-resource-details > summary').click();
   const panel = page.getByRole('region', { name: '资源与并发' });
   await panel.getByLabel('RAM 使用上限（%）', { exact: true }).fill('73');
   await panel.getByRole('button', { name: '保存资源设置' }).click();

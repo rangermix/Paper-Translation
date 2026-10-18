@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 
@@ -84,7 +85,7 @@ for (const flow of ['upload', 'preflight', 'edition', 'continue', 'candidate'] a
     await page.goto(routes[flow]);
     if (flow === 'edition') await page.getByRole('button', { name: '确认此语言版翻译', exact: true }).click();
     if (flow === 'continue') await page.getByRole('button', { name: /开始翻译 ·/ }).click();
-    if (flow === 'candidate') {
+    if (flow === 'candidate') { await openEditorTools(page);
       await page.getByLabel('选择段落 b1', { exact: true }).check();
       await page.getByRole('button', { name: /局部重译/ }).click();
     }
@@ -103,7 +104,7 @@ for (const flow of ['upload', 'preflight', 'edition', 'continue', 'candidate'] a
     await expect.poll(() => reads.includes('/settings/local-models?purpose=analysis')).toBe(true);
     expect(writes).toEqual([]);
     if (flow !== 'upload') await consent.check();
-    const names = { upload: '上传并开始处理', preflight: '确认外发，开始翻译', edition: '确认外发，翻译此语言版',
+    const names = { upload: '上传并翻译', preflight: '确认外发，开始翻译', edition: '确认外发，翻译此语言版',
       continue: '开始翻译未完成内容', candidate: '创建局部候选任务' };
     await container.getByRole('button', { name: names[flow], exact: true }).click();
     const paths = { upload: '/imports', preflight: '/imports/parsed/confirm', edition: '/editions/edition/translate',
@@ -189,24 +190,24 @@ test('provider analysis exposes an extra estimate and off mode is sent explicitl
 
 test('semantic review keeps its own consent and does not submit translation preparation', async ({ page }) => {
   const { writes } = await setup(page);
-  await page.goto('/#/drafts/draft');
+  await page.goto('/#/drafts/draft'); await openEditorTools(page);
   await page.getByLabel('选择段落 b1', { exact: true }).check();
-  await page.getByRole('button', { name: '辅助语义评审', exact: true }).click();
+  await page.getByRole('button', { name: '检查译文含义', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByLabel('翻译前准备', { exact: true })).toHaveCount(0);
   await dialog.getByRole('checkbox').check();
-  await dialog.getByRole('button', { name: '创建辅助语义评审任务', exact: true }).click();
+  await dialog.getByRole('button', { name: '创建含义检查任务', exact: true }).click();
   expect(writes[0].body).not.toHaveProperty('preparation');
 });
 
 for (const width of [1440, 390]) test(`frozen preparation evidence stays read-only and usable at ${width}px`, async ({ page }) => {
   const { writes, errors } = await setup(page);
   await page.setViewportSize({ width, height: 900 });
-  await page.goto('/#/drafts/draft');
+  await page.goto('/#/drafts/draft'); await openEditorTools(page);
   await expect(page).toHaveTitle(/对照文库/);
   await expect(page.getByRole('heading', { name: '译文编辑', exact: true })).toBeVisible();
-  await page.getByText('草稿基准准备与依据', { exact: true }).click();
-  const view = page.getByRole('region', { name: '草稿基准准备与依据', exact: true });
+  await page.getByText('翻译依据', { exact: true }).click();
+  const view = page.getByRole('region', { name: '翻译依据', exact: true });
   await expect(view.getByRole('heading', { name: '模型概述建议', exact: true })).toBeVisible();
   await expect(view).toContainText('未阅读全文');
   await expect(view).toContainText('Distributed workers');
@@ -214,7 +215,7 @@ for (const width of [1440, 390]) test(`frozen preparation evidence stays read-on
   await expect(view).toContainText('未经人工核对');
   await expect(view.getByText(pack.evidence[0].quote, { exact: true }).first()).toBeVisible();
   await expect(view.getByRole('link', { name: '管理术语表', exact: true })).toHaveAttribute('href', '#/glossary');
-  await expect(page.getByRole('button', { name: '封存当前修订', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '保存为新版本', exact: true })).toBeEnabled();
   expect(writes).toEqual([]);
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -246,9 +247,9 @@ for (const width of [1440, 390]) test(`local preparation controls remain readabl
 
 test('extractive preparation labels source excerpts without claiming a generated summary', async ({ page }) => {
   await setup(page, false, false);
-  await page.goto('/#/drafts/draft');
-  await page.getByText('草稿基准准备与依据', { exact: true }).click();
-  const view = page.getByRole('region', { name: '草稿基准准备与依据' });
+  await page.goto('/#/drafts/draft'); await openEditorTools(page);
+  await page.getByText('翻译依据', { exact: true }).click();
+  const view = page.getByRole('region', { name: '翻译依据' });
   await expect(view.getByRole('heading', { name: '来源摘录概览', exact: true })).toBeVisible();
   await expect(view.getByRole('heading', { name: '模型概述建议', exact: true })).toHaveCount(0);
 });
@@ -265,9 +266,9 @@ test('job progress separates preparation from translated segments', async ({ pag
 
 test('terminology-only translators disclose the context limit in saved preparation and progress', async ({ page }) => {
   await setup(page, true, true, { mode: 'terms_only', omitted: 2 });
-  await page.goto('/#/drafts/draft');
-  await page.getByText('草稿基准准备与依据', { exact: true }).click();
-  await expect(page.getByRole('region', { name: '草稿基准准备与依据', exact: true })).toContainText('当前翻译模型仅使用准备的术语');
+  await page.goto('/#/drafts/draft'); await openEditorTools(page);
+  await page.getByText('翻译依据', { exact: true }).click();
+  await expect(page.getByRole('region', { name: '翻译依据', exact: true })).toContainText('当前翻译模型仅使用准备的术语');
   await page.goto('/#/jobs/job');
   const progress = page.getByRole('region', { name: '翻译准备进度', exact: true });
   await expect(progress).toContainText('当前翻译模型仅使用准备的术语');
@@ -291,11 +292,11 @@ for (const width of [1440, 390]) test(`segment and candidate inspectors use thei
     const revision = scope === 'segment' ? 'accepted-segment-preparation' : scope === 'candidate' ? 'candidate-preparation' : pack.revision;
     return route.fulfill({ json: { available: true, scope, preparation: { ...pack, revision } } });
   });
-  await page.goto('/#/drafts/draft');
-  await page.getByText('草稿基准准备与依据', { exact: true }).click();
-  const baseline = page.getByRole('region', { name: '草稿基准准备与依据', exact: true });
+  await page.goto('/#/drafts/draft'); await openEditorTools(page);
+  await page.getByText('翻译依据', { exact: true }).click();
+  const baseline = page.getByRole('region', { name: '翻译依据', exact: true });
   await expect(baseline).toContainText(pack.revision);
-  await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
+  if (await page.getByRole('button', { name: '展开段落 b1', exact: true }).count()) await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
   await page.getByText('本段翻译准备与依据', { exact: true }).click();
   const segment = page.getByRole('region', { name: '段落 b1 的翻译准备与依据', exact: true });
   await expect(segment).toContainText('accepted-segment-preparation');
@@ -319,10 +320,10 @@ test('a segment without preparation never inherits the visible draft baseline', 
   await page.route('**/api/v1/drafts/draft/preparation?block_id=b1', route => route.fulfill({ json: {
     available: false, scope: 'segment', preparation: null,
   } }));
-  await page.goto('/#/drafts/draft');
-  await page.getByText('草稿基准准备与依据', { exact: true }).click();
-  await expect(page.getByRole('region', { name: '草稿基准准备与依据', exact: true })).toContainText(pack.revision);
-  await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
+  await page.goto('/#/drafts/draft'); await openEditorTools(page);
+  await page.getByText('翻译依据', { exact: true }).click();
+  await expect(page.getByRole('region', { name: '翻译依据', exact: true })).toContainText(pack.revision);
+  if (await page.getByRole('button', { name: '展开段落 b1', exact: true }).count()) await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
   await page.getByText('本段翻译准备与依据', { exact: true }).click();
   const segment = page.getByRole('region', { name: '段落 b1 的翻译准备与依据', exact: true });
   await expect(segment).toContainText('本段没有已保存的准备记录');

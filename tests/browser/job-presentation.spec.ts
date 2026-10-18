@@ -182,7 +182,9 @@ test('deletions at the same time have distinguishable receipts in the list and d
   await expect(detail).toContainText(names[0]);
   await expect(detail).toContainText('可清理文件已完成清理');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('.job-name').first()).toBeVisible();
+  await expect(detail).toBeVisible();
+  await expect(page.getByRole('link', { name: '返回任务列表' })).toBeVisible();
+  await expect(page.locator('.job-name').first()).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: outputDirectory('deletion-receipts-mobile.png'), fullPage: true });
   expect(errors).toEqual([]);

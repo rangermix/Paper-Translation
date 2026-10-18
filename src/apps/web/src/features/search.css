@@ -1,0 +1,9 @@
+.search-controls > label:not(.searchbox) { display:flex; align-items:center; gap:.5rem; }
+.search-document { margin-block:1rem; overflow-wrap:anywhere; }
+.search-document h2 { margin:0; font-size:1.1rem; }
+.search-document header { padding-bottom:.75rem; }
+.search-match { padding-block:1rem; border-top:1px solid var(--line); }
+.search-match p { margin-block:.5rem; }
+.search-match mark,.search-document h2 mark { background:var(--accent); color:var(--paper); border-radius:2px; padding-inline:1px; }
+.search-match .source-block { max-height:none; font-size:.9rem; }
+@media(max-width:760px) { .search-controls > label:not(.searchbox) { width:100%; } .search-controls select { max-width:100%; } }

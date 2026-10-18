@@ -112,7 +112,7 @@ test('clearing a filtered list resets search, status, type and model filters', a
   await page.getByRole('button', { name: '已完成', exact: true }).click();
   await page.getByRole('searchbox', { name: '搜索任务' }).fill('已完成');
   await page.getByRole('combobox', { name: '任务类型' }).selectOption('parse');
-  await page.getByRole('textbox', { name: '实际模型' }).fill('Docling');
+  await page.getByRole('textbox', { name: '使用的模型' }).fill('Docling');
   await expect.poll(() => queries.at(-1)?.get('q')).toBe('已完成');
   await page.getByRole('button', { name: '清除已结束任务' }).click();
   await page.getByRole('button', { name: '确认清除' }).click();
@@ -120,7 +120,7 @@ test('clearing a filtered list resets search, status, type and model filters', a
   await expect(page.locator('.job-entry')).toContainText('正在解析');
   await expect(page.getByRole('searchbox', { name: '搜索任务' })).toHaveValue('');
   await expect(page.getByRole('combobox', { name: '任务类型' })).toHaveValue('');
-  await expect(page.getByRole('textbox', { name: '实际模型' })).toHaveValue('');
+  await expect(page.getByRole('textbox', { name: '使用的模型' })).toHaveValue('');
   await expect(page.getByRole('button', { name: '全部任务', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect([...queries.at(-1)!.keys()]).toEqual(['limit', 'top_level_only']);
 });

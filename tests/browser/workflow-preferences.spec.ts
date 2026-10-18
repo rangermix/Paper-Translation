@@ -45,10 +45,10 @@ async function mock(page: Page, waitForPreferences?: Promise<void>) {
 test('upload uses the saved language and automatically publishes despite a legacy manual preference', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/upload');
-  await expect(page.getByLabel('默认目标语言', { exact: true })).toHaveValue('ja');
+  await expect(page.getByLabel('翻译为', { exact: true })).toHaveValue('ja');
   await expect(page.getByLabel('阅读结果', { exact: true })).toHaveCount(0);
   await page.locator('#pdf-files').setInputFiles({ name: 'test.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 test') });
-  await page.getByRole('button', { name: '上传并开始处理' }).click();
+  await page.getByRole('button', { name: '上传并翻译' }).click();
   await expect.poll(() => writes.find(row => row.path === '/imports')?.body).toMatchObject({
     target_language: 'ja', workflow: { target_locale: 'ja', publish_policy: 'auto_publish' },
   });
@@ -59,12 +59,12 @@ test('late preferences keep the chosen upload language and cannot be bypassed by
   const waiting = new Promise<void>(resolve => { release = resolve; });
   await mock(page, waiting);
   await page.goto('/#/upload');
-  await page.getByLabel('默认目标语言', { exact: true }).selectOption('fr');
+  await page.getByLabel('翻译为', { exact: true }).selectOption('fr');
   await page.locator('#pdf-files').setInputFiles({ name: 'test.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 test') });
-  await expect(page.getByRole('button', { name: '上传并开始处理' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '上传并翻译' })).toBeDisabled();
   release();
-  await expect(page.getByRole('button', { name: '上传并开始处理' })).toBeEnabled();
-  await expect(page.getByLabel('默认目标语言', { exact: true })).toHaveValue('fr');
+  await expect(page.getByRole('button', { name: '上传并翻译' })).toBeEnabled();
+  await expect(page.getByLabel('翻译为', { exact: true })).toHaveValue('fr');
   await expect(page.getByLabel('阅读结果', { exact: true })).toHaveCount(0);
 });
 
@@ -81,7 +81,7 @@ test('parse confirmation uses the saved language and automatically publishes', a
 test('new edition uses the saved locale and its translation automatically publishes', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/documents/doc');
-  await expect(page.getByLabel('新增语言版', { exact: true })).toHaveValue('ja');
+  await page.getByText('添加翻译语言',{exact:true}).click();await expect(page.getByLabel('新增语言版', { exact: true })).toHaveValue('ja');
   await page.getByRole('button', { name: '新增', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('combobox', { name: '发布方式', exact: true })).toHaveCount(0);
@@ -94,7 +94,7 @@ test('new edition uses the saved locale and its translation automatically publis
 test('document parsing automatically publishes despite a legacy manual preference', async ({ page }) => {
   const writes = await mock(page);
   await page.goto('/#/documents/doc');
-  await page.getByRole('button', { name: '解析并生成阅读版' }).click();
+  await page.getByText('重新解析原文', {exact:true}).click();await page.getByRole('button', { name: '解析并生成阅读版' }).click();
   expect(writes.find(row => row.path === '/documents/doc/parse')?.body.workflow).toMatchObject({
     target_locale: 'ja', publish_policy: 'auto_publish',
   });

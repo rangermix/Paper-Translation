@@ -20,7 +20,7 @@ export function PreparationControls({ value, onChange, profile, estimates, disab
   return <section className="translation-preparation-controls" aria-label="翻译准备选项">
     <div className="field"><label htmlFor={id}>翻译前准备</label>
       <select id={id} value={value} disabled={disabled} onChange={event => onChange(event.target.value as PreparationMode)}>
-        <option value="extractive">来源摘录与术语提取</option>
+        <option value="extractive">提取参考内容和术语</option>
         <option value="local">独立本地小模型：概述与术语建议</option>
         <option value="provider" disabled={!preparationAllowed('provider', profile)}>当前 API 模型：概述与术语建议</option>
         <option value="off">不做论文级准备</option>
@@ -59,7 +59,7 @@ export function PreparationView({ draftId, revision, navigate, scope }: {
   draftId: string; revision?: string; navigate: (blockId: string) => void; scope?: PreparationScope;
 }) {
   const [open, setOpen] = useState(false);
-  const label = scope?.kind === 'segment' ? '本段翻译准备与依据' : scope?.kind === 'candidate' ? '此候选的翻译准备与依据' : '草稿基准准备与依据';
+  const label = scope?.kind === 'segment' ? '本段翻译准备与依据' : scope?.kind === 'candidate' ? '此候选的翻译准备与依据' : '翻译依据';
   return <details className="preparation-view section-title" onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>{label}</summary>
     {open && <PreparationContents key={`${draftId}:${scope?.kind ?? 'draft'}:${scope?.id ?? ''}:${revision ?? ''}`} draftId={draftId} navigate={navigate} scope={scope}/>}
@@ -70,7 +70,7 @@ function PreparationContents({ draftId, navigate, scope }: { draftId: string; na
   const query = scope ? `?${scope.kind === 'segment' ? 'block_id' : 'candidate_id'}=${resourceId(scope.id)}` : '';
   const result = useResource<{ available: boolean; preparation: PreparationPack | null; scope: 'draft' | 'segment' | 'candidate' }>(`/drafts/${resourceId(draftId)}/preparation${query}`);
   const pack = result.data?.preparation;
-  const label = scope?.kind === 'segment' ? `段落 ${scope.id} 的翻译准备与依据` : scope?.kind === 'candidate' ? `候选 ${scope.id} 的翻译准备与依据` : '草稿基准准备与依据';
+  const label = scope?.kind === 'segment' ? `段落 ${scope.id} 的翻译准备与依据` : scope?.kind === 'candidate' ? `候选 ${scope.id} 的翻译准备与依据` : '翻译依据';
   const emptyNote = scope?.kind === 'segment' ? '本段没有已保存的准备记录。'
     : scope?.kind === 'candidate' ? '此候选没有已保存的准备记录。'
     : '此草稿尚无基准准备记录。';

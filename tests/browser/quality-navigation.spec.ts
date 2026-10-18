@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import { test, expect } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 import { resolve } from 'node:path';
@@ -37,14 +38,14 @@ for (const width of [1440, 390]) {
       } as Record<string, unknown>)[path] ?? { items: [] };
       await route.fulfill({ status: 200, contentType: 'application/json', headers: { ETag: '"1"' }, body: JSON.stringify(data) });
     });
-    await page.goto('/#/drafts/navigation');
+    await page.goto('/#/drafts/navigation'); await openEditorTools(page);
     await expect(page.getByRole('heading', { name: '译文编辑' })).toBeVisible();
     const blocker = page.locator('#segment-b88'), risk = page.locator('#segment-b118'), ordinary = page.locator('#segment-b142');
     await expect(blocker.getByRole('button', { name: '折叠段落 b88' })).toHaveAttribute('aria-expanded', 'true');
     await expect(blocker).toContainText('有重要提示');
     await expect(blocker).not.toContainText('可选');
     await expect(risk.getByRole('button', { name: '展开段落 b118' })).toHaveAttribute('aria-expanded', 'false');
-    await expect(ordinary.getByRole('textbox', { name: '译文文本 1' })).toBeHidden();
+    await expect(ordinary.getByRole('textbox', { name: '译文段落' })).toBeHidden();
     await expect(page.getByRole('region', { name: '重要提示' })).toContainText('译文缺少：64（1 次）');
     await expect(page.getByRole('region', { name: '重要提示' })).toContainText('译文多出：32（1 次）');
     await expect(page.getByText('文档级提示', { exact: true })).toBeVisible();
@@ -55,7 +56,7 @@ for (const width of [1440, 390]) {
     await expect(risk).toBeFocused();
     await expect(risk.getByText('人工核对（可选）', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '展开段落 b142', exact: true }).click();
-    await ordinary.getByRole('textbox', { name: '译文文本 1' }).fill('尚未保存的本地修订');
+    await ordinary.getByRole('textbox', { name: '译文段落' }).fill('尚未保存的本地修订');
     await ordinary.getByLabel('修改理由').fill('保留测试');
     await page.getByRole('button', { name: '折叠段落 b142', exact: true }).click();
     await expect(ordinary.getByText('有未保存修改', { exact: true })).toBeVisible();
@@ -64,7 +65,7 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: '跳转段落 b118' }).click();
     await expect(page.getByRole('combobox', { name: '显示', exact: true })).toHaveValue('all');
     await page.getByRole('button', { name: '展开段落 b142', exact: true }).click();
-    await expect(ordinary.getByRole('textbox', { name: '译文文本 1' })).toHaveValue('尚未保存的本地修订');
+    await expect(ordinary.getByRole('textbox', { name: '译文段落' })).toHaveText('尚未保存的本地修订');
     await expect(ordinary.getByLabel('修改理由')).toHaveValue('保留测试');
     await expect(page.getByRole('button', { name: '运行质量检查', exact: true })).toBeDisabled();
     await page.getByLabel('问题筛选').selectOption('blockers');
@@ -75,13 +76,13 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: '展开全部段落', exact: true }).click();
     await expect(risk.getByRole('button', { name: '折叠段落 b118' })).toBeVisible();
     await page.getByRole('button', { name: '折叠无重要提示的段落', exact: true }).click();
-    await expect(ordinary.getByRole('textbox', { name: '译文文本 1' })).toBeHidden();
-    await expect(blocker.getByRole('textbox', { name: '译文文本 1' })).toBeVisible();
+    await expect(ordinary.getByRole('textbox', { name: '译文段落' })).toBeHidden();
+    await expect(blocker.getByRole('textbox', { name: '译文段落' })).toBeVisible();
     await page.getByLabel('问题筛选').selectOption('all');
     await page.getByText('一般提示 · 1', { exact: true }).click();
     await page.getByRole('region', { name: '质量问题', exact: true }).scrollIntoViewIfNeeded();
     expect(await page.title()).toBeTruthy();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > innerWidth + 1).map(element => ({tag:element.tagName, cls:element.className, width:element.getBoundingClientRect().width, text:element.textContent?.slice(0,100)})))).toEqual([]);
     await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     await page.screenshot({ path: resolve(outputDirectory('quality-navigation'), `groups-${width}.png`), fullPage: true });
     expect(writes).toEqual([]);

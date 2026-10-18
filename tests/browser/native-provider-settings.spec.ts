@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputPath } from './paths';
 import { resolve } from 'node:path';
@@ -140,14 +141,14 @@ test('Claude optional version is advanced, validated and omitted when switching 
 for (const variant of variants) for (const flow of ['preflight', 'edition', 'candidate', 'semantic'] as const) test(`${variant.protocol} ${flow} consent shows the bound native destination and correct privacy scope`, async ({ page }) => {
   const native = { ...profile, provider: variant.provider, api_protocol: variant.protocol, auth_mode: 'api_key', endpoint: `https://native.example/${variant.protocol}`, ...(variant.protocol === 'claude_messages' ? { api_version: '2023-06-01' } : {}) };
   const { writes } = await setup(page, native);
-  await page.goto(flow === 'preflight' ? '/#/preflight/import' : flow === 'edition' ? '/#/documents/doc' : '/#/drafts/draft');
+  await page.goto(flow === 'preflight' ? '/#/preflight/import' : flow === 'edition' ? '/#/documents/doc' : '/#/drafts/draft'); if (flow === 'candidate' || flow === 'semantic') await openEditorTools(page);
   if (flow === 'edition') await page.getByRole('button', { name: '确认此语言版翻译', exact: true }).click();
   if (flow === 'candidate' || flow === 'semantic') {
     await page.getByRole('button', { name: '展开全部段落', exact: true }).click();
     await page.getByLabel('选择段落 b1', { exact: true }).check();
-    await page.getByRole('button', { name: flow === 'candidate' ? /局部重译/ : /辅助语义评审/ }).click();
+    await page.getByRole('button', { name: flow === 'candidate' ? /局部重译/ : /检查译文含义/ }).click();
   }
-  const destination = page.getByRole('region', { name: '本次请求目的地' });
+  const destination = page.getByRole('region', { name: '本次翻译服务' });
   await expect(destination).toContainText(variant.title);
   await expect(destination).toContainText(native.endpoint);
   await expect(destination).toContainText(variant.header);
@@ -168,7 +169,7 @@ for (const variant of variants) for (const flow of ['preflight', 'edition', 'can
   } else {
     await page.getByLabel(/候选任务预算/).fill('0.01');
     await page.getByLabel(/我同意向上述服务地址/).check();
-    await page.getByRole('button', { name: flow === 'candidate' ? '创建局部候选任务' : '创建辅助语义评审任务' }).click();
+    await page.getByRole('button', { name: flow === 'candidate' ? '创建局部候选任务' : '创建含义检查任务' }).click();
   }
   await expect.poll(() => writes.length).toBe(1);
   expect(writes[0].body.profile_hash).toBe(native.profile_hash);

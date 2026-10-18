@@ -12,9 +12,9 @@ test('real Compose PDF upload persists across browser reload and metadata change
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/#/upload');
-  await page.getByLabel('生成内容', { exact: true }).selectOption('source');
+  await page.getByLabel('处理方式', { exact: true }).selectOption('source');
   await page.locator('input[type=file]').setInputFiles(resolve(root, 'tests/fixtures/sample.pdf'));
-  await page.getByRole('button', { name: '上传并开始处理', exact: true }).click();
+  await page.getByRole('button', { name: '上传并生成原文阅读版', exact: true }).click();
   const duplicate = page.getByRole('button', { name: '建立独立文档' });
   const saved = page.getByRole('link', { name: '已入库，后台处理中 · 查看文档' });
   await expect(duplicate.or(saved)).toBeVisible({ timeout: 60000 });
@@ -33,7 +33,7 @@ test('real Compose PDF upload persists across browser reload and metadata change
   await expect(page.getByRole('heading', { name: uniqueTitle, exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '取消收藏', exact: true })).toBeVisible();
   await expect(page.getByText('agent-acceptance · PDF')).toBeVisible();
-  const pdf = await page.request.get(await page.getByRole('link', { name: '打开原 PDF', exact: true }).getAttribute('href')!);
+  const pdf = await page.request.get(await page.getByRole('link', { name: '查看原文 PDF', exact: true }).getAttribute('href')!);
   expect(pdf.status()).toBe(200);
   const source = await import('node:fs/promises').then(fs => fs.readFile(resolve(root, 'tests/fixtures/sample.pdf')));
   expect(await pdf.body()).toEqual(source);

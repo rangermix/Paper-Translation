@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import {test,expect,type Page} from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory, outputPath } from './paths';
 import {resolve} from 'node:path';
@@ -10,7 +11,7 @@ async function mock(page:Page){
  await page.route('**/api/v1/**',route=>{const path=new URL(route.request().url()).pathname.slice(7);if(path.endsWith('/events'))return route.abort();return route.fulfill({status:routes[path]===undefined?404:200,contentType:'application/json',headers:{ETag:'"1"'},body:JSON.stringify(routes[path]??{error:{code:'MISSING'}})});});
 }
 async function expectDestination(page:Page){
- const destination=page.getByRole('region',{name:'本次请求目的地'});
+ const destination=page.getByRole('region',{name:'本次翻译服务'});
  await expect(destination).toContainText(profile.endpoint);
  await expect(destination).toContainText('Chat Completions');
  await expect(destination).toContainText('无鉴权');
@@ -48,7 +49,7 @@ test('missing profile hash still blocks translation',async({page})=>{
 });
 
 test('new language edition uses native names and independent ordinary translation consent',async({page})=>{
- await mock(page);await page.goto('/#/documents/d');await page.getByLabel('新增语言版',{exact:true}).selectOption('zh-Hant');
+ await mock(page);await page.goto('/#/documents/d');await page.getByText('添加翻译语言',{exact:true}).click();await page.getByLabel('新增语言版',{exact:true}).selectOption('zh-Hant');
  const created=page.waitForRequest(r=>r.url().endsWith('/documents/d/editions')&&r.method()==='POST');await page.getByRole('button',{name:'新增',exact:true}).click();
  expect((await created).postDataJSON()).toEqual({target_locale:'zh-Hant',source_revision_id:'s',profile_hash:profile.profile_hash});
  const dialog=page.getByRole('dialog');await expectDestination(page);await expect(dialog).toContainText('English → 繁體中文');
@@ -60,11 +61,11 @@ test('new language edition uses native names and independent ordinary translatio
 });
 
 for(const mode of ['candidate','semantic'])test(`${mode} accepts any language with normal external consent, including legacy drafts`,async({page})=>{
- await mock(page);await page.goto('/#/drafts/draft');await expect(page.getByText('实验语言 · 未认证',{exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'展开段落 b1',exact:true}).click();await expect(page.getByText('译文 · Deutsch',{exact:true})).toBeVisible();
- await page.getByLabel('选择段落 b1',{exact:true}).check();await page.getByRole('button',{name:mode==='candidate'?/局部重译/:/辅助语义评审/}).click();
+ await mock(page);await page.goto('/#/drafts/draft'); await openEditorTools(page);await expect(page.getByText('实验语言 · 未认证',{exact:true})).toHaveCount(0);
+ if(await page.getByRole('button',{name:'展开段落 b1',exact:true}).count())await page.getByRole('button',{name:'展开段落 b1',exact:true}).click();await expect(page.getByText('译文 · Deutsch',{exact:true})).toBeVisible();
+ await page.getByLabel('选择段落 b1',{exact:true}).check();await page.getByRole('button',{name:mode==='candidate'?/局部重译/:/检查译文含义/}).click();
  const dialog=page.getByRole('dialog');await expectDestination(page);await dialog.getByLabel(/候选任务预算/).fill('0.01');
- const submit=dialog.getByRole('button',{name:mode==='candidate'?'创建局部候选任务':'创建辅助语义评审任务'});await expect(submit).toBeDisabled();
+ const submit=dialog.getByRole('button',{name:mode==='candidate'?'创建局部候选任务':'创建含义检查任务'});await expect(submit).toBeDisabled();
  await dialog.getByLabel(/我同意向上述服务地址/).check();const suffix=mode==='candidate'?'candidates':'semantic-review';
  const sent=page.waitForRequest(r=>r.url().endsWith('/'+suffix));await submit.click();const body=(await sent).postDataJSON();
  expect(body).toMatchObject({profile_hash:profile.profile_hash,block_ids:['b1']});expect(body).not.toHaveProperty('experimental_confirmed');
@@ -76,8 +77,8 @@ test('settings and upload expose all native names and accept additional language
  await expect(select.locator('option:checked')).toHaveText('日本語');
  await select.selectOption('__custom');await page.getByLabel('语言代码（如 fil、pt-BR）',{exact:true}).fill('ast');
  const saved=page.waitForRequest(r=>r.url().endsWith('/settings/preferences')&&r.method()==='PATCH');await page.getByRole('button',{name:'保存偏好',exact:true}).click();expect((await saved).postDataJSON().locale).toBe('ast');
- await page.goto('/#/upload');await page.getByLabel('默认目标语言',{exact:true}).selectOption('pt-BR');
- await expect(page.getByLabel('默认目标语言',{exact:true}).locator('option:checked')).toHaveText('português (Brasil)');
+ await page.goto('/#/upload');await page.getByLabel('翻译为',{exact:true}).selectOption('pt-BR');
+ await expect(page.getByLabel('翻译为',{exact:true}).locator('option:checked')).toHaveText('português (Brasil)');
 });
 
 test('history filtering uses locale codes while displaying native names',async({page})=>{
@@ -87,7 +88,7 @@ test('history filtering uses locale codes while displaying native names',async({
  await page.route('**/api/v1/documents/d/history',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({artifacts:editions.map(e=>({id:e.current_artifact_id,edition_id:e.id,locale:e.target_locale,template_id:'reader-v1'})),sources:[],translations:[]})}));
  await page.route('**/api/v1/templates',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({items:[]})}));
  await page.goto('/#/history/d');await page.getByRole('combobox',{name:'语言',exact:true}).selectOption('ja');
- await expect(page.getByRole('heading',{name:'日本語 · reader-v1',exact:true})).toBeVisible();
- await expect(page.getByRole('heading',{name:'Deutsch · reader-v1',exact:true})).toHaveCount(0);
- await expect(page.getByRole('link',{name:'阅读这个版本'})).toHaveAttribute('href','/artifacts/a-ja/index.html');
+ await expect(page.getByRole('heading',{name:/^日本語 · /})).toBeVisible();
+ await expect(page.getByRole('heading',{name:/^Deutsch · /})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:'阅读当前版'})).toHaveAttribute('href','/artifacts/a-ja/index.html');
 });

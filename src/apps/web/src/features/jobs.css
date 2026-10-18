@@ -97,3 +97,14 @@
 .job-extra-filters { display: flex; flex-wrap: wrap; gap: .6rem; padding: .7rem 0; }
 .job-extra-filters label { display: grid; gap: .3rem; flex: 1; min-width: 10rem; }
 .job-extra-filters select, .job-log-controls select { max-width: 100%; padding: .45rem; }
+.job-detail-navigation { margin-bottom: 18px; }
+.job-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; margin: 0; padding: 12px 18px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.job-group-heading span { font-size: 11px; color: var(--muted); font-weight: 400; }
+.job-group + .job-group { border-top: 1px solid var(--line); }
+.job-instance-attention { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px 18px; font-size: 12px; border-bottom: 1px solid var(--line); background: var(--soft); }
+.job-recovery-actions { margin-top: 12px; }
+.job-detail:focus { outline: none; }
+.job-detail:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+@media (max-width: 1100px) {
+  .jobs-layout.task-layout > .job-browser { display: none; }
+}

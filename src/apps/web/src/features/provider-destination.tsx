@@ -3,8 +3,8 @@ import { providerProtocols } from './provider-protocol';
 
 export function ProviderDestination({ profile }: { profile?: Provider }) {
   const protocol = profile?.api_protocol ? providerProtocols[profile.api_protocol] : undefined;
-  return <section className="notice provider-destination" aria-label="本次请求目的地">
-    <strong>本次请求目的地</strong>
+  return <section className="notice provider-destination" aria-label="本次翻译服务">
+    <strong>本次翻译服务</strong>
     <dl className="kv"><dt>完整请求地址</dt><dd><code>{profile?.endpoint || '服务端未提供地址，请重新读取配置'}</code></dd>
       <dt>接口类型</dt><dd>{protocol?.label ?? '未提供'}</dd>
       <dt>模型 ID</dt><dd>{profile?.model_id || '未配置'}</dd>

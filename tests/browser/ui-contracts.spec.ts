@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory, outputPath } from './paths';
 import { resolve } from 'node:path';
@@ -17,7 +18,7 @@ for (const state of ['current-legacy', 'source-only', 'historical-legacy'] as co
       '/reading-position': { generation: 0, block_id: null },
     });
     await page.goto('/#/documents/doc_contract');
-    await expect(page.getByRole('link', { name: '打开原 PDF', exact: true })).toHaveAttribute('href', '/api/v1/documents/doc_contract/original');
+    await expect(page.getByRole('link', { name: '查看原文 PDF', exact: true })).toHaveAttribute('href', '/api/v1/documents/doc_contract/original');
     if (state === 'current-legacy') {
       await expect(page.getByRole('region', { name: '旧版来源定位说明' })).toContainText('无精确定位');
     } else {
@@ -73,7 +74,7 @@ test('old draft and new preflight always use their own revision-bound original P
  const draft={id:'old',document_id:doc.id,edition_id:'edition',source_revision_id:'source_old',source_hash:'a'.repeat(64),generation:2,target_locale:'zh-Hans',original_url:originalBase+oldQuery,segments:[{block_id:'p',source_text:'Frozen original old source',target_inline:[{type:'text',text:'旧源译文'}],version:1,review_status:'unreviewed',locators:[loc]}]};
  const preflight={import_id:'import_new',document_id:doc.id,source_revision_id:'source_new',source_hash:'b'.repeat(64),generation:1,status:'ready',source_language:'en',page_count:1,block_count:1,unresolved_blocks:0,original_url:originalBase+newQuery,blocks:[{id:'newp',kind:'paragraph',normalized_text:'New replacement source',locators:[{...loc,page_image_url:pageBase+newQuery}]}]};
  await mock(page,{'/drafts/old':draft,'/imports/import_new/preflight':preflight});await page.route('**/api/v1/documents/doc_contract/pages/**',async route=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2l9sAAAAASUVORK5CYII=','base64')}));
- await page.goto('/#/drafts/old');await page.getByRole('button',{name:'展开段落 p',exact:true}).click();await page.getByRole('button',{name:'对照原 PDF',exact:true}).click();await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+oldQuery+'#page=1');await expect(page.getByRole('img',{name:'原 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+oldQuery);
+ await page.goto('/#/drafts/old'); await openEditorTools(page);if (await page.getByRole('button',{name:'展开段落 p',exact:true}).count()) await page.getByRole('button',{name:'展开段落 p',exact:true}).click();await page.getByRole('button',{name:'对照原 PDF',exact:true}).click();await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+oldQuery+'#page=1');await expect(page.getByRole('img',{name:'原 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+oldQuery);
  await page.goto('/#/preflight/import_new');await expect(page.getByRole('link',{name:'打开原页',exact:true})).toHaveAttribute('href',originalBase+newQuery+'#page=1');await expect(page.getByRole('img',{name:'原 PDF 第 1 页',exact:true})).toHaveAttribute('src',pageBase+newQuery);
 });
 
@@ -111,12 +112,12 @@ test('reading position from an older artifact is explained and only an explicit 
   expect(writes).toEqual([]);
   await page.screenshot({ path: `${evidence}/reading-position-migration.png`, fullPage: true });
   await page.goto('/#/search');
-  await page.getByLabel('正文搜索', { exact: true }).fill('verified');
-  await page.getByRole('button', { name: '搜索正文', exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).fill('verified');
+  await page.getByRole('button', { name: '搜索', exact: true }).click();
   await expect(page.getByText('A verified source paragraph', { exact: true })).toBeVisible();
   expect(writes).toEqual([]);
   const put = page.waitForRequest(r => r.url().includes('/reading-position') && r.method() === 'PUT');
-  await page.getByRole('link', { name: '定位到固定版本中的段落', exact: true }).click();
+  await page.getByRole('link', { name: '打开匹配段落', exact: true }).click();
   await put;
   await expect.poll(() => writes).toEqual([{ body: { document_id: doc.id, locale: 'zh-Hans', artifact_id: 'artifact_current', block_id: 'current-paragraph', offset: 0 }, etag: '"0"' }]);
   await expect(page.getByText('阅读位置属于另一个版本', { exact: true })).toBeVisible();
@@ -128,7 +129,7 @@ test('PDF intake retains valid selections and blocks non-PDF independently', asy
   await page.locator('input[type=file]').setInputFiles([{ name: 'paper.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7') }, { name: 'bad.txt', mimeType: 'text/plain', buffer: Buffer.from('not a PDF') }]);
   await expect(page.getByText('只接受 PDF 文件。')).toBeVisible();
   await expect(page.getByText('paper.pdf', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '上传并开始处理', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '上传并翻译', exact: true })).toBeEnabled();
   expect(await page.locator('input[type=file]').getAttribute('accept')).toBe('application/pdf,.pdf');
   await page.screenshot({ path: `${evidence}/upload-desktop.png`, fullPage: true });
 });
@@ -167,12 +168,12 @@ test('OCR warnings permit preflight submission after external consent', async ({
 test('protected atoms, unsaved text and stale QA preserve review boundaries', async ({ page }) => {
   const draft = { id: 'draft_contract', document_id: 'doc_contract', edition_id: 'edition_contract', source_revision_id: 'source_contract', source_hash: 'a'.repeat(64), generation: 2, target_locale: 'zh-Hans', glossary_revision: 'empty-v1', qa: { id: 'qa_stale', generation: 1, valid: true, fingerprint: 'old' }, source: { protected_atoms: { number: { value: '64' } } }, segments: [{ block_id: 'b1', source_text: 'It has 64 units.', target_inline: [{ type: 'text', text: '它有 ' }, { type: 'protected_ref', ref: 'number' }, { type: 'text', text: ' 个单元。' }], version: 1, source_hash: 'a'.repeat(64), context_hash: 'b'.repeat(64), review_status: 'machine_checked', locators: [{ page: 1, bbox: [10, 20, 90, 40], page_size: [100, 200] }, { page: 2, bbox: [20, 10, 80, 30], page_size: [100, 200] }] }], candidates: [] };
   await mock(page, { '/drafts/draft_contract': draft });
-  await page.goto('/#/drafts/draft_contract');
-  await expect(page.getByText('质量报告已过期', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '封存当前修订' })).toBeEnabled();
-  await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
-  await expect(page.getByText('保护内容：64')).toBeVisible();
-  await page.getByRole('textbox', { name: '译文文本 1', exact: true }).fill('修正后的文本 ');
+  await page.goto('/#/drafts/draft_contract'); await openEditorTools(page);
+  await expect(page.getByText('质量报告已过期', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: '保存为新版本' })).toBeEnabled();
+  if (await page.getByRole('button', { name: '展开段落 b1', exact: true }).count()) await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
+  await expect(page.getByLabel('保护内容：64')).toBeVisible();
+  const textEditor = page.getByRole('textbox', { name: '译文段落', exact: true }); await textEditor.focus(); await textEditor.evaluate(element => { const range = document.createRange(); range.selectNodeContents(element.firstChild!); const selection = getSelection()!; selection.removeAllRanges(); selection.addRange(range); }); await page.keyboard.insertText('修正后的文本 ');
   await expect(page.getByText('有未保存修改')).toBeVisible();
   await expect(page.getByRole('button', { name: '运行质量检查' })).toBeDisabled();
   await page.getByRole('button', { name: '对照原 PDF', exact: true }).click();
@@ -215,7 +216,7 @@ test('grouped candidates compare persisted bases and accept only explicit block 
   const candidate = {id: 'candidate_group', generation: 7, status: 'ready', base: {source_revision_id: 'source_contract', source_hash: 'a'.repeat(64), glossary_revision: 'empty-v1', requested_glossary_revision: 'new-glossary', segments: {b1: {version: 1, source_hash: 'b'.repeat(64), context_hash: 'c'.repeat(64), reviewed: true}}}, results: {b1: [{type: 'text', text: '候选已核对译文'}]}};
   const draft = {id: 'd', generation: 3, document_id: doc.id, edition_id: 'e', source_revision_id: 'source_contract', source_hash: 'a'.repeat(64), target_locale: 'zh-Hans', glossary_revision: 'empty-v1', source: {protected_atoms: {}}, segments: [{block_id: 'b1', version: 1, source_hash: 'b'.repeat(64), context_hash: 'c'.repeat(64), source_text: 'Original', target_inline: [{type: 'text', text: '现有人工译文'}], review_status: 'human_reviewed'}], candidates: [candidate]};
   await mock(page, {'/drafts/d': draft, '/candidates/candidate_group/accept': {status: 'accepted'}});
-  await page.goto('/#/drafts/d');
+  await page.goto('/#/drafts/d'); await openEditorTools(page);
   const accept = page.getByRole('button', {name: '接受 b1 候选'});
   await expect(accept).toBeDisabled();
   await page.getByLabel(/明确解除人工锁定/).check();
@@ -249,10 +250,10 @@ test('preflight native correction uses full persisted native text and explicit s
 test('unfinished draft export directly preserves labelled missing translations', async ({ page }) => {
   const draft = {id: 'draft_export', generation: 3, document_id: doc.id, edition_id: 'e', source_revision_id: 's', source_hash: 'a'.repeat(64), target_locale: 'zh-Hans', segments: [{block_id: 'b1', source_text: 'Missing target sentence.', target_inline: [], version: 0, source_hash: 'b'.repeat(64), review_status: 'not_reviewed'}]};
   await mock(page, {'/drafts/draft_export': draft, '/drafts/draft_export/exports': {export_id: 'export_draft'}, '/exports/export_draft': {status: 'succeeded', download_url: '/api/v1/exports/export_draft/download'}});
-  await page.goto('/#/drafts/draft_export');
+  await page.goto('/#/drafts/draft_export'); await openEditorTools(page);
   await page.getByRole('button', {name: '导出已有内容', exact: true}).click();
-  await expect(page.getByText('草稿 · 版本 3 · 缺译 1 段', {exact: true})).toBeVisible();
-  const submit = page.getByRole('button', {name: '生成导出文件'});
+  await expect(page.getByText('简体中文 · 草稿 · 缺译 1 段', {exact: true})).toBeVisible();
+  const submit = page.getByRole('button', {name: '生成下载文件'});
   await expect(submit).toBeEnabled();
   await expect(page.getByLabel(/我明确导出未完成草稿/)).toHaveCount(0);
   const sent = page.waitForRequest(r => r.url().includes('/drafts/draft_export/exports'));
@@ -302,16 +303,16 @@ test('inline formula source correction binds a reviewed crop and exact surroundi
 
 test('semantic review reports the latest selected scope without claiming whole-draft or human certification',async({page})=>{
  const draft={id:'semantic',document_id:doc.id,edition_id:'edition',source_revision_id:'source',source_hash:'a'.repeat(64),generation:2,target_locale:'zh-Hans',segments:[{block_id:'p1',source_text:'One source.',target_inline:[{type:'text',text:'一段原文。'}],version:1,review_status:'not_reviewed'}],semantic_review_status:'not_requested',semantic_reviews:[] as {job_id:string;status:string;completed:boolean;block_ids:string[]}[]};
- await mock(page,{'/drafts/semantic':draft});await page.goto('/#/drafts/semantic');await expect(page.getByText('辅助语义评审：尚未请求。',{exact:true})).toBeVisible();
+ await mock(page,{'/drafts/semantic':draft});await page.goto('/#/drafts/semantic'); await openEditorTools(page);await expect(page.getByText('检查译文含义：尚未请求。',{exact:true})).toBeVisible();
  for(const [state,status,completed,label] of [['incomplete','waiting_config',false,'未完成'],['incomplete','waiting_budget',false,'未完成'],['completed','succeeded',true,'最近所选范围已完成'],['stale','stale',false,'最近所选范围已过期']] as const){
-  draft.semantic_review_status=state;draft.semantic_reviews=[{job_id:'semantic-job',status,completed,block_ids:['p1']}];await page.getByRole('button',{name:'读取最新版本',exact:true}).click();await expect(page.getByText(`辅助语义评审：${label}。`,{exact:true})).toBeVisible();const summary=page.getByRole('region',{name:'辅助语义评审范围'});await expect(summary).toContainText('最近请求：1 段 · p1');await expect(summary.getByRole('link',{name:'查看评审任务'})).toHaveAttribute('href','#/jobs/semantic-job');if(status==='waiting_config')await expect(summary).toContainText('等待翻译条件齐备');if(status==='waiting_budget')await expect(summary).toContainText('等待预算');
+  draft.semantic_review_status=state;draft.semantic_reviews=[{job_id:'semantic-job',status,completed,block_ids:['p1']}];await page.getByRole('button',{name:'刷新版本',exact:true}).click();await expect(page.getByText(`检查译文含义：${label}。`,{exact:true})).toBeVisible();const summary=page.getByRole('region',{name:'检查译文含义范围'});await expect(summary).toContainText('最近请求：1 段 · p1');await expect(summary.getByRole('link',{name:'查看评审任务'})).toHaveAttribute('href','#/jobs/semantic-job');if(status==='waiting_config')await expect(summary).toContainText('等待翻译条件齐备');if(status==='waiting_budget')await expect(summary).toContainText('等待预算');
  }
  await page.screenshot({path:resolve(evidence,'semantic-stale-scope-contract.png'),fullPage:true});
 });
 
 test('permanent deletion opens the real cleanup job and displays only its safe file lifecycle summary',async({page})=>{
  const job={id:'cleanup-job',stage:'cleanup',status:'pending',generation:1,control_epoch:0,document_id:doc.id,cleanup:{online_content:'unavailable',files:'pending',shared_assets:'retained_while_referenced',backups:'retained_until_expiry',downloaded_copies:'outside_instance'}};
- await mock(page,{'/jobs/cleanup-job':job,'/jobs':{items:[job]}});await page.route('**/api/v1/documents/doc_contract',route=>route.fulfill({status:route.request().method()==='DELETE'?202:200,contentType:'application/json',headers:{ETag:'"1"'},body:JSON.stringify(route.request().method()==='DELETE'?{id:doc.id,status:'deleted',job_id:job.id}:doc)}));await page.goto('/#/documents/doc_contract');await page.getByRole('button',{name:'永久删除',exact:true}).click();await page.getByLabel('输入「删除」确认').fill('删除');const sent=page.waitForRequest(r=>r.method()==='DELETE');await page.getByRole('button',{name:'确认永久删除'}).click();expect((await sent).postDataJSON()).toEqual({confirm:true});await expect(page).toHaveURL(/#\/jobs\/cleanup-job/);
+ await mock(page,{'/jobs/cleanup-job':job,'/jobs':{items:[job]}});await page.route('**/api/v1/documents/doc_contract',route=>route.fulfill({status:route.request().method()==='DELETE'?202:200,contentType:'application/json',headers:{ETag:'"1"'},body:JSON.stringify(route.request().method()==='DELETE'?{id:doc.id,status:'deleted',job_id:job.id}:doc)}));await page.goto('/#/documents/doc_contract');await page.locator('.document-danger > summary').click();await page.getByRole('button',{name:'永久删除',exact:true}).click();await page.getByLabel('输入「删除」确认').fill('删除');const sent=page.waitForRequest(r=>r.method()==='DELETE');await page.getByRole('button',{name:'确认永久删除'}).click();expect((await sent).postDataJSON()).toEqual({confirm:true});await expect(page).toHaveURL(/#\/jobs\/cleanup-job/);
  const summary=page.getByRole('region',{name:'文档删除与文件清理'});await expect(summary).toContainText('等待文件清理');await expect(summary).toContainText('在线内容已不可访问');
  for(const [state,status,label] of [['running','running','文件正在清理'],['completed','succeeded','可清理文件已完成清理'],['failed','failed','文件清理失败']] as const){job.cleanup.files=state;job.status=status;await page.reload();await expect(summary).toContainText(label);}
  await expect(page.getByRole('button',{name:'取消后续工作'})).toHaveCount(0);await expect(page.getByRole('button',{name:'暂停新派发'})).toHaveCount(0);await expect(page.getByRole('button',{name:'恢复安全缺失单元'})).toHaveCount(0);await expect(page.getByRole('link',{name:'文档详情',exact:true})).toHaveCount(0);await expect(page.locator('dt').filter({hasText:'实际费用'})).toHaveCount(0);await page.screenshot({path:resolve(evidence,'cleanup-status-contract.png'),fullPage:true});

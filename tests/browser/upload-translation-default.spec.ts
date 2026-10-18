@@ -5,7 +5,7 @@ const profile = { generation: 1, configured: true, dispatch_configuration_ready:
   provider: 'openai', api_protocol: 'responses', auth_mode: 'bearer', has_api_key: true,
   endpoint: 'https://example.invalid/v1/responses', model_id: 'upload-translator', profile_revision: 'profile',
   profile_hash: 'b'.repeat(64), cost_control_enabled: false };
-const uploadButton = (page: Page) => page.getByRole('button', { name: '上传并开始处理', exact: true });
+const uploadButton = (page: Page) => page.getByRole('button', { name: /^上传并(翻译|生成原文阅读版)$/ });
 const file = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 synthetic') });
 
 async function setup(page: Page, options: { savedHash?: string | null; controlled?: boolean; providerReady?: Promise<void> } = {}) {
@@ -50,7 +50,7 @@ test('submitting a translation batch authorizes the displayed service and automa
   await page.goto('/#/upload');
   await expect(page.getByRole('heading', { name: '上传 PDF', exact: true })).toBeVisible();
   await expectRemovedControls(page);
-  const destination = page.getByRole('region', { name: '本次请求目的地', exact: true });
+  const destination = page.getByRole('region', { name: '本次翻译服务', exact: true });
   await expect(destination).toContainText(profile.endpoint);
   await expect(destination).toContainText(profile.model_id);
   await page.locator('#pdf-files').setInputFiles([file('first.pdf'), file('second.pdf')]);
@@ -90,7 +90,7 @@ test('source-only selection never authorizes translation even with legacy permis
   const { writes } = await setup(page, { savedHash: profile.profile_hash });
   await page.goto('/#/upload');
   await page.locator('#pdf-files').setInputFiles(file('source.pdf'));
-  await page.getByLabel('生成内容', { exact: true }).selectOption('source');
+  await page.getByLabel('处理方式', { exact: true }).selectOption('source');
   await uploadButton(page).click();
   await expect.poll(() => writes.find(row => row.path === '/imports')?.body.workflow).toMatchObject({
     translate: false, external_processing_confirmed: false, use_saved_upload_permission: false, publish_policy: 'auto_publish',
@@ -103,7 +103,7 @@ test('upload uses the current displayed provider hash after the service configur
   state.provider.model_id = 'replacement-model';
   state.provider.endpoint = 'https://replacement.invalid/v1/responses';
   await page.goto('/#/upload');
-  const destination = page.getByRole('region', { name: '本次请求目的地', exact: true });
+  const destination = page.getByRole('region', { name: '本次翻译服务', exact: true });
   await expect(destination).toContainText(state.provider.endpoint);
   await expect(destination).toContainText(state.provider.model_id);
   await page.locator('#pdf-files').setInputFiles(file('changed.pdf'));
@@ -120,9 +120,9 @@ test('translation upload waits for provider loading while source-only upload sta
   await page.goto('/#/upload');
   await page.locator('#pdf-files').setInputFiles(file('loading.pdf'));
   await expect(uploadButton(page)).toBeDisabled();
-  await page.getByLabel('生成内容', { exact: true }).selectOption('source');
+  await page.getByLabel('处理方式', { exact: true }).selectOption('source');
   await expect(uploadButton(page)).toBeEnabled();
-  await page.getByLabel('生成内容', { exact: true }).selectOption('translate');
+  await page.getByLabel('处理方式', { exact: true }).selectOption('translate');
   await expect(uploadButton(page)).toBeDisabled();
   expect(writes).toEqual([]);
   release();
@@ -201,7 +201,7 @@ test('mobile upload shows the destination without removed controls or horizontal
   const { errors } = await setup(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/upload');
-  await expect(page.getByRole('region', { name: '本次请求目的地', exact: true })).toContainText(profile.endpoint);
+  await expect(page.getByRole('region', { name: '本次翻译服务', exact: true })).toContainText(profile.endpoint);
   await expectRemovedControls(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: outputDirectory('upload-automatic-mobile.png'), fullPage: true });
@@ -232,7 +232,7 @@ test('a stale provider refreshes the destination and retries the same uploaded P
   const retry = page.getByRole('button', { name: '重新处理已上传的 PDF', exact: true });
   await expect(retry).toBeDisabled();
   release();
-  await expect(page.getByRole('region', { name: '本次请求目的地', exact: true })).toContainText('replacement-model');
+  await expect(page.getByRole('region', { name: '本次翻译服务', exact: true })).toContainText('replacement-model');
   await retry.click();
   await expect(page.getByRole('link', { name: /已入库，后台处理中/ })).toBeVisible();
   expect(attempts).toBe(2);

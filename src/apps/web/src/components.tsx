@@ -1,6 +1,6 @@
 import { NumberEvidence } from './number-evidence';
 import { errorMessage } from './messages';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from './api';
 import { localUrl, locatorStyle, resourceId, statusLabel } from './domain';
 import type { Issue, Locator } from './types';
@@ -54,8 +54,28 @@ export function Issues({ issues, checkState, onNavigate, onResolve, resolveDisab
 }
 export function Modal({ title, children, onClose, busy = false }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => { ref.current?.showModal(); const el = ref.current; return () => el?.close(); }, []);
-  return <dialog ref={ref} aria-label={title} aria-busy={busy} onCancel={event => { if (busy) event.preventDefault(); else onClose(); }}><div className="stack between"><h2>{title}</h2><button className="icon-btn" type="button" aria-label="关闭" disabled={busy} onClick={onClose}><Icon name="close"/></button></div>{children}</dialog>;
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    dialog?.showModal();
+    return () => {
+      const restore = document.activeElement === document.body || !!dialog?.contains(document.activeElement);
+      dialog?.close();
+      if (restore && trigger?.isConnected && trigger.getClientRects().length > 0 && !trigger.closest('[inert]')) {
+        trigger.focus({ preventScroll: true });
+      }
+    };
+  }, []);
+  return <dialog ref={ref} aria-label={title} aria-busy={busy} onCancel={event => { event.preventDefault(); if (!busy) onClose(); }} onKeyDown={event => {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget;
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,summary,[tabindex]'))
+      .filter(element => element.tabIndex >= 0 && !element.matches(':disabled') && element.getClientRects().length > 0);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (!first) { event.preventDefault(); dialog.focus(); }
+    else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }}><div className="stack between"><h2>{title}</h2><button className="icon-btn" type="button" aria-label="关闭" disabled={busy} onClick={onClose}><Icon name="close"/></button></div>{children}</dialog>;
 }
 export function PdfLocator({ documentId, originalUrl, locators = [] }: { documentId: string; originalUrl?: string; locators?: Locator[] }) {
   const [failed, setFailed] = useState<Record<string, boolean>>({});

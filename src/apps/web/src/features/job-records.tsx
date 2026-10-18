@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ErrorNotice, Status } from '../components';
-import { resourceId } from '../domain';
+import { canResumeJob, resourceId } from '../domain';
 import { useResource } from '../hooks';
 import type { ExecutionTimes, Job, ModelIdentity, TaskLog } from '../types';
 import { jobOperation } from './job-presentation';
@@ -9,12 +9,34 @@ import { RecoveryComparison } from './recovery-comparison';
 import { errorMessage } from '../messages';
 
 const terminal = new Set(['completed', 'succeeded', 'completed_with_warnings', 'partially_completed', 'cancelled', 'failed']);
-export function JobFailure({ job }: { job: Job }) {
+export function jobFailureSummary(error: NonNullable<Job['error']>) {
+  if (error.code === 'WORKER_FAILED') return '后台处理失败，当前记录未说明具体原因。';
+  const message = errorMessage(error.code, error.message);
+  return message === '本次操作未完成，请查看技术详情或稍后重试。'
+    ? '处理未完成，请查看已记录的错误与执行记录。' : message;
+}
+export function JobFailure({ job, onReviewUnknown }: { job: Job; onReviewUnknown?: () => void }) {
   const error = job.error;
   if (!error || Object.keys(error).length === 0) return null;
-  const summary = errorMessage(error.code, error.message);
+  const unknown = job.status === 'outcome_unknown' || error.code === 'OUTCOME_UNKNOWN' || job.attempts?.some(attempt => attempt.status === 'outcome_unknown');
+  const summary = jobFailureSummary(error);
+  const parser = job.stage === 'parse' || job.stage === 'prepare_parser_model' || error.code.startsWith('PARSER_');
+  const configuration = ['PROVIDER_CONFIG', 'PROFILE_STALE', 'DISPATCH_DISABLED'].includes(error.code) || job.stage === 'provider_test' || job.stage === 'prepare_local_model';
+  const page = error.details?.page;
   return <div role="alert" aria-label="任务错误" className="notice error-notice job-failure">
-    <strong>任务未完成</strong><p>{summary}</p>
+    <strong>{jobOperation(job.operation ?? job.stage)}{unknown ? '：请求结果待核对' : ['completed', 'succeeded', 'completed_with_warnings'].includes(job.status) ? '：存在处理提示' : '未完成'}</strong><p>{summary}</p>
+    {typeof page === 'number' && Number.isInteger(page) && page > 0 && <p>已记录位置：第 {page} 页。</p>}
+    {unknown ? <p>先核对下方未知请求和供应商记录；结果未确定前，不要直接重发请求。已有费用风险会继续保留。</p>
+      : canResumeJob(job.status) ? <p>处理所记录的问题后，可使用下方“恢复安全缺失单元”。它不会重发结果未知的请求。</p>
+      : parser || configuration ? <p>先查看{parser ? '解析' : '服务'}设置与本次执行记录，确认原因后再从对应入口继续。已有任务仍保留创建时的配置。</p>
+      : <p>先查看本次执行记录，确认原因后再决定下一步；本条记录不能说明其他独立任务是否成功。</p>}
+    {!job.content_deleted && <div className="stack job-recovery-actions">
+      {unknown && onReviewUnknown && <button type="button" className="btn sm" onClick={onReviewUnknown}>查看未知请求</button>}
+      {!unknown && (parser || configuration) && <a className="btn sm" href="#/settings">{parser ? '查看解析设置' : '查看服务设置'}</a>}
+      {job.document_id && <a className="btn sm" href={`#/documents/${resourceId(job.document_id)}`}>查看文档与已有结果</a>}
+      {job.import_id && <a className="btn sm" href={`#/preflight/${resourceId(job.import_id)}`}>查看解析结果</a>}
+      {job.draft_id && <a className="btn sm" href={`#/drafts/${resourceId(job.draft_id)}`}>查看已保存的译文</a>}
+    </div>}
     {error.message && error.message !== summary && <p>{error.message}</p>}
     <p>错误代码：<code>{error.code}</code></p>
     {error.details && Object.keys(error.details).length > 0 && <details><summary>错误技术详情</summary>
@@ -53,8 +75,9 @@ export function ExecutionTimesView({ value, status }: { value: ExecutionTimes; s
     <dt>排队等待</dt><dd>{duration(value.queue_ms)}</dd><dt>执行耗时</dt><dd>{duration(elapsed)}</dd></dl>;
 }
 export function ModelView({ model, historical = false }: { model?: ModelIdentity | null; historical?: boolean }) {
+  if (model?.kind === 'none') return null;
   return <div className="model-record"><strong>{modelLabel(model, historical)}</strong>
-    {model && model.kind !== 'none' && <details><summary>模型与运行配置</summary><dl className="kv">
+    {model && <details><summary>模型与运行配置</summary><dl className="kv">
       {model.api_protocol && <><dt>API 协议</dt><dd>{model.api_protocol}</dd></>}
       {model.endpoint && <><dt>服务地址</dt><dd className="mono">{model.endpoint}</dd></>}
       {model.config_revision && <><dt>配置版本</dt><dd>{model.config_revision}</dd></>}

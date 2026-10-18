@@ -29,9 +29,9 @@ async function upload(page: Page, finalStatus: string) {
   });
   await page.goto('/#/upload');
   await expect(page.getByRole('heading', { name: '上传 PDF', exact: true })).toBeVisible();
-  await page.getByLabel('生成内容', { exact: true }).selectOption('source');
+  await page.getByLabel('处理方式', { exact: true }).selectOption('source');
   await page.locator('#pdf-files').setInputFiles({ name: 'uploaded.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 fixture') });
-  await page.getByRole('button', { name: '上传并开始处理' }).click();
+  await page.getByRole('button', { name: '上传并生成原文阅读版' }).click();
   await expect.poll(() => imported).toBe(true);
   await expect(page.getByRole('link', { name: /已入库/ })).toBeVisible();
   await expect(page.getByText('正在查询文献信息', { exact: true })).toBeVisible();

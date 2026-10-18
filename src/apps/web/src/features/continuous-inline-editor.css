@@ -1,0 +1,9 @@
+.continuous-inline-editor { min-height: 7rem; max-height: 32rem; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); line-height: 1.8; }
+.continuous-inline-editor:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.continuous-inline-editor[aria-readonly="true"] { opacity: .75; }
+.continuous-inline-editor .inline-protected { background: var(--accent-soft, #17655c33); border: 1px solid var(--line); border-radius: 4px; padding: 1px 3px; cursor: default; }
+.inline-strong { font-weight: 700; }.inline-emphasis { font-style: italic; }.inline-code { font-family: monospace; }
+.inline-underline { text-decoration: underline; }.inline-deletion { text-decoration: line-through; }
+.inline-subscript { vertical-align: sub; font-size: .85em; }.inline-superscript { vertical-align: super; font-size: .85em; }
+.inline-reference { text-decoration: underline dotted; text-underline-offset: 3px; }
+.continuous-inline-field > small { display: block; margin-top: 8px; }

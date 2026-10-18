@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputPath } from './paths';
 import { resolve } from 'node:path';
@@ -99,10 +100,10 @@ test('effective Claude API version is a value instead of only a placeholder', as
 
 for (const enabled of [false, true]) for (const flow of ['preflight', 'edition', 'candidate', 'semantic'] as const) test(`${flow} ${enabled ? 'controlled' : 'uncontrolled'} requires external consent and submits the matching budget shape`, async ({ page }) => {
   const { writes } = await setup(page, { ...profile, cost_control_enabled: enabled, ...(enabled ? {} : { price: null }) });
-  await page.goto(flow === 'preflight' ? '/#/preflight/import' : flow === 'edition' ? '/#/documents/doc' : '/#/drafts/draft');
+  await page.goto(flow === 'preflight' ? '/#/preflight/import' : flow === 'edition' ? '/#/documents/doc' : '/#/drafts/draft'); if (flow === 'candidate' || flow === 'semantic') await openEditorTools(page);
   if (flow === 'edition') await page.getByRole('button', { name: '确认此语言版翻译', exact: true }).click();
-  if (flow === 'candidate' || flow === 'semantic') { await page.getByLabel('选择段落 b1', { exact: true }).check(); await page.getByRole('button', { name: flow === 'candidate' ? /局部重译/ : /辅助语义评审/ }).click(); }
-  const submit = page.getByRole('button', { name: flow === 'preflight' ? /开始翻译$/ : flow === 'edition' ? /翻译此语言版$/ : flow === 'candidate' ? '创建局部候选任务' : '创建辅助语义评审任务', exact: flow === 'candidate' || flow === 'semantic' });
+  if (flow === 'candidate' || flow === 'semantic') { await page.getByLabel('选择段落 b1', { exact: true }).check(); await page.getByRole('button', { name: flow === 'candidate' ? /局部重译/ : /检查译文含义/ }).click(); }
+  const submit = page.getByRole('button', { name: flow === 'preflight' ? /开始翻译$/ : flow === 'edition' ? /翻译此语言版$/ : flow === 'candidate' ? '创建局部候选任务' : '创建含义检查任务', exact: flow === 'candidate' || flow === 'semantic' });
   const budget = page.locator('#translation-budget, #candidate-budget, input[type=number]');
   await expect(submit).toBeDisabled();
   if (enabled) { await expect(budget).toHaveCount(1); await budget.fill('0.01'); }

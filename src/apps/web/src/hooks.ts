@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
+import { watchGuardedHash } from './navigation-guard';
 export function useResource<T>(path: string | null, pollMs = 0) {
   const [data, setData] = useState<T>();
   const [error, setError] = useState<Error>();
@@ -37,9 +38,9 @@ export function useAction() {
   return { run, pending, error, notice, clear: () => { setError(undefined); setNotice(''); } };
 }
 export function useRoute() {
-  const read = () => location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
-  const [parts, setParts] = useState(read);
-  useEffect(() => { const onChange = () => { setParts(read()); window.scrollTo(0, 0); }; window.addEventListener('hashchange', onChange); return () => window.removeEventListener('hashchange', onChange); }, []);
+  const read = (hash: string) => hash.split('?')[0].replace(/^#\/?/, '').split('/').map(part => { try { return decodeURIComponent(part); } catch { return part; } });
+  const [parts, setParts] = useState(() => read(location.hash));
+  useEffect(() => watchGuardedHash(hash => { setParts(read(hash)); window.scrollTo(0, 0); }), []);
   return { page: parts[0] || 'library', id: parts[1], extra: parts[2] };
 }
 export function useJobEvents(id: string | undefined, reload: () => void) {

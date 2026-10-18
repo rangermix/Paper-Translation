@@ -1,3 +1,4 @@
+import { openEditorTools } from './editor-helpers';
 import { test, expect } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 import { outputDirectory } from './paths';
 import { resolve } from 'node:path';
@@ -38,24 +39,24 @@ for (const viewport of [{ width: 1440, height: 1060 }, { width: 390, height: 844
       } as Record<string, unknown>)[path] ?? { items: [] };
       await route.fulfill({ status: 200, contentType: 'application/json', headers: { ETag: '"1"' }, body: JSON.stringify(response) });
     });
-    await page.goto('/#/drafts/optional');
+    await page.goto('/#/drafts/optional'); await openEditorTools(page);
     await expect(page).toHaveURL(/#\/drafts\/optional$/);
     expect(await page.title()).toBeTruthy();
     await expect(page.getByRole('heading', { name: '译文编辑' })).toBeVisible();
     await expect(page.getByText('未核对 · 可选', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '展开段落 p1', exact: true }).click();
+    if (await page.getByRole('button', { name: '展开段落 p1', exact: true }).count()) await page.getByRole('button', { name: '展开段落 p1', exact: true }).click();
     await expect(page.getByText('人工核对（可选）', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '封存当前修订' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: '保存为新版本' })).toBeEnabled();
     await page.getByRole('button', { name: '运行质量检查', exact: true }).click();
-    await expect(page.getByRole('button', { name: '封存当前修订' })).toBeEnabled();
-    await page.getByText('一般提示 · 1', { exact: true }).click();
+    await expect(page.getByRole('button', { name: '保存为新版本' })).toBeEnabled();
+    await openEditorTools(page); await page.getByText('一般提示 · 1', { exact: true }).click();
     await expect(page.locator('.issue')).toContainText('SEMANTIC_RISK');
     await page.getByText('人工核对（可选）', { exact: true }).click();
     await expect(page.getByRole('textbox', { name: '核对说明', exact: true })).toBeVisible();
     await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(outputDirectory('optional-review'), `review-${viewport.width}.png`), fullPage: true });
-    await page.getByRole('button', { name: '封存当前修订' }).click();
+    await page.getByRole('button', { name: '保存为新版本' }).click();
     await page.getByRole('button', { name: '构建并发布封存版' }).click();
     await expect(page).toHaveURL(/#\/jobs\/publication$/);
     expect(writes).toEqual(['/drafts/optional/validate', '/drafts/optional/seal', '/editions/edition/publish']);
@@ -70,9 +71,9 @@ for (const state of ['stale', 'hard']) {
         issues: state === 'hard' ? [{ code: 'MISSING_TRANSLATION', severity: 'hard', block_id: 'p1' }] : [] } };
     await page.route('**/api/v1/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(
       route.request().url().includes('/drafts/blocked') ? draft : { id: 'doc', title: 'Blocked fixture', editions: [], items: [] }) }));
-    await page.goto('/#/drafts/blocked');
-    await expect(page.getByText(state === 'stale' ? '质量报告已过期' : '当前版本有内容提示', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '封存当前修订' })).toBeEnabled();
+    await page.goto('/#/drafts/blocked'); await openEditorTools(page);
+    await expect(page.getByText(state === 'stale' ? '质量报告已过期' : '当前版本有内容提示', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '保存为新版本' })).toBeEnabled();
     await expect(page.getByRole('button', { name: '运行质量检查', exact: true })).toBeEnabled();
   });
 }

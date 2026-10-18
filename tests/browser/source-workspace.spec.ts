@@ -185,3 +185,66 @@ for (const status of [200, 409]) {
     }
   });
 }
+
+test('successful source correction releases its leave guard before React cleanup', async ({ page }, testInfo) => {
+  type SchedulerGate = { hold: boolean; queued: (() => void)[]; hashes: string[]; moves: number[]; release: () => void };
+  await page.addInitScript(() => {
+    const gate: SchedulerGate = { hold: false, queued: [], hashes: [], moves: [], release() {
+      this.hold = false;
+      this.queued.splice(0).forEach(send => send());
+    } };
+    (window as unknown as { sourceSaveGate: SchedulerGate }).sourceSaveGate = gate;
+    // React cleanup may follow the browser's hashchange task. Hold scheduled
+    // MessageChannel work so this ordering is repeatable without sleeps.
+    const NativeChannel = window.MessageChannel;
+    window.MessageChannel = class extends NativeChannel {
+      constructor() {
+        super();
+        this.port1.addEventListener('message', event => {
+          if (!gate.hold) return;
+          event.stopImmediatePropagation();
+          gate.queued.push(() => this.port1.dispatchEvent(new MessageEvent('message', { data: event.data })));
+        });
+      }
+    };
+    window.addEventListener('hashchange', event => gate.hashes.push(new URL(event.newURL).hash));
+    const go = history.go.bind(history);
+    history.go = delta => { gate.moves.push(delta ?? 0); go(delta); };
+  });
+  await fixture(page);
+  let submitted = false;
+  let respond!: () => void;
+  const pending = new Promise<void>(resolve => { respond = resolve; });
+  await page.route('**/api/v1/imports/native/corrections', async route => {
+    submitted = true;
+    await pending;
+    await route.fulfill({ json: { id: 'next' } });
+  });
+  await page.goto('/#/preflight/native');
+  await page.getByRole('button', { name: '查看原文与调整解析', exact: true }).click();
+  const workspace = page.getByRole('dialog', { name: '修正原文识别', exact: true });
+  await workspace.getByLabel('原件核对记录与理由').fill('提交后进入新来源');
+  await workspace.getByLabel(/我已对照高亮的原文 PDF/).check();
+  await workspace.getByRole('button', { name: '创建新来源草稿并重检覆盖', exact: true }).click();
+  await expect.poll(() => submitted).toBe(true);
+  await expect(workspace).toHaveAttribute('aria-busy', 'true');
+  await page.evaluate(() => { (window as unknown as { sourceSaveGate: SchedulerGate }).sourceSaveGate.hold = true; });
+  try {
+    respond();
+    await page.waitForFunction(() => (window as unknown as { sourceSaveGate: SchedulerGate }).sourceSaveGate.hashes.includes('#/preflight/next'));
+    const timeline = await page.evaluate(() => {
+      const gate = (window as unknown as { sourceSaveGate: SchedulerGate }).sourceSaveGate;
+      return { hashes: gate.hashes, moves: gate.moves, heldTasks: gate.queued.length, url: location.href };
+    });
+    await testInfo.attach('source-save-navigation.json', { body: JSON.stringify(timeline), contentType: 'application/json' });
+    expect(timeline.heldTasks).toBeGreaterThan(0);
+    expect(timeline.moves).toEqual([]);
+    await expect(page).toHaveURL(/#\/preflight\/next$/);
+  } finally {
+    respond();
+    await page.evaluate(() => (window as unknown as { sourceSaveGate: SchedulerGate }).sourceSaveGate.release());
+  }
+  await expect(workspace).toHaveCount(0);
+  await expect(page).toHaveURL(/#\/preflight\/next$/);
+  await expect(page.getByRole('dialog', { name: '有未保存的校对输入', exact: true })).toHaveCount(0);
+});

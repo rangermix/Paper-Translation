@@ -13,5 +13,7 @@ export function useSourceLeaveProtection(dirty: boolean, busy: boolean) {
       <button className="btn" disabled={busy} onClick={() => guard.resolve(true)}>{t("放弃输入")}</button>
     </div>
   </Modal> : null;
-  return { request, dialog };
+  // Successful saves can navigate before React runs the unmount cleanup.
+  const saved = () => guard.resolve(true);
+  return { request, dialog, saved };
 }

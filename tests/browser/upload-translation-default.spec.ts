@@ -213,7 +213,7 @@ test('mobile upload shows the destination without removed controls or horizontal
 });
 
 test('a stale provider refreshes the destination and retries the same uploaded PDF with the new hash', async ({ page }) => {
-  const { state, writes } = await setup(page);
+  const { state, writes, errors } = await setup(page);
   let attempts = 0, refreshing = false, release!: () => void;
   const waiting = new Promise<void>(resolve => { release = resolve; }), imports: any[] = [];
   await page.route('**/api/v1/settings/provider', async route => {
@@ -231,17 +231,30 @@ test('a stale provider refreshes the destination and retries the same uploaded P
   await page.goto('/#/upload');
   await page.locator('#pdf-files').setInputFiles(file('stale.pdf'));
   await uploadButton(page).click();
-  await expect(page.getByText('翻译服务配置已更新，请重新读取后重试。', { exact: true })).toBeVisible();
-  const retry = page.getByRole('button', { name: '重新处理已上传的 PDF', exact: true });
+  const result = page.locator('.file-result'), failure = result.getByRole('alert');
+  const diagnostic = failure.getByText('翻译服务配置已更新，请重新读取后重试。', { exact: true });
+  await expect(failure.locator('strong')).toHaveText('AI 服务配置已变化，请刷新配置并重新确认外发。');
+  await expect(diagnostic).not.toBeVisible();
+  await page.locator('#ui-language').selectOption('en');
+  await expect(failure.locator('strong')).toHaveText('AI service settings have changed. Refresh and confirm content sharing again.');
+  await failure.getByText('Technical details', { exact: true }).click();
+  await expect(diagnostic).toBeVisible();
+  await expect(failure).toContainText('PROFILE_STALE');
+  await expect(result.locator('.filename')).toHaveText('stale.pdf');
+  const retry = page.getByRole('button', { name: 'Process uploaded PDF again', exact: true });
   await expect(retry).toBeDisabled();
   release();
-  await expect(page.getByRole('region', { name: '本次翻译服务', exact: true })).toContainText('replacement-model');
+  await expect(page.getByRole('region', { name: 'Translation service for this request', exact: true })).toContainText('replacement-model');
+  await expect(retry).toBeEnabled();
   await retry.click();
-  await expect(page.getByRole('link', { name: /已入库，后台处理中/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Added to library; processing in background · View document', exact: true })).toBeVisible();
+  await expect(failure).toHaveCount(0);
   expect(attempts).toBe(2);
   expect(imports.map(body => body.workflow.profile_hash)).toEqual([profile.profile_hash, state.provider.profile_hash]);
   expect(writes.filter(row => row.path === '/uploads')).toHaveLength(1);
   expect(writes.find(row => row.path === '/imports')?.body.workflow).toMatchObject({
     external_processing_confirmed: true, profile_hash: state.provider.profile_hash, use_saved_upload_permission: false,
   });
+  // Chromium reports the deliberately rejected request in its network console.
+  expect(errors.filter(message => message !== 'Failed to load resource: the server responded with a status of 409 (Conflict)')).toEqual([]);
 });

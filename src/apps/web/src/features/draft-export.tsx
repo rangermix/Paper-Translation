@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { errorMessage } from '../messages';
 import { useRef, useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, ErrorNotice, Modal } from '../components';
@@ -33,7 +34,8 @@ export function DraftExport({ draft, close, title }: { draft: Draft; close: () =
       <ExportFormat format={format} setFormat={setFormat} includeSource={includeSource} setIncludeSource={setIncludeSource} disabled={locked}/>
       <details className="technical-details"><summary>{t("技术详情")}</summary><dl className="kv"><dt>{t("草稿 ID")}</dt><dd className="mono">{snapshot.id}</dd><dt>{t("并发校验版本")}</dt><dd>{snapshot.generation}</dd></dl></details>
       <ActionFeedback {...action}/><ErrorNotice error={result.error} retry={result.reload}/>
-      {result.data?.error && <p role="alert" className="error">{result.data.error.message ?? result.data.error.code}</p>}
+      {result.data?.error && <><p role="alert" className="error">{errorMessage(result.data.error.code ?? '', result.data.error.message)}</p>
+        <details><summary>{t("错误技术详情")}</summary><code>{result.data.error.code}</code><p>{result.data.error.message}</p></details></>}
       {failed && <p role="alert">{t("下载文件未能生成，可重新选择导出选项。")}</p>}
       <div className="dialog-actions">{['succeeded', 'ready', 'completed'].includes(result.data?.status ?? '') ? <a className="btn primary" href={localUrl(result.data?.download_url, `/api/v1/exports/${resourceId(exportId)}/download`)}>{t("下载文件")}</a>
         : failed ? <button className="btn" type="button" onClick={() => { setExportId(''); action.clear(); }}>{t("重新选择导出选项")}</button>

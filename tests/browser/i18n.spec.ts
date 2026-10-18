@@ -163,3 +163,35 @@ test('previous upload validation follows the language selection', async ({ page 
   await expect(page.getByText('檔案為空。', { exact: true })).toBeVisible();
   expect(writes).toEqual([]); expect(errors).toEqual([]);
 });
+
+test('no-JavaScript startup includes catalog-backed notices in all management languages', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const page = await context.newPage();
+  await page.goto('/#/library');
+  await expect(page.locator('noscript p[lang="en"]')).toContainText('The management interface requires JavaScript.');
+  await expect(page.locator('noscript p[lang="zh-Hans"]')).toContainText('管理界面需要 JavaScript。');
+  await expect(page.locator('noscript p[lang="zh-Hant"]')).toContainText('管理介面需要 JavaScript。');
+  await expect(page).toHaveTitle('Bilingual Library · Personal PDF library');
+  await context.close();
+});
+
+test('authored diagnostic summaries follow UI language while original evidence is unchanged', async ({ page }) => {
+  const { writes, errors } = await fixture(page);
+  await page.route('**/api/v1/jobs/i18n/events', route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: ': connected\n\n' }));
+  const sourceQuote = '设置 <paper> 42.0';
+  await page.route('**/api/v1/jobs/i18n', route => route.fulfill({ json: {
+    id: 'i18n', stage: 'parse', status: 'completed', generation: 1, control_epoch: 0, issues: [
+      { stage: 'source_check', category: 'page_missing', page: 2, severity: 'important', message: '第 2 页文字未完整提取', source_quote: sourceQuote },
+      { stage: 'translation', category: 'numeric', code: 'NUMBER_MISMATCH', severity: 'important', message: '译文中的数字与原文存在差异，可查看原 PDF 对照。' },
+    ],
+  } }));
+  await page.goto('/#/jobs/i18n');
+  await page.locator('#ui-language').selectOption('en');
+  await expect(page.getByText('Text on page 2 was not fully extracted', { exact: true })).toBeVisible();
+  await expect(page.getByText('Numbers differ between the translation and the original. Compare them with the original PDF.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Source excerpt', { exact: true })).toHaveText(sourceQuote);
+  await page.locator('#ui-language').selectOption('zh-Hant');
+  await expect(page.getByText('第 2 頁文字未完整擷取', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('原文摘錄', { exact: true })).toHaveText(sourceQuote);
+  expect(writes).toEqual([]); expect(errors).toEqual([]);
+});

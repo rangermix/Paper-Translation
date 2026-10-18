@@ -6,6 +6,8 @@ import './issue-groups.css';
 const categoryNames: Record<string, string> = {
   numeric: '数字差异', coverage: '内容覆盖', terminology: '术语', semantic: '含义',
   structure: '内容结构', assets: '图表资源', layout: '排版', formula: '公式', general: '其他内容提示',
+  number: '数字差异', typography: '排版', page_missing: '内容覆盖', table: '表格内容',
+  code: '代码', duplicate: '重复内容', check: '检查状态',
 };
 
 export function groupIssues(issues: Issue[]) {

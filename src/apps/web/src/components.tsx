@@ -1,7 +1,7 @@
 import { t } from './i18n';
 import { NumberEvidence } from './number-evidence';
 import { IssueGroups } from './features/issue-groups';
-import { errorMessage } from './messages';
+import { errorMessage, issueMessage } from './messages';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from './api';
 import { localUrl, locatorStyle, resourceId, statusLabel } from './domain';
@@ -47,13 +47,13 @@ export function Issues({ issues, checkState, onNavigate, onLocate, onResolve, re
     const label = important ? t("重要提示") : issue.severity === 'info' ? t("排版提示") : t("一般提示");
     const blockId = issue.block_id ?? issue.block_ids?.[0];
     const content = <><div className="stack"><strong>{label}</strong>{issue.page ? <span>{t("第 {page} 页", { page: issue.page })}</span> : null}{issue.diagnostic_count && issue.diagnostic_count > 1 ? <span>{t("合并 {count} 条诊断", { count: issue.diagnostic_count })}</span> : null}</div>
-      <p>{issue.message ?? issue.explanation}</p>
+      <p>{issueMessage(issue)}</p>
       {issue.source_quote !== undefined && <div className="field-note"><strong>{t("原文摘录")}</strong><p aria-label={t("原文摘录")}>{issue.source_quote}</p></div>}
       {issue.target_quote !== undefined && <div className="field-note"><strong>{t("译文摘录")}</strong><p aria-label={t("译文摘录")}>{issue.target_quote}</p></div>}
       {(issue.code ?? issue.rule) === 'NUMBER_MISMATCH' && <NumberEvidence evidence={issue.evidence}/>}
       {(onNavigate || onLocate) && <div className="stack issue-actions">{onNavigate && (blockId ? <button className="btn sm" onClick={() => onNavigate(blockId)}>{t("跳转段落 {id}", { id: blockId })}</button> : <span className="small muted">{t("文档级提示")}</span>)}{onLocate && <button className="btn sm" onClick={() => onLocate(issue)}>{issue.page != null ? t("查看第 {v0} 页原文", { v0: issue.page }) : t("查看原文位置")}</button>}{onResolve && issue.fingerprint && <button className="btn sm" disabled={resolveDisabled} onClick={() => onResolve(issue)}>{t("记录核对结果（可选）")}</button>}</div>}
       {(issue.evidence !== undefined || issue.evidence_refs?.length || issue.code || issue.rule) ? <details><summary>{t("诊断详情")}</summary><pre>{JSON.stringify({ code: issue.code ?? issue.rule, evidence: issue.evidence, references: issue.evidence_refs }, null, 2)}</pre></details> : null}</>;
-    return <li key={issue.id ?? i} className={`issue ${important ? 'important' : issue.severity}`}>{issue.severity === 'info' ? <details><summary>{issue.message ?? label}</summary>{content}</details> : content}</li>;
+    return <li key={issue.id ?? i} className={`issue ${important ? 'important' : issue.severity}`}>{issue.severity === 'info' ? <details><summary>{issueMessage(issue)}</summary>{content}</details> : content}</li>;
   })}</ul></>;
 }
 export function Modal({ title, children, onClose, busy = false }: { title: string; children: ReactNode; onClose: () => void; busy?: boolean }) {

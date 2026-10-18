@@ -85,6 +85,17 @@ blocked storage, cross-tab updates, unchanged document content, unsaved settings
 and desktop/mobile navigation). Existing browser cases use a fixed `zh-CN`
 browser locale; localization cases explicitly exercise other browser locales.
 
+`npm --prefix src/apps/web run check:i18n` also checks authored JSX text,
+accessibility attributes and CSS text through `i18n-coverage.test.ts`; the same
+gate runs in the production build. Document/proper-name/technical exceptions
+are explicit and scoped, not a blanket exemption for ASCII or backend values.
+The reader contract is covered by `tests/unit/test_reader_i18n.py` (locale
+matching, complete catalogs, preserved content/old templates and immutable
+exports) and `tests/browser/reader-i18n.spec.ts` (all eight languages, both source
+schemas, publication/HTML/ZIP, dynamic controls, mobile and no JavaScript).
+Generate the reader fixtures as described in the browser test guide before
+running the evidence-dependent cases.
+
 See [browser tests](browser/README.md) for the local preview, evidence-dependent
 tests and explicit opt-in for tests that mutate an actual disposable application.
 

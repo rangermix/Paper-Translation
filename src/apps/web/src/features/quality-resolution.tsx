@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { issueMessage } from '../messages';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, Modal, PdfLocator } from '../components';
@@ -13,7 +14,7 @@ export function QualityResolution({ draft, issue, close, refresh }: {draft: Draf
   const action = useAction();
   const segment = draft.segments.find(s => s.block_id === blockId);
   return <Modal title={t("核对质量提示")} onClose={close}>
-    <p>{issue.message}</p>
+    <p>{issueMessage(issue)}</p>
     <form onSubmit={e => { e.preventDefault(); void action.run(async () => {
       await api(`/drafts/${resourceId(draft.id)}/issues/${resourceId(issue.fingerprint!)}/resolve`, { method: 'POST', etag: etagFor(draft), body: {reason, evidence: {page: segment!.locators![0].page, bbox: segment!.locators![0].bbox, quote: segment!.source_text}} });
       refresh(); close();

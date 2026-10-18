@@ -50,8 +50,14 @@ the instance; the default published address is loopback.
   New UI operations automatically publish completed reading results, without a
   delayed-publication option. Existing API policies, saved preferences and queued
   task snapshots remain compatible and are not rewritten.
-  New publications and draft exports use `reader-v14`, with bilingual section
+  New publications and draft exports use `reader-v15`, with bilingual section
   labels, online document/search return links and system/light/dark themes.
+  Reader controls follow the saved translation language: Simplified/Traditional
+  Chinese, English, Japanese, Korean, French, German and Spanish are supported,
+  including regional variants; other languages currently use English controls.
+  This choice is embedded in HTML and retained in offline exports, independently
+  of the management UI or browser language. Paper content is never relabeled or
+  retranslated when choosing a reading template.
   Offline exports omit instance navigation; old source contracts and readers remain valid.
 - Keep task stages, actual model identities, timings, redacted logs, attempts and
   uncertain outcomes. Clearing finished task history changes list visibility only.

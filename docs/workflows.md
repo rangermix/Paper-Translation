@@ -108,14 +108,14 @@ version or secret boundaries. Successfully sealed revisions are immutable.
 
 Source 4.0 translation splits at formatting/link boundaries and restores those
 associations deterministically after the bounded text response. Editing visible
-labels preserves marks, destinations and protected references. The new `reader-v14`
+labels preserves marks, destinations and protected references. The new `reader-v15`
 renders nested structures, table headers and bare math literals. Author and
 affiliation lines stay in their original form beside the titles. References and
 footnotes appear in the margin, with clickable destinations and a collected
 footnote section at the bottom;
 publication and both offline exports retain these semantics. Old snapshots and
 reader resources are not rewritten. New publications and draft exports use
-`reader-v14` for both 3.0 and 4.0 sources. Its theme selector offers system (the
+`reader-v15` for both 3.0 and 4.0 sources. Its theme selector offers system (the
 default), light and dark modes. System mode responds immediately to the browser's
 system color preference, including in offline exports and without JavaScript.
 Explicit light/dark preferences already saved in the browser remain selected;
@@ -139,7 +139,17 @@ same query and result page. Section labels combine existing translated headings
 with the original, falling back to the original when no translation exists.
 No model is called to build the directory. HTML and ZIP exports remove instance
 return links and remain usable offline and without JavaScript.
-Existing publications can preview these changes by rebuilding with `reader-v14`
+Reader controls, accessibility labels and application-authored notices use the
+saved translation locale, with Simplified/Traditional Chinese, English, Japanese,
+Korean, French, German and Spanish catalogs. Regional variants use their language
+catalog; explicit Chinese script takes precedence over region. Unsupported reader
+UI languages currently fall back to English without changing the translation
+locale or paper text. UI labels are embedded at generation time and remain usable
+without JavaScript. Management UI language and browser preferences cannot override
+the artifact language; reading layout/font/theme preferences still apply.
+User text, original/translated content, raw diagnostic evidence and legal license
+text remain intact. Publication and export make no translation-service calls.
+Existing publications can preview these changes by rebuilding with `reader-v15`
 from their saved translation, without translating again. Creating a preview does
 not switch the current reading version; switching remains an explicit CAS operation.
 Offline tests establish preservation contracts,

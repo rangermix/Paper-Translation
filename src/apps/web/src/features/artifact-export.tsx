@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { errorMessage } from '../messages';
 import { useRef, useState } from 'react';
 import { api } from '../api';
 import { ActionFeedback, ErrorNotice, Loading, Modal } from '../components';
@@ -59,7 +60,8 @@ export function ArtifactExport({ document, initialArtifactId, close }: { documen
       <details className="technical-details"><summary>{t("技术详情")}</summary><dl className="kv"><dt>{t("阅读版本 ID")}</dt><dd className="mono">{artifactId}</dd>
         {selected && <><dt>{t("阅读样式 ID")}</dt><dd>{selected.template_id}</dd><dt>{t("译文修订")}</dt><dd className="mono">{selected.translation_revision_id}</dd></>}</dl></details>
       <ActionFeedback {...action}/><ErrorNotice error={exported.error} retry={exported.reload}/>
-      {exported.data?.error && <p role="alert" className="error">{exported.data.error.message ?? exported.data.error.code}</p>}
+      {exported.data?.error && <><p role="alert" className="error">{errorMessage(exported.data.error.code ?? '', exported.data.error.message)}</p>
+        <details><summary>{t("错误技术详情")}</summary><code>{exported.data.error.code}</code><p>{exported.data.error.message}</p></details></>}
       {failed && <p role="alert">{t("下载文件未能生成。可重新生成，阅读版本保持不变。")}</p>}
       <div className="dialog-actions">{completed ? <a className="btn primary" href={localUrl(exported.data?.download_url, `/api/v1/exports/${resourceId(exportId)}/download`)}>{t("下载文件")}</a>
         : failed ? <button className="btn" type="button" onClick={() => { setExportId(''); action.clear(); }}>{t("重新选择导出选项")}</button>

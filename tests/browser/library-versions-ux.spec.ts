@@ -30,7 +30,7 @@ async function setup(page: Page) {
       '/documents': { items: [state.doc, { ...state.doc, id: 'no-metadata', title: '没有作者信息的文档', bibliography: undefined, editions: [] }], next_cursor: null },
       '/documents/doc': state.doc, '/documents/doc/history': state.history,
       '/drafts/draft': draft, '/drafts/draft/exports': { export_id: 'export' },
-      '/templates': { items: [{ id: 'reader-v14', name: '双语目录与文库导航' }, { id: 'reader-v13', name: '双语对照阅读' }] },
+      '/templates': { items: [{ id: 'reader-v15', name: '多语言双语阅读' }, { id: 'reader-v14', name: '双语目录与文库导航' }, { id: 'reader-v13', name: '双语对照阅读' }] },
       '/reading-position': { generation: 0, block_id: null },
       '/exports/export': { id: 'export', status: state.exportStatus, download_url: '/api/v1/exports/export/download', ...(state.exportStatus === 'failed' ? { error: { message: 'Synthetic export failed' } } : {}) },
       '/jobs/job': { id: 'job', generation: 1, status: 'pending', stage: 'render', control_epoch: 0 },
@@ -147,6 +147,6 @@ test('style action creates a preview with unchanged CAS semantics', async ({ pag
   const current = page.locator('[data-artifact-id="current"]');
   await current.getByText('阅读样式与发布操作', { exact: true }).click();
   await current.getByRole('button', { name: '用所选样式生成预览', exact: true }).click();
-  await expect.poll(() => writes.find(write => write.path === '/artifacts/current/rebuild')?.body).toEqual({ template_id: 'reader-v14', preview_only: true, expected_generation: 9 });
+  await expect.poll(() => writes.find(write => write.path === '/artifacts/current/rebuild')?.body).toEqual({ template_id: 'reader-v15', preview_only: true, expected_generation: 9 });
   expect(writes.some(write => write.path.endsWith('/rollback') || write.path.endsWith('/unpublish'))).toBe(false);
 });

@@ -89,10 +89,19 @@ def list_templates():
         'css_sha256':'33040019fbdea0846e2527bbd266fd4c1b387d9539e041d954b2a4c46bff6f69', 'js_sha256':'6700da2b1467302652e935eb7327a7693aec8382ea5cdd0201b3384022f7550e',
         'renderer_version':'reader-python-14.0.0',
         'renderer_sha256':digest((root/'src/packages/publisher/reader_v14.py').read_bytes())}
-    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14):
+    # Both renderer and reader_locales.py are frozen v15 resources. Future
+    # language/catalog changes require a new template and catalog module.
+    v15 = {**v14, 'id':'reader-v15', 'version':'15', 'name':'多语言双语阅读',
+        'css_path':'src/packages/templates/reader-v15.css', 'js_path':'src/packages/templates/reader-v15.js',
+        'css_sha256':'33040019fbdea0846e2527bbd266fd4c1b387d9539e041d954b2a4c46bff6f69',
+        'js_sha256':'a26fe3649ec4808f13941fd12298cabe01773aaa0ee849591e0c14112418d0b3',
+        'renderer_version':'reader-python-15.0.0',
+        'renderer_sha256':digest({name: digest((root/'src/packages/publisher'/name).read_bytes())
+                                 for name in ('reader_v15.py', 'reader_locales.py')})}
+    for entry in (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15):
         require(digest((root/entry['css_path']).read_bytes()) == entry['css_sha256'], 'TEMPLATE_HASH_MISMATCH')
         require(digest((root/entry['js_path']).read_bytes()) == entry['js_sha256'], 'TEMPLATE_HASH_MISMATCH')
-    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14]
+    return [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15]
 
 
 def get_template(template_id):

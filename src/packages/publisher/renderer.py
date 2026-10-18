@@ -93,6 +93,9 @@ def render_toc(source, blocks, *, original_labels=False):
 
 
 def render_html(ir, asset_paths, *, include_source=False):
+    if ir['render']['template_id'] == 'reader-v15':
+        from .reader_v15 import render_html as render_localized
+        return render_localized(ir, asset_paths, include_source=include_source)
     if ir['render']['template_id'] == 'reader-v14':
         from .reader_v14 import render_html as render_connected
         return render_connected(ir, asset_paths, include_source=include_source)
@@ -493,7 +496,7 @@ def export_files(artifact_dir, include_source):
     root = Path(artifact_dir)
     manifest = verify_artifact(root)
     files = {entry['path']:safe_path(root,entry['path']).read_bytes() for entry in manifest['files']}
-    if manifest.get('template_id') == 'reader-v14':
+    if manifest.get('template_id') in {'reader-v14', 'reader-v15'}:
         # Exports are independent documents, even when served over HTTP later.
         # Remove only this template's generated navigation, never paper content.
         files['index.html'] = re.sub(
@@ -518,8 +521,15 @@ def export_files(artifact_dir, include_source):
         raise ValueError('ASSET_MISSING: artifact has no original PDF')
     if not include_source and manifest['include_source']:
         content = files['index.html'].decode('utf-8')
-        content = re.sub(r'<a href="original\.pdf" download>原[始文] PDF</a>', '', content)
-        content = re.sub(r'<a data-original-reference href="original\.pdf">.*?</a>', '<span>对照图暂不可用；本次导出未包含原 PDF。</span>', content)
+        if manifest.get('template_id') == 'reader-v15':
+            content = re.sub(r'<a href="original\.pdf" download>[^<]*</a>', '', content)
+            # The localized fallback is frozen in the publication. Export must
+            # not reinterpret it using the current app/browser/catalog locale.
+            content = re.sub(r'<a data-original-reference href="original\.pdf" data-missing-source-label="([^"]*)">.*?</a>',
+                             lambda match: '<span>' + match[1] + '</span>', content)
+        else:
+            content = re.sub(r'<a href="original\.pdf" download>原[始文] PDF</a>', '', content)
+            content = re.sub(r'<a data-original-reference href="original\.pdf">.*?</a>', '<span>对照图暂不可用；本次导出未包含原 PDF。</span>', content)
         files['index.html'] = content.encode('utf-8')
         files.pop('original.pdf',None)
         manifest['include_source'] = False

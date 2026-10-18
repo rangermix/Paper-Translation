@@ -1,4 +1,5 @@
 import { messages, t } from './i18n';
+import type { Issue } from './types';
 const errors: Record<string, string> = {
   PROVIDER_CONFIG: 'AI 服务配置尚未完成，已有内容仍可查看。请在设置中完成配置。',
   EXTERNAL_PROCESSING_UNCONFIRMED: '尚未授权向 AI 服务发送内容，请在开始翻译时确认外发范围。',
@@ -37,5 +38,28 @@ const errors: Record<string, string> = {
   CLEANUP_FAILED: '文件清理未完成，在线内容仍不可访问。请查看任务记录。',
 };
 export function errorMessage(code: string, message?: string) {
-  return t(errors[code] ?? (message && (messages[message] || /[\u3400-\u9fff]/.test(message)) ? message : '本次操作未完成，请查看技术详情或稍后重试。'));
+  return t(errors[code] ?? (message && messages[message] ? message : '本次操作未完成，请查看技术详情或稍后重试。'));
+}
+
+const sourceIssueMessages: Record<string, string> = {
+  check: '检查未完成，已有内容仍可阅读', typography: '文字排版与原 PDF 有细微差异',
+  number: '数字与原 PDF 可能不同', table: '表格内容与原 PDF 可能不同', formula: '公式保留原图对照',
+  code: '代码保留原图对照', duplicate: '可能存在重复内容', coverage: '部分内容与原 PDF 不一致',
+};
+const qualityIssueMessages = new Set([
+  '此段暂无译文，保留原文供阅读。', '此段译文无法安全展示，已保留原文。',
+  '译文中的数字与原文存在差异，可查看原 PDF 对照。', '译文出现原文和术语表中没有的其他语言文字，可对照原文检查。',
+  '公式、数字或引用的识别结果存在差异。', '此段包含条件、否定或数量关系，可按需对照原文。',
+  '此段用词与术语表不一致。', '可考虑使用术语表中的推荐用词。', '此段出现术语表中不建议使用的词。',
+  '部分内容无法按原结构展示，生成时将使用安全替代内容。', '辅助语义检查尚未完成，已有译文可继续使用。',
+  '检查未完成，已有内容仍可阅读和导出。', '原图资源暂不可用，可打开原 PDF 对照。', '此段有内容差异，可按需对照原文。',
+]);
+/** Source-check summaries are authored by the application; evidence and model explanations are data. */
+export function issueMessage(issue: Issue): string {
+  if (issue.stage === 'source_check') {
+    if (issue.category === 'page_missing' && issue.page != null) return t('第 {page} 页文字未完整提取', { page: issue.page });
+    if (issue.category && sourceIssueMessages[issue.category]) return t(sourceIssueMessages[issue.category]);
+  }
+  const message = issue.message ?? issue.explanation;
+  return message ? qualityIssueMessages.has(message) ? t(message) : message : t('内容提示');
 }

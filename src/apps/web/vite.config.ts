@@ -1,7 +1,8 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { localizeBootstrap } from './src/bootstrap-i18n';
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), { name: 'localized-bootstrap', transformIndexHtml: localizeBootstrap }],
   server: { proxy: { '/api': 'http://127.0.0.1:8080', '/artifacts': 'http://127.0.0.1:8080', '/read': 'http://127.0.0.1:8080' } },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },
   build: { sourcemap: false },

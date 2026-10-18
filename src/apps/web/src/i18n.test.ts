@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import ts from 'typescript';
 import { getUiLocale, messages, resolveUiLocale, setUiLocale, t } from './i18n';
 import { statusLabel } from './domain';
-import { errorMessage } from './messages';
+import { errorMessage, issueMessage } from './messages';
+import { localizeBootstrap } from './bootstrap-i18n';
 import { coreMessages } from './locales/core';
 import { settingsMessages } from './locales/settings';
 import { workflowMessages } from './locales/workflow';
@@ -23,6 +24,7 @@ describe('interface language', () => {
     setUiLocale('en');
     expect(statusLabel('queued')).toBe('Queued');
     expect(errorMessage('BUDGET_REQUIRED')).toMatch(/budget/i);
+    expect(errorMessage('UNKNOWN_BACKEND', '无法识别的原始诊断')).toBe('The operation did not complete. Review the technical details or try again later.');
     setUiLocale('zh-Hant');
     expect(statusLabel('queued')).toBe('排隊中');
     expect(t('界面语言')).toBe('介面語言');
@@ -33,6 +35,22 @@ describe('interface language', () => {
     expect(t('跳转段落 {id}', { id: '<b>设置</b> {id} $&' })).toBe('Go to segment <b>设置</b> {id} $&');
     expect(t('unregistered {value}', { value: 0 })).toBe('unregistered 0');
     expect(t('unregistered {missing}', {})).toBe('unregistered {missing}');
+  });
+  it('localizes authored source diagnostics and preserves model explanations and evidence', () => {
+    const issue = { stage: 'source_check', category: 'page_missing', page: 2, severity: 'important', message: '第 2 页文字未完整提取' };
+    setUiLocale('en'); expect(issueMessage(issue)).toBe('Text on page 2 was not fully extracted');
+    expect(issueMessage({ stage: 'translation', severity: 'important', code: 'NUMBER_MISMATCH', message: '译文中的数字与原文存在差异，可查看原 PDF 对照。' })).toContain('Numbers differ');
+    setUiLocale('zh-Hant'); expect(issueMessage(issue)).toBe('第 2 頁文字未完整擷取');
+    expect(issueMessage({ stage: 'semantic_review', severity: 'info', message: '设置 <paper> body' })).toBe('设置 <paper> body');
+    expect(issue.message).toBe('第 2 页文字未完整提取');
+  });
+  it('builds the no-JavaScript notice from all three catalog languages', () => {
+    const page = localizeBootstrap('<title><!--app-title--></title><noscript><!--app-noscript--></noscript>');
+    expect(page).toContain('<title>Bilingual Library · Personal PDF library</title>');
+    expect(page).toContain('<p lang="en">The management interface requires JavaScript.');
+    expect(page).toContain('<p lang="zh-Hans">管理界面需要 JavaScript。');
+    expect(page).toContain('<p lang="zh-Hant">管理介面需要 JavaScript。');
+    expect(page).not.toContain('<!--app-');
   });
   it('keeps every catalogue translation and interpolation complete', () => {
     const keys = [coreMessages, settingsMessages, workflowMessages, editorMessages].flatMap(catalog => Object.keys(catalog));
@@ -53,7 +71,7 @@ describe('interface language', () => {
       function visit(node: ts.Node) {
         if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 't') {
           const key = node.arguments[0];
-          if (key && ts.isStringLiteral(key) && /[\u3400-\u9fff]/.test(key.text) && !messages[key.text]) missing.push(`${path}: ${key.text}`);
+          if (key && ts.isStringLiteralLike(key) && !messages[key.text]) missing.push(`${path}: ${key.text}`);
         }
         ts.forEachChild(node, visit);
       }

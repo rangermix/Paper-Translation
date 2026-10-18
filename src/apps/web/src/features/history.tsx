@@ -17,7 +17,7 @@ export function HistoryPage({ id }: { id: string }) {
   const action = useAction();
   const [locale, setLocale] = useState('');
   const [exportArtifact, setExportArtifact] = useState('');
-  const [template, setTemplate] = useState('reader-v14');
+  const [template, setTemplate] = useState('reader-v15');
   const [left, setLeft] = useState('');
   const [right, setRight] = useState('');
   const [axis, setAxis] = useState('source');
@@ -53,7 +53,7 @@ export function HistoryPage({ id }: { id: string }) {
           <p className="small muted">{t("继续编辑会创建新草稿，此阅读版本保持不变。")}</p>
           <details className="history-version-actions"><summary>{t("阅读样式与发布操作")}</summary>
             <label className="field">{t("阅读样式")}<select value={template} onChange={event => setTemplate(event.target.value)}>
-              {templates.data?.items.length ? templates.data.items.map(item => <option value={item.id} key={item.id}>{item.name ?? t("双语阅读样式")} · {item.id}</option>) : <option value="reader-v14">{t("双语目录与文库导航 · reader-v14")}</option>}
+              {templates.data?.items.length ? templates.data.items.map(item => <option value={item.id} key={item.id}>{t(item.name ?? "双语阅读样式")} · {item.id}</option>) : <option value="reader-v15">{t("多语言双语阅读")} · reader-v15</option>}
             </select></label>
             <ErrorNotice error={templates.error} retry={templates.reload}/>
             <div className="stack">

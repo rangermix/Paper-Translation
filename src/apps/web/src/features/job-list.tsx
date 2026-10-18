@@ -72,7 +72,7 @@ function JobRow({ job, selected, onOpen }: { job: Job; selected: boolean; onOpen
       <span className="job-status"><span className="dot"/>{statusLabel(status)}</span>
       {progress && <div className="job-progress"><small>{progress.label}</small><progress aria-label={progress.label} value={progress.value} max={progress.total}/></div>}
       {job.progress?.resource_wait && ['pending', 'running'].includes(job.status) && <small>{t(resourceReasons[job.progress.resource_wait] ?? "等待资源")}</small>}
-      {job.error && job.stage !== 'cleanup' && <span className="job-error-summary" title={job.error.message}>{jobFailureSummary(job.error)}</span>}
+      {job.error && job.stage !== 'cleanup' && <span className="job-error-summary" title={jobFailureSummary(job.error)}>{jobFailureSummary(job.error)}</span>}
     </div>
     <div className="job-created">{created ? <time dateTime={job.created_at} title={created.full}><span>{created.date}</span><span>{created.time}</span></time> : <span>{t("时间未提供")}</span>}</div>
     <span className="job-open"><Icon name="arrow"/></span>

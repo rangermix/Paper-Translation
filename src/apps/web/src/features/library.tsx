@@ -79,7 +79,7 @@ export function DocumentDetail({ id, capability }: { id: string; capability?: Ca
   const provider = useResource<Provider>('/settings/provider');
   const action = useAction();
   const [translateEdition, setTranslateEdition] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<Document>();
   const [deleting, setDeleting] = useState(false);
   const [deleteText, setDeleteText] = useState('');
   const [title, setTitle] = useState('');
@@ -98,7 +98,7 @@ export function DocumentDetail({ id, capability }: { id: string; capability?: Ca
         <p className="small muted">PDF · {asset?.page_count ?? doc.page_count ?? '—'} 页 · {doc.lifecycle === 'archived' ? '已归档' : '未归档'}{doc.starred ? ' · 已收藏' : ''}</p>
         <p className="document-tags">{doc.tags.join(' · ') || '尚无标签'}</p>{doc.note && <p className="field-note">{doc.note}</p>}
         <div className="stack"><a className="btn" href={`/api/v1/documents/${resourceId(id)}/original`} target="_blank" rel="noreferrer"><Icon name="pdf"/>查看原文 PDF</a>
-          <button className="btn" onClick={() => { setTitle(doc.title); setTags(doc.tags.join(', ')); setEditing(true); }}>编辑标题与标签</button>
+          <button className="btn" onClick={() => { action.clear(); setTitle(doc.title); setTags(doc.tags.join(', ')); setEditing(doc); }}>编辑标题与标签</button>
           <a className="btn" href={`#/glossary?document=${encodeURIComponent(doc.id)}`}>管理本篇术语</a>
           <button className="btn" disabled={action.pending} onClick={() => void action.run(async () => { await api(`/documents/${resourceId(id)}`, { method: 'PATCH', etag: etagFor(doc), body: { starred: !doc.starred } }); result.reload(); })}>{doc.starred ? '取消收藏' : '收藏'}</button>
           {doc.import_id && <a className="btn" href={`#/preflight/${doc.import_id}`}>查看解析结果</a>}{doc.current_job_id && <a className="btn" href={`#/jobs/${doc.current_job_id}`}>{processingLink(doc.current_job_status)}</a>}
@@ -145,9 +145,17 @@ export function DocumentDetail({ id, capability }: { id: string; capability?: Ca
     {exportTarget?.kind === 'artifact' && <ArtifactExport document={doc} initialArtifactId={exportTarget.id} close={() => setExportTarget(undefined)}/>}
     {exportTarget?.kind === 'draft' && <DraftExportLoader id={exportTarget.id} title={doc.title} close={() => setExportTarget(undefined)}/>}
     {translateEdition && <EditionTranslate editionId={translateEdition} close={() => setTranslateEdition('')}/>}
-    {editing && <Modal title="编辑目录信息" onClose={() => setEditing(false)}><form onSubmit={event => { event.preventDefault(); void action.run(async () => {
-      await api(`/documents/${resourceId(id)}`, { method: 'PATCH', etag: etagFor(doc), body: { title, tags: tags.split(/[,，]/).map(value => value.trim()).filter(Boolean) } }); setEditing(false); result.reload();
-    }, '目录信息已保存。'); }}><div className="field"><label htmlFor="doc-title">标题</label><input className="input" id="doc-title" required value={title} onChange={event => setTitle(event.target.value)}/></div><div className="field"><label htmlFor="doc-tags">标签（逗号分隔）</label><input className="input" id="doc-tags" value={tags} onChange={event => setTags(event.target.value)}/></div><ActionFeedback {...action}/><button className="btn primary" disabled={action.pending}>保存目录信息</button></form></Modal>}
+    {editing && <Modal title="编辑目录信息" onClose={() => setEditing(undefined)} busy={action.pending}><form onSubmit={event => { event.preventDefault(); void action.run(async () => {
+      await api(`/documents/${resourceId(editing.id)}`, { method: 'PATCH', etag: etagFor(editing), body: { title, tags: tags.split(/[,，]/).map(value => value.trim()).filter(Boolean) } }); setEditing(undefined); result.reload();
+    }, '目录信息已保存。'); }}><div className="field"><label htmlFor="doc-title">标题</label><input className="input" id="doc-title" required disabled={action.pending} value={title} onChange={event => setTitle(event.target.value)}/></div><div className="field"><label htmlFor="doc-tags">标签（逗号分隔）</label><input className="input" id="doc-tags" disabled={action.pending} value={tags} onChange={event => setTags(event.target.value)}/></div>
+      {doc.id === editing.id && etagFor(doc) !== etagFor(editing) && <section className="notice" aria-label="目录信息已更新">
+        <strong>目录信息已在其他页面更新</strong><p>你的输入已保留。请比较最新内容，再决定如何继续。</p>
+        <dl className="kv"><dt>最新标题</dt><dd>{doc.title}</dd><dt>最新标签</dt><dd>{doc.tags.join(' · ') || '无标签'}</dd></dl>
+        <div className="stack"><button className="btn" type="button" disabled={action.pending} onClick={() => { setTitle(doc.title); setTags(doc.tags.join(', ')); setEditing(doc); action.clear(); }}>使用最新内容</button>
+          <button className="btn" type="button" disabled={action.pending} onClick={() => { setEditing(doc); action.clear(); }}>保留我的输入，继续编辑</button></div>
+        <p className="small muted">继续编辑后仍需点击保存；保留自己的输入会替换上方显示的最新标题和标签。</p>
+      </section>}
+      <ActionFeedback {...action}/><button className="btn primary" disabled={action.pending}>保存目录信息</button></form></Modal>}
     {deleting && <Modal title="永久删除文档" onClose={() => setDeleting(false)}><p><strong>{doc.title}</strong></p><p>原文、在线译文、版本及导出将立即不可访问，文件随后清理。归档可以保留所有版本。</p>
       <label className="field">输入「删除」确认<input className="input" value={deleteText} onChange={event => setDeleteText(event.target.value)}/></label><ActionFeedback {...action}/><div className="dialog-actions"><button className="btn" onClick={() => setDeleting(false)}>保留文档</button><button className="btn danger" disabled={deleteText !== '删除' || action.pending} onClick={() => void action.run(async () => {
         const deleted = await api<{ job_id: string }>(`/documents/${resourceId(id)}`, { method: 'DELETE', body: { confirm: true }, etag: etagFor(doc) }); location.hash = `/jobs/${resourceId(deleted.job_id)}`;

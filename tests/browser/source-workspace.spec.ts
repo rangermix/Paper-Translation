@@ -52,7 +52,7 @@ for (const width of [1440, 390]) {
     const { writes } = await fixture(page, true);
     await page.goto('/#/preflight/native');
     await page.getByRole('button', { name: '查看原文与调整解析', exact: true }).click();
-    const workspace = page.getByRole('dialog', { name: '对照原生 PDF 修正提取', exact: true });
+    const workspace = page.getByRole('dialog', { name: '修正原文识别', exact: true });
     await expect(workspace).toBeVisible();
     const bounds = await workspace.boundingBox();
     expect(bounds!.width).toBeLessThanOrEqual(width);
@@ -87,9 +87,12 @@ test('eighty diagnostics stay grouped, counted and individually inspectable, inc
   await fixture(page, true); await page.goto('/#/preflight/native');
   await expect(page.locator('.issue-groups')).toContainText('共 80 条提示');
   await expect(page.locator('.issue-group')).toHaveCount(8);
+  await expect(page.locator('.issue-group > summary')).toHaveText([1, 2, 3, 4].flatMap(pageNumber => [
+    `第 ${pageNumber} 页 · 内容覆盖 · 10 条`, `第 ${pageNumber} 页 · 数字差异 · 10 条`,
+  ]));
   await expect(page.locator('.issue:visible')).toHaveCount(0);
   await expect(page.getByText('检查未完成，以下记录不能代表完整检查结果。', { exact: true })).toBeVisible();
-  await page.locator('.issue-group').first().locator(':scope > summary').click();
+  await page.locator('.issue-group').filter({ hasText: '第 1 页 · 数字差异 · 10 条' }).locator(':scope > summary').click();
   await expect(page.locator('.issue:visible')).toHaveCount(10);
   const first = page.locator('.issue:visible').first();
   await first.getByText('诊断详情', { exact: true }).click();
@@ -141,3 +144,44 @@ test('source drafts are created and confirmed separately; closing the source for
   await page.getByRole('link', { name: '文档详情', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '有未保存的修改', exact: true })).toBeVisible();
 });
+
+for (const status of [200, 409]) {
+  test(`native source correction freezes the submitted fields until a ${status} response`, async ({ page }) => {
+    await fixture(page);
+    let submitted: { reason: string } | undefined;
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/api/v1/imports/native/corrections', async route => {
+      submitted = route.request().postDataJSON();
+      await pending;
+      await route.fulfill({ status, json: status === 200 ? { id: 'next' } : { error: { code: 'VERSION_CONFLICT', message: '源版本已改变' } } });
+    });
+    await page.goto('/#/preflight/native');
+    await page.getByRole('button', { name: '查看原文与调整解析', exact: true }).click();
+    const workspace = page.getByRole('dialog', { name: '修正原文识别', exact: true });
+    const reason = workspace.getByLabel('原件核对记录与理由');
+    await reason.fill('本次提交的校对理由');
+    await workspace.getByLabel(/我已对照高亮的原文 PDF/).check();
+    await workspace.getByRole('button', { name: '创建新来源草稿并重检覆盖', exact: true }).click();
+    try {
+      await expect.poll(() => submitted?.reason).toBe('本次提交的校对理由');
+      await expect(workspace).toHaveAttribute('aria-busy', 'true');
+      await expect(reason).toBeDisabled();
+      await expect(workspace.getByRole('combobox', { name: '修正方式', exact: true })).toBeDisabled();
+      await expect(workspace.getByLabel('查看全部原生区域（含已覆盖）')).toBeDisabled();
+      await page.keyboard.press('Escape');
+      await expect(workspace).toBeVisible();
+    } finally { release(); }
+    if (status === 200) {
+      await expect(workspace).toHaveCount(0);
+      await expect(page).toHaveURL(/#\/preflight\/next$/);
+    } else {
+      await expect(reason).toBeEnabled();
+      await expect(reason).toHaveValue('本次提交的校对理由');
+      await reason.fill('失败后继续修改的校对理由');
+      await workspace.getByRole('button', { name: '关闭校对工作区', exact: true }).click();
+      await page.getByRole('dialog', { name: '有未保存的校对输入', exact: true }).getByRole('button', { name: '继续校对', exact: true }).click();
+      await expect(reason).toHaveValue('失败后继续修改的校对理由');
+    }
+  });
+}

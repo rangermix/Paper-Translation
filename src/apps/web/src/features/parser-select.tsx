@@ -94,7 +94,7 @@ export function ParserSettings({ preferences, loading, onSaved, reload }: {
     {loading && <Loading/>}
     {preferences && <form onSubmit={e => { e.preventDefault(); void save(); }}>
       {dirty && <p className="settings-unsaved small">未保存</p>}
-      <ParserSelect id="default-parser" label="默认 PDF 解析方案" value={selected} onChange={setChoice} disabled={action.pending} catalog={models.data?.models} catalogError={models.error}/>
+      <ParserSelect id="default-parser" label="默认 PDF 解析方案" value={selected} onChange={value => { setChoice(value); if (!action.error) action.clear(); }} disabled={action.pending} catalog={models.data?.models} catalogError={models.error}/>
       <div className="field" aria-label="解析模型准备">
         {model && <p role="status">{models.error ? '准备状态更新失败' : modelStatus[model.status ?? ''] ?? '状态未提供'} · 下载约 {(model.download_bytes / 10 ** 9).toFixed(2)} GB
           {preparing && model.total_bytes ? ` · ${((model.downloaded_bytes ?? 0) / model.total_bytes * 100).toFixed(1)}%` : ''}</p>}
@@ -110,7 +110,7 @@ export function ParserSettings({ preferences, loading, onSaved, reload }: {
       </div>
       <div className="field"><label htmlFor="parser-timeout">解析超时（分钟）</label>
         <input className="input" id="parser-timeout" type="number" min={1} max={1440} step={1} required value={timeoutValue}
-          onChange={e => setTimeoutDraft(e.target.value)} disabled={action.pending} aria-invalid={!validTimeout}/>
+          onChange={e => { setTimeoutDraft(e.target.value); if (!action.error) action.clear(); }} disabled={action.pending} aria-invalid={!validTimeout}/>
         {!validTimeout && <p className="field-note" role="alert">请输入 1–1440 之间的整数分钟。</p>}
       </div>
       {!runtimeAvailable && <p className="field-note" role="alert">Compose 配置的设备不支持当前方案或暂不可用，请检查部署配置或选择兼容的解析方案。</p>}

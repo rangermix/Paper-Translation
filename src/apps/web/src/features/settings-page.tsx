@@ -42,8 +42,8 @@ function ReadingPreferences({ preferences, loading, onSaved, onTheme, reload }: 
     {loading && <Loading/>}
     {preferences && <form onSubmit={event => { event.preventDefault(); void save(); }}>
       {dirty && <p className="settings-unsaved small">未保存</p>}
-      <div className="field"><label htmlFor="default-locale">默认翻译语言</label><LanguageSelect id="default-locale" value={prefs.locale ?? 'zh-Hans'} onChange={locale => setEdits(old => ({ ...old, locale }))}/></div>
-      <div className="field"><label htmlFor="theme">管理界面主题</label><select id="theme" value={theme} onChange={event => setEdits(old => ({ ...old, theme: event.target.value as Preferences['theme'] }))}>
+      <div className="field"><label htmlFor="default-locale">默认翻译语言</label><LanguageSelect id="default-locale" value={prefs.locale ?? 'zh-Hans'} disabled={action.pending} onChange={locale => { setEdits(old => ({ ...old, locale })); if (!action.error) action.clear(); }}/></div>
+      <div className="field"><label htmlFor="theme">管理界面主题</label><select id="theme" value={theme} disabled={action.pending} onChange={event => { setEdits(old => ({ ...old, theme: event.target.value as Preferences['theme'] })); if (!action.error) action.clear(); }}>
         <option value="system">自动（跟随系统）</option><option value="light">浅色纸面</option><option value="dark">深色</option>
       </select></div>
       <ActionFeedback notice={action.notice}/>

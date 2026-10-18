@@ -13,13 +13,32 @@ describe('issue grouping', () => {
     for (const issue of issues) expect(groups.flatMap(group => group.issues).find(row => row.id === issue.id)).toBe(issue);
     expect(groups.every(group => group.issues.length === 10)).toBe(true);
   });
-  it('keeps missing-page records separate from a real first page and retains source order', () => {
+  it('places missing-page records last while retaining their original order', () => {
     const missing: Issue = { severity: 'info', message: '没有坐标' };
     const page: Issue = { severity: 'warning', page: 1, category: 'coverage' };
     const groups = groupIssues([missing, page, missing]);
     expect(groups).toHaveLength(2);
-    expect(groups[0].page).toBeUndefined();
-    expect(groups[0].issues).toEqual([missing, missing]);
-    expect(groups[1].page).toBe(1);
+    expect(groups[0].page).toBe(1);
+    expect(groups[1].page).toBeUndefined();
+    expect(groups[1].issues).toEqual([missing, missing]);
+  });
+  it('sorts unordered pages numerically and categories consistently without reordering records', () => {
+    const entries: Issue[] = [
+      { id: 'a', severity: 'warning', page: 20, category: 'numeric', evidence: { order: 0 } },
+      { id: 'b', severity: 'warning', category: 'numeric' },
+      { id: 'c', severity: 'warning', page: 2, category: 'numeric' },
+      { id: 'd', severity: 'warning', page: 2, category: 'coverage' },
+      { id: 'e', severity: 'warning', page: 20, category: 'numeric', evidence: { order: 4 } },
+      { id: 'f', severity: 'warning', page: 11, category: 'coverage' },
+      { id: 'g', severity: 'warning', page: null, category: 'coverage' },
+    ];
+    const groups = groupIssues(entries);
+    expect(groups.map(group => [group.page ?? null, group.category])).toEqual([
+      [2, 'coverage'], [2, 'numeric'], [11, 'coverage'], [20, 'numeric'], [null, 'coverage'], [null, 'numeric'],
+    ]);
+    expect(groups[3].issues).toEqual([entries[0], entries[4]]);
+    expect(groups[3].issues[0]).toBe(entries[0]);
+    expect(groups[3].issues[1]).toBe(entries[4]);
+    expect(entries.map(entry => entry.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g']);
   });
 });

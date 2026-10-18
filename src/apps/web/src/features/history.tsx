@@ -32,7 +32,7 @@ export function HistoryPage({ id }: { id: string }) {
     <div className="tools"><label>语言 <select value={locale} onChange={event => setLocale(event.target.value)}><option value="">全部语言</option>
       {doc.data?.editions.map(edition => <option key={edition.id} value={edition.target_locale}>{languageName(edition.target_locale)}</option>)}
     </select></label></div>
-    {result.loading && <Loading/>}{!result.loading && !artifacts.length && <Empty title="尚无阅读版本">已保存的草稿可从文档页继续编辑或导出。</Empty>}
+    {result.loading && <Loading/>}{result.data && !result.loading && !result.error && !artifacts.length && <Empty title="尚无阅读版本">已保存的草稿可从文档页继续编辑或导出。</Empty>}
     <section className="history-list" aria-label="阅读版本">
       {artifacts.map(artifact => {
         const edition = doc.data?.editions.find(item => item.id === artifact.edition_id) ?? doc.data?.editions.find(item => item.target_locale === artifact.locale);

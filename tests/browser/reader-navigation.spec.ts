@@ -62,7 +62,9 @@ for (const version of ['3.0', '4.0']) {
     expect(new URL(page.url()).hash).toBe(`#b-${fixture.heading_id}`);
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height:844 });
-      await page.evaluate(() => window.scrollTo(0, 0));
+      // A real scroll key releases the reading anchor before pending resize
+      // observers reposition it. Scripted scrollTo races that intended behavior.
+      await page.keyboard.press('Control+Home');
       await expect(page.getByRole('link', { name:'返回文档', exact:true })).toBeInViewport();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
       await page.screenshot({ path:testInfo.outputPath(`navigation-${width}.png`) });

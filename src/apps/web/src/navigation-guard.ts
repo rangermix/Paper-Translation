@@ -62,29 +62,78 @@ type RoutePosition = { index: number; hash: string };
 export function watchGuardedHash(commit: (hash: string) => void) {
   const existing = history.state?.[positionKey] as RoutePosition | undefined;
   let accepted: RoutePosition = existing?.hash === location.hash ? existing : { index: 0, hash: location.hash };
+  let current = accepted;
+  const entries = new Map<number, string>([[accepted.index, accepted.hash]]);
+  const traversals: RoutePosition[] = [];
   const stamp = (position: RoutePosition) => history.replaceState({ ...history.state, [positionKey]: position }, '', location.href);
   stamp(accepted);
   let moving: (() => void) | undefined;
   let pending = false;
   let disposed = false;
-  const move = (delta: number) => new Promise<void>(resolve => { moving = resolve; history.go(delta); });
-  const onChange = async () => {
-    if (moving) { const done = moving; moving = undefined; done(); return; }
-    if (pending || disposed || location.hash === accepted.hash) return;
+  const append = (hash: string) => {
+    const position = { index: current.index + 1, hash };
+    // A new hash or pushState after Back truncates the browser's forward branch.
+    for (const index of entries.keys()) if (index >= position.index) entries.delete(index);
+    entries.set(position.index, hash);
+    current = position;
+    return position;
+  };
+  const observe = (event: HashChangeEvent) => {
+    const hash = new URL(event.newURL).hash;
     const state = history.state?.[positionKey] as RoutePosition | undefined;
-    const target = state?.hash === location.hash ? state : { index: accepted.index + 1, hash: location.hash };
-    stamp(target);
+    const traversal = traversals.findIndex(position => position.hash === hash);
+    const recorded = traversal >= 0 ? traversals.splice(traversal, 1)[0] : hash === location.hash && state?.hash === hash ? state : undefined;
+    if (recorded) {
+      current = recorded;
+      entries.set(recorded.index, recorded.hash);
+    } else {
+      // More than one direct hash edit can be queued before a hashchange runs.
+      // Count each new entry from the last observed browser position.
+      append(hash);
+      if (hash === location.hash) stamp(current);
+    }
+  };
+  const onPopState = (event: PopStateEvent) => {
+    const position = event.state?.[positionKey] as RoutePosition | undefined;
+    if (position?.hash !== location.hash) return;
+    if (position.hash === current.hash) {
+      // Traversing between two entries with the same hash emits no hashchange.
+      // Complete that move here so a resolved prompt cannot strand navigation.
+      current = position;
+      entries.set(position.index, position.hash);
+      if (moving) { const done = moving; moving = undefined; done(); }
+      else if (!pending && position.hash === accepted.hash) accepted = position;
+    } else traversals.push(position);
+  };
+  const move = (delta: number) => new Promise<void>(resolve => { moving = resolve; history.go(delta); });
+  const reach = async (position: RoutePosition): Promise<RoutePosition> => {
+    if (current.index === position.index && current.hash === position.hash) return current;
+    if (entries.get(position.index) === position.hash) {
+      await move(position.index - current.index);
+      return current;
+    }
+    // A user-created branch can remove the accepted entry while the prompt is
+    // open. Restore only that route as a new entry; surviving history is kept.
+    const restored = append(position.hash);
+    history.pushState({ [positionKey]: restored }, '', restored.hash || location.pathname + location.search);
+    return restored;
+  };
+  const onChange = async (event: HashChangeEvent) => {
+    if (disposed) return;
+    observe(event);
+    if (new URL(event.newURL).hash !== location.hash) return;
+    if (moving) { const done = moving; moving = undefined; done(); return; }
+    if (pending || current.hash === accepted.hash) return;
+    const target = current;
     if (!hasActiveGuard()) { accepted = target; commit(target.hash); return; }
     pending = true;
-    const delta = target.index - accepted.index;
-    // Restore the actual history entry, rather than replacing the destination URL.
-    // That preserves both Back and Forward after cancelling a navigation.
-    if (delta) await move(-delta);
+    accepted = await reach(accepted);
     const proceed = await requestNavigation();
+    if (disposed) return;
+    accepted = await reach(accepted);
     if (proceed && !disposed) {
-      if (delta) await move(delta);
-      accepted = target;
-      commit(target.hash);
+      accepted = await reach(target);
+      commit(accepted.hash);
     }
     pending = false;
   };
@@ -97,16 +146,20 @@ export function watchGuardedHash(commit: (hash: string) => void) {
     event.preventDefault();
     if (pending) return;
     pending = true;
-    void requestNavigation().then(proceed => {
+    void requestNavigation().then(async proceed => {
+      if (disposed) return;
+      accepted = await reach(accepted);
       pending = false;
       if (proceed && !disposed) location.hash = destination.hash;
     });
   };
   window.addEventListener('hashchange', onChange);
+  window.addEventListener('popstate', onPopState);
   document.addEventListener('click', onClick, true);
   return () => {
     disposed = true;
     window.removeEventListener('hashchange', onChange);
+    window.removeEventListener('popstate', onPopState);
     document.removeEventListener('click', onClick, true);
     moving?.();
   };

@@ -12,14 +12,14 @@
 | W02 | F02、F06 | 手机任务详情独立呈现；菜单焦点限制、Esc 关闭和焦点恢复 | `mobile-navigation.spec.ts`、`navigation.spec.ts` |
 | W03 | F04 | 文件、方式与语言、服务与费用、提交按决策顺序排列 | `upload-ux.spec.ts`、`upload-translation-default.spec.ts` |
 | W04 | F05、F07、F08 | 连续编辑整段，保留富结构和保护内容；正文优先，统计口径明确 | `continuous-editor.spec.ts`、`inline-editing.test.ts`、`ui-contracts.spec.ts` |
-| W05 | F09–F12、F18 | 手机文库紧凑；当前版置顶；导出固定所选版本；技术与危险操作按需展开 | `library-versions-ux.spec.ts`、`test_draft_export.py` |
+| W05 | F09–F12、F18 | 手机文库紧凑；当前版置顶；导出固定所选版本；技术与危险操作按需展开 | `library-versions-ux.spec.ts`、`library-reaudit.spec.ts`、`test_draft_export.py` |
 | W06 | F14、F15 | 失败给出已知原因与可用下一步；区分文档任务与维护记录 | `task-recovery-ux.spec.ts`、`job-presentation.spec.ts`、`test_job_presentation.py` |
 | W07 | F19、F20 | 宽屏原文对照、手机保留定位切换视图；按页和类型归组提示 | `source-workspace.spec.ts`、`issue-groups.test.ts`、来源修订集成测试 |
 | W08 | F17 | 标题/正文范围清楚，按文档归组命中，固定版本锚点与返回查询 | `search-ux.spec.ts`、`search-pagination.spec.ts` |
 | W09 | F13、F21 | 按标题选择文档；术语未保存保护与独立版本；翻译记忆给出真实首次保存路径 | `glossary-memory-ux.spec.ts`、`test_glossary_three_terms.py`、`test_knowledge.py` |
-| W10 | F16、F10 | 设置按服务/解析/阅读/高级定位；保留各组输入与独立保存契约 | `settings-navigation.spec.ts`、已有服务/解析/资源设置套件 |
+| W10 | F16、F10 | 设置按服务/解析/阅读/高级定位；保留各组输入与独立保存契约 | `settings-navigation.spec.ts`、`settings-reaudit.spec.ts`、已有服务/解析/资源设置套件 |
 | W11 | F22 | 新 `reader-v14` 提供双语目录与在线返回；旧发布不改写，离线导出无实例返回链接 | `test_reader_navigation.py`、`test_template_rebuild.py`、`reader-navigation.spec.ts`、`reader-theme.spec.ts` |
-| W12 | F23、F24、F10 | 语言搜索与最近使用、真实模型说明、全站文案和可测量的视觉规则 | `language-picker-ux.spec.ts`、`model-choice-ux.spec.ts`、`visual-accessibility.spec.ts`、`technical-details.spec.ts` |
+| W12 | F23、F24、F10 | 语言搜索与最近使用、真实模型说明、全站文案和可测量的视觉规则 | `language-picker-ux.spec.ts`、`model-choice-ux.spec.ts`、`visual-accessibility.spec.ts`、`technical-details.spec.ts`、`test_provider_presentation_api.py` |
 
 上述名称位于 `tests/browser/`、`tests/unit/`、`tests/integration/` 或 `src/apps/web/src/`。可复现命令与隔离规则见 [测试入口](../tests/README.md)。按实际改动选择检查，不把依赖历史证据的跳过项算作通过。
 
@@ -29,9 +29,15 @@
 
 应用内导航提供继续编辑、放弃修改、保存后离开。多段保存串行采用新 ETag；部分成功只清除已成功项，冲突与失败保留其余输入。刷新版本保留本地比较与人工采用新基准的步骤。刷新/关闭标签页使用浏览器提供的离开提示；未添加浏览器崩溃恢复承诺或译文持久化副本。
 
+离开确认期间继续后退、前进或修改地址时，处理确认结果后也保持地址与当前页面一致；取消保留编辑输入。目录标题和标签以打开编辑时的版本为保存基准，后台刷新不会替换该基准。发现其他页面更新后，先展示最新内容供比较；采用最新内容或明确保留自己的输入后，仍需再次保存。
+
 设置的每组表单保持挂载。保存后离开时，共享偏好更新串行取得新 ETag；一组失败不会抹掉其他输入。其他接口的未保存草稿不会被自动保存或启用。刷新服务设置保留非密钥输入供比较，未保存密钥按现有规则清空并提前说明。
 
+阅读偏好、目录信息和原文校对在提交等待期间锁定对应输入，避免成功响应清除后来输入的内容。阅读、解析和资源设置再次修改后清除旧的保存成功提示，已有错误与冲突提示保留。
+
 原文校对仍分为创建修正草稿、明确确认新来源两步。关闭工作区只处理其自身输入，不能清除父级译文修改；离开整页则逐层处理。它不提供会自动确认新来源的“保存后离开”。所有源文修正继续绑定 PDF 证据。
+
+解析提示按页码从小到大排列，同页按类型稳定分组，页码未知的提示最后显示；组内原记录和证据顺序不变。版本历史读取失败时显示错误与重试入口，不同时宣称没有阅读版本。
 
 ## 信息层级与术语
 
@@ -54,6 +60,8 @@
 模型目录显示真实名称、来源 ID、准备与停用状态。资源参考是估算；未经测量的速度、质量和环境兼容性不会因名称含 Pro/Flash 等字样被推断。选择、保存与下载/测试是独立操作，已有任务配置快照不变。
 
 任务中的模型名称仅从执行记录的本地模型 ID 与兼容修订匹配锁定目录，原 ID 保留在详情。未知模型、API 模型和修订冲突不会按当前设置猜测名称；模型筛选同时支持记录中的 ID 和已识别名称，在分页前筛选，并保持主任务与内部步骤的既有分组边界。
+
+上传及翻译确认中的本地模型名称按本次配置的精确模型 ID 匹配目录，原 ID 放入连接技术详情。名称只用于公开响应的展示，不进入配置 hash、外发授权或任务快照；未知模型和 API 模型继续显示原 ID，真实服务地址始终可见。
 
 ## 验证边界
 

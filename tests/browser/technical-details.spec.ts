@@ -1,16 +1,16 @@
 import { test, expect, type Page } from '../../src/apps/web/node_modules/@playwright/test/index.mjs';
 
-async function fixture(page: Page) {
+async function fixture(page: Page, profileOverrides: Record<string, unknown> = {}) {
   const writes: string[] = [];
   const profile = { generation: 3, provider: 'anthropic', configured: true, dispatch_configuration_ready: true,
     api_protocol: 'claude_messages', auth_mode: 'api_key', api_version: '2023-06-01',
     endpoint: 'https://example.invalid/v1/messages', model_id: 'test-translator', profile_revision: 'public-profile-revision',
-    profile_hash: 'public-profile-hash', price_revision: 'price-revision', privacy_revision: 'privacy-revision', cost_control_enabled: false };
+    profile_hash: 'public-profile-hash', price_revision: 'price-revision', privacy_revision: 'privacy-revision', cost_control_enabled: false, ...profileOverrides };
   const doc = { id: 'doc', title: '技术层级样本', generation: 3, source_revision_id: 'source-revision', lifecycle: 'active', tags: [],
     editions: [{ id: 'edition', target_locale: 'zh-Hans' }] };
   const preflight = { import_id: 'parsed', document_id: 'doc', source_revision_id: 'source-revision', source_hash: 'a'.repeat(64),
     generation: 3, preflight_generation: 3, source_language: 'en', status: 'ready', page_count: 1, block_count: 1,
-    required_blocks: 1, retained_blocks: 0, unresolved_blocks: 0, profile_hash: profile.profile_hash, issues: [],
+    required_blocks: 1, retained_blocks: 0, unresolved_blocks: 0, profile, profile_hash: profile.profile_hash, issues: [],
     blocks: [{ id: 'b1', kind: 'paragraph', normalized_text: 'Original text.' }] };
   await page.route('**/api/v1/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname.slice('/api/v1'.length);
@@ -19,6 +19,7 @@ async function fixture(page: Page) {
       '/capabilities': {}, '/settings/provider': profile, '/settings/preferences': { generation: 3, locale: 'zh-Hans', theme: 'light' },
       '/imports/parsed/preflight': preflight, '/documents/doc': doc,
       '/editions/edition/preflight': { ...preflight, profile, can_translate: true, locale: 'zh-Hans' },
+      '/drafts/draft/translation-preflight': { ...preflight, profile, can_translate: true, locale: 'zh-Hans' },
       '/drafts/draft': { id: 'draft', document_id: 'doc', edition_id: 'edition', source_revision_id: preflight.source_revision_id,
         source_hash: preflight.source_hash, generation: 3, target_locale: 'zh-Hans', glossary_revision: 'glossary-revision',
         segments: [{ block_id: 'b1', source_hash: 's1', source_text: 'Original text.', target_inline: [{ type: 'text', text: '原文。' }], version: 1, review_status: 'not_reviewed' }] },
@@ -63,3 +64,33 @@ for (const flow of ['preflight', 'edition', 'candidate'] as const) {
     }
   });
 }
+
+for (const flow of ['upload', 'preflight', 'edition', 'candidate', 'continuation'] as const) {
+  test(`${flow} shows the exact local model name with its full ID in details`, async ({ page }) => {
+    const modelId = 'sha256:' + 'a'.repeat(64);
+    const writes = await fixture(page, { api_protocol: 'local_translation', provider: 'local', auth_mode: 'none',
+      endpoint: 'http://local-translator:8090/v1/completions', model_id: modelId, model_display_name: 'Pinned Translator Q4' });
+    await page.goto({ upload: '/#/upload', preflight: '/#/preflight/parsed', edition: '/#/documents/doc',
+      candidate: '/#/drafts/draft', continuation: '/#/drafts/draft' }[flow]);
+    if (flow === 'edition') await page.getByRole('button', { name: '确认此语言版翻译', exact: true }).click();
+    if (flow === 'continuation') await page.getByRole('button', { name: '翻译未完成内容', exact: true }).click();
+    if (flow === 'candidate') {
+      await page.getByLabel('选择段落 b1', { exact: true }).check();
+      await page.getByText('批量处理（已选 1 段）', { exact: true }).click();
+      await page.getByRole('button', { name: '局部重译（1 段）', exact: true }).click();
+    }
+    const service = page.getByRole('region', { name: '本次翻译服务', exact: true });
+    await expect(service.getByText('Pinned Translator Q4', { exact: true })).toBeVisible();
+    await expect(service.getByText('http://local-translator:8090/v1/completions', { exact: true })).toBeVisible();
+    await expect(service.getByText(modelId, { exact: true })).toBeHidden();
+    await service.getByText('连接技术详情', { exact: true }).click();
+    await expect(service.getByText(modelId, { exact: true })).toBeVisible();
+    expect(writes).toEqual([]);
+  });
+}
+
+test('unknown local model remains visible by its exact ID', async ({ page }) => {
+  await fixture(page, { api_protocol: 'local_translation', provider: 'local', auth_mode: 'none', model_id: 'sha256:unknown' });
+  await page.goto('/#/upload');
+  await expect(page.getByRole('region', { name: '本次翻译服务', exact: true }).getByText('sha256:unknown', { exact: true })).toBeVisible();
+});

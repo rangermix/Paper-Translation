@@ -15,7 +15,11 @@ export function groupIssues(issues: Issue[]) {
     const group = groups.get(key) ?? { page: issue.page, category, issues: [] };
     group.issues.push(issue); groups.set(key, group);
   }
-  return [...groups.values()];
+  return [...groups.values()].sort((left, right) => {
+    const pageOrder = (left.page ?? Infinity) - (right.page ?? Infinity);
+    if (pageOrder && !Number.isNaN(pageOrder)) return pageOrder;
+    return left.category.localeCompare(right.category, 'en');
+  });
 }
 
 /** Group presentation never deduplicates or drops an original diagnostic. */

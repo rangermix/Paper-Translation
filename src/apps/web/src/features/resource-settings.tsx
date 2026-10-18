@@ -75,10 +75,10 @@ export function ResourceSettings({ preferences, onSaved, reload }: {
       {dirty && <p className="settings-unsaved small">未保存</p>}
       <div className="resource-fields">{fields.map(([key, label, min, max]) => <label className="field" key={key}>{label}
         <input className="input" type="number" min={min} max={max} step={1} required value={Number.isNaN(values[key]) ? '' : values[key]}
-          disabled={action.pending} onChange={event => setDraft(previous => ({ ...previous, [key]: event.target.value === '' ? NaN : Number(event.target.value) }))}/>
+          disabled={action.pending} onChange={event => { setDraft(previous => ({ ...previous, [key]: event.target.value === '' ? NaN : Number(event.target.value) })); if (!action.error) action.clear(); }}/>
       </label>)}</div>
       <label className="check"><input type="checkbox" checked={values.auto_concurrency} disabled={action.pending}
-        onChange={event => setDraft(previous => ({ ...previous, auto_concurrency: event.target.checked }))}/>根据 RAM / VRAM 余量自动调整并发</label>
+        onChange={event => { setDraft(previous => ({ ...previous, auto_concurrency: event.target.checked })); if (!action.error) action.clear(); }}/>根据 RAM / VRAM 余量自动调整并发</label>
       <div className="resource-meters">
         <MemoryMeter label="RAM（Docker 可见内存）" total={capacity?.ram_total_bytes ?? null} used={capacity?.ram_used_bytes ?? null} percent={saved.max_ram_percent}/>
         <MemoryMeter label="VRAM（GPU 0）" total={capacity?.vram_total_bytes ?? null} used={capacity?.vram_used_bytes ?? null} percent={saved.max_vram_percent}/>

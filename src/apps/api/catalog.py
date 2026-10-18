@@ -14,6 +14,7 @@ from packages.ir import digest, flatten_inline
 from packages.storage import read_snapshot
 from packages.templates import list_templates
 from packages.translation.languages import canonical_locale
+from packages.providers.presentation import profile_view
 from packages.parsers.profiles import ParserProfile, preferred_profile
 from packages.parsers.timeouts import MIN_PARSE_TIMEOUT_SECONDS, MAX_PARSE_TIMEOUT_SECONDS, selected_timeout_seconds
 from packages.resources.policy import ResourcePolicy
@@ -118,7 +119,7 @@ def provider_view(session, profile):
     from packages.providers.registry import privacy_notice
     from packages.providers.connection import has_unknown_test, latest_test, test_view
     connection = test_view(session, latest_test(session, profile.get('profile_hash', '')))
-    return {**profile, 'configured': bool(profile.get('configured')), 'credentials_verified': bool(connection and connection['status'] == 'succeeded' and profile.get('auth_mode') != 'none'),
+    return {**profile_view(profile), 'configured': bool(profile.get('configured')), 'credentials_verified': bool(connection and connection['status'] == 'succeeded' and profile.get('auth_mode') != 'none'),
         'connection_test': connection,
         'connection_test_has_unknown': has_unknown_test(session, profile.get('profile_hash', '')),
         'language_policy': 'all',

@@ -138,6 +138,114 @@ test('save before leaving requires actual reasons and serializes all changed seg
   expect(writes.map(write => write.body.reason)).toEqual(['修正 b1', '修正 b2']);
 });
 
+for (const trigger of ['back', 'link'] as const) {
+  test(`additional history traversal while a ${trigger} leave prompt is open restores the accepted editor route`, async ({ page }) => {
+    await fixture(page);
+    await page.goto('/#/library');
+    await expect(page.getByRole('heading', { name: '文档库', exact: true })).toBeVisible();
+    await page.evaluate(() => { location.hash = '/jobs'; });
+    await expect(page.getByRole('heading', { name: '任务中心', exact: true })).toBeVisible();
+    await page.evaluate(() => { location.hash = '/drafts/edit'; });
+    await expect(page.getByRole('heading', { name: '译文编辑', exact: true })).toBeVisible();
+    await change(page, 'b1');
+    if (trigger === 'back') await page.evaluate(() => history.back());
+    else await page.getByRole('link', { name: '文档详情', exact: true }).click();
+    await expect(leaveDialog(page)).toBeVisible();
+    await expect(page).toHaveURL(/#\/drafts\/edit$/);
+    await page.evaluate(() => history.back());
+    await expect(page).toHaveURL(/#\/jobs$/);
+    await page.evaluate(() => history.back());
+    await expect(page).toHaveURL(/#\/library$/);
+    await leaveDialog(page).getByRole('button', { name: '继续编辑', exact: true }).click();
+    await expect(page).toHaveURL(/#\/drafts\/edit$/);
+    await expect(page.locator('#segment-b1').getByRole('textbox', { name: '译文段落' })).toHaveText('本地修改 b1');
+    await expect(page.locator('#segment-b1').getByLabel('修改理由')).toHaveValue('修正 b1');
+    await page.evaluate(() => history.back());
+    await expect(leaveDialog(page)).toBeVisible();
+    await leaveDialog(page).getByRole('button', { name: '放弃修改', exact: true }).click();
+    await expect(page).toHaveURL(/#\/jobs$/);
+    await expect(page.getByRole('heading', { name: '任务中心', exact: true })).toBeVisible();
+    await page.evaluate(() => history.forward());
+    await expect(page.getByRole('heading', { name: '译文编辑', exact: true })).toBeVisible();
+  });
+}
+
+test('folding and filtering retain unsaved text, reason, undo and navigation protection', async ({ page }) => {
+  await fixture(page); await openEditor(page); await change(page, 'b1');
+  const first = page.locator('#segment-b1');
+  await page.getByRole('button', { name: '折叠无重要提示的段落', exact: true }).click();
+  await expect(first.getByRole('textbox', { name: '译文段落' })).toBeHidden();
+  await page.getByRole('combobox', { name: '显示', exact: true }).selectOption('retained');
+  await page.getByRole('link', { name: '文档详情', exact: true }).click();
+  await expect(leaveDialog(page)).toBeVisible();
+  await leaveDialog(page).getByRole('button', { name: '继续编辑', exact: true }).click();
+  await page.getByRole('combobox', { name: '显示', exact: true }).selectOption('all');
+  await page.getByRole('button', { name: '展开段落 b1', exact: true }).click();
+  await expect(first.getByRole('textbox', { name: '译文段落' })).toHaveText('本地修改 b1');
+  await expect(first.getByLabel('修改理由')).toHaveValue('修正 b1');
+  await first.getByRole('textbox', { name: '译文段落' }).focus();
+  await page.keyboard.press('Control+z');
+  await expect(first.getByRole('textbox', { name: '译文段落' })).toHaveText('译文 b1');
+});
+
+test('replacing a pending hash destination preserves the original requested route', async ({ page }) => {
+  await fixture(page); await openEditor(page); await change(page, 'b1');
+  await page.evaluate(() => { location.hash = '/jobs'; });
+  await expect(leaveDialog(page)).toBeVisible();
+  await expect(page).toHaveURL(/#\/drafts\/edit$/);
+  await page.evaluate(() => { location.hash = '/library'; });
+  await expect(page).toHaveURL(/#\/library$/);
+  await leaveDialog(page).getByRole('button', { name: '放弃修改', exact: true }).click();
+  await expect(page).toHaveURL(/#\/jobs$/);
+  await expect(page.getByRole('heading', { name: '任务中心', exact: true })).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(page.getByRole('heading', { name: '译文编辑', exact: true })).toBeVisible();
+  await expect(page.locator('#segment-b1').getByRole('textbox', { name: '译文段落' })).toHaveText('译文 b1');
+});
+
+for (const navigation of ['two-hashes', 'synchronous-hashes', 'back-then-hash', 'same-hash'] as const) {
+  for (const discard of [false, true]) {
+    test(`${navigation} during confirmation ${discard ? 'leaves for the requested route' : 'restores the edited route'} without URL divergence`, async ({ page }) => {
+      await fixture(page);
+      await page.goto('/#/library');
+      await expect(page.getByRole('heading', { name: '文档库', exact: true })).toBeVisible();
+      await page.evaluate(() => { location.hash = '/jobs'; });
+      await expect(page.getByRole('heading', { name: '任务中心', exact: true })).toBeVisible();
+      await page.evaluate(() => { location.hash = '/drafts/edit'; });
+      await expect(page.getByRole('heading', { name: '译文编辑', exact: true })).toBeVisible();
+      await change(page, 'b1');
+      await page.evaluate(() => history.back());
+      await expect(leaveDialog(page)).toBeVisible();
+      await expect(page).toHaveURL(/#\/drafts\/edit$/);
+      if (navigation === 'synchronous-hashes') {
+        await page.evaluate(() => { location.hash = '/library'; location.hash = '/settings'; });
+      } else {
+        if (navigation === 'back-then-hash') {
+          await page.evaluate(() => history.back());
+          await expect(page).toHaveURL(/#\/jobs$/);
+        } else {
+          await page.evaluate(() => { location.hash = '/library'; });
+          await expect(page).toHaveURL(/#\/library$/);
+        }
+        await page.evaluate(hash => { location.hash = hash; }, navigation === 'same-hash' ? '/drafts/edit' : '/settings');
+      }
+      await expect(page).toHaveURL(navigation === 'same-hash' ? /#\/drafts\/edit$/ : /#\/settings$/);
+      await leaveDialog(page).getByRole('button', { name: discard ? '放弃修改' : '继续编辑', exact: true }).click();
+      await expect(page).toHaveURL(discard ? /#\/jobs$/ : /#\/drafts\/edit$/);
+      await expect(page.getByRole('heading', { name: discard ? '任务中心' : '译文编辑', exact: true })).toBeVisible();
+      if (!discard) {
+        await expect(page.locator('#segment-b1').getByRole('textbox', { name: '译文段落' })).toHaveText('本地修改 b1');
+        await expect(page.locator('#segment-b1').getByLabel('修改理由')).toHaveValue('修正 b1');
+        await page.getByRole('link', { name: '文档详情', exact: true }).click();
+        await expect(leaveDialog(page)).toBeVisible();
+        await leaveDialog(page).getByRole('button', { name: '放弃修改', exact: true }).click();
+        await expect(page).toHaveURL(/#\/documents\/doc$/);
+        await expect(page.getByRole('heading', { name: '编辑保护样本', exact: true })).toBeVisible();
+      }
+    });
+  }
+}
+
 test('partial saving keeps failed input and baseline, and requires explicit comparison before merging a newer version', async ({ page }) => {
   const { writes } = await fixture(page, { failSecond: true });
   await openEditor(page); await change(page, 'b1'); await change(page, 'b2');

@@ -11,6 +11,7 @@ from packages.editorial.drafts import create_draft, current_segments, validate_t
 from packages.ir import digest
 from packages.jobs.queue import emit
 from packages.preparation import freeze_options
+from packages.providers.presentation import profile_view
 from packages.storage import read_snapshot
 from .common import command, response
 from .library import Session, enqueue
@@ -63,7 +64,7 @@ def preflight(draft_id: str, request: Request, session=Session):
         blocked = exc.code
     return response({'generation': draft.generation, 'source_revision_id': revision.id,
         'source_hash': revision.snapshot_hash, 'source_language': source['language'], 'locale': edition.target_locale,
-        'profile': profile, 'profile_hash': digest(profile), 'can_translate': blocked is None,
+        'profile': profile_view(profile), 'profile_hash': digest(profile), 'can_translate': blocked is None,
         'blocked_reason': blocked, **planning})
 
 

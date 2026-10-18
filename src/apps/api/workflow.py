@@ -25,6 +25,7 @@ from packages.jobs.model_names import model_identity_filter, model_identity_view
 from packages.storage import read_snapshot, write_snapshot
 from packages.translation.languages import canonical_locale, translation_profile
 from packages.preparation import PreparationOptions, freeze_options
+from packages.providers.presentation import profile_view
 from .common import StrictModel, command, page, response
 from .library import Session, enqueue, source_url
 
@@ -346,7 +347,7 @@ def preflight(import_id: str, session=Session):
         'required_blocks': sum(bool(b.get('translatable')) and b['id'] not in original_only for b in source.get('blocks', [])),
         'retained_blocks': sum(not b.get('translatable') or b['id'] in original_only for b in source.get('blocks', [])),
         'assets': [{'id': a['id'], 'kind': a.get('kind', a.get('media_type', 'asset')), 'status': 'available'} for a in source.get('assets', [])],
-        'sha256': source.get('sha256'), 'profile': profile, 'profile_hash': digest(profile), **planning,
+        'sha256': source.get('sha256'), 'profile': profile_view(profile), 'profile_hash': digest(profile), **planning,
         'estimate_note': planning.get('estimate_note', 'Cost estimate is unavailable until the service configuration is complete.')})
 
 
@@ -439,7 +440,7 @@ def edition_preflight(edition_id: str, request: Request, session=Session):
         blocked = exc.code
     return response({'edition_id': edition.id, 'document_id': doc.id, 'generation': edition.generation,
         'source_revision_id': revision.id, 'source_hash': revision.snapshot_hash, 'source_language': source['language'],
-        'locale': edition.target_locale, 'profile': profile, 'profile_hash': digest(profile), 'current_draft_id': edition.current_draft_id,
+        'locale': edition.target_locale, 'profile': profile_view(profile), 'profile_hash': digest(profile), 'current_draft_id': edition.current_draft_id,
         'can_translate': blocked is None and edition.current_draft_id is None,
         'blocked_reason': blocked or ('DRAFT_ALREADY_EXISTS' if edition.current_draft_id else None), **planning})
 

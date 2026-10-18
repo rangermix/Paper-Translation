@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { t, formatList } from '../i18n';
 import { useId, useState } from 'react';
 import { api } from '../api';
 import { ActionFeedback, ErrorNotice, Loading } from '../components';
@@ -100,7 +100,7 @@ function PreparationContents({ draftId, navigate, scope }: { draftId: string; na
       {!pack.evidence.length && <p className="field-note">{t("未收集到可展示的来源摘录。")}</p>}
       <h3>{t("术语与适用范围")}</h3>
       {pack.concepts.length ? <div className="table-shell"><table><thead><tr><th>{t("来源术语")}</th><th>{t("译名建议")}</th><th>{t("范围与依据")}</th></tr></thead>
-        <tbody>{pack.concepts.map(concept => <tr key={concept.id}><td data-label={t("来源术语")}><strong>{concept.source}</strong>{concept.aliases.length ? <p className="small muted">{t("别名：{value1}", { value1: String((concept.aliases.join('、')) ?? '') })}</p> : null}</td>
+        <tbody>{pack.concepts.map(concept => <tr key={concept.id}><td data-label={t("来源术语")}><strong>{concept.source}</strong>{concept.aliases.length ? <p className="small muted">{t("别名：{value1}", { value1: String((formatList(concept.aliases)) ?? '') })}</p> : null}</td>
           <td data-label={t("译名建议")}>{concept.target ?? t("尚无译名建议")}<p className="small muted">{t("{value1} · 未经人工核对", { value1: String((concept.origin === 'model' ? t("模型建议") : t("来源提取")) ?? '') })}</p></td>
           <td data-label={t("范围与依据")}>{scopeName(concept.scope)}{references(concept.evidence_ids)}</td></tr>)}</tbody></table></div> : <p className="field-note">{t("未提取到术语。")}</p>}
       {pack.warnings.length ? <details><summary>{t("准备提示（{value1}）", { value1: String((pack.warnings.length) ?? '') })}</summary><ul>{pack.warnings.map((warning, index) => <li key={index}>{t(preparationWarnings[warning] ?? "部分分析结果未能采用，请对照来源摘录。")}</li>)}</ul></details> : null}

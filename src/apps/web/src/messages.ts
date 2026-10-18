@@ -38,7 +38,7 @@ const errors: Record<string, string> = {
   CLEANUP_FAILED: '文件清理未完成，在线内容仍不可访问。请查看任务记录。',
 };
 export function errorMessage(code: string, message?: string) {
-  return t(errors[code] ?? (message && messages[message] ? message : '本次操作未完成，请查看技术详情或稍后重试。'));
+  return t(Object.hasOwn(errors, code) ? errors[code] : message && Object.hasOwn(messages, message) ? message : '本次操作未完成，请查看技术详情或稍后重试。');
 }
 
 const sourceIssueMessages: Record<string, string> = {
@@ -58,7 +58,7 @@ const qualityIssueMessages = new Set([
 export function issueMessage(issue: Issue): string {
   if (issue.stage === 'source_check') {
     if (issue.category === 'page_missing' && issue.page != null) return t('第 {page} 页文字未完整提取', { page: issue.page });
-    if (issue.category && sourceIssueMessages[issue.category]) return t(sourceIssueMessages[issue.category]);
+    if (issue.category && Object.hasOwn(sourceIssueMessages, issue.category)) return t(sourceIssueMessages[issue.category]);
   }
   const message = issue.message ?? issue.explanation;
   return message ? qualityIssueMessages.has(message) ? t(message) : message : t('内容提示');

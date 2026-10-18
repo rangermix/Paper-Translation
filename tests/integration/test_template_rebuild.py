@@ -22,7 +22,7 @@ pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.parametrize('template_id', ['reader-v2', 'reader-v13', 'reader-v14', 'reader-v15'])
+@pytest.mark.parametrize('template_id', ['reader-v2', 'reader-v13', 'reader-v14', 'reader-v15', 'reader-v16'])
 def test_twenty_sealed_documents_rebuild_without_provider_or_cache_writes(database, template_id):
     db, cfg = database
     fixture = json.loads((ROOT/'tests/fixtures/sample-document.json').read_text('utf-8'))

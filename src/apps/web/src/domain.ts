@@ -20,8 +20,19 @@ export function locatorStyle(locator: Locator) {
 }
 export function canConfirmPreflight(preflight: { status: string; unresolved_blocks: number; can_translate?: boolean }, _sourceConfirmed: boolean, externalConfirmed: boolean, budget: number, costControlled = true) { return preflight.can_translate !== false && !['failed', 'superseded', 'sealed'].includes(preflight.status) && externalConfirmed && (!costControlled || Number.isSafeInteger(budget) && budget > 0); }
 export function canResumeJob(status: string) { return ['paused', 'waiting_budget', 'waiting_config', 'waiting_configuration'].includes(status); }
-const labels: Record<string, string> = { queued: '排队中', leased: '执行中', committed: '结果已保存', received: '已收到结果', settled: '用量已记录', superseded: '已有更新版本', unavailable: '暂无可用结果', waiting_configuration: '等待配置', draft: '可编辑', incomplete: '未完成', not_requested: '尚未执行',  extracted: '已提取', with_warnings: '有提示', completed_with_warnings: '已完成，有提示', partially_completed: '部分完成', not_checked: '尚未检查', stale: '检查结果待更新', source_only: '原件已保存', inspecting: '检查 PDF', parsing: '解析原文', preflight: '提取结果可查看', translating: '翻译中', checking: '质量检查', needs_review: '历史任务待继续', ready: '已就绪', published: '已发布', sealed: '已封存', building: '构建中', completed: '已完成', succeeded: '已完成', pending: '排队中', running: '处理中', paused: '已暂停', cancel_requested: '正在取消', cancelled: '已取消', failed: '失败', outcome_unknown: '结果未知 · 可能已计费', waiting_config: '等待翻译条件齐备', waiting_budget: '等待预算', OCR_REQUIRED: '此页暂无可靠文字', verified: '已验证', human_reviewed: '已人工确认', machine_checked: '已机器检查', not_reviewed: '未核对 · 可选', archived: '已归档', active: '常规文档' };
-export function statusLabel(value?: string) { return t(value ? labels[value] ?? '状态待确认' : '未提供'); }
+const labels: Record<string, string> = { available: '可用', translated: '已翻译', retained: '已保留原文', checked: '已检查', unchecked: '未检查', missing: '缺失', rejected: '已拒绝', expired: '已过期', queued: '排队中', leased: '执行中', committed: '结果已保存', received: '已收到结果', settled: '用量已记录', superseded: '已有更新版本', unavailable: '暂无可用结果', waiting_configuration: '等待配置', draft: '可编辑', incomplete: '未完成', not_requested: '尚未执行',  extracted: '已提取', with_warnings: '有提示', completed_with_warnings: '已完成，有提示', partially_completed: '部分完成', not_checked: '尚未检查', stale: '检查结果待更新', source_only: '原件已保存', inspecting: '检查 PDF', parsing: '解析原文', preflight: '提取结果可查看', translating: '翻译中', checking: '质量检查', needs_review: '历史任务待继续', ready: '已就绪', published: '已发布', sealed: '已封存', building: '构建中', completed: '已完成', succeeded: '已完成', pending: '排队中', running: '处理中', paused: '已暂停', cancel_requested: '正在取消', cancelled: '已取消', failed: '失败', outcome_unknown: '结果未知 · 可能已计费', waiting_config: '等待翻译条件齐备', waiting_budget: '等待预算', OCR_REQUIRED: '此页暂无可靠文字', verified: '已验证', human_reviewed: '已人工确认', machine_checked: '已机器检查', not_reviewed: '未核对 · 可选', archived: '已归档', active: '常规文档' };
+export function statusLabel(value?: string) { return t(value ? Object.hasOwn(labels, value) ? labels[value] : '状态待确认' : '未提供'); }
+const sourceKinds: Record<string, string> = {
+  heading: '标题', paragraph: '段落', list_item: '列表项', code: '代码', math: '公式',
+  formula: '公式', figure: '图片', image: '图片', caption: '图注', table: '表格',
+  table_cell: '表格单元格', footnote: '脚注', reference: '参考文献', group: '内容组',
+  page: '页面图像', page_image: '页面图像',
+};
+export function sourceKindLabel(kind: string) {
+  // The API can return a media type for extracted assets. It is a file-format identity.
+  if (['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(kind)) return kind;
+  return t(Object.hasOwn(sourceKinds, kind) ? sourceKinds[kind] : '内容类型未识别');
+}
 export function money(value?: number | null, currency = 'USD') { return value === undefined || value === null ? t('未计算') : `${currency} ${(value / 1_000_000).toFixed(6)}`; }
 export function localUrl(url: string | undefined, fallback = '#') { return url?.startsWith('/') && !url.startsWith('//') && !url.includes('\\') ? url : fallback; }
 export function resourceId(value: string) { return encodeURIComponent(value); }

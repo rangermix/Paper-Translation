@@ -11,7 +11,7 @@ const entries = Array.from({ length: 112 }, (_, index) => ({
   details: { note: `页面 ${index + 1} 的完整执行详情`, unit_id: 'unit_' + 'a'.repeat(180) },
 }));
 
-async function setup(page: Page, theme = 'light', failure?: { code: string; message: string; details?: Record<string, unknown> }, overrides: Record<string, unknown> = {}) {
+async function setup(page: Page, theme = 'light', failure?: { code: string; message: string; details?: Record<string, unknown> }, overrides: Record<string, unknown> = {}, logs = entries) {
   const selected = { ...(failure ? { ...job, status: 'failed', error: failure } : job), ...overrides };
   const errors: string[] = [], queries: URLSearchParams[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -27,7 +27,7 @@ async function setup(page: Page, theme = 'light', failure?: { code: string; mess
     if (path === '/jobs/job_logs/logs') {
       queries.push(url.searchParams);
       const limit = Number(url.searchParams.get('limit') ?? 50), cursor = Number(url.searchParams.get('cursor') ?? 0);
-      const rows = entries.filter(entry => entry.sequence > cursor
+      const rows = logs.filter(entry => entry.sequence > cursor
         && (!url.searchParams.get('level') || entry.level === url.searchParams.get('level'))
         && (!url.searchParams.get('stage') || entry.stage === url.searchParams.get('stage')));
       json = { items: rows.slice(0, limit), next_cursor: rows.length > limit ? rows[limit - 1].sequence : null };
@@ -59,7 +59,7 @@ for (const error of [null, {}]) {
   });
 }
 
-test('failed job exposes its message and code before logs, with expandable technical details', async ({ page }) => {
+test('failed job exposes its localized summary and code while preserving raw diagnostics in details', async ({ page }) => {
   const message = 'Docker Model Runner could not initialize the selected model. <script>window.errorExecuted=true</script>';
   const { errors } = await setup(page, 'light', { code: 'PARSER_DMR_BACKEND_INIT_FAILED', message,
     details: { page: 1, phase: 'model_inference', backend: 'vllm', http_status: 500 } });
@@ -67,10 +67,12 @@ test('failed job exposes its message and code before logs, with expandable techn
   await expect(alert).toBeVisible();
   await expect(alert).toContainText('无法启动所选模型');
   await expect(alert).toContainText(message);
+  await expect(alert.getByText(message, { exact: true })).toBeHidden();
   await expect(alert.locator('code')).toHaveText('PARSER_DMR_BACKEND_INIT_FAILED');
   expect(await alert.evaluate(element => Boolean(element.compareDocumentPosition(document.querySelector('.job-records')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(alert.locator('pre')).toBeHidden();
   await alert.getByText('错误技术详情', { exact: true }).click();
+  await expect(alert.getByText(message, { exact: true })).toBeVisible();
   await expect(alert.locator('pre')).toContainText('"http_status": 500');
   await expect(alert.locator('pre')).toContainText('"page": 1');
   await expect(alert.locator('script')).toHaveCount(0);
@@ -81,6 +83,47 @@ test('failed job exposes its message and code before logs, with expandable techn
   await expect(alert.locator('code')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: outputDirectory('job-failure-mobile.png') });
+  expect(errors).toEqual([]);
+});
+
+for (const width of [390, 1440]) test(`application log operations localize while raw messages remain verbatim at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const operations = [
+    ['created', 'Task created', '任務已建立'], ['started', 'Execution started', '開始執行'],
+    ['finished', 'Execution finished', '執行結束'], ['state_changed', 'Task status updated', '任務狀態已更新'],
+    ['lease_expired', 'Execution lease expired', '執行租約已到期'], ['model_loaded', 'Model loaded', '模型已載入'],
+    ['loading_model', 'Loading model', '正在載入模型'], ['page_started', 'Parsing page', '正在解析頁面'],
+    ['page_completed', 'Page parsing completed', '頁面解析完成'], ['check_failed', 'Check incomplete', '檢查未完成'],
+    ['recovery_started', 'Recovering missing content', '開始恢復缺失內容'], ['recovery_completed', 'Content recovery finished', '內容恢復結束'],
+    ['metadata_lookup', 'Looking up publication information', '正在查詢文獻信息'],
+    ['dispatch', 'API request dispatched', '已派發 API 請求'], ['response_received', 'API response received', '已收到 API 回應'],
+    ['progress', 'Execution progress updated', '執行進度已更新'],
+    ['history_backfill', 'Document and task information filled from existing records', '已從原有記錄補全文檔和任務資訊'],
+    ['future_operation', 'Task execution record', '任務執行記錄'],
+    ['constructor', 'Task execution record', '任務執行記錄'], ['__proto__', 'Task execution record', '任務執行記錄'],
+  ];
+  const raw = '模型加载失败 RAW_DIAGNOSTIC <script>window.errorExecuted=true</script>';
+  const rows = operations.map(([operation], index) => ({ ...entries[index], operation, message: `${raw} ${index}` }));
+  const { errors } = await setup(page, 'light', { code: 'PARSER_DMR_CONNECTION_FAILED', message: raw }, {}, rows);
+  for (const [locale, column] of [['en', 1], ['zh-Hant', 2]] as const) {
+    if (width < 761) await page.locator('.mobile-menu').click();
+    await page.locator('#ui-language').selectOption(locale);
+    if (width < 761) await page.keyboard.press('Escape');
+    await expect(page.locator('.task-log-message')).toHaveText(operations.map(row => row[column]));
+    await expect(page.locator('.job-failure').getByText(raw, { exact: true })).toBeHidden();
+    expect(await page.locator('.task-logs').innerText()).not.toContain('RAW_DIAGNOSTIC');
+    await page.screenshot({ path: outputDirectory(`job-logs-${locale}-${width}.png`) });
+    const first = page.locator('.task-logs > li').first();
+    await first.locator('summary').click();
+    await expect(first.locator('pre')).toContainText(`${raw} 0`);
+    await first.locator('summary').click();
+    await page.locator('.job-failure details > summary').click();
+    await expect(page.locator('.job-failure').getByText(raw, { exact: true })).toBeVisible();
+    await page.locator('.job-failure details > summary').click();
+    await expect(page.locator('.job-failure script, .task-logs script')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  expect(await page.evaluate(() => (window as unknown as { errorExecuted?: boolean }).errorExecuted)).toBeUndefined();
   expect(errors).toEqual([]);
 });
 

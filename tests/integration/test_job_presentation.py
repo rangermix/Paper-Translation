@@ -21,10 +21,13 @@ def test_existing_jobs_resolve_document_and_upload_names(client, database):
         ])
     translated = client.get('/api/v1/jobs/job_translate').json()
     assert translated['title'] == 'Attention Is All You Need'
+    assert translated['title_is_placeholder'] is False
     assert translated['target_locale'] == 'zh-Hans'
     inspected = client.get('/api/v1/jobs/job_inspect').json()
     assert inspected['title'] == inspected['filename'] == '论文检查.pdf'
-    assert client.get('/api/v1/jobs/job_expired').json()['title'] == '未命名 PDF'
+    expired = client.get('/api/v1/jobs/job_expired').json()
+    assert expired['title'] == '未命名 PDF'
+    assert expired['title_is_placeholder'] is True
     with db.transaction() as session:
         session.get(Document, 'doc_named').title = 'Updated paper title'
     items = {j['id']: j for j in client.get('/api/v1/jobs').json()['items']}

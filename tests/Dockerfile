@@ -4,7 +4,7 @@ WORKDIR /web
 COPY src/apps/web/package.json src/apps/web/package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY src/apps/web/ ./
-COPY src/packages/templates/reader-v15.js /packages/templates/reader-v15.js
+COPY src/packages/templates/reader-v16.js /packages/templates/reader-v16.js
 RUN npm run build
 
 FROM ghcr.io/astral-sh/uv:0.10.7@sha256:edd1fd89f3e5b005814cc8f777610445d7b7e3ed05361f9ddfae67bebfe8456a AS uv

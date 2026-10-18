@@ -3,6 +3,8 @@ import { coreMessages } from './locales/core';
 import { settingsMessages } from './locales/settings';
 import { workflowMessages } from './locales/workflow';
 import { editorMessages } from './locales/editor';
+import { auditMessages } from './locales/audit';
+import type { UiText } from './ui-message';
 
 export type UiLocale = 'zh-Hans' | 'zh-Hant' | 'en';
 export const uiLocaleStorageKey = 'paper-translation.ui-locale.v1';
@@ -12,7 +14,7 @@ export const uiLocales: ReadonlyArray<{ value: UiLocale; label: string }> = [
   { value: 'en', label: 'English' },
 ];
 export const messages: Record<string, readonly [string, string]> = {
-  ...settingsMessages, ...workflowMessages, ...editorMessages, ...coreMessages,
+  ...settingsMessages, ...workflowMessages, ...editorMessages, ...coreMessages, ...auditMessages,
 };
 
 export function resolveUiLocale(languages: readonly string[]): UiLocale {
@@ -63,9 +65,14 @@ if (typeof window !== 'undefined') {
 }
 
 /** Translate only application-authored UI messages. Never pass paper/user content. */
-export function t(source: string, values?: Record<string, string | number>): string {
-  const entry = messages[source];
+export function t(message: UiText, values?: Record<string, string | number>): string {
+  const source = typeof message === 'string' ? message : message.key;
+  values = typeof message === 'string' ? values : message.values;
+  const entry = Object.hasOwn(messages, source) ? messages[source] : undefined;
   const translated = currentLocale === 'zh-Hans' ? source : entry?.[currentLocale === 'en' ? 0 : 1] ?? source;
   return values ? translated.replace(/\{([\w]+)\}/g, (match, name: string) =>
     Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : match) : translated;
+}
+export function formatList(values: readonly string[]): string {
+  return new Intl.ListFormat(currentLocale, { style: 'long', type: 'conjunction' }).format(values);
 }

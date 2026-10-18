@@ -43,7 +43,8 @@ def job_identity(session, job):
     if not locale and job.payload.get('edition_id'):
         edition = session.get(Edition, job.payload['edition_id'])
         locale = edition.target_locale if edition else None
-    return {'title': title or filename or '未命名 PDF', 'filename': filename, 'target_locale': locale}
+    return {'title': title or filename or '未命名 PDF', 'title_is_placeholder': not bool(title or filename),
+        'filename': filename, 'target_locale': locale}
 
 
 def job_content_deleted(session, job):

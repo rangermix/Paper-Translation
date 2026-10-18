@@ -1,7 +1,7 @@
 import { t } from '../i18n';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
-import { ActionFeedback, PdfLocator, Status } from '../components';
+import { ActionFeedback, ErrorNotice, PdfLocator, Status } from '../components';
 import { inlineText, resourceId } from '../domain';
 import { useAction } from '../hooks';
 import { languageName } from '../languages';
@@ -69,7 +69,7 @@ export function SegmentEditor({ segment, draft, refresh, selected, select, edit,
           }, "已显式保存为个人翻译记忆，默认随来源删除。")}>{t("另存到个人翻译记忆")}</button>}
         </> : <p className="muted">{t("保留原文")}</p>}
         <ActionFeedback {...action}/>
-        {edit.error && <p className="notice error-notice" role="alert">{t(edit.error)}</p>}
+        <ErrorNotice error={edit.error}/>
         {conflict && <div className="notice error-notice"><p>{t("服务端已有新版本，本地文字和修改理由仍保留。请对照并合并；当前保存仍使用段落版本 {value1}。", { value1: String((baseVersion) ?? '') })}</p><p><strong>{t("服务端当前译文：")}</strong>{inlineText(segment.target_inline, segment.protected_atoms) || t("尚未翻译")}</p><button className="btn" disabled={saving} onClick={rebase}>{t("已对照新版本，保留我的文字继续编辑")}</button></div>}
       </div></div>
       {editable && <PreparationView draftId={draft.id} scope={{ kind: 'segment', id: segment.block_id }}

@@ -1,4 +1,4 @@
-import { t, getUiLocale } from '../i18n';
+import { t, formatList } from '../i18n';
 import { useRef, useState } from 'react';
 import { api, ApiError, etagFor } from '../api';
 import { ErrorNotice, Loading } from '../components';
@@ -181,6 +181,9 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
   const credentialLabel = credentialSource.config_source === 'external' && credentialSource.has_api_key == null ? '外部密钥状态未核验'
     : credentialSource.has_api_key === true && storedFor(fields.protocol) ? '已保存密钥' : '未保存密钥';
   const latestFields = latest ? fromProvider(latest) : undefined;
+  const latestProtocol = latest?.api_protocol ? providerProtocols[latest.api_protocol] : undefined;
+  const latestAuth = latest?.auth_mode === 'none' ? t('无鉴权') : latest?.auth_mode === 'bearer' ? t('Bearer 密钥')
+    : latest?.auth_mode === 'api_key' ? t('API 密钥（{kind}）', { kind: latestProtocol?.keyLabel ?? 'api_key' }) : t('未提供');
   const ready = base.configured && base.dispatch_configuration_ready !== false;
   const dirty = JSON.stringify(fields) !== JSON.stringify(fromProvider(base)) || !!apiKey || clearKey;
   const unsaved = dirty || Object.entries(drafts).some(([name, draft]) => {
@@ -202,7 +205,7 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
   return <form className="provider-form" onSubmit={event => { event.preventDefault(); void save(); }} autoComplete="off">
     <div className="provider-state stack"><span className={ready ? 'provider-ready' : 'muted'}>{ready ? (base.connection_test ? t("已配置 · 测试结果见下方") : t("已配置 · 未测试")) : t("等待配置")}</span>{unsaved && <span className="settings-unsaved">{t("未保存")}</span>}</div>
     {otherDrafts && <p className="settings-hint">{t("其他接口还有未保存的输入。请切换到对应接口处理；保存当前接口不会自动保存或启用其他服务。")}</p>}
-    {base.missing_fields?.length ? <p className="field-note">{t("待补全：")}{[...new Set(base.missing_fields.map(field => t(missingLabels[field] ?? '其他服务配置（请检查高级选项）')))].join(getUiLocale() === 'en' ? ', ' : '、')}</p> : null}
+    {base.missing_fields?.length ? <p className="field-note">{t("待补全：")}{formatList([...new Set(base.missing_fields.map(field => t(missingLabels[field] ?? '其他服务配置（请检查高级选项）')))])}</p> : null}
     <fieldset disabled={pending} className="provider-fields">
       <div className={local ? 'provider-interface' : 'two-cols'}>
         <label className="field">{t("接口类型")}<select aria-label={t("接口类型")} value={fields.protocol} onChange={event => changeProtocol(event.target.value as Fields['protocol'])}>{Object.entries(providerProtocols).map(([value, entry]) => <option key={value} value={value}>{t(entry.label)}</option>)}</select></label>
@@ -240,7 +243,7 @@ function ProviderForm({ initial, onSaved }: { initial: Provider; onSaved: (value
     </fieldset>
     <ErrorNotice error={error}/>
     {notice && <p role="status" className="notice success-notice">{t(notice)}</p>}
-    {latest && latestFields && <section className="notice" aria-label={t("配置版本比较")}><h3>{t("读取到的最新配置")}</h3><dl className="kv"><dt>{t("服务地址")}</dt><dd>{latest.endpoint || t("未填写")}</dd><dt>{t("模型 ID")}</dt><dd>{latest.model_id || t("未填写")}</dd><dt>{t("接口 / 鉴权")}</dt><dd>{latest.api_protocol} / {latest.auth_mode}</dd>{latest.api_protocol === 'claude_messages' && <><dt>{t("Anthropic API 版本")}</dt><dd>{latest.api_version || t("2023-06-01（服务端默认）")}</dd></>}<dt>{t("预算与成本控制")}</dt><dd>{latestFields.costControl ? t("已启用") : t("未启用")}</dd><dt>{t("输入 / 缓存 / 输出价格")}</dt><dd>{latestFields.inputPrice || t("未填写")} / {latestFields.cachedPrice || t("未填写")} / {latestFields.outputPrice || t("未填写")}{t("USD / 百万 token")}</dd><dt>{t("输入 / 输出上限")}</dt><dd>{latestFields.inputTokens || t("未填写")} / {latestFields.outputTokens || t("未填写")} token</dd><dt>{t("单元字符上限")}</dt><dd>{latestFields.unitCharacters || t("服务端默认")}</dd><dt>{t("推理用量计费")}</dt><dd>{latestFields.includesReasoning ? t("已确认包含") : t("未确认")}</dd><dt>{t("已启用语言对")}</dt><dd>{latest.enabled_pairs?.map(pair => pair.join(' → ')).join('；') || t("无")}</dd></dl><p>{t("比较后选择重新加载全部字段，或保留当前非密钥输入并采用最新版本。密钥需要时请重新输入。")}</p><div className="stack"><button className="btn" type="button" onClick={() => applyLatest(latest, false)}>{t("使用最新配置")}</button><button className="btn" type="button" onClick={() => applyLatest(latest, true)}>{t("保留输入并采用最新版本")}</button></div></section>}
+    {latest && latestFields && <section className="notice" aria-label={t("配置版本比较")}><h3>{t("读取到的最新配置")}</h3><dl className="kv"><dt>{t("服务地址")}</dt><dd>{latest.endpoint || t("未填写")}</dd><dt>{t("模型 ID")}</dt><dd>{latest.model_id || t("未填写")}</dd><dt>{t("接口 / 鉴权")}</dt><dd>{latestProtocol ? t(latestProtocol.label) : t("未提供")} / {latestAuth}</dd>{latest.api_protocol === 'claude_messages' && <><dt>{t("Anthropic API 版本")}</dt><dd>{latest.api_version || t("2023-06-01（服务端默认）")}</dd></>}<dt>{t("预算与成本控制")}</dt><dd>{latestFields.costControl ? t("已启用") : t("未启用")}</dd><dt>{t("输入 / 缓存 / 输出价格")}</dt><dd>{latestFields.inputPrice || t("未填写")} / {latestFields.cachedPrice || t("未填写")} / {latestFields.outputPrice || t("未填写")}{t("USD / 百万 token")}</dd><dt>{t("输入 / 输出上限")}</dt><dd>{latestFields.inputTokens || t("未填写")} / {latestFields.outputTokens || t("未填写")} token</dd><dt>{t("单元字符上限")}</dt><dd>{latestFields.unitCharacters || t("服务端默认")}</dd><dt>{t("推理用量计费")}</dt><dd>{latestFields.includesReasoning ? t("已确认包含") : t("未确认")}</dd><dt>{t("已启用语言对")}</dt><dd>{formatList(latest.enabled_pairs?.map(pair => pair.join(' → ')) ?? []) || t("无")}</dd></dl><p>{t("比较后选择重新加载全部字段，或保留当前非密钥输入并采用最新版本。密钥需要时请重新输入。")}</p><div className="stack"><button className="btn" type="button" onClick={() => applyLatest(latest, false)}>{t("使用最新配置")}</button><button className="btn" type="button" onClick={() => applyLatest(latest, true)}>{t("保留输入并采用最新版本")}</button></div></section>}
     <div className="stack provider-actions"><button className="btn primary" type="submit" disabled={!canSave}>{pending ? t("正在处理配置…") : t("保存 AI 服务配置")}</button>
       <ProviderConnection key={`${base.profile_hash}-${loadedVersion}`} provider={base} disabled={pending || refreshRequired || !!latest} dirty={dirty} onResult={value => setBase(old => ({ ...old, connection_test: value, connection_test_has_unknown: old.connection_test_has_unknown || value.status === 'outcome_unknown' }))}/>
       <button className="btn ghost provider-reload" type="button" disabled={pending} onClick={refresh.request}>{t("刷新配置")}</button>

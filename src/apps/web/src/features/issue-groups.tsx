@@ -10,6 +10,10 @@ const categoryNames: Record<string, string> = {
   code: '代码', duplicate: '重复内容', check: '检查状态',
 };
 
+export function issueCategoryLabel(category?: string) {
+  return t(category && Object.hasOwn(categoryNames, category) ? categoryNames[category] : '其他内容提示');
+}
+
 export function groupIssues(issues: Issue[]) {
   const groups = new Map<string, { page?: number | null; category: string; issues: Issue[] }>();
   for (const issue of issues) {
@@ -31,7 +35,7 @@ export function IssueGroups({ issues, render }: { issues: Issue[]; render: (item
   return <div className="issue-groups">
     <p className="small muted">{t("共 {value1} 条提示，按页和类型展开查看；每条记录及其证据均保留。", { value1: String((issues.length) ?? '') })}</p>
     {groups.map(group => <details className="issue-group" key={`${group.page ?? 'unknown'}:${group.category}`}>
-      <summary>{t("{value1} · {value2} · {value3} 条", { value1: String((group.page != null ? t("第 {value1} 页", { value1: group.page }) : t("未提供页码")) ?? ''), value2: String((t(categoryNames[group.category] ?? "其他内容提示")) ?? ''), value3: String((group.issues.length) ?? '') })}</summary>
+      <summary>{t("{value1} · {value2} · {value3} 条", { value1: String((group.page != null ? t("第 {value1} 页", { value1: group.page }) : t("未提供页码")) ?? ''), value2: issueCategoryLabel(group.category), value3: String((group.issues.length) ?? '') })}</summary>
       {render(group.issues)}
     </details>)}
   </div>;

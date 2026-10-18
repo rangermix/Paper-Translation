@@ -27,7 +27,7 @@ describe('PDF-only intake', () => {
     const files = [new File(['%PDF'], 'one.pdf', { type: 'application/pdf' }), new File(['text'], 'bad.txt', { type: 'text/plain' })];
     const result = validatePdfSelection(files, 50 * 1024 * 1024, 10);
     expect(result[0].error).toBeUndefined();
-    expect(result[1].error).toContain('PDF');
+    expect(result[1].error?.message).toContain('PDF');
   });
   it('rejects more than ten files without silently dropping them', () => {
     expect(() => validatePdfSelection(Array.from({ length: 11 }, () => new File(['x'], 'x.pdf')), 50, 10)).toThrow('10');

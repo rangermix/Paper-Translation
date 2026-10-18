@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { watchGuardedHash } from './navigation-guard';
+import type { UiText } from './ui-message';
 export function useResource<T>(path: string | null, pollMs = 0) {
   const [data, setData] = useState<T>();
   const [error, setError] = useState<Error>();
@@ -26,9 +27,9 @@ export function useResource<T>(path: string | null, pollMs = 0) {
 export function useAction() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<Error>();
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState<UiText>('');
   const running = useRef(false);
-  const run = async (action: () => Promise<unknown>, success = '') => {
+  const run = async (action: () => Promise<unknown>, success: UiText = '') => {
     if (running.current) return;
     running.current = true; setPending(true); setError(undefined); setNotice('');
     try { await action(); setNotice(success); }

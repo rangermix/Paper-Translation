@@ -73,11 +73,11 @@ def render_snapshot(src):
     return render_input('document-rich',src,translation)
 
 
-@pytest.mark.parametrize('template_id', ['reader-v10', 'reader-v11', 'reader-v12', 'reader-v13', 'reader-v14', 'reader-v15'])
+@pytest.mark.parametrize('template_id', ['reader-v10', 'reader-v11', 'reader-v12', 'reader-v13', 'reader-v14', 'reader-v15', 'reader-v16'])
 def test_rich_reader_and_offline_export_preserve_structure_and_escape_auxiliary(tmp_path, template_id):
     from packages.publisher import Publisher, export_single_html, export_bundle, verify_artifact
     src=source(tmp_path);ir=render_snapshot(src)
-    assert ir['render']['template_id']=='reader-v15'
+    assert ir['render']['template_id']=='reader-v16'
     ir=render_input('document-rich',src,ir['translation_revision'],template_id)
     validate_ir(ir,asset_root=tmp_path)
     assert ir['schema_version']=='4.0' and ir['render']['template_id']==template_id
@@ -93,7 +93,7 @@ def test_rich_reader_and_offline_export_preserve_structure_and_escape_auxiliary(
     assert tree.xpath('//thead') and tree.xpath('//tbody') and tree.xpath('//table//ul//li')
     assert tree.xpath('//a[@href="https://example.org"]')
     assert not tree.xpath('//script[not(@src) and not(@type="application/json" and @id="reader-i18n-data")]|//input|//iframe')
-    if template_id == 'reader-v15':
+    if template_id in {'reader-v15', 'reader-v16'}:
         assert json.loads(tree.get_element_by_id('reader-i18n-data').text)['locale'] == 'zh-Hans'
     export_single_html(artifact,tmp_path/'offline.html');export_bundle(artifact,tmp_path/'offline.zip')
     assert 'x&lt;y' in (tmp_path/'offline.html').read_text() and (tmp_path/'offline.zip').stat().st_size>0

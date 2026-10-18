@@ -46,6 +46,7 @@ for (const version of ['3.0', '4.0']) {
           await expect(page.locator('vite-error-overlay')).toHaveCount(0);
           await expect(page.locator('html')).toHaveAttribute('lang', locale);
           const payload = JSON.parse(await page.locator('#reader-i18n-data').textContent() || '{}');
+          expect(fixture.template_id).toBe('reader-v16');
           expect(payload.locale).toBe(locale);
           const message = (source: string, values: Record<string, string> = {}) =>
             (payload.messages[source] ?? source).replace(/\{(\w+)\}/g,
@@ -53,6 +54,26 @@ for (const version of ['3.0', '4.0']) {
           await expect(page.locator('header h1')).toHaveText(fixture.target_title);
           await expect(page.locator('header .original-title')).toHaveText(fixture.source_title);
           await expect(page.locator('header script')).toHaveCount(0);
+          const notices = page.locator('.block-notes p');
+          const fixedNotice = notices.filter({ hasText: message('表格结构未恢复；原图和响应证据完整保留。') }).first();
+          await fixedNotice.locator('..').locator('summary').click();
+          await expect(fixedNotice).toBeVisible();
+          await expect(fixedNotice).toHaveAttribute('lang', locale);
+          await expect(notices.filter({ hasText: message('第 {page} 页保留原 PDF 图像；图内内容未翻译。', { page: '3' }) }).first()).toHaveCount(1);
+          await fixedNotice.locator('..').locator('summary').click();
+          if (version === '4.0') {
+            const annotations = page.locator('.parser-annotation pre');
+            const fixedAnnotation = annotations.filter({ hasText: message('语义内容超过容量；保留原始页面区域和完整响应。') }).first();
+            await fixedAnnotation.locator('..').locator('summary').click();
+            await expect(fixedAnnotation).toBeVisible();
+            await expect(fixedAnnotation).toHaveAttribute('lang', locale);
+            await expect(fixedAnnotation.locator('..').locator('summary')).toHaveText(message('解析容量提示'));
+            await fixedAnnotation.locator('..').locator('summary').click();
+            await expect(annotations.filter({ hasText: fixture.raw_annotation }).first()).toHaveText(fixture.raw_annotation);
+            await expect(annotations.filter({ hasText: fixture.raw_annotation }).first()).toHaveAttribute('lang', 'und');
+            await expect(page.locator('.parser-annotation[data-annotation-kind="code_transcription"] summary')).toHaveText(message('代码识别文字'));
+            await expect(page.locator('.parser-annotation code')).toHaveCount(0);
+          }
           await expect(page.getByRole('combobox', { name: theme, exact: true })).toBeVisible();
           await expect(page.locator('.toolbar')).toHaveAccessibleName(message('阅读设置'));
           await expect(page.locator('[data-action="smaller"]')).toHaveAccessibleName(message('减小字号'));
@@ -90,8 +111,10 @@ for (const version of ['3.0', '4.0']) {
           await citation.click();
           const panel = page.getByRole('region', { name: message('参考文献详情'), exact: true });
           await expect(panel).toBeVisible();
+          await expect(panel.locator('.reference-entry').first()).toHaveAttribute('lang', 'en');
           await expect(panel.locator('.sidenote-heading > span')).toHaveText(message('参考文献 · {citation}', { citation: citationText }));
           await expect(panel.getByRole('link', { name: message('在参考文献列表中查看'), exact: true }).first()).toBeVisible();
+          await expect(panel.getByRole('link', { name: message('在参考文献列表中查看'), exact: true }).first()).toHaveAttribute('lang', locale);
           await panel.getByRole('button', { name: message('关闭参考文献'), exact: true }).click();
           await expect(panel).toBeHidden();
           await expect(citation).toBeFocused();

@@ -1,6 +1,7 @@
 import { t } from '../i18n';
 import { useState } from 'react';
 import { Issues } from '../components';
+import { issueCategoryLabel } from './issue-groups';
 import type { Issue } from '../types';
 
 export function isImportant(issue: Issue) {
@@ -25,7 +26,7 @@ export function EditorQuality({ issues, navigate, resolve, resolveDisabled, chec
         <option value="risks">{t("一般提示（{value1}）", { value1: String((risks.length) ?? '') })}</option>
       </select></label>
       <label>{t("页码 ")}<select value={page} onChange={e => setPage(e.target.value)}><option value="">{t("全部页")}</option>{[...new Set(issues.map(i => i.page).filter((p): p is number => p != null))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{t("第 {value1} 页", { value1: String((p) ?? '') })}</option>)}</select></label>
-      <label>{t("类型 ")}<select value={category} onChange={e => setCategory(e.target.value)}><option value="">{t("全部类型")}</option>{[...new Set(issues.map(i => i.category).filter(Boolean))].map(c => <option key={c} value={c}>{{numeric: t("数字"), coverage: t("内容覆盖"), terminology: t("术语"), semantic: t("语义")}[c!] ?? c}</option>)}</select></label>
+      <label>{t("类型 ")}<select value={category} onChange={e => setCategory(e.target.value)}><option value="">{t("全部类型")}</option>{[...new Set(issues.map(i => i.category).filter(Boolean))].map(c => <option key={c} value={c}>{issueCategoryLabel(c)}</option>)}</select></label>
     </div>
     {filter !== 'risks' && <section aria-label={t("重要提示")} className="quality-group">
       <h4>{t("重要提示 · {value1}", { value1: String((blockers.length) ?? '') })}</h4>

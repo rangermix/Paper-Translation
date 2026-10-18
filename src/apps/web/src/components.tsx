@@ -1,9 +1,10 @@
-import { t } from './i18n';
+import { messages, t } from './i18n';
 import { NumberEvidence } from './number-evidence';
 import { IssueGroups } from './features/issue-groups';
 import { errorMessage, issueMessage } from './messages';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from './api';
+import { UiError, type UiText } from './ui-message';
 import { localUrl, locatorStyle, resourceId, statusLabel } from './domain';
 import type { Issue, Locator } from './types';
 export function Icon({ name, big = false }: { name: string; big?: boolean }) {
@@ -28,9 +29,11 @@ export function PageHead({ title, children, actions }: { title: string; children
 export function Status({ value }: { value?: string }) { return <span className={`pill ${['published', 'succeeded', 'completed', 'verified', 'human_reviewed'].includes(value ?? '') ? 'ready' : value === 'not_reviewed' ? '' : 'warn'}`}>{statusLabel(value)}</span>; }
 export function ErrorNotice({ error, retry }: { error?: Error; retry?: () => void }) {
   if (!error) return null;
-  return <div role="alert" className="notice error-notice"><strong>{error instanceof ApiError ? errorMessage(error.code, error.message) : t(error.message)}</strong>{error instanceof ApiError && <details><summary>{t("技术详情")}</summary><p className="mono">{error.code}{error.requestId ? t(" · 请求 {v0}", { v0: error.requestId }) : ''}</p><p>{error.message}</p></details>}{retry && <button className="btn sm" onClick={retry}>{t("重新读取")}</button>}</div>;
+  const authored = error instanceof UiError || error instanceof ApiError && error.uiMessage ? error.uiMessage : undefined;
+  const technical = error instanceof ApiError || !authored && !Object.hasOwn(messages, error.message);
+  return <div role="alert" className="notice error-notice"><strong>{authored ? t(authored) : errorMessage(error instanceof ApiError ? error.code : '', error.message)}</strong>{technical && <details><summary>{t("技术详情")}</summary>{error instanceof ApiError && <p className="mono">{error.code}{error.requestId ? t(" · 请求 {v0}", { v0: error.requestId }) : ''}</p>}<p>{error.message}</p></details>}{retry && <button className="btn sm" onClick={retry}>{t("重新读取")}</button>}</div>;
 }
-export function ActionFeedback({ error, notice }: { error?: Error; notice: string }) { return <><ErrorNotice error={error}/>{notice && <p role="status" className="notice success-notice">{t(notice)}</p>}</>; }
+export function ActionFeedback({ error, notice }: { error?: Error; notice: UiText }) { return <><ErrorNotice error={error}/>{notice && <p role="status" className="notice success-notice">{t(notice)}</p>}</>; }
 export function Loading() { return <p role="status" className="loading">{t("正在读取服务端数据…")}</p>; }
 export function Empty({ title, children }: { title: string; children?: ReactNode }) { return <section className="empty"><Icon name="book" big/><h2>{title}</h2>{children}</section>; }
 export function Issues({ issues, checkState, onNavigate, onLocate, onResolve, resolveDisabled, grouped = true }: {

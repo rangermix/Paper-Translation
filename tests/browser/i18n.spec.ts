@@ -164,6 +164,52 @@ test('previous upload validation follows the language selection', async ({ page 
   expect(writes).toEqual([]); expect(errors).toEqual([]);
 });
 
+test('parameterized upload errors are translated when displayed, including after selection', async ({ page }) => {
+  const { writes, errors } = await fixture(page);
+  await page.route('**/api/v1/capabilities', route => route.fulfill({ json: {
+    limits: { max_pdf_bytes: 1048576, max_batch_files: 2, max_pages: 200 },
+  } }));
+  await page.goto('/#/upload');
+  await page.locator('input[type="file"]').setInputFiles({ name: 'large.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(1048577) });
+  await expect(page.getByRole('alert')).toHaveText('文件超过 1 MiB 限制。');
+  await page.locator('#ui-language').selectOption('en');
+  await expect(page.getByRole('alert')).toHaveText('The file exceeds the 1 MiB limit.');
+  await page.locator('#ui-language').selectOption('zh-Hant');
+  await expect(page.getByRole('alert')).toHaveText('檔案超過 1 MiB 限制。');
+  await page.locator('input[type="file"]').setInputFiles(Array.from({ length: 3 }, (_, i) => ({ name: `${i}.pdf`, mimeType: 'application/pdf', buffer: Buffer.from('%PDF') })));
+  await expect(page.getByText('一次最多選擇 2 份 PDF，請減少檔案數量。', { exact: true })).toBeVisible();
+  await page.locator('#ui-language').selectOption('en');
+  await expect(page.getByText('Select at most 2 PDFs at a time. Reduce the number of files.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'The file exceeds the 1 MiB limit.' })).toBeVisible();
+  expect(writes).toEqual([]); expect(errors).toEqual([]);
+});
+
+test('upload API errors keep their code for localized summaries and preserve raw details', async ({ page }) => {
+  await fixture(page);
+  const raw = 'Provider revision changed: 原始诊断 <detail>';
+  await page.route('**/api/v1/uploads**', route => route.fulfill({ json: {
+    upload_id: 'upload_i18n', chunk_limit: 4194304, status: 'verified', received_bytes: 4, page_count: 1,
+  }, headers: { ETag: '"1"' } }));
+  await page.route('**/api/v1/imports', route => route.fulfill({ status: 412, json: {
+    error: { code: 'PROFILE_STALE', message: raw }, request_id: 'request-i18n',
+  } }));
+  await page.goto('/#/upload');
+  await page.locator('input[type="file"]').setInputFiles({ name: '设置.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
+  await page.getByRole('button', { name: '上传并翻译', exact: true }).click();
+  const result = page.locator('.file-result');
+  await expect(result.locator('[role="alert"] > strong')).toHaveText('AI 服务配置已变化，请刷新配置并重新确认外发。');
+  await expect(page.getByText(raw, { exact: true })).not.toBeVisible();
+  await page.locator('#ui-language').selectOption('en');
+  await expect(result.locator('[role="alert"] > strong')).toHaveText('AI service settings have changed. Refresh and confirm content sharing again.');
+  await result.getByText('Technical details', { exact: true }).click();
+  await expect(result.getByText(raw, { exact: true })).toBeVisible();
+  await expect(result).toContainText('PROFILE_STALE');
+  await page.locator('#ui-language').selectOption('zh-Hant');
+  await expect(result.locator('[role="alert"] > strong')).toHaveText('AI 服務設定已變更，請重新整理設定並重新確認外傳。');
+  await expect(result.getByText(raw, { exact: true })).toBeVisible();
+  await expect(result.locator('.filename')).toHaveText('设置.pdf');
+});
+
 test('no-JavaScript startup includes catalog-backed notices in all management languages', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();

@@ -8,6 +8,7 @@ import { coreMessages } from './locales/core';
 import { settingsMessages } from './locales/settings';
 import { workflowMessages } from './locales/workflow';
 import { editorMessages } from './locales/editor';
+import { auditMessages } from './locales/audit';
 
 afterEach(() => setUiLocale('zh-Hans'));
 describe('interface language', () => {
@@ -53,7 +54,7 @@ describe('interface language', () => {
     expect(page).not.toContain('<!--app-');
   });
   it('keeps every catalogue translation and interpolation complete', () => {
-    const keys = [coreMessages, settingsMessages, workflowMessages, editorMessages].flatMap(catalog => Object.keys(catalog));
+    const keys = [coreMessages, settingsMessages, workflowMessages, editorMessages, auditMessages].flatMap(catalog => Object.keys(catalog));
     expect(new Set(keys).size, 'Shared messages must be declared only in core.ts').toBe(keys.length);
     const placeholders = (text: string) => [...new Set(text.match(/\{\w+\}/g) ?? [])].sort();
     for (const [source, translations] of Object.entries(messages)) {
@@ -69,8 +70,8 @@ describe('interface language', () => {
     for (const [path, source] of Object.entries(files)) {
       const ast = ts.createSourceFile(path, source as string, ts.ScriptTarget.Latest, true, path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
       function visit(node: ts.Node) {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 't') {
-          const key = node.arguments[0];
+        if ((ts.isCallExpression(node) || ts.isNewExpression(node)) && ts.isIdentifier(node.expression) && ['t', 'uiMessage', 'UiError'].includes(node.expression.text)) {
+          const key = node.arguments?.[0];
           if (key && ts.isStringLiteralLike(key) && !messages[key.text]) missing.push(`${path}: ${key.text}`);
         }
         ts.forEachChild(node, visit);

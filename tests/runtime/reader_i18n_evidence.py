@@ -1,4 +1,4 @@
-"""Generate offline, authored reader-v15 localization fixtures without model calls.
+"""Generate offline, authored reader-v16 localization fixtures without model calls.
 
 Run from the repository root with PYTHONPATH=src and locked test dependencies.
 Each output must be a new directory beneath the caller's temporary evidence path.
@@ -17,6 +17,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'tests/unit')]
 LOCALES = ('zh-Hans', 'zh-Hant', 'en', 'ja', 'ko', 'fr', 'de', 'es')
 SOURCE_TITLE = '原文 主题 返回文档 · literal UI words in document content'
 TARGET_TITLE = '译文 主題 Theme テーマ 테마 Thème Design Tema · <script>literal</script> · $&'
+RAW_ANNOTATION = '原文代码 <code>literal</code>'
 
 
 def generate(root):
@@ -33,13 +34,21 @@ def generate(root):
             assets.mkdir(parents=True)
             fixture = sidenote_fixture() if version == '3.0' else rich_sidenote_fixture(assets)
             source, translation = fixture['source_revision'], fixture['translation_revision']
+            notice_block = next(block for block in source['blocks'] if block['kind'] == 'paragraph')
+            notice_block['warnings'] = ['表格结构未恢复；原图和响应证据完整保留。',
+                                        '第 3 页保留原 PDF 图像；图内内容未翻译。']
+            if version == '4.0':
+                notice_block['attributes']['annotations'] = [
+                    {'kind': 'decoder_limit', 'value': 'Semantic capacity exceeded; original page region and exact response are retained', 'output_path': '/audit'},
+                    {'kind': 'code_transcription', 'value': RAW_ANNOTATION, 'output_path': '/audit'},
+                ]
             title_id = source['title_block_id']
             set_inline(fixture, title_id, [{'type': 'text', 'text': SOURCE_TITLE}])
             refresh(fixture)
             title_result = next(row for row in translation['results'] if row['block_id'] == title_id)
             title_result['target_inline'] = [{'type': 'text', 'text': TARGET_TITLE}]
             translation.update(target_language=locale, title=TARGET_TITLE)
-            ir = render_input(fixture['document']['id'], source, translation, 'reader-v15')
+            ir = render_input(fixture['document']['id'], source, translation, 'reader-v16')
             Publisher().build(ir, ROOT / 'tests' if version == '3.0' else assets,
                               folder / 'published', include_source=True)
             export_single_html(folder / 'published', folder / 'single.html', include_source=False)
@@ -51,7 +60,8 @@ def generate(root):
             (folder / 'fixture.json').write_text(json.dumps({
                 'document_id': ir['document']['id'], 'target_language': locale,
                 'source_title': SOURCE_TITLE, 'target_title': TARGET_TITLE,
-                'template_id': 'reader-v15', 'schema_version': version,
+                'raw_annotation': RAW_ANNOTATION,
+                'template_id': 'reader-v16', 'schema_version': version,
             }, ensure_ascii=False), 'utf-8')
 
 

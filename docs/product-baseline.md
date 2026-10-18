@@ -50,7 +50,7 @@ the instance; the default published address is loopback.
   New UI operations automatically publish completed reading results, without a
   delayed-publication option. Existing API policies, saved preferences and queued
   task snapshots remain compatible and are not rewritten.
-  New publications and draft exports use `reader-v15`, with bilingual section
+  New publications and draft exports use `reader-v16`, with bilingual section
   labels, online document/search return links and system/light/dark themes.
   Reader controls follow the saved translation language: Simplified/Traditional
   Chinese, English, Japanese, Korean, French, German and Spanish are supported,

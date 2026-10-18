@@ -1,0 +1,20 @@
+/** Display labels for structured API values; content and technical IDs stay intact. */
+export const auditMessages: Record<string, readonly [string, string]> = {
+  '可用': ['Available', '可用'],
+  '段落': ['Paragraph', '段落'],
+  '列表项': ['List item', '列表項'],
+  '图片': ['Figure', '圖片'],
+  '表格': ['Table', '表格'],
+  '表格单元格': ['Table cell', '表格儲存格'],
+  '脚注': ['Footnote', '註腳'],
+  '参考文献': ['Reference', '參考文獻'],
+  '内容组': ['Content group', '內容群組'],
+  '页面图像': ['Page image', '頁面影像'],
+  '内容类型未识别': ['Unrecognized content type', '未識別的內容類型'],
+  '已保留原文': ['Original retained', '已保留原文'],
+  '已翻译': ['Translated', '已翻譯'],
+  '未检查': ['Not checked', '未檢查'],
+  '已检查': ['Checked', '已檢查'],
+  '已拒绝': ['Rejected', '已拒絕'],
+  '已过期': ['Expired', '已過期'],
+};

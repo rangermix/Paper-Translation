@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { jobName, jobOperation, jobProgress } from './job-presentation';
 import type { Job } from '../types';
+import { setUiLocale } from '../i18n';
 
 const job = (patch: Partial<Job> = {}): Job => ({ id: 'job_opaque', stage: 'inspect', status: 'running', control_epoch: 0, ...patch });
 describe('job presentation', () => {
+  it('localizes only explicit API placeholder titles, preserving a user title with the same wording', () => {
+    setUiLocale('en');
+    try {
+      expect(jobName(job({ title: '未命名 PDF', title_is_placeholder: true }))).toBe('Untitled PDF');
+      expect(jobName(job({ title: '未命名 PDF', title_is_placeholder: false }))).toBe('未命名 PDF');
+      setUiLocale('zh-Hant');
+      expect(jobName(job({ title: '未命名 PDF', title_is_placeholder: true }))).toBe('未命名 PDF');
+    } finally { setUiLocale('zh-Hans'); }
+  });
   it('uses readable PDF context and localized operation names', () => {
     expect(jobName(job({ title: 'Pathways' }))).toBe('Pathways');
     expect(jobName(job({ filename: '研究.pdf' }))).toBe('研究.pdf');

@@ -14,7 +14,7 @@ import { ErrorNotice, Icon, PageHead } from '../components';
 import type { Capability, Document, Upload, Provider, ParserProfileRevision, PreparationMode } from '../types';
 import './upload.css';
 
-type Row = { id: string; file: File; error?: string; retryImport?: boolean; progress?: UploadProgress; upload?: Upload; document?: Document; busy?: boolean };
+type Row = { id: string; file: File; error?: Error; retryImport?: boolean; progress?: UploadProgress; upload?: Upload; document?: Document; busy?: boolean };
 export function UploadPage({ capability }: { capability?: Capability }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<Error>();
@@ -64,7 +64,7 @@ export function UploadPage({ capability }: { capability?: Capability }) {
       update(row.id, { document: doc, busy: false });
     } catch (reason) {
       const retryImport = reason instanceof ApiError && reason.code === 'PROFILE_STALE';
-      update(row.id, { busy: false, error: (reason as Error).message, retryImport });
+      update(row.id, { busy: false, error: reason instanceof Error ? reason : new Error(String(reason)), retryImport });
       if (retryImport) { provider.setData(undefined); preferences.reload(); provider.reload(); }
     } finally { importing.current.delete(row.id); }
   }
@@ -80,7 +80,7 @@ export function UploadPage({ capability }: { capability?: Capability }) {
           const upload = await uploadPdf(row.file, progress => update(row.id, { progress }));
           update(row.id, { upload, busy: false });
           if (!upload.duplicate_documents?.length) await importRow(row, upload);
-        } catch (reason) { update(row.id, { busy: false, error: (reason as Error).message }); }
+        } catch (reason) { update(row.id, { busy: false, error: reason instanceof Error ? reason : new Error(String(reason)) }); }
       }
     } finally { submitting.current = false; setBusy(false); }
   }
@@ -97,7 +97,7 @@ export function UploadPage({ capability }: { capability?: Capability }) {
         </button>
         {rows.some(row => !row.upload && !row.progress) && <ul className="upload-files" aria-label={t("已选文件")}>{rows.filter(row => !row.upload && !row.progress).map(row => <li key={row.id}>
           <strong className="filename">{row.file.name}</strong><span className="small muted">{(row.file.size / 1024).toFixed(1)} KiB</span>
-          {row.error && !row.upload && !row.progress && <p role="alert" className="error">{t(row.error)}</p>}
+          {row.error && !row.upload && !row.progress && <ErrorNotice error={row.error}/>}
         </li>)}</ul>}
       </section>
 
@@ -146,7 +146,7 @@ export function UploadPage({ capability }: { capability?: Capability }) {
         <h2>{t("上传结果")}</h2>
         {rows.filter(row => row.upload || row.progress).map(row => <div className="file-result" key={row.id}>
           <strong className="filename">{row.file.name}</strong>
-          {row.error && <p role="alert" className="error">{t(row.error)}</p>}
+          {row.error && <ErrorNotice error={row.error}/>}
           {row.progress && !row.document && <><progress max={row.progress.totalBytes} value={row.progress.receivedBytes}/>
             <small>{t("{value0} / {value1} 字节 · {value2}", { value0: row.progress.receivedBytes.toLocaleString(getUiLocale()), value1: row.progress.totalBytes.toLocaleString(getUiLocale()), value2: row.upload ? row.error ? t("PDF 已上传，处理未开始") : t("PDF 检查通过") : row.error ? t("上传或 PDF 检查未完成") : row.progress.status === 'inspecting' ? t("检查原件，尚未入库") : t("接收中") })}</small></>}
           {row.upload && <UploadMetadata upload={row.upload}/>}

@@ -1,8 +1,12 @@
-import { t } from './i18n';
+import { UiError, messageSource, uiMessage, type UiMessage, type UiText } from './ui-message';
 import type { Upload, Versioned } from './types';
 const etags = new WeakMap<object, string>();
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string, public details?: unknown, public requestId?: string) { super(message); }
+  readonly uiMessage?: UiMessage;
+  constructor(public status: number, public code: string, message: UiText, public details?: unknown, public requestId?: string) {
+    super(messageSource(message));
+    this.uiMessage = typeof message === 'string' ? undefined : message;
+  }
 }
 type Options = { method?: string; body?: unknown; etag?: string; key?: string; headers?: HeadersInit; signal?: AbortSignal };
 export function etagFor(value: unknown): string | undefined {
@@ -35,8 +39,8 @@ export async function api<T = Record<string, unknown>>(path: string, options: Op
   return data as T;
 }
 export function validatePdfSelection(files: File[], maxBytes: number, maxBatch: number) {
-  if (files.length > maxBatch) throw new Error(t("一次最多选择 {v0} 份 PDF，请减少文件数量。", { v0: maxBatch }));
-  return files.map(file => ({ file, error: !/\.pdf$/i.test(file.name) || (file.type && file.type !== 'application/pdf') ? "只接受 PDF 文件。" : file.size === 0 ? "文件为空。" : file.size > maxBytes ? t("文件超过 {v0} MiB 限制。", { v0: Math.floor(maxBytes / 1024 / 1024) }) : undefined }));
+  if (files.length > maxBatch) throw new UiError("一次最多选择 {v0} 份 PDF，请减少文件数量。", { v0: maxBatch });
+  return files.map(file => ({ file, error: !/\.pdf$/i.test(file.name) || (file.type && file.type !== 'application/pdf') ? new UiError("只接受 PDF 文件。") : file.size === 0 ? new UiError("文件为空。") : file.size > maxBytes ? new UiError("文件超过 {v0} MiB 限制。", { v0: Math.floor(maxBytes / 1024 / 1024) }) : undefined }));
 }
 async function sha256(bytes: ArrayBuffer) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), x => x.toString(16).padStart(2, '0')).join(''); }
 export type UploadProgress = { receivedBytes: number; totalBytes: number; status: string; uploadId?: string };
@@ -59,7 +63,7 @@ export async function uploadPdf(file: File, onProgress: (progress: UploadProgres
   const started = Date.now();
   while (current.status !== 'verified') {
     if (['failed', 'rejected', 'expired', 'cancelled'].includes(current.status)) throw new ApiError(422, current.error?.code ?? 'PDF_INVALID', current.error?.message ?? "PDF 检查失败，原件尚未入库。");
-    if (Date.now() - started > 20 * 60 * 1000) throw new ApiError(0, 'INSPECTION_PENDING', t("原件检查仍在后台处理，可在任务中心查看上传 {v0}。", { v0: upload.upload_id }));
+    if (Date.now() - started > 20 * 60 * 1000) throw new ApiError(0, 'INSPECTION_PENDING', uiMessage("原件检查仍在后台处理，可在任务中心查看上传 {v0}。", { v0: upload.upload_id }));
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     current = await api<Upload>(`/uploads/${upload.upload_id}`, { signal });
     if (current.status !== 'verified') await new Promise(resolve => setTimeout(resolve, 1500));

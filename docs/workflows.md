@@ -108,14 +108,14 @@ version or secret boundaries. Successfully sealed revisions are immutable.
 
 Source 4.0 translation splits at formatting/link boundaries and restores those
 associations deterministically after the bounded text response. Editing visible
-labels preserves marks, destinations and protected references. The new `reader-v15`
+labels preserves marks, destinations and protected references. The new `reader-v16`
 renders nested structures, table headers and bare math literals. Author and
 affiliation lines stay in their original form beside the titles. References and
 footnotes appear in the margin, with clickable destinations and a collected
 footnote section at the bottom;
 publication and both offline exports retain these semantics. Old snapshots and
 reader resources are not rewritten. New publications and draft exports use
-`reader-v15` for both 3.0 and 4.0 sources. Its theme selector offers system (the
+`reader-v16` for both 3.0 and 4.0 sources. Its theme selector offers system (the
 default), light and dark modes. System mode responds immediately to the browser's
 system color preference, including in offline exports and without JavaScript.
 Explicit light/dark preferences already saved in the browser remain selected;
@@ -149,7 +149,7 @@ without JavaScript. Management UI language and browser preferences cannot overri
 the artifact language; reading layout/font/theme preferences still apply.
 User text, original/translated content, raw diagnostic evidence and legal license
 text remain intact. Publication and export make no translation-service calls.
-Existing publications can preview these changes by rebuilding with `reader-v15`
+Existing publications can preview these changes by rebuilding with `reader-v16`
 from their saved translation, without translating again. Creating a preview does
 not switch the current reading version; switching remains an explicit CAS operation.
 Offline tests establish preservation contracts,

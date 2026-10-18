@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { t, formatList } from '../i18n';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback } from '../components';
@@ -18,7 +18,7 @@ export function BibliographyLine({ doc }: { doc: Pick<Document, 'bibliography' |
   const data = doc.bibliography;
   if (!data) return doc.metadata_status && !['no_doi', 'not_found'].includes(doc.metadata_status)
     ? <p className="small muted">{metadataStatusLabel(doc.metadata_status)}</p> : null;
-  const authors = data.authors.slice(0, 3).map(author => author.name).join('、') + (data.authors.length > 3 ? t(" 等") : '');
+  const authors = formatList(data.authors.slice(0, 3).map(author => author.name)) + (data.authors.length > 3 ? t(" 等") : '');
   const text = [authors, data.year, data.container].filter(value => value != null && value !== '').join(' · ');
   return text ? <p className="bibliography-line">{text}</p> : null;
 }

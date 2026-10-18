@@ -20,7 +20,7 @@ export function jobName(job: Job) {
   if (job.stage === 'prepare_parser_model' || job.stage === 'prepare_local_model') return jobOperation(job.stage);
   if (job.stage === 'cleanup' || job.content_deleted) return t("已删除文档 · {value0}", { value0: job.id.replace(/^job_/, '').slice(-8) });
   if (['maintenance', 'backup', 'restore'].includes(job.stage)) return t("文库实例");
-  return job.stage === 'provider_test' ? t("AI 服务连接测试") : job.title?.trim() || job.filename?.trim() || t("未命名 PDF");
+  return job.stage === 'provider_test' ? t("AI 服务连接测试") : job.title_is_placeholder ? t("未命名 PDF") : job.title?.trim() || job.filename?.trim() || t("未命名 PDF");
 }
 export function jobLocale(locale?: string | null) { return languageName(locale); }
 export function jobTone(status: string) {

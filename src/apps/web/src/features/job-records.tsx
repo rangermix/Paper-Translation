@@ -38,10 +38,10 @@ export function JobFailure({ job, onReviewUnknown }: { job: Job; onReviewUnknown
       {job.import_id && <a className="btn sm" href={`#/preflight/${resourceId(job.import_id)}`}>{t("查看解析结果")}</a>}
       {job.draft_id && <a className="btn sm" href={`#/drafts/${resourceId(job.draft_id)}`}>{t("查看已保存的译文")}</a>}
     </div>}
-    {error.message && error.message !== summary && <p>{error.message}</p>}
     <p>{t("错误代码：")}<code>{error.code}</code></p>
-    {error.details && Object.keys(error.details).length > 0 && <details><summary>{t("错误技术详情")}</summary>
-      <pre className="job-config">{JSON.stringify(error.details, null, 2)}</pre>
+    {(error.message || error.details && Object.keys(error.details).length > 0) && <details><summary>{t("错误技术详情")}</summary>
+      {error.message && <p>{error.message}</p>}
+      {error.details && Object.keys(error.details).length > 0 && <pre className="job-config">{JSON.stringify(error.details, null, 2)}</pre>}
     </details>}
   </div>;
 }
@@ -96,6 +96,18 @@ export function ModelView({ model, historical = false }: { model?: ModelIdentity
 
 type LogPage = { items: TaskLog[]; next_cursor?: number | null };
 const logLevels = { info: '信息', warning: '提示', error: '错误' };
+// Match stable application operations, never translate arbitrary stored log text.
+const logOperations: Record<string, string> = {
+  created: '任务已创建', started: '开始执行', finished: '执行结束', state_changed: '任务状态已更新',
+  lease_expired: '执行租约已到期', model_loaded: '模型已加载', loading_model: '正在加载模型',
+  page_started: '正在解析页面', page_completed: '页面解析完成', check_failed: '检查未完成',
+  recovery_started: '开始恢复缺失内容', recovery_completed: '内容恢复结束', metadata_lookup: '正在查询文献信息',
+  dispatch: '已派发 API 请求', response_received: '已收到 API 响应', progress: '执行进度已更新',
+  history_backfill: '已从原有记录补全文档和任务信息',
+};
+export function logSummary(operation: string) {
+  return t(Object.hasOwn(logOperations, operation) ? logOperations[operation] : '任务执行记录');
+}
 export function JobRecords({ job }: { job: Job }) {
   const [filter, setFilter] = useState({ level: '', stage: '', limit: 50, cursors: [] as number[] });
   const params = new URLSearchParams({ limit: String(filter.limit) });
@@ -131,7 +143,7 @@ export function JobRecords({ job }: { job: Job }) {
       <details><summary className="task-log-summary">
         <time dateTime={entry.at}>{timestamp(entry.at)}</time>
         <span className={`task-log-level ${entry.level}`}>{t(logLevels[entry.level])}</span>
-        <span className="task-log-message">{entry.message}</span>
+        <span className="task-log-message">{logSummary(entry.operation)}</span>
         <span className="task-log-page">{entry.page != null ? t("第 {value0} 页", { value0: entry.page }) : ''}</span>
         <span className="task-log-chevron" aria-hidden="true">›</span>
       </summary><pre>{JSON.stringify(entry, null, 2)}</pre></details>

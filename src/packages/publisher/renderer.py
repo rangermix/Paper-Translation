@@ -93,6 +93,9 @@ def render_toc(source, blocks, *, original_labels=False):
 
 
 def render_html(ir, asset_paths, *, include_source=False):
+    if ir['render']['template_id'] == 'reader-v16':
+        from .reader_v16 import render_html as render_localized_notices
+        return render_localized_notices(ir, asset_paths, include_source=include_source)
     if ir['render']['template_id'] == 'reader-v15':
         from .reader_v15 import render_html as render_localized
         return render_localized(ir, asset_paths, include_source=include_source)
@@ -496,7 +499,7 @@ def export_files(artifact_dir, include_source):
     root = Path(artifact_dir)
     manifest = verify_artifact(root)
     files = {entry['path']:safe_path(root,entry['path']).read_bytes() for entry in manifest['files']}
-    if manifest.get('template_id') in {'reader-v14', 'reader-v15'}:
+    if manifest.get('template_id') in {'reader-v14', 'reader-v15', 'reader-v16'}:
         # Exports are independent documents, even when served over HTTP later.
         # Remove only this template's generated navigation, never paper content.
         files['index.html'] = re.sub(
@@ -521,7 +524,7 @@ def export_files(artifact_dir, include_source):
         raise ValueError('ASSET_MISSING: artifact has no original PDF')
     if not include_source and manifest['include_source']:
         content = files['index.html'].decode('utf-8')
-        if manifest.get('template_id') == 'reader-v15':
+        if manifest.get('template_id') in {'reader-v15', 'reader-v16'}:
             content = re.sub(r'<a href="original\.pdf" download>[^<]*</a>', '', content)
             # The localized fallback is frozen in the publication. Export must
             # not reinterpret it using the current app/browser/catalog locale.

@@ -3,7 +3,7 @@ import { languageName } from '../languages';
 import { useState } from 'react';
 import { api, etagFor } from '../api';
 import { ActionFeedback, Empty, ErrorNotice, Loading, PageHead } from '../components';
-import { resourceId } from '../domain';
+import { resourceId, statusLabel } from '../domain';
 import { useAction, useResource } from '../hooks';
 import type { Document, History, Page } from '../types';
 import { ArtifactExport } from './artifact-export';
@@ -17,7 +17,7 @@ export function HistoryPage({ id }: { id: string }) {
   const action = useAction();
   const [locale, setLocale] = useState('');
   const [exportArtifact, setExportArtifact] = useState('');
-  const [template, setTemplate] = useState('reader-v15');
+  const [template, setTemplate] = useState('reader-v16');
   const [left, setLeft] = useState('');
   const [right, setRight] = useState('');
   const [axis, setAxis] = useState('source');
@@ -53,7 +53,7 @@ export function HistoryPage({ id }: { id: string }) {
           <p className="small muted">{t("继续编辑会创建新草稿，此阅读版本保持不变。")}</p>
           <details className="history-version-actions"><summary>{t("阅读样式与发布操作")}</summary>
             <label className="field">{t("阅读样式")}<select value={template} onChange={event => setTemplate(event.target.value)}>
-              {templates.data?.items.length ? templates.data.items.map(item => <option value={item.id} key={item.id}>{t(item.name ?? "双语阅读样式")} · {item.id}</option>) : <option value="reader-v15">{t("多语言双语阅读")} · reader-v15</option>}
+              {templates.data?.items.length ? templates.data.items.map(item => <option value={item.id} key={item.id}>{t(item.name ?? "双语阅读样式")} · {item.id}</option>) : <option value="reader-v16">{t("多语言双语阅读")} · reader-v16</option>}
             </select></label>
             <ErrorNotice error={templates.error} retry={templates.reload}/>
             <div className="stack">
@@ -74,7 +74,7 @@ export function HistoryPage({ id }: { id: string }) {
           <details className="technical-details"><summary>{t("技术详情")}</summary><dl className="kv">
             <dt>{t("阅读版本 ID")}</dt><dd className="mono">{artifact.id}</dd><dt>{t("阅读样式 ID")}</dt><dd>{artifact.template_id}</dd>
             <dt>{t("来源修订")}</dt><dd className="mono">{artifact.source_revision_id || t("旧版未记录逐块来源")}</dd><dt>{t("译文修订")}</dt><dd className="mono">{artifact.translation_revision_id}</dd>
-            <dt>{t("资源状态")}</dt><dd>{artifact.state ?? t("历史记录未提供")}</dd>{edition && <><dt>{t("并发校验版本")}</dt><dd>{edition.generation ?? t("未记录")}</dd></>}
+            <dt>{t("资源状态")}</dt><dd>{artifact.state ? statusLabel(artifact.state) : t("历史记录未提供")}</dd>{edition && <><dt>{t("并发校验版本")}</dt><dd>{edition.generation ?? t("未记录")}</dd></>}
           </dl></details>
         </article>;
       })}

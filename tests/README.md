@@ -93,6 +93,8 @@ The reader contract is covered by `tests/unit/test_reader_i18n.py` (locale
 matching, complete catalogs, preserved content/old templates and immutable
 exports) and `tests/browser/reader-i18n.spec.ts` (all eight languages, both source
 schemas, publication/HTML/ZIP, dynamic controls, mobile and no JavaScript).
+`tests/unit/test_reader_i18n_v16.py` adds current parser-authored notices,
+auxiliary annotations, content-language boundaries and frozen v15 compatibility.
 Generate the reader fixtures as described in the browser test guide before
 running the evidence-dependent cases.
 

@@ -18,7 +18,7 @@
 | W08 | F17 | 标题/正文范围清楚，按文档归组命中，固定版本锚点与返回查询 | `search-ux.spec.ts`、`search-pagination.spec.ts` |
 | W09 | F13、F21 | 按标题选择文档；术语未保存保护与独立版本；翻译记忆给出真实首次保存路径 | `glossary-memory-ux.spec.ts`、`test_glossary_three_terms.py`、`test_knowledge.py` |
 | W10 | F16、F10 | 设置按服务/解析/阅读/高级定位；保留各组输入与独立保存契约 | `settings-navigation.spec.ts`、`settings-reaudit.spec.ts`、已有服务/解析/资源设置套件 |
-| W11 | F22 | 新 `reader-v15` 提供随译文语言的控件、双语目录与在线返回；旧发布不改写，离线导出无实例返回链接 | `test_reader_i18n.py`、`test_reader_navigation.py`、`test_template_rebuild.py`、`reader-i18n.spec.ts`、`reader-navigation.spec.ts` |
+| W11 | F22 | 新 `reader-v16` 提供随译文语言的控件、双语目录与在线返回；旧发布不改写，离线导出无实例返回链接 | `test_reader_i18n.py`、`test_reader_navigation.py`、`test_template_rebuild.py`、`reader-i18n.spec.ts`、`reader-navigation.spec.ts` |
 | W12 | F23、F24、F10 | 语言搜索与最近使用、真实模型说明、全站文案和可测量的视觉规则 | `language-picker-ux.spec.ts`、`model-choice-ux.spec.ts`、`visual-accessibility.spec.ts`、`technical-details.spec.ts`、`test_provider_presentation_api.py` |
 
 上述名称位于 `tests/browser/`、`tests/unit/`、`tests/integration/` 或 `src/apps/web/src/`。可复现命令与隔离规则见 [测试入口](../tests/README.md)。按实际改动选择检查，不把依赖历史证据的跳过项算作通过。
@@ -57,11 +57,13 @@
 
 ## 阅读与模型选择
 
-`reader-v15` 从已封存译文取章节标题，与原文章节并列；无译文时只用原文，不调用模型。搜索结果仍绑定原命中阅读版本与段落，返回链接只接受同实例搜索路由。直接阅读退回文档；单文件和 ZIP 导出移除实例导航，在无网络、无 JavaScript 情况下仍可阅读。
+`reader-v16` 从已封存译文取章节标题，与原文章节并列；无译文时只用原文，不调用模型。搜索结果仍绑定原命中阅读版本与段落，返回链接只接受同实例搜索路由。直接阅读退回文档；单文件和 ZIP 导出移除实例导航，在无网络、无 JavaScript 情况下仍可阅读。
 
 阅读器全部应用控件和无障碍标签跟随封存译文的语言，支持简体中文、繁體中文、English、日本語、한국어、Français、Deutsch、Español；地区变体匹配对应语言，中文显式脚本优先于地区。其余译文语言的控件暂回退 English，不影响译文 locale 或正文。语言在生成 HTML 时固定，发布页、单文件、ZIP 和禁用 JavaScript 的阅读保持一致；管理界面和浏览器的语言偏好不会覆盖产物语言。字体、主题等阅读偏好继续独立保存。
 
 新发布/草稿导出使用新模板，既有模板及资源不变。已有文档可明确生成新样式预览，切换仍需要不可变资源校验与 CAS；不批量重建或改写历史。
+
+`reader-v16` 补齐解析器固定提示与应用生成辅助说明的八语言文案，并为原文标签和未翻译标题分别标明实际语言；`reader-v15` 及更早模板保持冻结。管理端任务日志按操作代码显示本地化摘要，原始记录可展开；上传与编辑反馈保留消息键和参数，切换界面语言后已有反馈同步更新。
 
 语言选择保留原生控件与所有规范 locale，提供名称/代码搜索、键盘选择和最多六个最近使用项。脚本、地区与历史自定义标签不合并；浏览器存储不可用时仍可选择。最近使用仅保存语言代码，不保存服务配置或密钥。
 

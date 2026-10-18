@@ -1,8 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setUiLocale } from '../i18n';
 import type { Issue } from '../types';
-import { groupIssues } from './issue-groups';
+import { groupIssues, issueCategoryLabel } from './issue-groups';
+
+afterEach(() => setUiLocale('zh-Hans'));
 
 describe('issue grouping', () => {
+  it('localizes every source-check category and gives unknown categories a translated fallback', () => {
+    setUiLocale('en');
+    expect(issueCategoryLabel('table')).toBe('Table content');
+    expect(issueCategoryLabel('typography')).toBe('Layout');
+    expect(issueCategoryLabel('page_missing')).toBe('Content coverage');
+    expect(issueCategoryLabel('future_category')).toBe('Other content notices');
+    expect(issueCategoryLabel('toString')).toBe('Other content notices');
+    expect(issueCategoryLabel('__proto__')).toBe('Other content notices');
+    setUiLocale('zh-Hant');
+    expect(issueCategoryLabel('table')).toBe('表格內容');
+    expect(issueCategoryLabel('page_missing')).toBe('內容覆蓋');
+  });
   it('keeps every original record and evidence while grouping an eighty-item report', () => {
     const issues: Issue[] = Array.from({ length: 80 }, (_, index) => ({ id: `issue-${index}`, severity: 'warning', page: index % 4 + 1,
       category: Math.floor(index / 4) % 2 ? 'coverage' : 'numeric', message: '部分内容与原 PDF 不一致', diagnostic_count: 3,

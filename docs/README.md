@@ -32,3 +32,7 @@ Full-page DMR parsing: [specification](plans/2026-10-02-dmr-parser-spec.md),
 [implementation plan](plans/2026-10-02-dmr-parser-plan.md),
 [independent Astra/max audit](plans/2026-10-02-parser-gap-audit.md), and
 [gap closure and verification](plans/2026-10-02-parser-gap-closure.md).
+
+UI and UX improvements: [specification](plans/2026-10-18-ui-ux-spec.md) and
+[prioritized implementation plan](plans/2026-10-18-ui-ux-plan.md). These capture the
+2026-10-18 deployed-interface audit; implementation has not started.
